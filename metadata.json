@@ -1,0 +1,8 @@
+{
+  "name": "SIGNAL",
+  "description": "SIGNAL — Smart Islamic School Scheduler. Premium local-first academic scheduling and teacher attendance workspace for madrasahs.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
