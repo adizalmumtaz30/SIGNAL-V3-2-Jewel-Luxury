@@ -1,18 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
-import { AlertCircle, X, HelpCircle } from 'lucide-react';
+import { Info, HelpCircle, X } from 'lucide-react';
 
 interface InfoNoticeProps {
   text: string;
   label?: string;
-  variant?: 'exclamation' | 'help';
+  variant?: 'info' | 'help' | 'exclamation';
   size?: number;
 }
 
 export function InfoNotice({
   text,
   label = 'Informasi & Petunjuk',
-  variant = 'exclamation',
-  size = 14,
+  variant = 'info',
+  size = 12,
 }: InfoNoticeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLSpanElement>(null);
@@ -29,6 +29,15 @@ export function InfoNotice({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
+  // Choose icon based on variant: default to sleek Info icon
+  const renderIcon = () => {
+    if (variant === 'help') {
+      return <HelpCircle size={size} strokeWidth={1.75} />;
+    }
+    // Default or 'info' / legacy 'exclamation' mapping to modern clean Info icon
+    return <Info size={size} strokeWidth={1.75} />;
+  };
+
   return (
     <span
       ref={containerRef}
@@ -38,7 +47,7 @@ export function InfoNotice({
         display: 'inline-flex',
         alignItems: 'center',
         verticalAlign: 'middle',
-        marginLeft: '8px',
+        marginLeft: '6px',
       }}
     >
       <button
@@ -48,30 +57,42 @@ export function InfoNotice({
           e.stopPropagation();
           setIsOpen((prev) => !prev);
         }}
-        title="Klik tanda seru untuk melihat petunjuk dan informasi"
+        title="Lihat detail dan informasi petunjuk"
         aria-label="Informasi dan petunjuk"
         aria-expanded={isOpen}
         style={{
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
-          width: '24px',
-          height: '24px',
+          width: '19px',
+          height: '19px',
           borderRadius: '50%',
-          border: '1.5px solid #24635e',
-          background: isOpen ? '#173637' : '#eef6f2',
-          color: isOpen ? '#ffffff' : '#1e5b56',
+          border: isOpen ? '1px solid #1a3f3b' : '1px solid rgba(23, 54, 55, 0.16)',
+          background: isOpen ? '#1a3f3b' : 'rgba(23, 54, 55, 0.04)',
+          color: isOpen ? '#ffffff' : '#4d6961',
           cursor: 'pointer',
           padding: 0,
-          transition: 'all 0.15s ease',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+          transition: 'all 0.15s ease-in-out',
+          opacity: isOpen ? 1 : 0.82,
+        }}
+        onMouseEnter={(e) => {
+          if (!isOpen) {
+            e.currentTarget.style.background = 'rgba(23, 54, 55, 0.09)';
+            e.currentTarget.style.borderColor = 'rgba(23, 54, 55, 0.28)';
+            e.currentTarget.style.color = '#1a3f3b';
+            e.currentTarget.style.opacity = '1';
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!isOpen) {
+            e.currentTarget.style.background = 'rgba(23, 54, 55, 0.04)';
+            e.currentTarget.style.borderColor = 'rgba(23, 54, 55, 0.16)';
+            e.currentTarget.style.color = '#4d6961';
+            e.currentTarget.style.opacity = '0.82';
+          }
         }}
       >
-        {variant === 'exclamation' ? (
-          <AlertCircle size={size} strokeWidth={2.4} />
-        ) : (
-          <HelpCircle size={size} strokeWidth={2.4} />
-        )}
+        {renderIcon()}
       </button>
 
       {isOpen && (
@@ -80,16 +101,16 @@ export function InfoNotice({
           className="info-notice-popover"
           style={{
             position: 'absolute',
-            top: 'calc(100% + 8px)',
+            top: 'calc(100% + 7px)',
             left: '0',
             zIndex: 100,
             width: '320px',
             maxWidth: 'calc(100vw - 32px)',
             background: '#ffffff',
-            borderRadius: '12px',
-            padding: '14px 16px',
-            boxShadow: '0 12px 32px -4px rgba(18, 45, 43, 0.22), 0 0 0 1px rgba(23, 54, 55, 0.12)',
-            fontSize: '13px',
+            borderRadius: '10px',
+            padding: '12px 14px',
+            boxShadow: '0 8px 24px -4px rgba(18, 45, 43, 0.18), 0 0 0 1px rgba(23, 54, 55, 0.1)',
+            fontSize: '12.5px',
             lineHeight: 1.5,
             color: '#1a3331',
             textAlign: 'left',
@@ -100,19 +121,19 @@ export function InfoNotice({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              marginBottom: '8px',
-              borderBottom: '1px solid #eef2ee',
-              paddingBottom: '6px',
+              marginBottom: '7px',
+              borderBottom: '1px solid #edf2ef',
+              paddingBottom: '5px',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <AlertCircle size={14} color="#24635e" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <Info size={13} color="#24635e" strokeWidth={1.8} />
               <span
                 style={{
                   fontSize: '11px',
-                  fontWeight: 800,
+                  fontWeight: 700,
                   textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
+                  letterSpacing: '0.05em',
                   color: '#24635e',
                 }}
               >
@@ -137,16 +158,16 @@ export function InfoNotice({
               }}
               aria-label="Tutup petunjuk"
             >
-              <X size={15} />
+              <X size={14} />
             </button>
           </div>
           <p
             style={{
               margin: 0,
-              fontSize: '13px',
+              fontSize: '12.5px',
               lineHeight: 1.55,
-              color: '#28413e',
-              fontWeight: 500,
+              color: '#2d4743',
+              fontWeight: 450,
             }}
           >
             {text}

@@ -7,6 +7,8 @@ import App from './App';
 import './styles/sakala-modern.css';
 import './styles/signal-v3-atelier.css';
 import './styles/signal-v3-jewel-identity.css';
+import './styles/schedule-redesign.css';
+import './styles/signal-v5-tokens.css';
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

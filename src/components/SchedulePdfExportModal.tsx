@@ -1,27 +1,30 @@
 import { useMemo, useState } from 'react';
 import {
+  AlignLeft,
+  Award,
+  Check,
   Download,
+  FileEdit,
   FileSpreadsheet,
   GraduationCap,
+  Layers,
+  Palette,
+  RotateCcw,
+  SlidersHorizontal,
+  Sparkles,
   Users,
   X,
-  Palette,
-  AlignLeft,
-  ChevronDown,
-  ChevronUp,
-  RotateCcw,
-  Sparkles,
-  Award,
 } from 'lucide-react';
 import type { AppState } from '../domain/types';
 import {
-  exportScheduleClassPDF,
+  buildRightSignerTitle,
+  exportAllClassesSinglePageA4PDF,
   exportAllClassesWeeklyPDF,
+  exportScheduleClassPDF,
   exportScheduleMasterPDF,
   exportScheduleTeacherPDF,
-  exportAllClassesSinglePageA4PDF,
-  type WeeklyClassSchedulePdfOptions,
   type PaperSize,
+  type WeeklyClassSchedulePdfOptions,
 } from '../utils/pdfExport';
 import { jpToAstronomical } from '../domain/time';
 
@@ -34,6 +37,14 @@ interface SchedulePdfExportModalProps {
 }
 
 type ExportType = 'all_single_page' | 'class' | 'school' | 'teacher';
+type StudioMainTab = 'layout' | 'content';
+type ContentSubTab = 'kop' | 'title' | 'signer';
+
+function formatCleanNip(nip?: string): string {
+  const cleaned = (nip ?? '').trim();
+  if (!cleaned || /^[.\-\u2014\s]+$/.test(cleaned)) return '';
+  return cleaned;
+}
 
 export function SchedulePdfExportModal({
   state,
@@ -42,12 +53,19 @@ export function SchedulePdfExportModal({
   onClose,
   onNotify,
 }: SchedulePdfExportModalProps) {
-  // Main export format selection - defaults to 'all_single_page' (landscape master + recap page)
-  const [exportType, setExportType] = useState<ExportType>('all_single_page');
-  const [targetClassId, setTargetClassId] = useState<string>(() => selectedClassId || state.classes[0]?.id || 'all');
-  const [targetTeacherId, setTargetTeacherId] = useState<string>(() => state.teachers[0]?.id || '');
+  const [studioTab, setStudioTab] = useState<StudioMainTab>('layout');
+  const [contentSubTab, setContentSubTab] = useState<ContentSubTab>('kop');
 
-  // Options for layout & printing
+  // Main export format selection
+  const [exportType, setExportType] = useState<ExportType>('all_single_page');
+  const [targetClassId, setTargetClassId] = useState<string>(
+    () => selectedClassId || state.classes[0]?.id || 'all',
+  );
+  const [targetTeacherId, setTargetTeacherId] = useState<string>(
+    () => state.teachers[0]?.id || '',
+  );
+
+  // Layout & Print Options
   const [paperSize, setPaperSize] = useState<PaperSize>('a4');
   const [classLayoutMode, setClassLayoutMode] = useState<'single_page' | 'two_pages'>('single_page');
   const [classOrientation, setClassOrientation] = useState<'landscape' | 'portrait'>('landscape');
@@ -56,40 +74,72 @@ export function SchedulePdfExportModal({
   const [includeKop, setIncludeKop] = useState<boolean>(true);
   const [includeRecapPage, setIncludeRecapPage] = useState<boolean>(true);
 
-  // Accordion state for editing document components
-  const [showTextEditor, setShowTextEditor] = useState<boolean>(false);
-  const [editorSubTab, setEditorSubTab] = useState<'kop' | 'title' | 'signer'>('kop');
-
   // Editable Document Components (initialized from Madrasah Profile settings)
-  const [ministry, setMinistry] = useState<string>(() => state.settings.ministry || 'KEMENTERIAN AGAMA REPUBLIK INDONESIA');
-  const [regionalOffice, setRegionalOffice] = useState<string>(() => state.settings.regionalOffice || 'KANTOR KEMENTERIAN AGAMA KABUPATEN MALANG');
-  const [schoolName, setSchoolName] = useState<string>(() => state.settings.schoolName || 'MTs Cendekia Nusantara');
+  const [ministry, setMinistry] = useState<string>(
+    () => state.settings.ministry || 'KEMENTERIAN AGAMA REPUBLIK INDONESIA',
+  );
+  const [regionalOffice, setRegionalOffice] = useState<string>(
+    () => state.settings.regionalOffice || 'KANTOR KEMENTERIAN AGAMA KABUPATEN MALANG',
+  );
+  const [schoolName, setSchoolName] = useState<string>(
+    () => state.settings.schoolName || 'MTs Cendekia Nusantara',
+  );
   const [nsm, setNsm] = useState<string>(() => state.settings.nsm || '121235070001');
   const [npsn, setNpsn] = useState<string>(() => state.settings.npsn || '20580001');
-  const [address, setAddress] = useState<string>(() => state.settings.address || 'Jl. Raya Cendekia No. 45, Sumberpucung');
+  const [address, setAddress] = useState<string>(
+    () => state.settings.address || 'Jl. Raya Cendekia No. 45, Sumberpucung',
+  );
   const [city, setCity] = useState<string>(() => state.settings.city || 'Kabupaten Malang');
   const [postalCode, setPostalCode] = useState<string>(() => state.settings.postalCode || '65165');
-  const [phone, setPhone] = useState<string>(() => state.settings.phone || '(0341) 395882 / 0812-3456-7890');
-  const [email, setEmail] = useState<string>(() => state.settings.email || 'mts.cendekia@kemenag.go.id');
-  const [website, setWebsite] = useState<string>(() => state.settings.website || 'www.mtscendekia.sch.id');
+  const [phone, setPhone] = useState<string>(
+    () => state.settings.phone || '(0341) 395882 / 0812-3456-7890',
+  );
+  const [email, setEmail] = useState<string>(
+    () => state.settings.email || 'mts.cendekia@kemenag.go.id',
+  );
+  const [website, setWebsite] = useState<string>(
+    () => state.settings.website || 'www.mtscendekia.sch.id',
+  );
 
   // Document Title & Periods
   const [documentTitle, setDocumentTitle] = useState<string>('JADWAL PELAJARAN SELURUH KELAS');
-  const [academicYear, setAcademicYear] = useState<string>(() => state.settings.academicYear || '2026/2027');
-  const [semester, setSemester] = useState<'Ganjil' | 'Genap'>(() => state.settings.semester || 'Ganjil');
+  const [academicYear, setAcademicYear] = useState<string>(
+    () => state.settings.academicYear || '2026/2027',
+  );
+  const [semester, setSemester] = useState<'Ganjil' | 'Genap'>(
+    () => state.settings.semester || 'Ganjil',
+  );
   const [extraNotes, setExtraNotes] = useState<string>('');
 
   // Signatory Overrides
-  const [signerCity, setSignerCity] = useState<string>(() => state.settings.city || 'Kabupaten Malang');
-  const [signerDate, setSignerDate] = useState<string>(() =>
-    new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date()),
+  const [signerCity, setSignerCity] = useState<string>(
+    () => state.settings.city || 'Kabupaten Malang',
   );
-  const [principalTitle, setPrincipalTitle] = useState<string>(() => state.settings.headmasterTitle || 'Kepala Madrasah');
-  const [principalName, setPrincipalName] = useState<string>(() => state.settings.headmasterName || 'H. Ahmad Fauzi, S.Ag., M.Pd.I.');
-  const [principalNip, setPrincipalNip] = useState<string>(() => state.settings.headmasterNip || '19750812 200212 1 003');
-  const [coordinatorTitle, setCoordinatorTitle] = useState<string>(() => state.settings.curriculumLeaderTitle || 'Waka Bidang Kurikulum');
-  const [coordinatorName, setCoordinatorName] = useState<string>(() => state.settings.curriculumLeaderName || 'Siti Aminah, S.Pd.I., M.Pd.');
-  const [coordinatorNip, setCoordinatorNip] = useState<string>(() => state.settings.curriculumLeaderNip || '19820315 200901 2 008');
+  const [signerDate, setSignerDate] = useState<string>(() =>
+    new Intl.DateTimeFormat('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(new Date()),
+  );
+  const [principalTitle, setPrincipalTitle] = useState<string>(
+    () => state.settings.headmasterTitle || 'Kepala Madrasah',
+  );
+  const [principalName, setPrincipalName] = useState<string>(
+    () => state.settings.headmasterName || 'H. Ahmad Fauzi, S.Ag., M.Pd.I.',
+  );
+  const [principalNip, setPrincipalNip] = useState<string>(
+    () => state.settings.headmasterNip || '19750812 200212 1 003',
+  );
+  const [coordinatorTitle, setCoordinatorTitle] = useState<string>(
+    () => state.settings.curriculumLeaderTitle || 'Waka Bidang Kurikulum',
+  );
+  const [coordinatorName, setCoordinatorName] = useState<string>(
+    () => state.settings.curriculumLeaderName || 'Siti Aminah, S.Pd.I., M.Pd.',
+  );
+  const [coordinatorNip, setCoordinatorNip] = useState<string>(
+    () => state.settings.curriculumLeaderNip || '19820315 200901 2 008',
+  );
 
   const [isExporting, setIsExporting] = useState<boolean>(false);
 
@@ -101,9 +151,16 @@ export function SchedulePdfExportModal({
     [state.classes, targetClassId],
   );
 
+  const selectedTeacherObj = useMemo(
+    () => state.teachers.find((t) => t.id === targetTeacherId) ?? activeTeachers[0] ?? null,
+    [state.teachers, activeTeachers, targetTeacherId],
+  );
+
   const handleResetToSettings = () => {
     setMinistry(state.settings.ministry || 'KEMENTERIAN AGAMA REPUBLIK INDONESIA');
-    setRegionalOffice(state.settings.regionalOffice || 'KANTOR KEMENTERIAN AGAMA KABUPATEN MALANG');
+    setRegionalOffice(
+      state.settings.regionalOffice || 'KANTOR KEMENTERIAN AGAMA KABUPATEN MALANG',
+    );
     setSchoolName(state.settings.schoolName || 'MTs Cendekia Nusantara');
     setNsm(state.settings.nsm || '121235070001');
     setNpsn(state.settings.npsn || '20580001');
@@ -125,7 +182,11 @@ export function SchedulePdfExportModal({
     setDocumentTitle(
       exportType === 'all_single_page'
         ? 'JADWAL PELAJARAN SELURUH KELAS'
-        : 'JADWAL PELAJARAN MINGGUAN',
+        : exportType === 'class'
+        ? 'JADWAL PELAJARAN MINGGUAN'
+        : exportType === 'school'
+        ? 'MATRIKS JADWAL INDUK MADRASAH'
+        : 'JADWAL MENGAJAR PENDIDIK',
     );
     onNotify('Seluruh isian teks dikembalikan ke data Pengaturan Madrasah.', 'info');
   };
@@ -133,37 +194,75 @@ export function SchedulePdfExportModal({
   const classPreviewStats = useMemo(() => {
     const entries = state.draft ?? state.activeSchedule ?? [];
     const periodMinutes = state.settings.periodMinutes ?? 40;
+    const activeClassIds = new Set(activeClasses.map((c) => c.id));
 
-    if (exportType === 'all_single_page' || targetClassId === 'all') {
-      const activeClassIds = new Set(activeClasses.map((c) => c.id));
+    if (exportType === 'teacher' && selectedTeacherObj) {
+      const teacherEntries = entries.filter(
+        (e) => e.teacherId === selectedTeacherObj.id && activeClassIds.has(e.classId),
+      );
+      const uniqueClasses = new Set(teacherEntries.map((e) => e.classId));
+      const astro = jpToAstronomical(teacherEntries.length, periodMinutes);
+      return {
+        totalJp: teacherEntries.length,
+        astroFormatted: `${astro.hours} Jam (${astro.minutes}m)`,
+        teacherCount: 1,
+        classCount: uniqueClasses.size,
+        pageEstimate: 1,
+      };
+    }
+
+    if (exportType === 'all_single_page' || exportType === 'school' || targetClassId === 'all') {
       const relevant = entries.filter((e) => activeClassIds.has(e.classId));
       const uniqueTeachers = new Set(relevant.map((e) => e.teacherId));
-      const uniqueSubjects = new Set(relevant.map((e) => e.subjectId));
       const astro = jpToAstronomical(relevant.length, periodMinutes);
+      const pagesPerClass = classLayoutMode === 'single_page' ? 1 : 2;
+      const estimate =
+        exportType === 'all_single_page'
+          ? includeRecapPage
+            ? 2
+            : 1
+          : exportType === 'school'
+          ? Math.max(1, (state.settings.activeDays ?? []).length)
+          : Math.max(1, activeClasses.length * pagesPerClass);
       return {
         totalJp: relevant.length,
-        astroFormatted: `${astro.hours} Jam (${astro.minutes} Mnt)`,
+        astroFormatted: `${astro.hours} Jam (${astro.minutes}m)`,
         teacherCount: uniqueTeachers.size,
-        subjectCount: uniqueSubjects.size,
-        pageEstimate: exportType === 'all_single_page' ? 2 : activeClasses.length * 2,
+        classCount: activeClasses.length,
+        pageEstimate: estimate,
       };
     }
 
     const classEntries = entries.filter((e) => e.classId === targetClassId);
     const uniqueTeachers = new Set(classEntries.map((e) => e.teacherId));
-    const uniqueSubjects = new Set(classEntries.map((e) => e.subjectId));
     const astro = jpToAstronomical(classEntries.length, periodMinutes);
-
     return {
       totalJp: classEntries.length,
-      astroFormatted: `${astro.hours} Jam (${astro.minutes} Mnt)`,
+      astroFormatted: `${astro.hours} Jam (${astro.minutes}m)`,
       teacherCount: uniqueTeachers.size,
-      subjectCount: uniqueSubjects.size,
-      pageEstimate: 2,
+      classCount: 1,
+      pageEstimate: classLayoutMode === 'single_page' ? 1 : 2,
     };
-  }, [state, exportType, targetClassId, activeClasses]);
+  }, [state, exportType, targetClassId, selectedTeacherObj, activeClasses, classLayoutMode, includeRecapPage]);
+
+  const previewSubjects = useMemo(() => state.subjects.slice(0, 6), [state.subjects]);
 
   if (!isOpen) return null;
+
+  const isLandscapeOutput =
+    exportType === 'all_single_page' ||
+    exportType === 'school' ||
+    (exportType === 'class' && classOrientation === 'landscape');
+
+  const paperLabel = paperSize === 'a4' ? 'A4 Standar' : 'F4 / Folio';
+  const paperDimensionText =
+    paperSize === 'a4'
+      ? isLandscapeOutput
+        ? '297 × 210 mm · Landscape'
+        : '210 × 297 mm · Portrait'
+      : isLandscapeOutput
+      ? '330 × 210 mm · Landscape'
+      : '210 × 330 mm · Portrait';
 
   const handleDownload = () => {
     try {
@@ -195,7 +294,6 @@ export function SchedulePdfExportModal({
       };
 
       if (exportType === 'all_single_page') {
-        // ⭐ Mode Rekomendasi Utama: Matriks Seluruh Kelas Terpadu (Blok Mingguan) + Halaman Rekap Guru & TTD
         exportAllClassesSinglePageA4PDF(state, {
           ...commonOverrides,
           documentTitle: documentTitle.trim() || 'JADWAL PELAJARAN SELURUH KELAS',
@@ -205,7 +303,10 @@ export function SchedulePdfExportModal({
           includeKop,
           includeTeacherRecapPage: includeRecapPage,
         });
-        onNotify(`PDF Jadwal Seluruh Kelas (Kertas ${paperSize.toUpperCase()} Landscape) berhasil diunduh.`, 'success');
+        onNotify(
+          `PDF Jadwal Seluruh Kelas (${paperSize.toUpperCase()} Landscape) berhasil diunduh.`,
+          'success',
+        );
       } else if (exportType === 'class') {
         const options: WeeklyClassSchedulePdfOptions = {
           ...commonOverrides,
@@ -225,26 +326,36 @@ export function SchedulePdfExportModal({
 
         if (targetClassId === 'all') {
           exportAllClassesWeeklyPDF(state, options);
-          const pageCountStr = classLayoutMode === 'single_page' ? `${activeClasses.length} Halaman (1 Hal/Kelas)` : `${activeClasses.length * 2} Halaman (2 Hal/Kelas)`;
+          const pageCountStr =
+            classLayoutMode === 'single_page'
+              ? `${activeClasses.length} Halaman (1 Hal/Kelas)`
+              : `${activeClasses.length * 2} Halaman (2 Hal/Kelas)`;
           onNotify(
-            `PDF Bundel Jadwal Seluruh Kelas (${pageCountStr} · Kertas ${paperSize.toUpperCase()}) berhasil diunduh.`,
+            `PDF Bundel Jadwal Seluruh Kelas (${pageCountStr} · ${paperSize.toUpperCase()}) berhasil diunduh.`,
             'success',
           );
         } else {
           exportScheduleClassPDF(state, targetClassId, options);
-          const modeStr = classLayoutMode === 'single_page' ? '1 Halaman Terpadu' : '2 Halaman Lengkap';
+          const modeStr =
+            classLayoutMode === 'single_page' ? '1 Halaman Terpadu' : '2 Halaman Lengkap';
           onNotify(
-            `PDF Jadwal Mingguan Kelas ${selectedClassObj?.name ?? ''} (${modeStr} · Kertas ${paperSize.toUpperCase()}) berhasil diunduh.`,
+            `PDF Jadwal Kelas ${selectedClassObj?.name ?? ''} (${modeStr} · ${paperSize.toUpperCase()}) berhasil diunduh.`,
             'success',
           );
         }
       } else if (exportType === 'school') {
         exportScheduleMasterPDF(state, { paperSize });
-        onNotify(`PDF Jadwal Sekolah Induk (Kertas ${paperSize.toUpperCase()}) berhasil diunduh.`, 'success');
+        onNotify(
+          `PDF Matriks Induk Sekolah (${paperSize.toUpperCase()}) berhasil diunduh.`,
+          'success',
+        );
       } else {
         const tch = state.teachers.find((t) => t.id === targetTeacherId);
         exportScheduleTeacherPDF(state, targetTeacherId, { paperSize });
-        onNotify(`PDF Jadwal Guru ${tch?.name ?? ''} (Kertas ${paperSize.toUpperCase()}) berhasil diunduh.`, 'success');
+        onNotify(
+          `PDF Jadwal Guru ${tch?.name ?? ''} (${paperSize.toUpperCase()}) berhasil diunduh.`,
+          'success',
+        );
       }
       onClose();
     } catch (err) {
@@ -255,6 +366,45 @@ export function SchedulePdfExportModal({
     }
   };
 
+  const previewHeadline =
+    exportType === 'class' && selectedClassObj
+      ? `${documentTitle || 'JADWAL PELAJARAN MINGGUAN'} — KELAS ${selectedClassObj.name}`
+      : exportType === 'teacher' && selectedTeacherObj
+      ? `JADWAL MENGAJAR — ${selectedTeacherObj.name.toUpperCase()}`
+      : documentTitle || 'JADWAL PELAJARAN SELURUH KELAS';
+
+  const modeChoices: Array<{
+    id: ExportType;
+    title: string;
+    sub: string;
+    icon: typeof Sparkles;
+  }> = [
+    {
+      id: 'all_single_page',
+      title: 'Semua Kelas Terpadu',
+      sub: includeRecapPage ? 'Matriks + Rekap JP & TTD' : 'Matriks Seluruh Kelas',
+      icon: Sparkles,
+    },
+    {
+      id: 'class',
+      title: 'Per Rombel Kelas',
+      sub: classLayoutMode === 'single_page' ? '1 Hal Terpadu / Rombel' : '2 Hal Lengkap / Rombel',
+      icon: GraduationCap,
+    },
+    {
+      id: 'school',
+      title: 'Matriks Induk',
+      sub: 'Susunan Multi-Hari Paralel',
+      icon: FileSpreadsheet,
+    },
+    {
+      id: 'teacher',
+      title: 'Jadwal Guru',
+      sub: 'Ringkas Per Pendidik',
+      icon: Users,
+    },
+  ];
+
   return (
     <div
       className="modal-scrim"
@@ -264,23 +414,29 @@ export function SchedulePdfExportModal({
       }}
     >
       <div
-        className="modal-panel"
-        style={{ maxWidth: '720px', width: '95vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}
+        className="modal-panel s5-export-studio-panel"
         role="dialog"
         aria-modal="true"
-        aria-label="Ekspor PDF Jadwal Pelajaran"
+        aria-label="Studio Ekspor PDF Jadwal Pelajaran Resmi"
       >
         {/* Modal Header */}
-        <div className="modal-head">
-          <div className="modal-title-icon" style={{ background: '#e3efe8', color: '#1f6952' }}>
-            <Download size={20} />
+        <div
+          className="modal-head"
+          style={{
+            padding: '15px 22px',
+            borderBottom: '0.75px solid #DCE5DF',
+            background: '#FFFFFF',
+          }}
+        >
+          <div className="modal-title-icon" style={{ background: '#E8F4EE', color: '#124037' }}>
+            <Download size={19} />
           </div>
-          <div>
-            <h2 style={{ fontSize: '15px', margin: 0, color: '#173637' }}>
-              Ekspor Dokumen PDF Jadwal Pelajaran Resmi (A4)
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h2 style={{ fontSize: '16px', margin: 0, color: '#0B2923', fontWeight: 700 }}>
+              Studio Dokumen PDF Jadwal Pelajaran ({paperSize.toUpperCase()})
             </h2>
-            <p style={{ margin: 0, fontSize: '11px', color: '#687a75' }}>
-              Format standar madrasah: Pewarnaan sel kode hex, nama padat otomatis, 1 halaman A4 &amp; rekap guru ber-TTD
+            <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#526861' }}>
+              Pratinjau tata letak real-time, pemilihan kertas A4/F4, kop Kemenag, dan pengesahan resmi madrasah
             </p>
           </div>
           <button className="icon-button" onClick={onClose} aria-label="Tutup dialog">
@@ -288,512 +444,415 @@ export function SchedulePdfExportModal({
           </button>
         </div>
 
-        {/* Modal Scrollable Body */}
-        <div style={{ padding: '18px 20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Main Document Mode Tabs */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1fr', gap: '8px' }}>
-            {/* Primary Recommended Option: All classes in 1 page A4 */}
-            <button
-              type="button"
-              onClick={() => {
-                setExportType('all_single_page');
-                setDocumentTitle('JADWAL PELAJARAN SELURUH KELAS (SATU HALAMAN A4)');
-              }}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                textAlign: 'center',
-                gap: '5px',
-                padding: '11px 8px',
-                borderRadius: '10px',
-                border: exportType === 'all_single_page' ? '2px solid #16483f' : '1px solid #dcded3',
-                background: exportType === 'all_single_page' ? '#e7f2ed' : '#fff',
-                cursor: 'pointer',
-                position: 'relative',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <Sparkles size={16} color={exportType === 'all_single_page' ? '#16483f' : '#758582'} />
-                <span style={{ fontSize: '11px', fontWeight: 800, color: exportType === 'all_single_page' ? '#0b3435' : '#173637' }}>
-                  Semua Kelas (1 Halaman A4)
-                </span>
+        {/* Studio Split Body */}
+        <div className="s5-studio-body">
+          <div className="s5-pdf-studio-grid">
+            {/* LEFT PANE: Clean Tabbed Configuration */}
+            <div className="s5-studio-left-pane">
+              {/* Studio Primary Switcher */}
+              <div className="s5-studio-tabs" role="tablist" aria-label="Kategori Pengaturan Ekspor">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={studioTab === 'layout'}
+                  className={`s5-studio-tab-btn ${studioTab === 'layout' ? 'is-active' : ''}`}
+                  onClick={() => setStudioTab('layout')}
+                >
+                  <SlidersHorizontal size={14} />
+                  <span>Format &amp; Tata Letak</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={studioTab === 'content'}
+                  className={`s5-studio-tab-btn ${studioTab === 'content' ? 'is-active' : ''}`}
+                  onClick={() => setStudioTab('content')}
+                >
+                  <FileEdit size={14} />
+                  <span>Kop, Judul &amp; Pejabat</span>
+                </button>
               </div>
-              <small style={{ fontSize: '9px', color: '#357c72', fontWeight: 600 }}>Landscape + Rekap JP &amp; TTD</small>
-            </button>
 
-            {/* Option 2: Class Weekly */}
-            <button
-              type="button"
-              onClick={() => {
-                setExportType('class');
-                setDocumentTitle('JADWAL PELAJARAN MINGGUAN');
-              }}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                textAlign: 'center',
-                gap: '5px',
-                padding: '11px 8px',
-                borderRadius: '10px',
-                border: exportType === 'class' ? '2px solid #16483f' : '1px solid #dcded3',
-                background: exportType === 'class' ? '#e7f2ed' : '#fff',
-                cursor: 'pointer',
-              }}
-            >
-              <GraduationCap size={16} color={exportType === 'class' ? '#16483f' : '#758582'} />
-              <span style={{ fontSize: '11px', fontWeight: 700, color: exportType === 'class' ? '#0b3435' : '#173637' }}>
-                Per Rombel Kelas
-              </span>
-              <small style={{ fontSize: '9px', color: '#758582' }}>2 Halaman per Rombel</small>
-            </button>
+              {studioTab === 'layout' ? (
+                <>
+                  {/* Card 1: Format Dokumen */}
+                  <div className="s5-studio-card">
+                    <div className="s5-studio-section-head">
+                      <span className="s5-studio-kicker">1. Jenis Dokumen Jadwal</span>
+                      <span className="s5-tnum" style={{ fontSize: '11px', color: '#1B5E43', fontWeight: 600 }}>
+                        {classPreviewStats.classCount} Rombel · {classPreviewStats.totalJp} JP
+                      </span>
+                    </div>
 
-            {/* Option 3: School Master Schedule */}
-            <button
-              type="button"
-              onClick={() => setExportType('school')}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                textAlign: 'center',
-                gap: '5px',
-                padding: '11px 8px',
-                borderRadius: '10px',
-                border: exportType === 'school' ? '2px solid #16483f' : '1px solid #dcded3',
-                background: exportType === 'school' ? '#e7f2ed' : '#fff',
-                cursor: 'pointer',
-              }}
-            >
-              <FileSpreadsheet size={16} color={exportType === 'school' ? '#16483f' : '#758582'} />
-              <span style={{ fontSize: '11px', fontWeight: 700, color: exportType === 'school' ? '#0b3435' : '#173637' }}>
-                Matriks Master
-              </span>
-              <small style={{ fontSize: '9px', color: '#758582' }}>Format Multi-Hari</small>
-            </button>
+                    <div className="s5-studio-choice-grid">
+                      {modeChoices.map((mode) => {
+                        const Icon = mode.icon;
+                        const isActive = exportType === mode.id;
+                        return (
+                          <button
+                            key={mode.id}
+                            type="button"
+                            onClick={() => {
+                              setExportType(mode.id);
+                              if (mode.id === 'all_single_page') {
+                                setDocumentTitle('JADWAL PELAJARAN SELURUH KELAS');
+                              } else if (mode.id === 'class') {
+                                setDocumentTitle('JADWAL PELAJARAN MINGGUAN');
+                              } else if (mode.id === 'school') {
+                                setDocumentTitle('MATRIKS JADWAL INDUK MADRASAH');
+                              } else {
+                                setDocumentTitle('JADWAL MENGAJAR PENDIDIK');
+                              }
+                            }}
+                            className={`s5-studio-choice-card ${isActive ? 'is-active' : ''}`}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '7px', width: '100%' }}>
+                              <Icon size={15} color={isActive ? '#124037' : '#5E746D'} />
+                              <span
+                                style={{
+                                  fontSize: '12.5px',
+                                  fontWeight: 700,
+                                  color: isActive ? '#0B2923' : '#1F3630',
+                                }}
+                              >
+                                {mode.title}
+                              </span>
+                            </div>
+                            <span style={{ fontSize: '11px', color: isActive ? '#1B5E43' : '#5C706A' }}>
+                              {mode.sub}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
 
-            {/* Option 4: Teacher Individual */}
-            <button
-              type="button"
-              onClick={() => setExportType('teacher')}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                textAlign: 'center',
-                gap: '5px',
-                padding: '11px 8px',
-                borderRadius: '10px',
-                border: exportType === 'teacher' ? '2px solid #16483f' : '1px solid #dcded3',
-                background: exportType === 'teacher' ? '#e7f2ed' : '#fff',
-                cursor: 'pointer',
-              }}
-            >
-              <Users size={16} color={exportType === 'teacher' ? '#16483f' : '#758582'} />
-              <span style={{ fontSize: '11px', fontWeight: 700, color: exportType === 'teacher' ? '#0b3435' : '#173637' }}>
-                Jadwal Guru
-              </span>
-              <small style={{ fontSize: '9px', color: '#758582' }}>Per Tenaga Pendidik</small>
-            </button>
-          </div>
+                    {/* Contextual Scope Controls */}
+                    {exportType === 'class' && (
+                      <div
+                        style={{
+                          paddingTop: '10px',
+                          borderTop: '0.75px solid #E8EFEA',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '10px',
+                        }}
+                      >
+                        <div className="s5-studio-choice-grid">
+                          <button
+                            type="button"
+                            onClick={() => setClassLayoutMode('single_page')}
+                            className={`s5-studio-choice-card ${
+                              classLayoutMode === 'single_page' ? 'is-active' : ''
+                            }`}
+                          >
+                            <span style={{ fontSize: '12px', fontWeight: 700, color: '#0B2923' }}>
+                              1 Halaman Terpadu
+                            </span>
+                            <span style={{ fontSize: '11px', color: '#526861' }}>
+                              Matriks + Rekap &amp; TTD dalam 1 lembar
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setClassLayoutMode('two_pages')}
+                            className={`s5-studio-choice-card ${
+                              classLayoutMode === 'two_pages' ? 'is-active' : ''
+                            }`}
+                          >
+                            <span style={{ fontSize: '12px', fontWeight: 700, color: '#0B2923' }}>
+                              2 Halaman Lengkap
+                            </span>
+                            <span style={{ fontSize: '11px', color: '#526861' }}>
+                              Hal 1 Matriks lega, Hal 2 Rekap &amp; TTD
+                            </span>
+                          </button>
+                        </div>
 
-          {/* KPI Statistics Card */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
-              gap: '8px',
-              padding: '11px 14px',
-              background: '#f2f8f5',
-              borderRadius: '10px',
-              border: '1px solid #cce5d7',
-            }}
-          >
-            <div>
-              <span style={{ fontSize: '10.5px', color: '#52776d', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                TOTAL ALOKASI JP
-              </span>
-              <strong style={{ fontSize: '16px', color: '#173637', display: 'block', marginTop: '2px', fontWeight: 800 }}>
-                {classPreviewStats.totalJp} JP
-              </strong>
-            </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '10px' }}>
+                          <div className="field-group">
+                            <label style={{ fontSize: '11px' }}>Kelas Sasaran</label>
+                            <select
+                              value={targetClassId}
+                              onChange={(e) => setTargetClassId(e.target.value)}
+                              style={{ height: '36px', fontSize: '12.5px' }}
+                            >
+                              <option value="all">Bundel Seluruh Kelas ({activeClasses.length})</option>
+                              {activeClasses.map((c) => (
+                                <option key={c.id} value={c.id}>
+                                  Kelas {c.name} (Tingkat {c.level})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
 
-            <div>
-              <span style={{ fontSize: '10.5px', color: '#52776d', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                WAKTU ASTRONOMIS
-              </span>
-              <strong style={{ fontSize: '15px', color: '#173637', display: 'block', marginTop: '2px', fontWeight: 800 }}>
-                {classPreviewStats.astroFormatted}
-              </strong>
-            </div>
+                          <div className="field-group">
+                            <label style={{ fontSize: '11px' }}>Orientasi ({paperSize.toUpperCase()})</label>
+                            <select
+                              value={classOrientation}
+                              onChange={(e) =>
+                                setClassOrientation(e.target.value as 'landscape' | 'portrait')
+                              }
+                              style={{ height: '36px', fontSize: '12.5px' }}
+                            >
+                              <option value="landscape">Landscape (Rekomendasi)</option>
+                              <option value="portrait">Portrait (Vertikal)</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
-            <div>
-              <span style={{ fontSize: '10.5px', color: '#52776d', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                GURU PENGAJAR
-              </span>
-              <strong style={{ fontSize: '16px', color: '#173637', display: 'block', marginTop: '2px', fontWeight: 800 }}>
-                {classPreviewStats.teacherCount} Pendidik
-              </strong>
-            </div>
+                    {exportType === 'teacher' && (
+                      <div style={{ paddingTop: '8px', borderTop: '0.75px solid #E8EFEA' }}>
+                        <div className="field-group">
+                          <label style={{ fontSize: '11px' }}>Pilih Tenaga Pendidik</label>
+                          <select
+                            value={targetTeacherId}
+                            onChange={(e) => setTargetTeacherId(e.target.value)}
+                            style={{ height: '36px', fontSize: '12.5px' }}
+                          >
+                            {activeTeachers.map((t) => (
+                              <option key={t.id} value={t.id}>
+                                {t.name} ({t.code}) · {t.roleTitle || 'Guru Mapel'}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
-            <div>
-              <span style={{ fontSize: '10.5px', color: '#52776d', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                ESTIMASI DOKUMEN
-              </span>
-              <strong style={{ fontSize: '15px', color: '#1f6952', display: 'block', marginTop: '2px', fontWeight: 800 }}>
-                {classPreviewStats.pageEstimate} Halaman ({paperSize.toUpperCase()})
-              </strong>
-            </div>
-          </div>
+                  {/* Card 2: Ukuran Kertas */}
+                  <div className="s5-studio-card">
+                    <div className="s5-studio-section-head">
+                      <span className="s5-studio-kicker">2. Ukuran Kertas Cetak</span>
+                      <span className="s5-tnum" style={{ fontSize: '11px', color: '#526861' }}>
+                        {paperDimensionText}
+                      </span>
+                    </div>
 
-          {/* Universal Paper Size Selector (A4 & F4 Indonesia) */}
-          <div style={{ padding: '12px 14px', background: '#f8faf9', border: '1px solid #dbe6e0', borderRadius: '10px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <label style={{ fontSize: '11px', fontWeight: 800, color: '#0b3435', letterSpacing: '0.04em' }}>
-                UKURAN KERTAS CETAK (A4 &amp; F4 INDONESIA)
-              </label>
-              <span style={{ fontSize: '10px', color: '#55726b', fontWeight: 600 }}>
-                {paperSize === 'a4' ? '210 × 297 mm · Standar Cetak Umum' : '210 × 330 mm · Folio Madrasah (+33mm Ruang Kolom)'}
-              </span>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-              <button
-                type="button"
-                onClick={() => setPaperSize('a4')}
-                style={{
-                  padding: '9px 12px',
-                  borderRadius: '8px',
-                  border: paperSize === 'a4' ? '2px solid #16483f' : '1px solid #d4d7cc',
-                  background: paperSize === 'a4' ? '#e7f2ed' : '#ffffff',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-              >
-                <div style={{ fontWeight: 800, fontSize: '12px', color: paperSize === 'a4' ? '#0b3435' : '#173637' }}>
-                  Kertas A4 (210 × 297 mm)
-                </div>
-                <small style={{ fontSize: '10px', color: '#687a75' }}>Standar internasional &amp; printer madrasah</small>
-              </button>
+                    <div className="s5-studio-choice-grid">
+                      {(
+                        [
+                          {
+                            id: 'a4' as const,
+                            title: 'Kertas A4',
+                            sub: '210 × 297 mm · Standar Umum',
+                          },
+                          {
+                            id: 'f4' as const,
+                            title: 'Kertas F4 / Folio',
+                            sub: '210 × 330 mm · Standar Kemenag',
+                          },
+                        ]
+                      ).map((opt) => {
+                        const active = paperSize === opt.id;
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => setPaperSize(opt.id)}
+                            className={`s5-studio-choice-card ${active ? 'is-active' : ''}`}
+                          >
+                            <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#0B2923' }}>
+                              {opt.title}
+                            </span>
+                            <span style={{ fontSize: '11px', color: '#526861' }}>{opt.sub}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
 
-              <button
-                type="button"
-                onClick={() => setPaperSize('f4')}
-                style={{
-                  padding: '9px 12px',
-                  borderRadius: '8px',
-                  border: paperSize === 'f4' ? '2px solid #16483f' : '1px solid #d4d7cc',
-                  background: paperSize === 'f4' ? '#e7f2ed' : '#ffffff',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-              >
-                <div style={{ fontWeight: 800, fontSize: '12px', color: paperSize === 'f4' ? '#0b3435' : '#173637' }}>
-                  Kertas F4 / Folio (210 × 330 mm)
-                </div>
-                <small style={{ fontSize: '10px', color: '#687a75' }}>Standar administrasi Kemenag (+33mm lebar)</small>
-              </button>
-            </div>
-          </div>
+                  {/* Card 3: Elemen Visual & Halaman */}
+                  <div className="s5-studio-card">
+                    <div className="s5-studio-section-head">
+                      <span className="s5-studio-kicker">3. Kelengkapan Cetak</span>
+                      <button
+                        type="button"
+                        onClick={() => setStudioTab('content')}
+                        style={{
+                          border: 0,
+                          background: 'transparent',
+                          color: '#124037',
+                          fontSize: '11.5px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          padding: 0,
+                        }}
+                      >
+                        Edit Teks &amp; TTD →
+                      </button>
+                    </div>
 
-          {/* Mode 1 & 2 Specific Controls */}
-          {exportType === 'all_single_page' && (
-            <div style={{ padding: '12px 14px', background: '#fcfdfb', border: '1px solid #dbe6e0', borderRadius: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                <Sparkles size={16} style={{ color: '#2f7771' }} />
-                <strong style={{ fontSize: '12.5px', color: '#0b3435' }}>
-                  Struktur Dokumen Cetak Matriks Blok Seluruh Kelas ({paperSize.toUpperCase()} Landscape):
-                </strong>
-              </div>
-              <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '11.5px', color: '#435e58', lineHeight: 1.55 }}>
-                <li>
-                  <strong>Halaman 1 ({paperSize.toUpperCase()} Landscape):</strong> Setiap kelas aktif ditampilkan sebagai blok jadwal mingguan utuh (Senin–Sabtu horizontal, JP vertikal), dikelompokkan secara paralel (Baris 1 Kelompok A, Baris 2 Kelompok B) lengkap dengan legenda mapel dan penanda kegiatan non-KBM.
-                </li>
-                <li>
-                  <strong>Halaman 2 (Lampiran Resmi):</strong> Tabel rekapitulasi beban JP seluruh guru madrasah beserta rincian per rombel, ringkasan waktu astronomis, dan <strong>kolom tanda tangan resmi pengesahan</strong>.
-                </li>
-              </ul>
-            </div>
-          )}
-
-          {exportType === 'class' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {/* Class Layout Mode: 1 Halaman Terpadu vs 2 Halaman Lengkap */}
-              <div style={{ padding: '11px 13px', background: '#fcfdfb', border: '1px solid #dbe6e0', borderRadius: '10px' }}>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 800, color: '#0b3435', marginBottom: '8px', letterSpacing: '0.04em' }}>
-                  TATA LETAK JADWAL KELAS
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  <button
-                    type="button"
-                    onClick={() => setClassLayoutMode('single_page')}
+                    <div className="s5-studio-choice-grid">
+                      {[
+                        {
+                          label: 'Warna Kode Hex Mapel',
+                          sub: 'Sel pastel rapi untuk cetak',
+                          checked: colorizeSubjects,
+                          onChange: setColorizeSubjects,
+                          icon: Palette,
+                          disabled: false,
+                        },
+                        {
+                          label: 'Padatkan Nama Otomatis',
+                          sub: 'Presisi agar muat 1 halaman',
+                          checked: compactNames,
+                          onChange: setCompactNames,
+                          icon: AlignLeft,
+                          disabled: false,
+                        },
+                        {
+                          label: 'Kop Surat Kemenag',
+                          sub: 'Logo, NSM, NPSN & alamat',
+                          checked: includeKop,
+                          onChange: setIncludeKop,
+                          icon: Award,
+                          disabled: false,
+                        },
+                        {
+                          label: 'Rekap Guru & TTD',
+                          sub:
+                            exportType === 'class' && classLayoutMode === 'single_page'
+                              ? 'Otomatis tergabung di Halaman 1'
+                              : 'Lampiran beban JP + pengesahan',
+                          checked:
+                            exportType === 'class' && classLayoutMode === 'single_page'
+                              ? true
+                              : includeRecapPage,
+                          onChange: setIncludeRecapPage,
+                          icon: Layers,
+                          disabled: exportType === 'class' && classLayoutMode === 'single_page',
+                        },
+                      ].map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <label
+                            key={item.label}
+                            className={`s5-studio-switch-row ${item.checked ? 'is-checked' : ''}`}
+                            style={{ opacity: item.disabled ? 0.72 : 1 }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={item.checked}
+                              disabled={item.disabled}
+                              onChange={(e) => item.onChange(e.target.checked)}
+                              style={{ accentColor: '#124037', marginTop: '2px' }}
+                            />
+                            <div style={{ minWidth: 0 }}>
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '5px',
+                                  fontSize: '12px',
+                                  fontWeight: 700,
+                                  color: '#0F201C',
+                                }}
+                              >
+                                <Icon size={13} color="#1B5E43" />
+                                <span>{item.label}</span>
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#526861', marginTop: '1px' }}>
+                                {item.sub}
+                              </div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                /* TAB 2: Kop Surat, Judul & Pejabat Pengesah */
+                <div className="s5-studio-card">
+                  <div
                     style={{
-                      padding: '9px 12px',
-                      borderRadius: '8px',
-                      border: classLayoutMode === 'single_page' ? '2px solid #16483f' : '1px solid #d4d7cc',
-                      background: classLayoutMode === 'single_page' ? '#e7f2ed' : '#ffffff',
-                      cursor: 'pointer',
-                      textAlign: 'left',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '10px',
+                      paddingBottom: '10px',
+                      borderBottom: '0.75px solid #E8EFEA',
+                      flexWrap: 'wrap',
                     }}
                   >
-                    <div style={{ fontWeight: 800, fontSize: '12px', color: classLayoutMode === 'single_page' ? '#0b3435' : '#173637' }}>
-                      ⭐ 1 Halaman Terpadu (Single Page)
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      {(
+                        [
+                          { id: 'kop', label: 'Kop Madrasah' },
+                          { id: 'title', label: 'Judul & Periode' },
+                          { id: 'signer', label: 'Pejabat & TTD' },
+                        ] as const
+                      ).map((tab) => (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setContentSubTab(tab.id)}
+                          className={`s5-studio-preset-btn ${contentSubTab === tab.id ? 'is-active' : ''}`}
+                          style={{ height: '30px', padding: '0 12px', fontSize: '12px' }}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
                     </div>
-                    <small style={{ fontSize: '10px', color: '#687a75' }}>Jadwal mingguan, rekap beban guru, &amp; TTD dalam 1 lembar utuh</small>
-                  </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setClassLayoutMode('two_pages')}
-                    style={{
-                      padding: '9px 12px',
-                      borderRadius: '8px',
-                      border: classLayoutMode === 'two_pages' ? '2px solid #16483f' : '1px solid #d4d7cc',
-                      background: classLayoutMode === 'two_pages' ? '#e7f2ed' : '#ffffff',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                    }}
-                  >
-                    <div style={{ fontWeight: 800, fontSize: '12px', color: classLayoutMode === 'two_pages' ? '#0b3435' : '#173637' }}>
-                      2 Halaman Lengkap (Two Pages)
-                    </div>
-                    <small style={{ fontSize: '10px', color: '#687a75' }}>Halaman 1 Matriks lega, Halaman 2 Rekap detail &amp; TTD</small>
-                  </button>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '12px' }}>
-                <div className="field-group">
-                  <label>Pilih Kelas Sasaran</label>
-                  <select
-                    value={targetClassId}
-                    onChange={(e) => setTargetClassId(e.target.value)}
-                    style={{ height: '38px', fontSize: '12.5px' }}
-                  >
-                    <option value="all">⭐ Cetak Seluruh Kelas Sekaligus (Bundel Dokumen Lengkap)</option>
-                    {activeClasses.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        Kelas {c.name} (Tingkat {c.level})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="field-group">
-                  <label>Orientasi Kertas ({paperSize.toUpperCase()})</label>
-                  <select
-                    value={classOrientation}
-                    onChange={(e) => setClassOrientation(e.target.value as 'landscape' | 'portrait')}
-                    style={{ height: '38px', fontSize: '12.5px' }}
-                  >
-                    <option value="landscape">{paperSize.toUpperCase()} Landscape (Rekomendasi - Matriks Lega &amp; Nyaman)</option>
-                    <option value="portrait">{paperSize.toUpperCase()} Portrait (Format Vertikal)</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {exportType === 'teacher' && (
-            <div className="field-group">
-              <label>Pilih Tenaga Pendidik / Guru</label>
-              <select
-                value={targetTeacherId}
-                onChange={(e) => setTargetTeacherId(e.target.value)}
-                style={{ height: '38px', fontSize: '12.5px' }}
-              >
-                {activeTeachers.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name} ({t.code}) — {t.roleTitle || 'Guru Mapel'} (Maksimal {t.maxWeeklyJP} JP)
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Typography & Visual Print Enhancement Switches */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '10px',
-              padding: '12px 14px',
-              background: '#fffdf8',
-              borderRadius: '9px',
-              border: '1px solid #e5e3d7',
-            }}
-          >
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#173637', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={colorizeSubjects}
-                onChange={(e) => setColorizeSubjects(e.target.checked)}
-              />
-              <Palette size={15} style={{ color: '#2f7771' }} />
-              <div>
-                <strong>Pewarnaan Sel Kode Hex Mapel</strong>
-                <div style={{ fontSize: '10.5px', color: '#657874' }}>Pastel lembut &amp; teks kontras untuk cetak</div>
-              </div>
-            </label>
-
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#173637', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={compactNames}
-                onChange={(e) => setCompactNames(e.target.checked)}
-              />
-              <AlignLeft size={15} style={{ color: '#2f7771' }} />
-              <div>
-                <strong>Padatkan Nama Mapel &amp; Guru Otomatis</strong>
-                <div style={{ fontSize: '10.5px', color: '#657874' }}>Optimasi ruang tabel agar muat 1 lembar A4</div>
-              </div>
-            </label>
-
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#173637', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={includeKop}
-                onChange={(e) => setIncludeKop(e.target.checked)}
-              />
-              <Award size={15} style={{ color: '#2f7771' }} />
-              <div>
-                <strong>Sertakan Kop Surat Resmi Madrasah</strong>
-                <div style={{ fontSize: '10.5px', color: '#657874' }}>Kemenag, logo, NSM/NPSN, alamat lengkap</div>
-              </div>
-            </label>
-
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#173637', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={includeRecapPage}
-                onChange={(e) => setIncludeRecapPage(e.target.checked)}
-              />
-              <Users size={15} style={{ color: '#2f7771' }} />
-              <div>
-                <strong>Halaman 2: Rekapitulasi JP &amp; Kolom TTD</strong>
-                <div style={{ fontSize: '10.5px', color: '#657874' }}>Tabel beban guru dan blok tanda tangan footer</div>
-              </div>
-            </label>
-          </div>
-
-          {/* Full Official Document Component Text Editor Section */}
-          <div
-            style={{
-              border: '1px solid #d4d7cc',
-              borderRadius: '10px',
-              background: '#ffffff',
-              overflow: 'hidden',
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setShowTextEditor((prev) => !prev)}
-              style={{
-                width: '100%',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '12px 16px',
-                background: showTextEditor ? '#f2f8f5' : '#fafbf8',
-                border: 'none',
-                cursor: 'pointer',
-                textAlign: 'left',
-              }}
-            >
-              <div>
-                <strong style={{ fontSize: '12.5px', color: '#0b3435' }}>
-                  ✏️ Sesuaikan Teks Dokumen Resmi (Kop Surat, Judul, Titimangsa &amp; Tanda Tangan)
-                </strong>
-                <p style={{ margin: 0, fontSize: '11px', color: '#657874' }}>
-                  Bisa edit langsung seluruh isi teks komponen dokumen sebelum diunduh
-                </p>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#2f7771' }}>
-                <span style={{ fontSize: '11px', fontWeight: 600 }}>{showTextEditor ? 'Tutup Form' : 'Buka Form'}</span>
-                {showTextEditor ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              </div>
-            </button>
-
-            {showTextEditor && (
-              <div style={{ padding: '16px', borderTop: '1px solid #e2e5db' }}>
-                {/* Sub-tabs inside text editor */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                  <div className="segmented-tabs" style={{ marginBottom: 0 }}>
                     <button
                       type="button"
-                      className={editorSubTab === 'kop' ? 'active' : ''}
-                      onClick={() => setEditorSubTab('kop')}
+                      onClick={handleResetToSettings}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        height: '30px',
+                        padding: '0 10px',
+                        borderRadius: '8px',
+                        border: '0.75px solid #E8CFCB',
+                        background: '#FDF6F5',
+                        color: '#9F352B',
+                        fontSize: '11.5px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
                     >
-                      1. Kop Surat &amp; Instansi
-                    </button>
-                    <button
-                      type="button"
-                      className={editorSubTab === 'title' ? 'active' : ''}
-                      onClick={() => setEditorSubTab('title')}
-                    >
-                      2. Judul &amp; Periode
-                    </button>
-                    <button
-                      type="button"
-                      className={editorSubTab === 'signer' ? 'active' : ''}
-                      onClick={() => setEditorSubTab('signer')}
-                    >
-                      3. Titimangsa &amp; Penandatangan
+                      <RotateCcw size={12} />
+                      <span>Reset Default</span>
                     </button>
                   </div>
 
-                  <button
-                    type="button"
-                    className="button button-quiet"
-                    onClick={handleResetToSettings}
-                    style={{ fontSize: '11px', height: '30px' }}
-                    title="Kembalikan semua teks ke isian pengaturan madrasah"
-                  >
-                    <RotateCcw size={12} /> Reset Default
-                  </button>
-                </div>
-
-                {/* SubTab 1: Kop Surat */}
-                {editorSubTab === 'kop' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <div className="field-group">
-                      <label style={{ fontSize: '11px' }}>Kementerian yang Menaungi</label>
-                      <input
-                        value={ministry}
-                        onChange={(e) => setMinistry(e.target.value)}
-                        placeholder="KEMENTERIAN AGAMA REPUBLIK INDONESIA"
-                        style={{ height: '34px', fontSize: '11.5px' }}
-                      />
-                    </div>
-
-                    <div className="field-group">
-                      <label style={{ fontSize: '11px' }}>Kantor Wilayah / Kankemenag Daerah</label>
-                      <input
-                        value={regionalOffice}
-                        onChange={(e) => setRegionalOffice(e.target.value)}
-                        placeholder="KANTOR KEMENTERIAN AGAMA KABUPATEN MALANG"
-                        style={{ height: '34px', fontSize: '11.5px' }}
-                      />
-                    </div>
-
-                    <div className="field-group">
-                      <label style={{ fontSize: '11px' }}>Nama Satuan Pendidikan / Madrasah</label>
-                      <input
-                        value={schoolName}
-                        onChange={(e) => setSchoolName(e.target.value)}
-                        placeholder="MTs Cendekia Nusantara"
-                        style={{ height: '34px', fontSize: '11.5px' }}
-                      />
-                    </div>
-
+                  {contentSubTab === 'kop' && (
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div className="field-group" style={{ gridColumn: 'span 2' }}>
+                        <label style={{ fontSize: '11px' }}>Kementerian Pembina</label>
+                        <input
+                          value={ministry}
+                          onChange={(e) => setMinistry(e.target.value)}
+                          style={{ height: '34px', fontSize: '12px' }}
+                        />
+                      </div>
+                      <div className="field-group" style={{ gridColumn: 'span 2' }}>
+                        <label style={{ fontSize: '11px' }}>Kantor Kemenag / Yayasan</label>
+                        <input
+                          value={regionalOffice}
+                          onChange={(e) => setRegionalOffice(e.target.value)}
+                          style={{ height: '34px', fontSize: '12px' }}
+                        />
+                      </div>
+                      <div className="field-group" style={{ gridColumn: 'span 2' }}>
+                        <label style={{ fontSize: '11px' }}>Nama Resmi Madrasah</label>
+                        <input
+                          value={schoolName}
+                          onChange={(e) => setSchoolName(e.target.value)}
+                          style={{ height: '34px', fontSize: '12px', fontWeight: 700 }}
+                        />
+                      </div>
                       <div className="field-group">
-                        <label style={{ fontSize: '11px' }}>Nomor Statistik Madrasah (NSM)</label>
+                        <label style={{ fontSize: '11px' }}>NSM</label>
                         <input
                           value={nsm}
                           onChange={(e) => setNsm(e.target.value)}
-                          placeholder="121235070001"
-                          style={{ height: '34px', fontSize: '11.5px' }}
+                          style={{ height: '34px', fontSize: '12px' }}
                         />
                       </div>
                       <div className="field-group">
@@ -801,30 +860,23 @@ export function SchedulePdfExportModal({
                         <input
                           value={npsn}
                           onChange={(e) => setNpsn(e.target.value)}
-                          placeholder="20580001"
-                          style={{ height: '34px', fontSize: '11.5px' }}
+                          style={{ height: '34px', fontSize: '12px' }}
                         />
                       </div>
-                    </div>
-
-                    <div className="field-group">
-                      <label style={{ fontSize: '11px' }}>Alamat Lengkap</label>
-                      <input
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                        placeholder="Jl. Raya Cendekia No. 45, Sumberpucung"
-                        style={{ height: '34px', fontSize: '11.5px' }}
-                      />
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '10px' }}>
+                      <div className="field-group" style={{ gridColumn: 'span 2' }}>
+                        <label style={{ fontSize: '11px' }}>Alamat Lengkap</label>
+                        <input
+                          value={address}
+                          onChange={(e) => setAddress(e.target.value)}
+                          style={{ height: '34px', fontSize: '12px' }}
+                        />
+                      </div>
                       <div className="field-group">
                         <label style={{ fontSize: '11px' }}>Kota / Kabupaten</label>
                         <input
                           value={city}
                           onChange={(e) => setCity(e.target.value)}
-                          placeholder="Kabupaten Malang"
-                          style={{ height: '34px', fontSize: '11.5px' }}
+                          style={{ height: '34px', fontSize: '12px' }}
                         />
                       </div>
                       <div className="field-group">
@@ -832,20 +884,15 @@ export function SchedulePdfExportModal({
                         <input
                           value={postalCode}
                           onChange={(e) => setPostalCode(e.target.value)}
-                          placeholder="65165"
-                          style={{ height: '34px', fontSize: '11.5px' }}
+                          style={{ height: '34px', fontSize: '12px' }}
                         />
                       </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                       <div className="field-group">
-                        <label style={{ fontSize: '11px' }}>No. Telepon / WhatsApp</label>
+                        <label style={{ fontSize: '11px' }}>Telepon / WhatsApp</label>
                         <input
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
-                          placeholder="(0341) 395882"
-                          style={{ height: '34px', fontSize: '11.5px' }}
+                          style={{ height: '34px', fontSize: '12px' }}
                         />
                       </div>
                       <div className="field-group">
@@ -853,187 +900,419 @@ export function SchedulePdfExportModal({
                         <input
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
-                          placeholder="mts.cendekia@kemenag.go.id"
-                          style={{ height: '34px', fontSize: '11.5px' }}
+                          style={{ height: '34px', fontSize: '12px' }}
                         />
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* SubTab 2: Judul & Periode */}
-                {editorSubTab === 'title' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <div className="field-group">
-                      <label style={{ fontSize: '11px' }}>Judul Utama Dokumen</label>
-                      <input
-                        value={documentTitle}
-                        onChange={(e) => setDocumentTitle(e.target.value)}
-                        placeholder="JADWAL PELAJARAN SELURUH KELAS"
-                        style={{ height: '34px', fontSize: '11.5px' }}
-                      />
-                      <small style={{ fontSize: '10px', color: '#657874' }}>
-                        Tercetak tebal di bawah Kop Surat resmi.
-                      </small>
-                    </div>
-
+                  {contentSubTab === 'title' && (
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div className="field-group" style={{ gridColumn: 'span 2' }}>
+                        <label style={{ fontSize: '11px' }}>Judul Utama Dokumen</label>
+                        <input
+                          value={documentTitle}
+                          onChange={(e) => setDocumentTitle(e.target.value)}
+                          style={{ height: '36px', fontSize: '12.5px', fontWeight: 700 }}
+                        />
+                      </div>
                       <div className="field-group">
                         <label style={{ fontSize: '11px' }}>Tahun Ajaran</label>
                         <input
                           value={academicYear}
                           onChange={(e) => setAcademicYear(e.target.value)}
-                          placeholder="2026/2027"
-                          style={{ height: '34px', fontSize: '11.5px' }}
+                          style={{ height: '34px', fontSize: '12px' }}
                         />
                       </div>
-
                       <div className="field-group">
                         <label style={{ fontSize: '11px' }}>Semester</label>
                         <select
                           value={semester}
                           onChange={(e) => setSemester(e.target.value as 'Ganjil' | 'Genap')}
-                          style={{ height: '34px', fontSize: '11.5px' }}
+                          style={{ height: '34px', fontSize: '12px' }}
                         >
                           <option value="Ganjil">Semester Ganjil</option>
                           <option value="Genap">Semester Genap</option>
                         </select>
                       </div>
-                    </div>
-
-                    <div className="field-group">
-                      <label style={{ fontSize: '11px' }}>Catatan Tambahan (Opsional)</label>
-                      <input
-                        value={extraNotes}
-                        onChange={(e) => setExtraNotes(e.target.value)}
-                        placeholder="Contoh: Berlaku efektif mulai tanggal 20 Juli 2026"
-                        style={{ height: '34px', fontSize: '11.5px' }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* SubTab 3: Titimangsa & Penandatangan */}
-                {editorSubTab === 'signer' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                      <div className="field-group">
-                        <label style={{ fontSize: '11px' }}>Kota Titimangsa Surat</label>
+                      <div className="field-group" style={{ gridColumn: 'span 2' }}>
+                        <label style={{ fontSize: '11px' }}>Catatan Tambahan Dokumen (Opsional)</label>
                         <input
-                          type="text"
-                          value={signerCity}
-                          onChange={(e) => setSignerCity(e.target.value)}
-                          placeholder="Kabupaten Malang"
-                          style={{ height: '34px', fontSize: '11.5px' }}
-                        />
-                      </div>
-
-                      <div className="field-group">
-                        <label style={{ fontSize: '11px' }}>Tanggal Pengesahan</label>
-                        <input
-                          type="text"
-                          value={signerDate}
-                          onChange={(e) => setSignerDate(e.target.value)}
-                          style={{ height: '34px', fontSize: '11.5px' }}
+                          value={extraNotes}
+                          onChange={(e) => setExtraNotes(e.target.value)}
+                          placeholder="Contoh: Berlaku efektif mulai 20 Juli 2026"
+                          style={{ height: '34px', fontSize: '12px' }}
                         />
                       </div>
                     </div>
+                  )}
 
-                    <div style={{ padding: '10px 12px', background: '#f8faf9', borderRadius: '8px', border: '1px solid #dce5e0' }}>
-                      <strong style={{ fontSize: '11.5px', color: '#16483f', display: 'block', marginBottom: '8px' }}>
-                        Pejabat 1: Kepala Madrasah (Penandatangan Kanan)
-                      </strong>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 1fr', gap: '8px' }}>
+                  {contentSubTab === 'signer' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '11px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                         <div className="field-group">
-                          <label style={{ fontSize: '10px' }}>Nomenklatur Jabatan</label>
+                          <label style={{ fontSize: '11px' }}>Kota Titimangsa</label>
                           <input
-                            type="text"
-                            value={principalTitle}
-                            onChange={(e) => setPrincipalTitle(e.target.value)}
-                            placeholder="Kepala Madrasah"
-                            style={{ height: '32px', fontSize: '11px' }}
+                            value={signerCity}
+                            onChange={(e) => setSignerCity(e.target.value)}
+                            style={{ height: '34px', fontSize: '12px' }}
                           />
                         </div>
                         <div className="field-group">
-                          <label style={{ fontSize: '10px' }}>Nama Lengkap &amp; Gelar</label>
+                          <label style={{ fontSize: '11px' }}>Tanggal Pengesahan</label>
                           <input
-                            type="text"
-                            value={principalName}
-                            onChange={(e) => setPrincipalName(e.target.value)}
-                            placeholder="H. Ahmad Fauzi, S.Ag., M.Pd.I."
-                            style={{ height: '32px', fontSize: '11px' }}
-                          />
-                        </div>
-                        <div className="field-group">
-                          <label style={{ fontSize: '10px' }}>NIP / NPK</label>
-                          <input
-                            type="text"
-                            value={principalNip}
-                            onChange={(e) => setPrincipalNip(e.target.value)}
-                            placeholder="19750812 200212 1 003"
-                            style={{ height: '32px', fontSize: '11px' }}
+                            value={signerDate}
+                            onChange={(e) => setSignerDate(e.target.value)}
+                            style={{ height: '34px', fontSize: '12px' }}
                           />
                         </div>
                       </div>
-                    </div>
 
-                    <div style={{ padding: '10px 12px', background: '#f8faf9', borderRadius: '8px', border: '1px solid #dce5e0' }}>
-                      <strong style={{ fontSize: '11.5px', color: '#16483f', display: 'block', marginBottom: '8px' }}>
-                        Pejabat 2: Waka Kurikulum / Wali Kelas (Penandatangan Kiri)
-                      </strong>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 1fr', gap: '8px' }}>
+                      <div
+                        style={{
+                          padding: '10px 12px',
+                          background: '#F7FAF8',
+                          borderRadius: '10px',
+                          border: '0.75px solid #D8E2DC',
+                          display: 'grid',
+                          gridTemplateColumns: '1fr 1fr',
+                          gap: '8px',
+                        }}
+                      >
+                        <div
+                          style={{
+                            gridColumn: 'span 2',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            color: '#124037',
+                          }}
+                        >
+                          Penandatangan Kiri (Pemeriksa)
+                        </div>
                         <div className="field-group">
-                          <label style={{ fontSize: '10px' }}>Nomenklatur Jabatan</label>
+                          <label style={{ fontSize: '11px' }}>Jabatan</label>
                           <input
-                            type="text"
                             value={coordinatorTitle}
                             onChange={(e) => setCoordinatorTitle(e.target.value)}
-                            placeholder="Waka Bidang Kurikulum"
-                            style={{ height: '32px', fontSize: '11px' }}
+                            style={{ height: '32px', fontSize: '12px' }}
                           />
                         </div>
                         <div className="field-group">
-                          <label style={{ fontSize: '10px' }}>Nama Lengkap &amp; Gelar</label>
+                          <label style={{ fontSize: '11px' }}>Nama &amp; Gelar</label>
                           <input
-                            type="text"
                             value={coordinatorName}
                             onChange={(e) => setCoordinatorName(e.target.value)}
-                            placeholder="Siti Aminah, S.Pd.I., M.Pd."
-                            style={{ height: '32px', fontSize: '11px' }}
+                            style={{ height: '32px', fontSize: '12px' }}
+                          />
+                        </div>
+                        <div className="field-group" style={{ gridColumn: 'span 2' }}>
+                          <label style={{ fontSize: '11px' }}>NIP / NPK</label>
+                          <input
+                            value={coordinatorNip}
+                            onChange={(e) => setCoordinatorNip(e.target.value)}
+                            style={{ height: '32px', fontSize: '12px' }}
+                          />
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          padding: '10px 12px',
+                          background: '#FBF9F4',
+                          borderRadius: '10px',
+                          border: '0.75px solid #E5DCC9',
+                          display: 'grid',
+                          gridTemplateColumns: '1fr 1fr',
+                          gap: '8px',
+                        }}
+                      >
+                        <div
+                          style={{
+                            gridColumn: 'span 2',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            color: '#7A5B25',
+                          }}
+                        >
+                          Penandatangan Kanan (Pengesah Utama)
+                        </div>
+                        <div className="field-group">
+                          <label style={{ fontSize: '11px' }}>Jabatan</label>
+                          <input
+                            value={principalTitle}
+                            onChange={(e) => setPrincipalTitle(e.target.value)}
+                            style={{ height: '32px', fontSize: '12px' }}
                           />
                         </div>
                         <div className="field-group">
-                          <label style={{ fontSize: '10px' }}>NIP / NPK</label>
+                          <label style={{ fontSize: '11px' }}>Nama &amp; Gelar</label>
                           <input
-                            type="text"
-                            value={coordinatorNip}
-                            onChange={(e) => setCoordinatorNip(e.target.value)}
-                            placeholder="19820315 200901 2 008"
-                            style={{ height: '32px', fontSize: '11px' }}
+                            value={principalName}
+                            onChange={(e) => setPrincipalName(e.target.value)}
+                            style={{ height: '32px', fontSize: '12px' }}
+                          />
+                        </div>
+                        <div className="field-group" style={{ gridColumn: 'span 2' }}>
+                          <label style={{ fontSize: '11px' }}>NIP / NPK</label>
+                          <input
+                            value={principalNip}
+                            onChange={(e) => setPrincipalNip(e.target.value)}
+                            style={{ height: '32px', fontSize: '12px' }}
                           />
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* RIGHT PANE: Live Paper & Telemetry Preview */}
+            <div className="s5-pdf-paper-stage">
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                <span className="s5-studio-kicker">Pratinjau Dokumen Resmi</span>
+                <span className="s5-tnum" style={{ fontSize: '11px', color: '#526861', fontWeight: 600 }}>
+                  {paperLabel} · {isLandscapeOutput ? 'Landscape' : 'Portrait'}
+                </span>
               </div>
-            )}
+
+              {/* 4 Live Document KPI Strip */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '8px' }}>
+                <div
+                  style={{
+                    padding: '8px 10px',
+                    background: '#FFFFFF',
+                    borderRadius: '9px',
+                    border: '0.75px solid #D5E0DA',
+                  }}
+                >
+                  <div style={{ fontSize: '10px', color: '#526861', fontWeight: 600 }}>ALOKASI</div>
+                  <strong className="s5-tnum" style={{ fontSize: '14px', color: '#0B2923' }}>
+                    {classPreviewStats.totalJp} JP
+                  </strong>
+                </div>
+                <div
+                  style={{
+                    padding: '8px 10px',
+                    background: '#FFFFFF',
+                    borderRadius: '9px',
+                    border: '0.75px solid #D5E0DA',
+                  }}
+                >
+                  <div style={{ fontSize: '10px', color: '#526861', fontWeight: 600 }}>ASTRONOMIS</div>
+                  <strong className="s5-tnum" style={{ fontSize: '12.5px', color: '#0B2923' }}>
+                    {classPreviewStats.astroFormatted}
+                  </strong>
+                </div>
+                <div
+                  style={{
+                    padding: '8px 10px',
+                    background: '#FFFFFF',
+                    borderRadius: '9px',
+                    border: '0.75px solid #D5E0DA',
+                  }}
+                >
+                  <div style={{ fontSize: '10px', color: '#526861', fontWeight: 600 }}>PENDIDIK</div>
+                  <strong className="s5-tnum" style={{ fontSize: '14px', color: '#0B2923' }}>
+                    {classPreviewStats.teacherCount} Guru
+                  </strong>
+                </div>
+                <div
+                  style={{
+                    padding: '8px 10px',
+                    background: '#FFFFFF',
+                    borderRadius: '9px',
+                    border: '0.75px solid #D5E0DA',
+                  }}
+                >
+                  <div style={{ fontSize: '10px', color: '#526861', fontWeight: 600 }}>ESTIMASI</div>
+                  <strong className="s5-tnum" style={{ fontSize: '13.5px', color: '#1B5E43' }}>
+                    {classPreviewStats.pageEstimate} Hal
+                  </strong>
+                </div>
+              </div>
+
+              {/* Miniature Official Paper Sheet */}
+              <div className="s5-pdf-paper-sheet">
+                {includeKop && (
+                  <>
+                    <div style={{ textAlign: 'center', lineHeight: 1.28 }}>
+                      <div style={{ fontSize: '9.5px', fontWeight: 600, color: '#2F443E' }}>
+                        {regionalOffice}
+                      </div>
+                      <div style={{ fontSize: '12px', fontWeight: 700, color: '#0B2923', marginTop: '1px' }}>
+                        {schoolName}
+                      </div>
+                      <div style={{ fontSize: '9.5px', color: '#526861', marginTop: '1px' }}>
+                        NSM {nsm} · NPSN {npsn} · {city}
+                      </div>
+                    </div>
+                    <div className="s5-pdf-kop-line" />
+                  </>
+                )}
+
+                <div style={{ textAlign: 'center', margin: '8px 0 9px' }}>
+                  <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#0B2923', letterSpacing: '0.02em' }}>
+                    {previewHeadline}
+                  </div>
+                  <div className="s5-tnum" style={{ fontSize: '10px', color: '#526861', marginTop: '1px' }}>
+                    TA {academicYear} ({semester}) · {paperSize.toUpperCase()}
+                    {extraNotes.trim() ? ` · ${extraNotes.trim()}` : ''}
+                  </div>
+                  <div
+                    style={{
+                      width: '40px',
+                      height: '1.5px',
+                      background: '#C5A059',
+                      margin: '4px auto 0',
+                      borderRadius: '2px',
+                    }}
+                  />
+                </div>
+
+                {/* Live Mini Schedule Grid */}
+                <div
+                  style={{
+                    border: '0.75px solid #D5E0DA',
+                    borderRadius: '6px',
+                    overflow: 'hidden',
+                    marginBottom: '9px',
+                  }}
+                >
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9.5px' }}>
+                    <thead>
+                      <tr style={{ background: '#124037', color: '#FFFFFF' }}>
+                        <th style={{ padding: '4px 5px', textAlign: 'center', width: '36px' }}>JP</th>
+                        <th style={{ padding: '4px 5px', textAlign: 'center' }}>Senin</th>
+                        <th style={{ padding: '4px 5px', textAlign: 'center' }}>Selasa</th>
+                        <th style={{ padding: '4px 5px', textAlign: 'center' }}>Rabu</th>
+                        <th style={{ padding: '4px 5px', textAlign: 'center' }}>Kamis</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[1, 2, 3].map((rowJp) => (
+                        <tr key={rowJp} style={{ borderTop: '0.5px solid #E5ECE8' }}>
+                          <td
+                            className="s5-tnum"
+                            style={{
+                              padding: '4px 5px',
+                              textAlign: 'center',
+                              fontWeight: 700,
+                              color: '#124037',
+                              background: '#F4F7F5',
+                            }}
+                          >
+                            {rowJp}
+                          </td>
+                          {[0, 1, 2, 3].map((colIdx) => {
+                            const subj =
+                              previewSubjects[(rowJp + colIdx) % Math.max(1, previewSubjects.length)];
+                            const bg = colorizeSubjects && subj?.color ? `${subj.color}22` : '#FFFFFF';
+                            const label = compactNames
+                              ? subj?.code || 'MPL'
+                              : subj?.name?.slice(0, 9) || 'Mapel';
+                            return (
+                              <td
+                                key={colIdx}
+                                style={{
+                                  padding: '4px 5px',
+                                  textAlign: 'center',
+                                  background: bg,
+                                  color: '#0F201C',
+                                  fontWeight: 600,
+                                  borderLeft: '0.5px solid #E5ECE8',
+                                }}
+                              >
+                                {label}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div
+                    style={{
+                      padding: '4px 8px',
+                      background: '#F5F8F6',
+                      borderTop: '0.5px solid #E5ECE8',
+                      fontSize: '9.5px',
+                      color: '#466159',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <span>
+                      {exportType === 'all_single_page'
+                        ? `${activeClasses.length} blok jadwal kelas paralel`
+                        : exportType === 'class' && targetClassId === 'all'
+                        ? `${activeClasses.length} rombel (${classLayoutMode === 'single_page' ? '1 hal/rombel' : '2 hal/rombel'})`
+                        : 'Matriks jadwal mingguan lengkap + jeda non-KBM'}
+                    </span>
+                    {(includeRecapPage || (exportType === 'class' && classLayoutMode === 'single_page')) && (
+                      <span style={{ color: '#1B5E43', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                        <Check size={10} strokeWidth={3} /> Rekap JP &amp; TTD
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Miniature Dual Signature Preview */}
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '12px',
+                    paddingTop: '4px',
+                    fontSize: '9.5px',
+                    lineHeight: 1.32,
+                    color: '#2F443E',
+                  }}
+                >
+                  <div>
+                    <div>Mengetahui,</div>
+                    <div style={{ fontWeight: 600, color: '#0F201C' }}>{coordinatorTitle}</div>
+                    <div style={{ height: '14px' }} />
+                    <div style={{ fontWeight: 700, color: '#0B2923', textDecoration: 'underline' }}>
+                      {coordinatorName}
+                    </div>
+                    <div className="s5-tnum">
+                      {formatCleanNip(coordinatorNip) ? `NIP. ${formatCleanNip(coordinatorNip)}` : 'NIP. —'}
+                    </div>
+                  </div>
+                  <div>
+                    <div>
+                      {signerCity || 'Madrasah'}, {signerDate}
+                    </div>
+                    <div style={{ fontWeight: 600, color: '#0F201C', wordBreak: 'break-word' }}>
+                      {buildRightSignerTitle(principalTitle, schoolName)}
+                    </div>
+                    <div style={{ height: '14px' }} />
+                    <div style={{ fontWeight: 700, color: '#0B2923', textDecoration: 'underline' }}>
+                      {principalName}
+                    </div>
+                    <div className="s5-tnum">
+                      {formatCleanNip(principalNip) ? `NIP. ${formatCleanNip(principalNip)}` : 'NIP. —'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Modal Footer Actions */}
-        <div
-          style={{
-            padding: '14px 20px',
-            borderTop: '1px solid #edebe1',
-            background: '#faf9f4',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <span style={{ fontSize: '11px', color: '#687a75' }}>
-            Ukuran Kertas: <strong>A4 ({exportType === 'all_single_page' || classOrientation === 'landscape' ? '297 × 210 mm (Landscape)' : '210 × 297 mm (Portrait)'})</strong>
+        {/* Sticky Footer */}
+        <div className="s5-studio-footer">
+          <span className="s5-tnum" style={{ fontSize: '12px', color: '#526861' }}>
+            Format Cetak: <strong>{paperLabel}</strong> ({paperDimensionText})
           </span>
 
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -1041,6 +1320,7 @@ export function SchedulePdfExportModal({
               type="button"
               className="button button-secondary"
               onClick={onClose}
+              style={{ height: '38px', fontSize: '12.5px' }}
             >
               Batal
             </button>
@@ -1049,9 +1329,12 @@ export function SchedulePdfExportModal({
               className="button button-primary"
               onClick={handleDownload}
               disabled={isExporting}
+              style={{ height: '38px', padding: '0 18px', fontSize: '12.5px' }}
             >
               <Download size={15} />
-              {isExporting ? 'Memproses PDF…' : 'Unduh Dokumen PDF Resmi (A4)'}
+              {isExporting
+                ? 'Memproses PDF…'
+                : `Unduh Dokumen PDF Resmi (${paperSize.toUpperCase()})`}
             </button>
           </div>
         </div>

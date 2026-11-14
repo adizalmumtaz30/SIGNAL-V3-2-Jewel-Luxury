@@ -144,8 +144,8 @@ export function AiConflictHelper({
                 gap: '4px',
                 padding: '3px 8px',
                 borderRadius: '6px',
-                fontSize: '10px',
-                fontWeight: 700,
+                fontSize: '11px',
+                fontWeight: 600,
                 background: '#e9f5ee',
                 color: '#1f6952',
                 border: '1px solid #b8e3cd',
@@ -161,10 +161,10 @@ export function AiConflictHelper({
                 gap: '4px',
                 padding: '3px 8px',
                 borderRadius: '6px',
-                fontSize: '10px',
-                fontWeight: 700,
+                fontSize: '11px',
+                fontWeight: 600,
                 background: '#f4f5f1',
-                color: '#7b8783',
+                color: '#526861',
                 border: '1px solid #dcded5',
               }}
             >
@@ -313,7 +313,7 @@ export function AiConflictHelper({
               </strong>
             </div>
             {lastAskedQuestion && (
-              <span style={{ fontSize: '10px', color: '#7a8e85' }}>
+              <span style={{ fontSize: '11px', color: '#526861' }}>
                 Topik: "{lastAskedQuestion.slice(0, 45)}…"
               </span>
             )}
@@ -321,7 +321,7 @@ export function AiConflictHelper({
 
           <div
             style={{
-              fontSize: '12px',
+              fontSize: '12.5px',
               color: '#28473e',
               lineHeight: 1.6,
               whiteSpace: 'pre-wrap',
@@ -338,8 +338,8 @@ export function AiConflictHelper({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              fontSize: '10px',
-              color: '#71887e',
+              fontSize: '11px',
+              color: '#526861',
             }}
           >
             <span>

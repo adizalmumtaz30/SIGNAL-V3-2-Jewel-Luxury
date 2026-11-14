@@ -1,6 +1,10 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import type { AppState, Day, SchoolClass } from '../domain/types';
+import type { AppState, SchoolClass } from '../domain/types';
+import {
+  computeRangeAttendanceRecap,
+  formatMonthShortYear,
+} from '../domain/attendanceRecap';
 import { getTimelineRows, isSlotBlocked, jpToAstronomical } from '../domain/time';
 import { getDefaultMadrasahLogo } from './madrasahLogo';
 import { groupClassesForMasterMatrix } from './matrixGrouping';
@@ -286,17 +290,18 @@ export function renderOfficialKopSurat(
   const emailStr = email ? ` · Email: ${email}` : '';
   doc.text(`${address}${cityStr}${postStr}${phoneStr}${emailStr}`, textCenter, y, { align: 'center' });
 
-  // 6. Double Rule Line Divider
-  y += isCompact ? 2.8 : 3.5;
+  // 6. Double Rule Line Divider (Emerald + Subtle Gold Accent)
+  y += isCompact ? 2.6 : 3.2;
   doc.setDrawColor(...TEAL);
-  doc.setLineWidth(isCompact ? 0.9 : 1.2);
-  doc.line(10, y, pageWidth - 10, y);
+  doc.setLineWidth(isCompact ? 0.85 : 1.1);
+  doc.line(12, y, pageWidth - 12, y);
 
-  y += isCompact ? 0.9 : 1.2;
-  doc.setLineWidth(0.35);
-  doc.line(10, y, pageWidth - 10, y);
+  y += isCompact ? 0.85 : 1.1;
+  doc.setDrawColor(...GOLD);
+  doc.setLineWidth(0.4);
+  doc.line(12, y, pageWidth - 12, y);
 
-  return y + (isCompact ? 3.5 : 5);
+  return y + (isCompact ? 6.4 : 7.8);
 }
 
 function addDocHeader(
@@ -345,7 +350,7 @@ function addDocHeader(
   doc.line(14, 46, pageWidth - 14, 46);
 }
 
-function addDocFooter(doc: jsPDF, schoolName: string) {
+function addDocFooter(doc: jsPDF, schoolName: string, printMetaText?: string) {
   const pageCount = (doc as unknown as { internal: { getNumberOfPages: () => number } }).internal.getNumberOfPages();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -353,17 +358,65 @@ function addDocFooter(doc: jsPDF, schoolName: string) {
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
+    doc.setFontSize(7.8);
     doc.setTextColor(...MUTED);
 
     // Footer rule
     doc.setDrawColor(220, 228, 224);
     doc.setLineWidth(0.2);
-    doc.line(14, pageHeight - 11, pageWidth - 14, pageHeight - 11);
+    doc.line(14, pageHeight - 10.5, pageWidth - 14, pageHeight - 10.5);
     const cleanSchool = schoolName || 'Madrasah Tsanawiyah';
-    doc.text(cleanSchool, 14, pageHeight - 6.5);
-    doc.text(`Halaman ${i} dari ${pageCount}`, pageWidth - 14, pageHeight - 6.5, { align: 'right' });
+    doc.text(cleanSchool, 14, pageHeight - 6);
+    if (printMetaText) {
+      doc.setFontSize(7.2);
+      doc.text(printMetaText, pageWidth / 2, pageHeight - 6, { align: 'center' });
+    }
+    doc.setFontSize(7.8);
+    doc.text(`Halaman ${i} dari ${pageCount}`, pageWidth - 14, pageHeight - 6, { align: 'right' });
   }
+}
+
+function formatCleanNip(nip?: string): string {
+  const cleaned = (nip ?? '').trim();
+  if (!cleaned || /^[.\-—_\s]+$/.test(cleaned)) return '';
+  return cleaned;
+}
+
+function toTitleCasePreservingAcronyms(text: string): string {
+  if (!text) return '';
+  if (text !== text.toUpperCase() || text.length <= 6) return text;
+  const preserve = new Set(['MTS', 'MA', 'MI', 'SD', 'SMP', 'SMA', 'SMK', 'RI', 'II', 'III', 'IV']);
+  return text
+    .split(/\s+/)
+    .map((word) => {
+      const bare = word.replace(/[^A-Z0-9]/g, '');
+      if (preserve.has(bare)) return word;
+      if (word.includes('-')) {
+        return word
+          .split('-')
+          .map((part) => (part ? part[0].toUpperCase() + part.slice(1).toLowerCase() : ''))
+          .join('-');
+      }
+      return word[0].toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+}
+
+export function buildRightSignerTitle(principalTitle?: string, schoolName?: string): string {
+  const title = (principalTitle ?? '').trim() || 'Kepala Madrasah';
+  const rawSchool = (schoolName ?? '').trim();
+  if (!rawSchool) return title;
+  const formattedSchool = toTitleCasePreservingAcronyms(rawSchool);
+  const lowerTitle = title.toLowerCase();
+  const lowerSchool = formattedSchool.toLowerCase();
+  if (
+    lowerTitle.endsWith('madrasah') &&
+    (lowerSchool.startsWith('madrasah ') || lowerSchool.startsWith('mts ') || lowerSchool.startsWith('ma ') || lowerSchool.startsWith('mi '))
+  ) {
+    const prefix = title.slice(0, -'madrasah'.length).trim() || 'Kepala';
+    return `${prefix} ${formattedSchool}`;
+  }
+  return `${title} ${formattedSchool}`;
 }
 
 function addSignatureBlock(
@@ -386,11 +439,11 @@ function addSignatureBlock(
   const pageHeight = doc.internal.pageSize.getHeight();
   const s = state.settings;
 
-  let y = startY + (forceCurrentPage ? 4 : 10);
-  if (!forceCurrentPage && y + 36 > pageHeight - 16) {
-    doc.addPage();
-    y = 26;
-  }
+  const isLandscape = pageWidth > 250;
+  const sigMarginX = 18;
+  const sigColWidth = isLandscape ? 88 : 70;
+  const leftX = sigMarginX;
+  const rightX = pageWidth - sigMarginX - sigColWidth;
 
   const dateStr =
     customSigners?.date ||
@@ -401,47 +454,103 @@ function addSignatureBlock(
     });
 
   const city = customSigners?.city || s.city || 'Kota Madrasah';
-  const leftTitle = customSigners?.leftTitle || s.curriculumLeaderTitle || 'Waka Bidang Kurikulum';
-  const leftName = customSigners?.leftName || s.curriculumLeaderName || 'Ahmad Fauzi, S.Pd.';
-  const leftNip = customSigners?.leftNip || s.curriculumLeaderNip || '198204122008011015';
+  const leftTitle = (customSigners?.leftTitle || s.curriculumLeaderTitle || 'Waka Bidang Kurikulum').trim();
+  const leftName = (customSigners?.leftName || s.curriculumLeaderName || 'Ahmad Fauzi, S.Pd.').trim();
+  const leftNip = formatCleanNip(customSigners?.leftNip ?? s.curriculumLeaderNip);
 
-  const rightTitle = customSigners?.rightTitle || `${s.headmasterTitle || 'Kepala Madrasah'} ${s.schoolName}`;
-  const rightName = customSigners?.rightName || s.headmasterName || 'Drs. H. M. Zainuddin, M.Pd.I';
-  const rightNip = customSigners?.rightNip || s.headmasterNip || '197405101999031003';
+  const rightTitle = (
+    customSigners?.rightTitle ||
+    buildRightSignerTitle(s.headmasterTitle, s.schoolName)
+  ).trim();
+  const rightName = (customSigners?.rightName || s.headmasterName || 'Drs. H. M. Zainuddin, M.Pd.I').trim();
+  const rightNip = formatCleanNip(customSigners?.rightNip ?? s.headmasterNip);
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(forceCurrentPage ? 7.8 : 8.5);
+  const bodyFontSize = forceCurrentPage ? 7.4 : 8.0;
+  const nipFontSize = forceCurrentPage ? 6.8 : 7.2;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(bodyFontSize);
+
+  const leftTitleLines = doc.splitTextToSize(leftTitle, sigColWidth) as string[];
+  const rightTitleLines = doc.splitTextToSize(rightTitle, sigColWidth) as string[];
+  const maxTitleLines = Math.max(leftTitleLines.length, rightTitleLines.length, 1);
+  const titleLineStep = forceCurrentPage ? 3.2 : 3.5;
+
+  let topGap = forceCurrentPage ? 1.8 : 3.8;
+  let sigGapAfterTitle = forceCurrentPage ? 8.5 : 11.5;
+  const blockCoreHeight = 3.8 + maxTitleLines * titleLineStep + 4.2;
+  const footerLimitY = pageHeight - 11.2;
+
+  let y = startY + topGap;
+  if (forceCurrentPage) {
+    // Anchor cleanly on current page without overflowing footer
+    const totalSigH = blockCoreHeight + sigGapAfterTitle;
+    if (y + totalSigH > footerLimitY) {
+      sigGapAfterTitle = Math.max(6.2, footerLimitY - y - blockCoreHeight);
+      if (y + blockCoreHeight + sigGapAfterTitle > footerLimitY) {
+        y = Math.max(startY, footerLimitY - blockCoreHeight - sigGapAfterTitle);
+      }
+    }
+  } else if (y + blockCoreHeight + sigGapAfterTitle > footerLimitY) {
+    // Try fitting gracefully on the current page with tighter spacing before spawning an orphan signature page
+    const compactTopGap = 1.6;
+    const compactSigGap = 8.0;
+    if (startY + compactTopGap + blockCoreHeight + compactSigGap <= footerLimitY) {
+      topGap = compactTopGap;
+      sigGapAfterTitle = compactSigGap;
+      y = startY + topGap;
+    } else {
+      doc.addPage();
+      y = 20;
+    }
+  }
+
   doc.setTextColor(...INK);
 
-  const sigGap = forceCurrentPage ? 16 : 22;
-
   // Left signature
-  const leftX = 22;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(bodyFontSize);
   doc.text('Mengetahui / Memeriksa,', leftX, y);
   doc.setFont('helvetica', 'bold');
-  doc.text(leftTitle, leftX, y + 4);
-  doc.setFont('helvetica', 'normal');
+  leftTitleLines.forEach((line, idx) => {
+    doc.text(line, leftX, y + 3.8 + idx * titleLineStep);
+  });
 
+  const nameY = y + 3.8 + maxTitleLines * titleLineStep + sigGapAfterTitle;
   doc.setFont('helvetica', 'bold');
-  doc.text(leftName, leftX, y + sigGap);
+  doc.setFontSize(bodyFontSize);
+  doc.text(leftName, leftX, nameY);
+  const leftNameWidth = Math.min(sigColWidth, doc.getTextWidth(leftName));
+  doc.setDrawColor(...INK);
+  doc.setLineWidth(0.22);
+  doc.line(leftX, nameY + 0.85, leftX + leftNameWidth, nameY + 0.85);
+
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(forceCurrentPage ? 7 : 7.5);
-  doc.text(leftNip ? `NIP. ${leftNip}` : 'NIP. ...............................................', leftX, y + sigGap + 3.8);
+  doc.setFontSize(nipFontSize);
+  doc.setTextColor(...MUTED);
+  doc.text(leftNip ? `NIP. ${leftNip}` : 'NIP. —', leftX, nameY + 4.2);
 
   // Right signature
-  const isLandscape = pageWidth > 250;
-  const rightX = pageWidth - (isLandscape ? 85 : 75);
-  doc.setFontSize(forceCurrentPage ? 7.8 : 8.5);
+  doc.setTextColor(...INK);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(bodyFontSize);
   doc.text(`${city}, ${dateStr}`, rightX, y);
   doc.setFont('helvetica', 'bold');
-  doc.text(rightTitle, rightX, y + 4);
-  doc.setFont('helvetica', 'normal');
+  rightTitleLines.forEach((line, idx) => {
+    doc.text(line, rightX, y + 3.8 + idx * titleLineStep);
+  });
 
   doc.setFont('helvetica', 'bold');
-  doc.text(rightName, rightX, y + sigGap);
+  doc.setFontSize(bodyFontSize);
+  doc.text(rightName, rightX, nameY);
+  const rightNameWidth = Math.min(sigColWidth, doc.getTextWidth(rightName));
+  doc.setDrawColor(...INK);
+  doc.setLineWidth(0.22);
+  doc.line(rightX, nameY + 0.85, rightX + rightNameWidth, nameY + 0.85);
+
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(forceCurrentPage ? 7 : 7.5);
-  doc.text(rightNip ? `NIP. ${rightNip}` : 'NIP. ...............................................', rightX, y + sigGap + 3.8);
+  doc.setFontSize(nipFontSize);
+  doc.setTextColor(...MUTED);
+  doc.text(rightNip ? `NIP. ${rightNip}` : 'NIP. —', rightX, nameY + 4.2);
 }
 
 /**
@@ -513,12 +622,13 @@ function renderClassWeeklyPages(
   // ==========================================
   // HALAMAN 1: MATRIKS JADWAL MINGGUAN KELAS
   // ==========================================
-  let currentY = isSinglePage ? 6 : 10;
+  let currentY = isSinglePage ? 5.2 : 10;
 
   if (options?.kopSurat !== false) {
     currentY = renderOfficialKopSurat(doc, state, currentY, options, isSinglePage);
+    if (isSinglePage) currentY -= 1.6;
   } else {
-    currentY = isSinglePage ? 10 : 16;
+    currentY = isSinglePage ? 9 : 16;
   }
 
   // Document Title & Class Subtitle
@@ -526,20 +636,20 @@ function renderClassWeeklyPages(
   const docTitle = options?.documentTitle ? `${options.documentTitle} — KELAS ${cls.name}` : defaultTitle;
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(isSinglePage ? 11 : 13);
+  doc.setFontSize(isSinglePage ? 10.2 : 13);
   doc.setTextColor(17, 45, 42);
   doc.text(docTitle, pageWidth / 2, currentY, { align: 'center' });
 
-  currentY += isSinglePage ? 3.5 : 4.2;
+  currentY += isSinglePage ? 3.2 : 4.2;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(isSinglePage ? 7.5 : 8.5);
+  doc.setFontSize(isSinglePage ? 7.2 : 8.5);
   doc.setTextColor(80, 95, 90);
   const subtitleText = isSinglePage
     ? `Tingkat ${cls.level} · T.A. ${academicYear} (${semester}) · Alokasi: ${classEntries.length} JP (${astro.hours} Jam Efektif) · ${teacherIdsInClass.length} Guru Pengajar · ${schoolName}`
     : `Tingkat ${cls.level} · Tahun Ajaran ${academicYear} · Semester ${semester}`;
   doc.text(subtitleText, pageWidth / 2, currentY, { align: 'center' });
 
-  currentY += isSinglePage ? 3.5 : 5.5;
+  currentY += isSinglePage ? 2.6 : 5.5;
 
   // KPI Summary Bar (4 Cards) - Rendered only in two-page mode
   const boxWidth = (pageWidth - 28) / 4;
@@ -627,33 +737,33 @@ function renderClassWeeklyPages(
     colStyles[idx + 1] = { halign: 'center', cellWidth: dayColWidth };
   });
 
-  const cellPaddingVal = isSinglePage ? 1.8 : 2.5;
+  const cellPaddingVal = isSinglePage ? (timelineRows.length >= 11 ? 1.05 : 1.35) : 2.5;
 
   autoTable(doc, {
     startY: currentY,
     head: [tableHeaders],
     body: tableData,
     theme: 'grid',
-    tableLineWidth: 0.35,
+    tableLineWidth: 0.3,
     tableLineColor: [11, 52, 53],
     headStyles: {
       fillColor: [11, 52, 53],
       textColor: 255,
-      fontSize: isSinglePage ? 7.8 : 8.5,
+      fontSize: isSinglePage ? 7.3 : 8.5,
       fontStyle: 'bold',
       halign: 'center',
-      cellPadding: isSinglePage ? 2 : 2.8,
-      lineWidth: 0.3,
+      cellPadding: isSinglePage ? 1.45 : 2.8,
+      lineWidth: 0.25,
       lineColor: [11, 52, 53],
     },
     bodyStyles: {
-      fontSize: orientation === 'landscape' ? (isSinglePage ? 7 : 7.5) : 6.5,
+      fontSize: orientation === 'landscape' ? (isSinglePage ? 6.5 : 7.5) : (isSinglePage ? 5.9 : 6.5),
       halign: 'center',
       valign: 'middle',
       cellPadding: cellPaddingVal,
       textColor: [20, 35, 33],
       lineColor: [215, 225, 220],
-      lineWidth: 0.2,
+      lineWidth: 0.18,
     },
     columnStyles: colStyles,
     didParseCell: (data) => {
@@ -685,17 +795,17 @@ function renderClassWeeklyPages(
 
   const lastTableP1 = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable;
 
-  // Single-Page Layout: Compact Teacher Allocation Recap & Signatures on Page 1
+  // Single-Page Layout: Compact Teacher Allocation Recap & Signatures cleanly fitted on Page 1
   if (isSinglePage) {
-    let p1AfterTableY = lastTableP1.finalY + 3;
+    let p1AfterTableY = lastTableP1.finalY + 2.4;
 
     // Header label for compact teacher allocation
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
+    doc.setFontSize(7.1);
     doc.setTextColor(11, 52, 53);
     doc.text(`REKAPITULASI PEMBAGIAN TUGAS MENGAJAR KELAS ${cls.name}`, 14, p1AfterTableY);
 
-    p1AfterTableY += 2.2;
+    p1AfterTableY += 1.6;
 
     // Build compact teacher recap data
     const teachersInClassObj = teacherIdsInClass
@@ -739,38 +849,44 @@ function renderClassWeeklyPages(
     ]);
 
     const compactHeaders = ['No', 'Kode', 'Nama & NIP Pendidik', 'Mata Pelajaran', 'Hari KBM', 'Beban Kelas', 'Total Madrasah'];
+    const availSingleW = pageWidth - 28;
+    const baseSingleColW = orientation === 'landscape'
+      ? [9, 12, 68, 66, 44, 24, 28]
+      : [8, 10, 44, 42, 28, 18, 22];
+    const singleScale = availSingleW / baseSingleColW.reduce((a, b) => a + b, 0);
+    const singleDensePadding = teachersInClassObj.length >= 8 ? 0.78 : 1.05;
 
     autoTable(doc, {
       startY: p1AfterTableY,
       head: [compactHeaders],
       body: compactTeacherRows,
       theme: 'grid',
-      tableLineWidth: 0.25,
+      tableLineWidth: 0.22,
       tableLineColor: [11, 52, 53],
       headStyles: {
         fillColor: [11, 52, 53],
         textColor: 255,
-        fontSize: 6.8,
+        fontSize: 6.4,
         fontStyle: 'bold',
         halign: 'center',
-        cellPadding: 1.5,
+        cellPadding: 1.1,
       },
       bodyStyles: {
-        fontSize: 6.4,
+        fontSize: teachersInClassObj.length >= 8 ? 5.9 : 6.2,
         halign: 'center',
-        cellPadding: 1.2,
+        cellPadding: singleDensePadding,
         textColor: [20, 35, 33],
         lineColor: [215, 225, 220],
         lineWidth: 0.15,
       },
       columnStyles: {
-        0: { halign: 'center', cellWidth: 7 },
-        1: { halign: 'center', cellWidth: 10 },
-        2: { halign: 'left', cellWidth: orientation === 'landscape' ? 60 : 42, fontStyle: 'bold' },
-        3: { halign: 'left', cellWidth: orientation === 'landscape' ? 54 : 38 },
-        4: { halign: 'center', cellWidth: orientation === 'landscape' ? 30 : 22 },
-        5: { halign: 'center', cellWidth: orientation === 'landscape' ? 18 : 14, fontStyle: 'bold' },
-        6: { halign: 'center', cellWidth: orientation === 'landscape' ? 20 : 16 },
+        0: { halign: 'center', cellWidth: baseSingleColW[0] * singleScale },
+        1: { halign: 'center', cellWidth: baseSingleColW[1] * singleScale },
+        2: { halign: 'left', cellWidth: baseSingleColW[2] * singleScale, fontStyle: 'bold' },
+        3: { halign: 'left', cellWidth: baseSingleColW[3] * singleScale },
+        4: { halign: 'center', cellWidth: baseSingleColW[4] * singleScale },
+        5: { halign: 'center', cellWidth: baseSingleColW[5] * singleScale, fontStyle: 'bold' },
+        6: { halign: 'center', cellWidth: baseSingleColW[6] * singleScale },
       },
       didParseCell: (data) => {
         if (data.row.index === compactTeacherRows.length - 1) {
@@ -787,14 +903,14 @@ function renderClassWeeklyPages(
 
     const lastTableTeacher = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable;
 
-    // Single-Page Official Signature Block
-    addSignatureBlock(doc, state, lastTableTeacher.finalY + 1.5, {
+    // Single-Page Official Signature Block cleanly positioned without spawning an orphan Page 2
+    addSignatureBlock(doc, state, lastTableTeacher.finalY + 1.2, {
       city: options?.signerCity,
       date: options?.signerDate,
       leftTitle: options?.leftTitle || options?.coordinatorTitle || `Wali Kelas ${cls.name} / Koordinator Kurikulum`,
       leftName: options?.leftName || options?.coordinatorName,
       leftNip: options?.leftNip || options?.coordinatorNip,
-      rightTitle: options?.rightTitle || `${options?.principalTitle || 'Kepala Madrasah'} ${options?.schoolName || state.settings.schoolName}`,
+      rightTitle: options?.rightTitle || buildRightSignerTitle(options?.principalTitle || state.settings.headmasterTitle, options?.schoolName || state.settings.schoolName),
       rightName: options?.rightName || options?.principalName,
       rightNip: options?.rightNip || options?.principalNip,
     }, true);
@@ -1452,22 +1568,23 @@ export function exportAllClassesSinglePageA4PDF(
   // =========================================================================
   if (options?.includeTeacherRecapPage !== false) {
     doc.addPage(getPaperDimensions(paperSize, 'landscape'), 'landscape');
-    let p2Y = 8;
+    let p2Y = 6;
     if (options?.includeKop !== false && options?.kopSurat !== false) {
-      p2Y = renderOfficialKopSurat(doc, state, 8, options, false);
+      p2Y = renderOfficialKopSurat(doc, state, 6, options, true);
+      p2Y -= 1.2;
     } else {
-      p2Y = 14;
+      p2Y = 12;
     }
 
     // Title Page 2
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
+    doc.setFontSize(11.5);
     doc.setTextColor(...TEAL);
     doc.text('REKAPITULASI ALOKASI JP & BEBAN MENGAJAR GURU (SELURUH KELAS)', pageWidth / 2, p2Y, { align: 'center' });
 
-    p2Y += 4.2;
+    p2Y += 3.8;
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
+    doc.setFontSize(7.6);
     doc.setTextColor(80, 95, 90);
     doc.text(
       `Lampiran Resmi Pengesahan Jadwal Pelajaran · Tahun Ajaran ${academicYear} Semester ${semester} · ${schoolName}`,
@@ -1476,40 +1593,46 @@ export function exportAllClassesSinglePageA4PDF(
       { align: 'center' },
     );
 
-    p2Y += 5;
+    p2Y += 4;
 
-    // KPI Summary Bar Page 2
+    // KPI Summary Bar Page 2 (Architectural Left-Accent Style matching Attendance Report)
     const totalSchoolJp = entries.length;
     const activeTeachers = state.teachers.filter((t) => t.isActive);
     const astroTotal = jpToAstronomical(totalSchoolJp, periodMinutes);
-    const boxW = (pageWidth - 28) / 4;
-    const boxH = 11;
+    const boxGap = 3.5;
+    const totalAvailKpiW = pageWidth - 24;
+    const boxW = (totalAvailKpiW - boxGap * 3) / 4;
+    const boxH = 9.4;
 
     const kpisPage2 = [
-      { label: 'TOTAL ALOKASI JP MADRASAH', value: `${totalSchoolJp} Jam Pelajaran` },
-      { label: 'WAKTU EFEKTIF ASTRONOMIS', value: `${astroTotal.hours} Jam (${astroTotal.minutes} Mnt)` },
-      { label: 'JUMLAH TENAGA PENDIDIK', value: `${activeTeachers.length} Guru Aktif` },
-      { label: 'RATA-RATA BEBAN MENGAJAR', value: `${(totalSchoolJp / (activeTeachers.length || 1)).toFixed(1)} JP / Guru` },
+      { label: 'TOTAL ALOKASI JP MADRASAH', value: `${totalSchoolJp} Jam Pelajaran`, accent: TEAL },
+      { label: 'WAKTU EFEKTIF ASTRONOMIS', value: `${astroTotal.hours} Jam (${astroTotal.minutes} Mnt)`, accent: TEAL },
+      { label: 'JUMLAH TENAGA PENDIDIK', value: `${activeTeachers.length} Guru Aktif`, accent: [27, 94, 67] as [number, number, number] },
+      { label: 'RATA-RATA BEBAN MENGAJAR', value: `${(totalSchoolJp / (activeTeachers.length || 1)).toFixed(1)} JP / Guru`, accent: GOLD },
     ];
 
     kpisPage2.forEach((kpi, kIdx) => {
-      const x = 14 + kIdx * boxW;
-      doc.setFillColor(248, 251, 249);
-      doc.setDrawColor(215, 230, 222);
-      doc.roundedRect(x, p2Y, boxW - 3, boxH, 2, 2, 'FD');
+      const x = 12 + kIdx * (boxW + boxGap);
+      doc.setFillColor(249, 251, 250);
+      doc.setDrawColor(214, 225, 220);
+      doc.setLineWidth(0.24);
+      doc.roundedRect(x, p2Y, boxW, boxH, 1.5, 1.5, 'FD');
+
+      doc.setFillColor(...kpi.accent);
+      doc.roundedRect(x + 1.8, p2Y + 1.8, 1.1, boxH - 3.6, 0.5, 0.5, 'F');
 
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(6.5);
-      doc.setTextColor(80, 105, 95);
-      doc.text(kpi.label, x + (boxW - 3) / 2, p2Y + 3.8, { align: 'center' });
+      doc.setFontSize(5.8);
+      doc.setTextColor(92, 112, 105);
+      doc.text(kpi.label, x + 5.0, p2Y + 3.6);
 
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8.5);
+      doc.setFontSize(8.4);
       doc.setTextColor(11, 52, 53);
-      doc.text(kpi.value, x + (boxW - 3) / 2, p2Y + 8.5, { align: 'center' });
+      doc.text(kpi.value, x + 5.0, p2Y + 7.7);
     });
 
-    p2Y += boxH + 4;
+    p2Y += boxH + 3.2;
 
     // Teacher Recap Table
     const p2Headers = [
@@ -1517,7 +1640,7 @@ export function exportAllClassesSinglePageA4PDF(
       'Kode',
       'Nama & NIP Pendidik',
       'Jabatan',
-      'Mata Pelajaran yang Diampu',
+      'Mata Pelajaran',
       ...classes.map((c) => c.name),
       'Total JP',
       'Maks JP',
@@ -1550,7 +1673,8 @@ export function exportAllClassesSinglePageA4PDF(
       if (totalTeacherJp > t.maxWeeklyJP) status = 'Melebihi Batas';
       else if (totalTeacherJp === t.maxWeeklyJP) status = 'Maksimal';
 
-      const teacherDisplayName = t.nip ? `${t.name}\nNIP. ${t.nip}` : t.name;
+      const cleanNip = formatCleanNip(t.nip);
+      const teacherDisplayName = cleanNip ? `${t.name}\nNIP. ${cleanNip}` : t.name;
 
       p2Rows.push([
         idx + 1,
@@ -1561,7 +1685,7 @@ export function exportAllClassesSinglePageA4PDF(
         ...classJpCols.map((jp) => (jp > 0 ? `${jp} JP` : '—')),
         `${totalTeacherJp} JP`,
         `${t.maxWeeklyJP} JP`,
-        `${tAstro.hours}j ${tAstro.minutes}m`,
+        `${tAstro.hours} Jam (${tAstro.minutes}m)`,
         status,
       ]);
     });
@@ -1576,53 +1700,64 @@ export function exportAllClassesSinglePageA4PDF(
       ...classes.map((c) => `${classJpTotals[c.id] || 0} JP`),
       `${totalSchoolJp} JP`,
       '—',
-      `${astroTotal.hours}j ${astroTotal.minutes}m`,
+      `${astroTotal.hours} Jam (${astroTotal.minutes}m)`,
       '100% Terdistribusi',
     ]);
 
-    const availRecapW = pageWidth - 20;
-    const nonClassWidth = 162;
-    const classColW = Math.max(9, (availRecapW - nonClassWidth) / (classes.length || 1));
-    const totalCalcW = nonClassWidth + classes.length * classColW;
-    const scaleFactor = totalCalcW > availRecapW ? availRecapW / totalCalcW : 1.0;
+    const availRecapW = pageWidth - 24;
+    const baseFixedCols = [9.5, 13, 44, 34, 32]; // No (never wraps!), Kode, Nama, Jabatan, Mapel
+    const classColBase = classes.length <= 6 ? 13.5 : 10.5;
+    const tailCols = [15, 14, 23, 22]; // Total JP, Maks JP, Jam Astro, Status Beban
+    const totalBaseRecapW =
+      baseFixedCols.reduce((a, b) => a + b, 0) +
+      classes.length * classColBase +
+      tailCols.reduce((a, b) => a + b, 0);
+    const scaleFactor = availRecapW / totalBaseRecapW;
 
-    const recapColStyles: Record<number, any> = {
-      0: { halign: 'center', cellWidth: 6 * scaleFactor },
-      1: { halign: 'center', cellWidth: 10 * scaleFactor },
-      2: { halign: 'left', cellWidth: 34 * scaleFactor, fontStyle: 'bold' },
-      3: { halign: 'left', cellWidth: 24 * scaleFactor },
-      4: { halign: 'left', cellWidth: 30 * scaleFactor },
+    const recapColStyles: Record<number, { halign: 'center' | 'left' | 'right'; cellWidth: number; fontStyle?: 'bold' | 'normal' }> = {
+      0: { halign: 'center', cellWidth: baseFixedCols[0] * scaleFactor },
+      1: { halign: 'center', cellWidth: baseFixedCols[1] * scaleFactor, fontStyle: 'bold' },
+      2: { halign: 'left', cellWidth: baseFixedCols[2] * scaleFactor, fontStyle: 'bold' },
+      3: { halign: 'left', cellWidth: baseFixedCols[3] * scaleFactor },
+      4: { halign: 'left', cellWidth: baseFixedCols[4] * scaleFactor },
     };
 
     let nextCol = 5;
     classes.forEach(() => {
-      recapColStyles[nextCol] = { halign: 'center', cellWidth: classColW * scaleFactor };
+      recapColStyles[nextCol] = { halign: 'center', cellWidth: classColBase * scaleFactor };
       nextCol++;
     });
 
-    recapColStyles[nextCol] = { halign: 'center', cellWidth: 14 * scaleFactor, fontStyle: 'bold' }; // Total JP
-    recapColStyles[nextCol + 1] = { halign: 'center', cellWidth: 12 * scaleFactor }; // Maks JP
-    recapColStyles[nextCol + 2] = { halign: 'center', cellWidth: 14 * scaleFactor }; // Jam Astro
-    recapColStyles[nextCol + 3] = { halign: 'center', cellWidth: 18 * scaleFactor }; // Status
+    recapColStyles[nextCol] = { halign: 'center', cellWidth: tailCols[0] * scaleFactor, fontStyle: 'bold' };
+    recapColStyles[nextCol + 1] = { halign: 'center', cellWidth: tailCols[1] * scaleFactor };
+    recapColStyles[nextCol + 2] = { halign: 'center', cellWidth: tailCols[2] * scaleFactor };
+    recapColStyles[nextCol + 3] = { halign: 'center', cellWidth: tailCols[3] * scaleFactor };
+
+    const compactRecapPadding = activeTeachers.length <= 15 ? 1.25 : 1.65;
 
     autoTable(doc, {
       startY: p2Y,
       head: [p2Headers],
       body: p2Rows,
       theme: 'grid',
+      tableLineWidth: 0.24,
+      tableLineColor: [212, 223, 217],
       headStyles: {
         fillColor: TEAL,
         textColor: 255,
-        fontSize: 7.2,
+        fontSize: 7.0,
         fontStyle: 'bold',
         halign: 'center',
-        cellPadding: 2,
+        valign: 'middle',
+        cellPadding: { top: 1.8, bottom: 1.8, left: 1.4, right: 1.4 },
       },
       bodyStyles: {
-        fontSize: 6.8,
+        fontSize: 6.7,
         halign: 'center',
-        cellPadding: 1.8,
+        valign: 'middle',
+        cellPadding: { top: compactRecapPadding, bottom: compactRecapPadding, left: 1.5, right: 1.5 },
         textColor: [20, 35, 33],
+        lineColor: [223, 232, 227],
       },
       columnStyles: recapColStyles,
       didParseCell: (data) => {
@@ -1632,29 +1767,34 @@ export function exportAllClassesSinglePageA4PDF(
           data.cell.styles.textColor = [11, 52, 53];
         }
       },
-      margin: { left: 10, right: 10 },
+      alternateRowStyles: {
+        fillColor: [251, 253, 252],
+      },
+      margin: { left: 12, right: 12 },
     });
 
     const lastTableP2 = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable;
-    let nextP2Y = lastTableP2.finalY + 3;
+    const nextP2Y = lastTableP2.finalY + 2.8;
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
     doc.setTextColor(90, 105, 100);
     doc.text(
       `* Catatan: Beban JP dihitung otomatis berdasarkan alokasi kurikulum madrasah (1 JP = ${periodMinutes} menit).`,
-      10,
+      12,
       nextP2Y,
     );
 
-    // Official Signature Block at Footer of Page 2
-    addSignatureBlock(doc, state, nextP2Y + 2, {
+    // Official Signature Block anchored cleanly on Page 2 when space allows (no lonely Page 3!)
+    addSignatureBlock(doc, state, nextP2Y + 1.5, {
       city: options?.signerCity,
       date: options?.signerDate,
       leftTitle: options?.leftTitle || options?.coordinatorTitle || 'Waka Bidang Kurikulum',
       leftName: options?.leftName || options?.coordinatorName,
       leftNip: options?.leftNip || options?.coordinatorNip,
-      rightTitle: options?.rightTitle || `${options?.principalTitle || 'Kepala Madrasah'} ${schoolName}`,
+      rightTitle:
+        options?.rightTitle ||
+        buildRightSignerTitle(options?.principalTitle || state.settings.headmasterTitle, schoolName),
       rightName: options?.rightName || options?.principalName,
       rightNip: options?.rightNip || options?.principalNip,
     });
@@ -1837,7 +1977,12 @@ export function exportScheduleTeacherPDF(
 export interface AttendanceRecapPdfOptions extends Partial<OfficialDocCustomTexts> {
   paperSize?: PaperSize;
   orientation?: 'landscape' | 'portrait';
+  endMonth?: string;
   kopSurat?: boolean;
+  includeSignature?: boolean;
+  includeNotes?: boolean;
+  includePrintMeta?: boolean;
+  layoutDensity?: 'compact' | 'standard';
   principalTitle?: string;
   officerTitle?: string;
   officerName?: string;
@@ -1845,48 +1990,13 @@ export interface AttendanceRecapPdfOptions extends Partial<OfficialDocCustomText
 }
 
 /**
- * Helper to compute official effective school days in a given month.
- * Excludes Sundays, inactive school days according to settings, and official holidays.
- */
-function computeEffectiveSchoolDaysInMonth(
-  state: AppState,
-  year: number,
-  month: number, // 1-12
-): number {
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const activeDays = state.settings.activeDays;
-  const holidays = state.holidays ?? [];
-
-  const dayMap: Record<number, Day> = {
-    0: 'Minggu' as Day,
-    1: 'Senin',
-    2: 'Selasa',
-    3: 'Rabu',
-    4: 'Kamis',
-    5: 'Jumat',
-    6: 'Sabtu',
-  };
-
-  let count = 0;
-  for (let d = 1; d <= daysInMonth; d++) {
-    const curDate = new Date(year, month - 1, d);
-    const dayOfWeek = dayMap[curDate.getDay()];
-    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const isHoliday = holidays.some((h) => h.date === dateStr);
-
-    if (dayOfWeek !== ('Minggu' as Day) && activeDays.includes(dayOfWeek) && !isHoliday) {
-      count++;
-    }
-  }
-  return count > 0 ? count : 24;
-}
-
-/**
- * 4. Export Monthly Teacher Attendance Recap PDF (Formal A4 Layout with Auto Percentage & Jabatan)
+ * 4. Export Monthly or Multi-Month Range Teacher Attendance Recap PDF
+ * Integrated directly with real `state.attendance` records (Hadir, Sakit, Izin, Alpa).
+ * Supports single month ("2026-07") OR multi-month range ("2026-07" .. "2026-12") via `options.endMonth`.
  */
 export function exportAttendanceRecapPDF(
   state: AppState,
-  monthYear: string, // e.g. "2026-10"
+  monthYear: string, // start month, e.g. "2026-07"
   selectedTeacherIds: string[],
   options?: AttendanceRecapPdfOptions,
 ): void {
@@ -1895,274 +2005,465 @@ export function exportAttendanceRecapPDF(
   const doc = createJsPDFDocument(orientation, paperSize);
   const pageWidth = doc.internal.pageSize.getWidth();
 
-  const allTeachers = state.teachers.filter((t) => t.isActive && selectedTeacherIds.includes(t.id));
+  const allTeachers = state.teachers.filter(
+    (t) => t.isActive !== false && selectedTeacherIds.includes(t.id),
+  );
   const attendanceList = state.attendance ?? [];
+  const recapSummary = computeRangeAttendanceRecap(
+    attendanceList,
+    allTeachers,
+    monthYear,
+    options?.endMonth,
+  );
 
-  // Parse Month and Year
-  const [yearStr, monthStr] = monthYear.split('-');
-  const yearNum = Number(yearStr);
-  const monthNum = Number(monthStr);
-  const dateObj = new Date(yearNum, monthNum - 1, 1);
-  const monthName = dateObj.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+  const {
+    months,
+    isMultiMonth,
+    periodLabel,
+    recordedDaysCount,
+    sumHadirAll,
+    sumSakitAll,
+    sumIzinAll,
+    sumAlpaAll,
+    teachersWithRecordsCount,
+    overallAvgRate,
+    overallPredikat,
+  } = recapSummary;
 
-  // Calculate official effective days (HE) for this month
-  const effectiveSchoolDays = computeEffectiveSchoolDaysInMonth(state, yearNum, monthNum);
+  const printCity = (options?.signerCity || state.settings.city || 'Madrasah').trim();
 
-  let currentY = 14;
+  let currentY = 8;
 
-  // 1. KOP SURAT RESMI MADRASAH (FORMAL LETTERHEAD)
+  // 1. KOP SURAT RESMI MADRASAH (COMPACT FORMAL LETTERHEAD)
   if (options?.kopSurat !== false) {
-    currentY = renderOfficialKopSurat(doc, state, 10, options, false);
+    currentY = renderOfficialKopSurat(doc, state, 8, options, true);
   } else {
     addDocHeader(
       doc,
-      options?.documentTitle || `REKAPITULASI PRESENSI GURU · BULAN ${monthName.toUpperCase()}`,
-      `Daftar kehadiran dan persentase kehadiran otomatis untuk ${allTeachers.length} guru terdaftar`,
+      options?.documentTitle ||
+        (isMultiMonth
+          ? `REKAPITULASI PRESENSI GURU · ${periodLabel.toUpperCase()}`
+          : `REKAPITULASI PRESENSI GURU · BULAN ${periodLabel.toUpperCase()}`),
+      `Laporan kehadiran riil untuk ${allTeachers.length} pendidik aktif`,
       options?.schoolName || state.settings.schoolName,
       options?.academicYear || state.settings.academicYear,
       options?.semester || state.settings.semester,
     );
-    currentY = 48;
+    currentY = 54;
   }
 
-  // 2. DOCUMENT TITLE & PERIODE
-  const attTitle = options?.documentTitle || 'LAPORAN REKAPITULASI KEHADIRAN GURU BULANAN';
+  // 2. DOCUMENT TITLE & PERIODE (generous clearance below kop divider)
+  currentY += 1.4;
+  const defaultTitle = isMultiMonth
+    ? 'LAPORAN REKAPITULASI KEHADIRAN GURU MULTI-BULAN'
+    : 'LAPORAN REKAPITULASI KEHADIRAN GURU BULANAN';
+  const attTitle = options?.documentTitle || defaultTitle;
   const attSemester = options?.semester || state.settings.semester;
   const attYear = options?.academicYear || state.settings.academicYear;
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.setTextColor(17, 45, 42);
-  doc.text(attTitle, pageWidth / 2, currentY, { align: 'center' });
+  doc.setFontSize(12.0);
+  doc.setTextColor(11, 52, 53);
+  doc.text(attTitle.toUpperCase(), pageWidth / 2, currentY, { align: 'center' });
 
-  currentY += 4.5;
+  currentY += 4.3;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
+  doc.setFontSize(8.2);
   doc.setTextColor(80, 95, 90);
   doc.text(
-    `Bulan: ${monthName.toUpperCase()} · Semester ${attSemester.toUpperCase()} Tahun Ajaran ${attYear}`,
+    `Periode: ${periodLabel}  ·  Semester ${attSemester}  ·  Tahun Ajaran ${attYear}`,
     pageWidth / 2,
     currentY,
     { align: 'center' },
   );
 
-  currentY += 6;
+  // Subtle centered gold accent divider beneath header
+  currentY += 2.1;
+  doc.setDrawColor(...GOLD);
+  doc.setLineWidth(0.5);
+  doc.line(pageWidth / 2 - 22, currentY, pageWidth / 2 + 22, currentY);
 
-  // 3. STATISTICAL PERFORMANCE SUMMARY BAR (KPI BOX)
-  let sumHadirAll = 0;
-  let sumDinasAll = 0;
-  let sumSakitAll = 0;
-  let sumIzinAll = 0;
-  let sumAlpaAll = 0;
-  let totalPercentSum = 0;
+  currentY += 3.5;
 
+  const isLand = orientation === 'landscape';
+  const inlineMonthlyColumns = isMultiMonth && isLand && months.length <= 5;
+  const appendMonthlyAppendixPage = isMultiMonth && !inlineMonthlyColumns;
+
+  const hasAnyRecordedData = teachersWithRecordsCount > 0;
+
+  // 3. EXECUTIVE 4-CARD SUMMARY STRIP (CLEAN ARCHITECTURAL LEFT-ACCENT STYLE)
+  const cardGap = 3.5;
+  const totalContentW = pageWidth - 28;
+  const boxWidth = (totalContentW - cardGap * 3) / 4;
+  const boxHeight = 10.4;
+
+  const kpis = [
+    { label: 'PENDIDIK TERDATA', value: `${allTeachers.length} Guru`, accent: TEAL },
+    {
+      label: isMultiMonth ? 'CAKUPAN & HARI PRESENSI' : 'HARI TERCATAT PRESENSI',
+      value: isMultiMonth
+        ? `${months.length} Bln · ${recordedDaysCount} Hari`
+        : recordedDaysCount > 0
+        ? `${recordedDaysCount} Hari`
+        : 'Belum Tercatat',
+      accent: TEAL,
+    },
+    {
+      label: 'RATA-RATA KEHADIRAN',
+      value: hasAnyRecordedData ? `${overallAvgRate}%` : '—',
+      accent:
+        overallAvgRate >= 85
+          ? ([27, 94, 67] as [number, number, number])
+          : ([166, 58, 46] as [number, number, number]),
+    },
+    { label: 'PREDIKAT MADRASAH', value: overallPredikat, accent: GOLD },
+  ];
+
+  kpis.forEach((kpi, kIdx) => {
+    const x = 14 + kIdx * (boxWidth + cardGap);
+    doc.setFillColor(249, 251, 250);
+    doc.setDrawColor(214, 225, 220);
+    doc.setLineWidth(0.24);
+    doc.roundedRect(x, currentY, boxWidth, boxHeight, 1.6, 1.6, 'FD');
+
+    doc.setFillColor(...kpi.accent);
+    doc.roundedRect(x + 1.8, currentY + 1.9, 1.15, boxHeight - 3.8, 0.5, 0.5, 'F');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(5.8);
+    doc.setTextColor(92, 112, 105);
+    doc.text(kpi.label, x + 5.1, currentY + 4.0);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.1);
+    doc.setTextColor(11, 41, 35);
+    doc.text(kpi.value, x + 5.1, currentY + 8.5);
+  });
+
+  currentY += boxHeight + 3.5;
+
+  // 4. BUILD MAIN TABLE ROWS
   const tableData: Array<Array<string | number>> = [];
+  const rowRates: number[] = [];
 
-  allTeachers.forEach((teacher, idx) => {
-    const teacherRecords = attendanceList.filter(
-      (att) => att.teacherId === teacher.id && att.date.startsWith(monthYear),
-    );
+  recapSummary.rows.forEach((row) => {
+    const { teacher, hadir, sakit, izin, alpa, hasData, rate, predikat, monthlyBreakdown } = row;
+    rowRates.push(hasData ? rate : -1);
 
-    const hadir = teacherRecords.filter((r) => r.status === 'HADIR').length;
-    const dinas = teacherRecords.filter((r) => r.status === 'DINAS_LUAR').length;
-    const sakit = teacherRecords.filter((r) => r.status === 'SAKIT').length;
-    const izin = teacherRecords.filter((r) => r.status === 'IZIN').length;
-    const alpa = teacherRecords.filter((r) => r.status === 'ALPA').length;
-
-    sumHadirAll += hadir;
-    sumDinasAll += dinas;
-    sumSakitAll += sakit;
-    sumIzinAll += izin;
-    sumAlpaAll += alpa;
-
-    const totalPresent = hadir + dinas;
-    const rate = Math.min(100, Math.round((totalPresent / (effectiveSchoolDays || 1)) * 100));
-    totalPercentSum += rate;
-
-    let predikat = 'Sangat Baik';
-    if (rate < 75) predikat = 'Perlu Pembinaan';
-    else if (rate < 85) predikat = 'Cukup';
-    else if (rate < 95) predikat = 'Baik';
-
-    const teacherDisplayName = teacher.nip
-      ? `${teacher.name}\nNIP. ${teacher.nip}`
+    const cleanTeacherNip = formatCleanNip(teacher.nip);
+    const teacherDisplayName = cleanTeacherNip
+      ? `${teacher.name}\nNIP. ${cleanTeacherNip}`
       : teacher.name;
 
+    const monthCells = inlineMonthlyColumns
+      ? months.map((ym) => {
+          const b = monthlyBreakdown[ym];
+          if (!b || !b.hasData) return '—';
+          return `${b.rate}%\n(${b.hadir}H)`;
+        })
+      : [];
+
     tableData.push([
-      idx + 1,
+      row.no,
       teacher.code,
       teacherDisplayName,
       teacher.roleTitle || 'Guru Mapel',
+      ...monthCells,
       hadir,
-      dinas,
       sakit,
       izin,
       alpa,
-      totalPresent,
-      effectiveSchoolDays,
-      `${rate}%`,
+      hasData ? `${rate}%` : '—',
       predikat,
     ]);
   });
 
-  const overallAvgRate = allTeachers.length > 0 ? Math.round(totalPercentSum / allTeachers.length) : 100;
-  const overallPredikat =
-    overallAvgRate >= 95 ? 'Sangat Baik (A)' : overallAvgRate >= 85 ? 'Baik (B)' : overallAvgRate >= 75 ? 'Cukup (C)' : 'Perlu Pembinaan';
-
-  // Draw 4-card summary row
-  const boxWidth = (pageWidth - 28) / 4;
-  const boxHeight = 13;
-
-  const kpis = [
-    { label: 'JUMLAH GURU TERDATA', value: `${allTeachers.length} Orang` },
-    { label: 'HARI EFEKTIF KERJA (HE)', value: `${effectiveSchoolDays} Hari KBM` },
-    { label: 'RATA-RATA KEHADIRAN', value: `${overallAvgRate}% Otomatis` },
-    { label: 'PREDIKAT MADRASAH', value: overallPredikat },
-  ];
-
-  kpis.forEach((kpi, kIdx) => {
-    const x = 14 + kIdx * boxWidth;
-    doc.setFillColor(248, 251, 249);
-    doc.setDrawColor(215, 230, 222);
-    doc.roundedRect(x, currentY, boxWidth - 3, boxHeight, 2, 2, 'FD');
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.5);
-    doc.setTextColor(80, 105, 95);
-    doc.text(kpi.label, x + (boxWidth - 3) / 2, currentY + 4.5, { align: 'center' });
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.setTextColor(11, 52, 53);
-    doc.text(kpi.value, x + (boxWidth - 3) / 2, currentY + 10, { align: 'center' });
-  });
-
-  currentY += boxHeight + 4;
-
-  // 4. FORMAL TABLE WITH AUTOMATIC PERCENTAGE AND JABATAN
   const headers = [
     'No',
     'Kode',
     'Nama Lengkap & NIP',
     'Jabatan',
+    ...(inlineMonthlyColumns ? months.map((ym) => formatMonthShortYear(ym)) : []),
     'Hadir (H)',
-    'Dinas (DL)',
     'Sakit (S)',
     'Izin (I)',
     'Alpa (A)',
-    'Total (H+DL)',
-    'Target (HE)',
     '% Hadir',
     'Predikat',
   ];
 
   // Append summary row
+  const monthSummaryCells = inlineMonthlyColumns
+    ? recapSummary.monthSummaries.map((ms) =>
+        ms.recordedDaysCount > 0 ? `${ms.overallAvgRate}%\n(${ms.recordedDaysCount}h)` : '—',
+      )
+    : [];
+
   tableData.push([
     '',
     '',
     'TOTAL & RATA-RATA MADRASAH',
-    '—',
+    `${allTeachers.length} Pendidik`,
+    ...monthSummaryCells,
     sumHadirAll,
-    sumDinasAll,
     sumSakitAll,
     sumIzinAll,
     sumAlpaAll,
-    sumHadirAll + sumDinasAll,
-    effectiveSchoolDays,
-    `${overallAvgRate}%`,
+    hasAnyRecordedData ? `${overallAvgRate}%` : '—',
     overallPredikat,
   ]);
 
   const availAttW = pageWidth - 28;
-  const isLand = orientation === 'landscape';
+  const useCompactTable =
+    options?.layoutDensity === 'compact' ||
+    (options?.layoutDensity !== 'standard' && allTeachers.length <= 13);
+
+  const monthColCount = inlineMonthlyColumns ? months.length : 0;
+  const monthColWidthBase = inlineMonthlyColumns ? (months.length <= 3 ? 21 : 17) : 0;
   const baseColW = isLand
-    ? [8, 12, 52, 38, 14, 14, 12, 12, 12, 18, 17, 18, 28]
-    : [6, 10, 36, 24, 11, 11, 9, 9, 9, 15, 14, 15, 13];
+    ? [
+        10,
+        14,
+        inlineMonthlyColumns ? 54 : 68,
+        inlineMonthlyColumns ? 38 : 52,
+        ...Array(monthColCount).fill(monthColWidthBase),
+        16,
+        14,
+        14,
+        14,
+        18,
+        25,
+      ]
+    : [9, 13, 48, 34, 14, 13, 13, 13, 15, 19];
+
   const totalBaseW = baseColW.reduce((a, b) => a + b, 0);
   const scale = availAttW / totalBaseW;
+
+  const colStylesObj: Record<
+    number,
+    { halign: 'center' | 'left' | 'right'; cellWidth: number; fontStyle?: 'bold' | 'normal' }
+  > = {
+    0: { halign: 'center', cellWidth: baseColW[0] * scale },
+    1: { halign: 'center', cellWidth: baseColW[1] * scale, fontStyle: 'bold' },
+    2: { halign: 'left', cellWidth: baseColW[2] * scale },
+    3: { halign: 'left', cellWidth: baseColW[3] * scale },
+  };
+  let colPtr = 4;
+  for (let mIdx = 0; mIdx < monthColCount; mIdx++) {
+    colStylesObj[colPtr] = { halign: 'center', cellWidth: baseColW[colPtr] * scale };
+    colPtr++;
+  }
+  const hadirColIdx = colPtr;
+  const alpaColIdx = colPtr + 3;
+  const rateColIdx = colPtr + 4;
+  const predColIdx = colPtr + 5;
+
+  colStylesObj[hadirColIdx] = { halign: 'center', cellWidth: baseColW[hadirColIdx] * scale, fontStyle: 'bold' };
+  colStylesObj[colPtr + 1] = { halign: 'center', cellWidth: baseColW[colPtr + 1] * scale };
+  colStylesObj[colPtr + 2] = { halign: 'center', cellWidth: baseColW[colPtr + 2] * scale };
+  colStylesObj[alpaColIdx] = { halign: 'center', cellWidth: baseColW[alpaColIdx] * scale };
+  colStylesObj[rateColIdx] = { halign: 'center', cellWidth: baseColW[rateColIdx] * scale, fontStyle: 'bold' };
+  colStylesObj[predColIdx] = { halign: 'center', cellWidth: baseColW[predColIdx] * scale };
 
   autoTable(doc, {
     startY: currentY,
     head: [headers],
     body: tableData,
     theme: 'grid',
+    tableLineWidth: 0.24,
+    tableLineColor: [212, 223, 217],
     headStyles: {
       fillColor: [11, 52, 53],
       textColor: 255,
-      fontSize: 7.8,
+      fontSize: isLand ? (inlineMonthlyColumns ? 6.8 : 7.5) : 6.9,
       fontStyle: 'bold',
       halign: 'center',
-      cellPadding: 2.8,
+      valign: 'middle',
+      cellPadding: { top: 2.0, bottom: 2.0, left: 1.4, right: 1.4 },
+      lineWidth: 0.24,
+      lineColor: [11, 52, 53],
     },
     bodyStyles: {
-      fontSize: 7.5,
+      fontSize: isLand ? (inlineMonthlyColumns ? 6.6 : useCompactTable ? 7.1 : 7.4) : 6.7,
       halign: 'center',
-      cellPadding: 2.2,
+      valign: 'middle',
+      cellPadding: useCompactTable
+        ? { top: 1.3, bottom: 1.3, left: 1.5, right: 1.5 }
+        : { top: 1.8, bottom: 1.8, left: 1.6, right: 1.6 },
       textColor: [20, 35, 33],
+      lineWidth: 0.2,
+      lineColor: [223, 232, 227],
     },
-    columnStyles: {
-      0: { halign: 'center', cellWidth: baseColW[0] * scale },
-      1: { halign: 'center', cellWidth: baseColW[1] * scale },
-      2: { halign: 'left', cellWidth: baseColW[2] * scale },
-      3: { halign: 'left', cellWidth: baseColW[3] * scale },
-      4: { halign: 'center', cellWidth: baseColW[4] * scale },
-      5: { halign: 'center', cellWidth: baseColW[5] * scale },
-      6: { halign: 'center', cellWidth: baseColW[6] * scale },
-      7: { halign: 'center', cellWidth: baseColW[7] * scale },
-      8: { halign: 'center', cellWidth: baseColW[8] * scale },
-      9: { halign: 'center', cellWidth: baseColW[9] * scale, fontStyle: 'bold' },
-      10: { halign: 'center', cellWidth: baseColW[10] * scale },
-      11: { halign: 'center', cellWidth: baseColW[11] * scale, fontStyle: 'bold', fillColor: [240, 248, 243] },
-      12: { halign: 'center', cellWidth: baseColW[12] * scale },
-    },
+    columnStyles: colStylesObj,
     didParseCell: (data) => {
-      if (data.row.index === tableData.length - 1) {
+      if (data.section !== 'body') return;
+      const isTotalRow = data.row.index === tableData.length - 1;
+      if (isTotalRow) {
         data.cell.styles.fontStyle = 'bold';
         data.cell.styles.fillColor = [232, 244, 238];
         data.cell.styles.textColor = [11, 52, 53];
+        data.cell.styles.lineColor = [180, 208, 195];
+        return;
+      }
+
+      if (data.column.index === rateColIdx) {
+        const rate = rowRates[data.row.index] ?? -1;
+        if (rate >= 90) {
+          data.cell.styles.fillColor = [235, 246, 240];
+          data.cell.styles.textColor = [27, 94, 67];
+        } else if (rate >= 75) {
+          data.cell.styles.fillColor = [251, 244, 232];
+          data.cell.styles.textColor = [156, 111, 40];
+        } else if (rate >= 0) {
+          data.cell.styles.fillColor = [253, 240, 238];
+          data.cell.styles.textColor = [166, 58, 46];
+        }
+      }
+
+      if (data.column.index === alpaColIdx) {
+        const rawVal = Number(data.cell.raw);
+        if (rawVal > 0) {
+          data.cell.styles.textColor = [166, 58, 46];
+          data.cell.styles.fontStyle = 'bold';
+        }
       }
     },
     alternateRowStyles: {
-      fillColor: [252, 253, 252],
+      fillColor: [251, 253, 252],
     },
     margin: { left: 14, right: 14 },
   });
 
   const lastTable = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable;
-  let nextY = lastTable.finalY + 4;
+  let nextY = lastTable.finalY + 3.0;
 
   // 5. OFFICIAL NOTES
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-  doc.setTextColor(90, 105, 100);
-  doc.text(
-    '* Keterangan Kode: H = Hadir Bertugas, DL = Bertugas Dinas Luar Resmi, S = Sakit dengan Surat, I = Izin Tertulis, A = Alpa / Tanpa Keterangan.',
-    14,
-    nextY,
-  );
-  nextY += 3.2;
-  doc.text(
-    '* Rumus Persentase Kehadiran: % Kehadiran = ((Hadir + Dinas Luar) / Hari Efektif) x 100% (Standar Pengawasan Madrasah & Penilaian Kinerja Guru).',
-    14,
-    nextY,
-  );
+  if (options?.includeNotes !== false) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.6);
+    doc.setTextColor(90, 105, 100);
+    doc.text(
+      '* Keterangan: H = Hadir Bertugas, S = Sakit, I = Izin, A = Alpa / Tanpa Keterangan.',
+      14,
+      nextY,
+    );
+    nextY += 2.8;
+    doc.text(
+      isMultiMonth
+        ? `* Persentase Kehadiran dihitung kumulatif dari data riil Presensi Guru sepanjang periode ${periodLabel}.`
+        : '* Persentase Kehadiran dihitung langsung dari data riil Presensi Guru tercatat pada bulan berjalan.',
+      14,
+      nextY,
+    );
+    nextY += 1.4;
+  }
 
   // 6. FORMAL SIGNATURE BLOCK
-  addSignatureBlock(doc, state, nextY + 4, {
-    city: options?.signerCity,
-    date: options?.signerDate,
-    leftTitle: options?.leftTitle || options?.officerTitle || 'Koordinator Akademik & Kurikulum',
-    leftName: options?.leftName || options?.officerName,
-    leftNip: options?.leftNip || options?.officerNip,
-    rightTitle: options?.rightTitle || `${options?.principalTitle || 'Kepala Madrasah'} ${options?.schoolName || state.settings.schoolName}`,
-    rightName: options?.rightName || options?.principalName,
-    rightNip: options?.rightNip || options?.principalNip,
-  });
+  if (options?.includeSignature !== false) {
+    const resolvedSchoolName = options?.schoolName || state.settings.schoolName;
+    const resolvedPrincipalTitle = options?.principalTitle || state.settings.headmasterTitle || 'Kepala Madrasah';
+    addSignatureBlock(doc, state, nextY + 1.4, {
+      city: printCity,
+      date: options?.signerDate,
+      leftTitle: options?.leftTitle || options?.officerTitle || 'Koordinator Akademik & Kurikulum',
+      leftName: options?.leftName || options?.officerName,
+      leftNip: options?.leftNip || options?.officerNip,
+      rightTitle:
+        options?.rightTitle ||
+        buildRightSignerTitle(resolvedPrincipalTitle, resolvedSchoolName),
+      rightName: options?.rightName || options?.principalName,
+      rightNip: options?.rightNip || options?.principalNip,
+    });
+  }
 
-  // 7. OFFICIAL FOOTER ON ALL PAGES
-  addDocFooter(doc, options?.schoolName || state.settings.schoolName);
+  // 7. DEDICATED APPENDIX PAGE WHEN RANGE > 5 MONTHS (OR PORTRAIT MULTI-MONTH)
+  if (appendMonthlyAppendixPage) {
+    doc.addPage(getPaperDimensions(paperSize, 'landscape'), 'landscape');
+    const landW = doc.internal.pageSize.getWidth();
+    let appY = 8;
+    if (options?.kopSurat !== false) {
+      appY = renderOfficialKopSurat(doc, state, 8, options, true);
+    } else {
+      appY = 14;
+    }
 
-  const cleanMonth = monthName.replace(/[^a-zA-Z0-9]/g, '_');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(...TEAL);
+    doc.text(
+      `LAMPIRAN MATRIKS KEHADIRAN PER BULAN · ${periodLabel.toUpperCase()}`,
+      landW / 2,
+      appY,
+      { align: 'center' },
+    );
+    appY += 5;
+
+    const appHeaders = [
+      'No',
+      'Kode',
+      'Nama Pendidik',
+      ...months.map((ym) => formatMonthShortYear(ym)),
+      'Total',
+    ];
+    const appBody = recapSummary.rows.map((r) => [
+      r.no,
+      r.teacher.code,
+      r.teacher.name,
+      ...months.map((ym) => {
+        const b = r.monthlyBreakdown[ym];
+        return b && b.hasData ? `${b.rate}%\n${b.hadir}H` : '—';
+      }),
+      r.hasData ? `${r.rate}%` : '—',
+    ]);
+
+    const appAvailW = landW - 24;
+    const mWidth = Math.max(12, Math.min(20, (appAvailW - 76) / months.length));
+    const appScale = appAvailW / (8 + 12 + 42 + months.length * mWidth + 14);
+    const appColStyles: Record<number, { halign: 'center' | 'left'; cellWidth: number; fontStyle?: 'bold' }> = {
+      0: { halign: 'center', cellWidth: 8 * appScale },
+      1: { halign: 'center', cellWidth: 12 * appScale, fontStyle: 'bold' },
+      2: { halign: 'left', cellWidth: 42 * appScale, fontStyle: 'bold' },
+    };
+    months.forEach((_, idx) => {
+      appColStyles[3 + idx] = { halign: 'center', cellWidth: mWidth * appScale };
+    });
+    appColStyles[3 + months.length] = { halign: 'center', cellWidth: 14 * appScale, fontStyle: 'bold' };
+
+    autoTable(doc, {
+      startY: appY,
+      head: [appHeaders],
+      body: appBody,
+      theme: 'grid',
+      headStyles: {
+        fillColor: TEAL,
+        textColor: 255,
+        fontSize: 6.8,
+        fontStyle: 'bold',
+        halign: 'center',
+        cellPadding: 1.6,
+      },
+      bodyStyles: {
+        fontSize: 6.4,
+        halign: 'center',
+        valign: 'middle',
+        cellPadding: 1.2,
+        textColor: [20, 35, 33],
+      },
+      columnStyles: appColStyles,
+      alternateRowStyles: { fillColor: [251, 253, 252] },
+      margin: { left: 12, right: 12 },
+    });
+  }
+
+  // 8. OFFICIAL FOOTER ON ALL PAGES
+  const printMetaText =
+    options?.includePrintMeta !== false
+      ? `Dicetak di ${printCity} · Periode ${periodLabel}`
+      : undefined;
+  addDocFooter(doc, options?.schoolName || state.settings.schoolName, printMetaText);
+
+  const cleanPeriodFile = periodLabel.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '');
   const paperSuffix = paperSize.toUpperCase();
-  doc.save(`SIGNAL_Rekap_Presensi_Guru_${paperSuffix}_${cleanMonth}.pdf`);
+  doc.save(`SIGNAL_Rekap_Presensi_Guru_${paperSuffix}_${cleanPeriodFile}.pdf`);
 }
+

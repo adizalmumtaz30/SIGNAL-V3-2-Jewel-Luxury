@@ -1,6 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AlertCircle,
+  BellRing,
+  BookOpen,
   Calendar,
+  CalendarCheck2,
   CalendarDays,
   Check,
   CheckCircle2,
@@ -9,18 +13,35 @@ import {
   Clock,
   Download,
   Edit2,
-  Info,
+  Minus,
   Plus,
-  RefreshCw,
   Save,
   Search,
+  Sparkles,
+  ToggleRight,
   Trash2,
   UserCheck,
   Users,
   X,
+  XCircle,
 } from 'lucide-react';
 import type { AppState, AttendanceRecord, AttendanceStatus, Day, Holiday } from '../domain/types';
+import {
+  AVAILABLE_HOLIDAY_YEARS,
+  computeEffectiveAttendanceDates,
+  getOfficialEventByDate,
+  getOfficialEventsForMonth,
+  getOfficialEventsForYear,
+  isOfficialRedDate,
+  type OfficialCalendarEvent,
+  type OfficialHolidayCategory,
+} from '../domain/indonesianHolidays';
+import {
+  applyMassAttendanceRecords,
+  computeRangeAttendanceRecap,
+} from '../domain/attendanceRecap';
 import { AttendancePdfExportModal } from './AttendancePdfExportModal';
+import { MadrasahTeacherAvatar } from './MadrasahTeacherAvatar';
 
 interface AttendanceScreenProps {
   state: AppState;
@@ -29,37 +50,138 @@ interface AttendanceScreenProps {
 }
 
 type AttendanceTab = 'daily' | 'monthly' | 'teacher' | 'recap' | 'holidays';
+type CatalogFilter = 'ALL' | OfficialHolidayCategory;
 
 const STATUS_CONFIG: Record<
   AttendanceStatus,
   { label: string; short: string; color: string; bg: string; border: string }
 > = {
-  HADIR: { label: 'Hadir', short: 'H', color: '#1f6952', bg: '#e8f5ee', border: '#b8e3cd' },
-  IZIN: { label: 'Izin', short: 'I', color: '#9c6f28', bg: '#fbf4e8', border: '#ebd8b6' },
-  SAKIT: { label: 'Sakit', short: 'S', color: '#4b7596', bg: '#edf4f9', border: '#c3dbed' },
-  ALPA: { label: 'Alpa', short: 'A', color: '#b24c3d', bg: '#fdf0ee', border: '#f7c8c1' },
-  DINAS_LUAR: { label: 'Dinas Luar', short: 'DL', color: '#685094', bg: '#f3effa', border: '#d7c7ed' },
+  HADIR: { label: 'Hadir', short: 'H', color: '#1B5E43', bg: '#E8F5EE', border: '#B8E3CD' },
+  DINAS_LUAR: { label: 'Dinas Luar', short: 'DL', color: '#5D478B', bg: '#F3EFFA', border: '#D7C7ED' },
+  IZIN: { label: 'Izin', short: 'I', color: '#9C6F28', bg: '#FBF4E8', border: '#EBD8B6' },
+  SAKIT: { label: 'Sakit', short: 'S', color: '#36648B', bg: '#EDF4F9', border: '#C3DBED' },
+  ALPA: { label: 'Alpa', short: 'A', color: '#A63A2E', bg: '#FDF0EE', border: '#F7C8C1' },
 };
+
+const QUICK_STATUS_ORDER: AttendanceStatus[] = ['HADIR', 'DINAS_LUAR', 'IZIN', 'SAKIT', 'ALPA'];
+
+const SHORT_MONTHS_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+const MONTHS_FULL_ID = [
+  'Januari',
+  'Februari',
+  'Maret',
+  'April',
+  'Mei',
+  'Juni',
+  'Juli',
+  'Agustus',
+  'September',
+  'Oktober',
+  'November',
+  'Desember',
+];
+
+function getPaginationItems(currentPage: number, totalPages: number): (number | 'ellipsis')[] {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+  const items: (number | 'ellipsis')[] = [1];
+  if (currentPage > 3) items.push('ellipsis');
+  const start = Math.max(2, currentPage - 1);
+  const end = Math.min(totalPages - 1, currentPage + 1);
+  for (let p = start; p <= end; p++) items.push(p);
+  if (currentPage < totalPages - 2) items.push('ellipsis');
+  items.push(totalPages);
+  return items;
+}
 
 function formatLocalDate(dateStr: string) {
   if (!dateStr) return '';
   const [y, m, d] = dateStr.split('-');
   const date = new Date(Number(y), Number(m) - 1, Number(d));
-  return new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(date);
+  return new Intl.DateTimeFormat('id-ID', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(date);
+}
+
+function formatCompactDate(dateStr: string) {
+  if (!dateStr) return '';
+  const [, m, d] = dateStr.split('-');
+  return `${Number(d)} ${SHORT_MONTHS_ID[Number(m) - 1] ?? m}`;
+}
+
+function getLocalIsoDate(date = new Date()): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function getLocalYearMonth(date = new Date()): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  return `${y}-${m}`;
+}
+
+function getMonthRangeBounds(ym: string): { start: string; end: string } | null {
+  if (!/^\d{4}-\d{2}$/.test(ym)) return null;
+  const [yNum, mNum] = ym.split('-').map(Number);
+  if (!yNum || !mNum || mNum < 1 || mNum > 12) return null;
+  const lastDay = new Date(yNum, mNum, 0).getDate();
+  return {
+    start: `${ym}-01`,
+    end: `${ym}-${String(lastDay).padStart(2, '0')}`,
+  };
+}
+
+function shiftIsoDate(dateStr: string, deltaDays: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  if (!y || !m || !d) return dateStr;
+  const utc = new Date(Date.UTC(y, m - 1, d + deltaDays));
+  const yy = utc.getUTCFullYear();
+  const mm = String(utc.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(utc.getUTCDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
+}
+
+function getCategoryLabel(category: OfficialHolidayCategory): string {
+  if (category === 'NASIONAL') return 'Libur Nasional';
+  if (category === 'CUTI_BERSAMA') return 'Cuti Bersama';
+  return 'Kaldik Kemenag RI';
+}
+
+function csvCellValue(value: string): string {
+  return `"${value.replaceAll('"', '""')}"`;
+}
+
+function downloadAttendanceCsv(rows: string[][], fileName: string) {
+  const csvBody = '\uFEFF' + rows.map((row) => row.map((cell) => csvCellValue(cell)).join(',')).join('\r\n');
+  const blob = new Blob([csvBody], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceScreenProps) {
   const [activeTab, setActiveTab] = useState<AttendanceTab>('daily');
-  const [currentDate, setCurrentDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [currentMonth, setCurrentMonth] = useState(() => new Date().toISOString().slice(0, 7)); // 'YYYY-MM'
+  const [currentDate, setCurrentDate] = useState(() => getLocalIsoDate());
+  const [currentMonth, setCurrentMonth] = useState(() => getLocalYearMonth());
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>(() => state.teachers[0]?.id ?? '');
   const [recapSelectedTeachers, setRecapSelectedTeachers] = useState<string[]>(() =>
-    state.teachers.filter((t) => t.isActive).map((t) => t.id),
+    state.teachers.filter((t) => t.isActive !== false).map((t) => t.id),
   );
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
 
   // Daily Mass Entry Working State
-  const [dailyEntries, setDailyEntries] = useState<Record<string, { status: AttendanceStatus; notes: string }>>({});
+  const [dailyEntries, setDailyEntries] = useState<
+    Record<string, { status: AttendanceStatus; notes: string }>
+  >({});
   const [dailyInitializedDate, setDailyInitializedDate] = useState<string>('');
   const [dailySearch, setDailySearch] = useState('');
   const [dailyStatusFilter, setDailyStatusFilter] = useState<string>('all');
@@ -70,19 +192,65 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
   const [massMonthStatus, setMassMonthStatus] = useState<AttendanceStatus>('HADIR');
   const [massMonthTarget, setMassMonthTarget] = useState<'all' | 'selected'>('all');
   const [massMonthSelectedTeachers, setMassMonthSelectedTeachers] = useState<string[]>([]);
-  const [massMonthStartDate, setMassMonthStartDate] = useState(`${new Date().toISOString().slice(0, 7)}-01`);
-  const [massMonthEndDate, setMassMonthEndDate] = useState(`${new Date().toISOString().slice(0, 7)}-28`);
-  const [showMonthlyHelp, setShowMonthlyHelp] = useState(false);
+  const [massMonthStartDate, setMassMonthStartDate] = useState(() => `${getLocalYearMonth()}-01`);
+  const [massMonthEndDate, setMassMonthEndDate] = useState(() => {
+    const ym = getLocalYearMonth();
+    return getMonthRangeBounds(ym)?.end ?? `${ym}-28`;
+  });
+  const [autoSkipNationalHolidays, setAutoSkipNationalHolidays] = useState(true);
+  const [autoSkipCutiBersama, setAutoSkipCutiBersama] = useState(true);
+  const [autoSkipKaldikMadrasah, setAutoSkipKaldikMadrasah] = useState(true);
 
   // Teacher Ledger Working State
   const [ledgerPage, setLedgerPage] = useState(1);
   const [ledgerPageSize, setLedgerPageSize] = useState<number>(15);
   const [ledgerFilter, setLedgerFilter] = useState<'all' | 'workdays' | 'leaves'>('all');
 
-  // Recap Working State
+  // Recap Working State (Supports 1 Bulan & Rentang Multi-Bulan)
+  const [recapMode, setRecapMode] = useState<'single' | 'range'>('single');
+  const [recapEndMonth, setRecapEndMonth] = useState<string>(() => getLocalYearMonth());
   const [recapSearch, setRecapSearch] = useState('');
   const [recapSortKey, setRecapSortKey] = useState<'no' | 'name' | 'rate' | 'hadir'>('no');
   const [recapSortOrder, setRecapSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [recapPage, setRecapPage] = useState(1);
+  const [recapPageSize, setRecapPageSize] = useState<number>(10);
+
+  // Holiday Form & Official Calendar Catalog State
+  const [newHolidayDate, setNewHolidayDate] = useState('');
+  const [newHolidayName, setNewHolidayName] = useState('');
+  const [editingHolidayId, setEditingHolidayId] = useState<string | null>(null);
+  const [holidaySearch, setHolidaySearch] = useState('');
+  const [holidayPage, setHolidayPage] = useState(1);
+  const [holidayPageSize, setHolidayPageSize] = useState<number>(6);
+  const [catalogYear, setCatalogYear] = useState<number>(() => {
+    const curY = new Date().getFullYear();
+    return AVAILABLE_HOLIDAY_YEARS.includes(curY as (typeof AVAILABLE_HOLIDAY_YEARS)[number])
+      ? curY
+      : 2026;
+  });
+  const [catalogFilter, setCatalogFilter] = useState<CatalogFilter>('ALL');
+  const [catalogMonth, setCatalogMonth] = useState<number | 'ALL'>('ALL');
+
+  // Bulk Row Selection States Across Presensi Tables
+  const [dailySelectedIds, setDailySelectedIds] = useState<string[]>([]);
+  const [ledgerSelectedDates, setLedgerSelectedDates] = useState<string[]>([]);
+  const [holidaySelectedIds, setHolidaySelectedIds] = useState<string[]>([]);
+  const [recapBulkEngaged, setRecapBulkEngaged] = useState(false);
+  const [attBulkConfirmDelete, setAttBulkConfirmDelete] = useState(false);
+  const [attBulkStatusMode, setAttBulkStatusMode] = useState(false);
+
+  const activeTeachers = useMemo(
+    () => state.teachers.filter((t) => t.isActive !== false),
+    [state.teachers],
+  );
+  const holidays = useMemo(() => state.holidays ?? [], [state.holidays]);
+  const attendanceList = useMemo(() => state.attendance ?? [], [state.attendance]);
+
+  const switchTabSafe = (nextTab: AttendanceTab) => {
+    setActiveTab(nextTab);
+    setAttBulkConfirmDelete(false);
+    setAttBulkStatusMode(false);
+  };
 
   const handleToggleRecapSort = (key: 'no' | 'name' | 'rate' | 'hadir') => {
     if (recapSortKey === key) {
@@ -92,42 +260,135 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
       setRecapSortOrder('asc');
     }
   };
-  const [recapPage, setRecapPage] = useState(1);
-  const [recapPageSize, setRecapPageSize] = useState<number>(10);
 
-  // Holiday Form State
-  const [newHolidayDate, setNewHolidayDate] = useState('');
-  const [newHolidayName, setNewHolidayName] = useState('');
-  const [editingHolidayId, setEditingHolidayId] = useState<string | null>(null);
-  const [holidaySearch, setHolidaySearch] = useState('');
-  const [holidayPage, setHolidayPage] = useState(1);
-  const [holidayPageSize, setHolidayPageSize] = useState<number>(10);
+  // Automatically include newly added active teachers across recap, mass-selection, and individual picker
+  const prevActiveTeacherIdsRef = useRef<string[]>(activeTeachers.map((t) => t.id));
+  useEffect(() => {
+    const currentIds = activeTeachers.map((t) => t.id);
+    const currentSet = new Set(currentIds);
+    const prevIds = prevActiveTeacherIdsRef.current;
+    const prevSet = new Set(prevIds);
+    const newlyAddedIds = currentIds.filter((id) => !prevSet.has(id));
 
-  const activeTeachers = useMemo(() => state.teachers.filter((t) => t.isActive), [state.teachers]);
-  const holidays = useMemo(() => state.holidays ?? [], [state.holidays]);
-  const attendanceList = useMemo(() => state.attendance ?? [], [state.attendance]);
-
-  // Sync daily entries whenever date changes
-  if (dailyInitializedDate !== currentDate) {
-    const existingForDate = attendanceList.filter((a) => a.date === currentDate);
-    const map: Record<string, { status: AttendanceStatus; notes: string }> = {};
-    for (const t of activeTeachers) {
-      const match = existingForDate.find((e) => e.teacherId === t.id);
-      map[t.id] = {
-        status: match?.status ?? 'HADIR',
-        notes: match?.notes ?? '',
-      };
+    if (newlyAddedIds.length > 0 || prevIds.some((id) => !currentSet.has(id))) {
+      setRecapSelectedTeachers((prev) =>
+        Array.from(new Set([...prev.filter((id) => currentSet.has(id)), ...newlyAddedIds])),
+      );
+      setMassMonthSelectedTeachers((prev) => {
+        if (prev.length === 0) return prev;
+        const validPrev = prev.filter((id) => currentSet.has(id));
+        const hadAllPrevious = prevIds.length > 0 && prevIds.every((id) => prev.includes(id));
+        return hadAllPrevious ? Array.from(new Set([...validPrev, ...newlyAddedIds])) : validPrev;
+      });
     }
-    setDailyEntries(map);
-    setDailyInitializedDate(currentDate);
-  }
+
+    if (currentIds.length > 0 && !currentIds.includes(selectedTeacherId)) {
+      setSelectedTeacherId(currentIds[0]);
+    }
+
+    prevActiveTeacherIdsRef.current = currentIds;
+  }, [activeTeachers, selectedTeacherId]);
+
+  // Sync daily entries whenever date, attendance records, or active teachers change
+  useEffect(() => {
+    const existingForDate = attendanceList.filter((a) => a.date === currentDate);
+    if (dailyInitializedDate !== currentDate) {
+      const map: Record<string, { status: AttendanceStatus; notes: string }> = {};
+      for (const t of activeTeachers) {
+        const match = existingForDate.find((e) => e.teacherId === t.id);
+        map[t.id] = {
+          status: match?.status ?? 'HADIR',
+          notes: match?.notes ?? '',
+        };
+      }
+      setDailyEntries(map);
+      setDailyInitializedDate(currentDate);
+      return;
+    }
+
+    // Ensure any newly added teacher or updated attendance records are reflected immediately
+    setDailyEntries((prev) => {
+      let changed = false;
+      const next: Record<string, { status: AttendanceStatus; notes: string }> = { ...prev };
+      for (const t of activeTeachers) {
+        const match = existingForDate.find((e) => e.teacherId === t.id);
+        if (!next[t.id]) {
+          next[t.id] = {
+            status: match?.status ?? 'HADIR',
+            notes: match?.notes ?? '',
+          };
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [currentDate, dailyInitializedDate, attendanceList, activeTeachers]);
+
+  // Toggle official calendar event in 1 click (add if absent, remove if already registered)
+  const handleQuickToggleOfficialEvent = (event: OfficialCalendarEvent) => {
+    const existing = holidays.find((h) => h.date === event.date);
+    if (existing) {
+      if (editingHolidayId === existing.id) {
+        setEditingHolidayId(null);
+        setNewHolidayDate('');
+        setNewHolidayName('');
+      }
+      onUpdateState((prev) => ({
+        ...prev,
+        holidays: (prev.holidays ?? []).filter((h) => h.id !== existing.id),
+      }));
+      onNotify(`"${existing.name}" (${formatCompactDate(existing.date)}) dihapus dari daftar libur.`, 'info');
+      return;
+    }
+
+    const holiday: Holiday = {
+      id: `HOL-${event.date}-${Date.now().toString(36)}`,
+      date: event.date,
+      name: event.name,
+    };
+    onUpdateState((prev) => ({
+      ...prev,
+      holidays: [...(prev.holidays ?? []), holiday].sort((a, b) => a.date.localeCompare(b.date)),
+    }));
+    onNotify(`"${event.name}" (${formatCompactDate(event.date)}) ditambahkan ke kalender libur.`, 'success');
+  };
+
+  // Batch add all unadded red dates for selected year or month
+  const handleBatchImportHolidays = (eventsToImport: OfficialCalendarEvent[], label: string) => {
+    const existingDates = new Set(holidays.map((h) => h.date));
+    const toAdd = eventsToImport.filter((ev) => !existingDates.has(ev.date));
+
+    if (toAdd.length === 0) {
+      onNotify(`Seluruh tanggal merah ${label} sudah terdaftar.`, 'info');
+      return;
+    }
+
+    onUpdateState((prev) => {
+      const prevList = prev.holidays ?? [];
+      const existingSet = new Set(prevList.map((h) => h.date));
+      const newItems: Holiday[] = toAdd
+        .filter((ev) => !existingSet.has(ev.date))
+        .map((ev, idx) => ({
+          id: `HOL-${ev.date}-${idx}-${Date.now().toString(36)}`,
+          date: ev.date,
+          name: ev.name,
+        }));
+      return {
+        ...prev,
+        holidays: [...prevList, ...newItems].sort((a, b) => a.date.localeCompare(b.date)),
+      };
+    });
+    onNotify(`${toAdd.length} Tanggal Merah (${label}) berhasil ditambahkan otomatis.`, 'success');
+  };
 
   // 1. Save Daily Mass Attendance
   const handleSaveDaily = () => {
+    const nowIso = new Date().toISOString();
     onUpdateState((prev) => {
+      const prevActiveTeachers = prev.teachers.filter((t) => t.isActive !== false);
       const currentList = prev.attendance ?? [];
       const withoutCurrentDate = currentList.filter((a) => a.date !== currentDate);
-      const newRecords: AttendanceRecord[] = activeTeachers.map((teacher) => {
+      const newRecords: AttendanceRecord[] = prevActiveTeachers.map((teacher) => {
         const entry = dailyEntries[teacher.id] ?? { status: 'HADIR', notes: '' };
         return {
           id: `ATT-${currentDate}-${teacher.id}`,
@@ -135,7 +396,7 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
           teacherId: teacher.id,
           status: entry.status,
           notes: entry.notes,
-          recordedAt: new Date().toISOString(),
+          recordedAt: nowIso,
         };
       });
       return {
@@ -143,75 +404,249 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
         attendance: [...withoutCurrentDate, ...newRecords],
       };
     });
-    onNotify(`Presensi harian tanggal ${formatLocalDate(currentDate)} berhasil disimpan.`, 'success');
+    onNotify(`Presensi harian ${formatLocalDate(currentDate)} berhasil disimpan.`, 'success');
   };
 
-  // 1-click Set All Present
   const handleSetAllPresent = () => {
     const updated = { ...dailyEntries };
     for (const t of activeTeachers) {
-      updated[t.id] = { ...updated[t.id], status: 'HADIR' };
+      updated[t.id] = { ...(updated[t.id] ?? { notes: '' }), status: 'HADIR' };
     }
     setDailyEntries(updated);
-    onNotify('Seluruh guru disetel Hadir untuk tanggal ini.', 'info');
+    onNotify('Seluruh guru disetel Hadir untuk tanggal aktif.', 'info');
   };
 
-  // 2. Save Mass Monthly Attendance
+  const handleSetAllPresentAndSave = () => {
+    const updated: Record<string, { status: AttendanceStatus; notes: string }> = { ...dailyEntries };
+    for (const t of activeTeachers) {
+      updated[t.id] = { notes: updated[t.id]?.notes ?? '', status: 'HADIR' };
+    }
+    setDailyEntries(updated);
+
+    const nowIso = new Date().toISOString();
+    onUpdateState((prev) => {
+      const prevActiveTeachers = prev.teachers.filter((t) => t.isActive !== false);
+      const currentList = prev.attendance ?? [];
+      const withoutCurrentDate = currentList.filter((a) => a.date !== currentDate);
+      const newRecords: AttendanceRecord[] = prevActiveTeachers.map((teacher) => ({
+        id: `ATT-${currentDate}-${teacher.id}`,
+        date: currentDate,
+        teacherId: teacher.id,
+        status: 'HADIR',
+        notes: updated[teacher.id]?.notes ?? '',
+        recordedAt: nowIso,
+      }));
+      return {
+        ...prev,
+        attendance: [...withoutCurrentDate, ...newRecords],
+      };
+    });
+    onNotify(`Seluruh ${activeTeachers.length} guru ditandai Hadir & disimpan (${formatLocalDate(currentDate)}).`, 'success');
+  };
+
+  const applyMassMonthRange = (ym: string) => {
+    const bounds = getMonthRangeBounds(ym);
+    if (!bounds) return;
+    setCurrentMonth(ym);
+    setMassMonthStartDate(bounds.start);
+    setMassMonthEndDate(bounds.end);
+  };
+
+  const applyMassPreset = (preset: 'month' | 'week' | 'fortnight') => {
+    if (preset === 'month') {
+      const targetMonth =
+        /^\d{4}-\d{2}/.test(massMonthStartDate) ? massMonthStartDate.slice(0, 7) : currentMonth;
+      applyMassMonthRange(targetMonth);
+      return;
+    }
+    const baseDate = currentDate;
+    const delta = preset === 'week' ? -6 : -13;
+    setMassMonthStartDate(shiftIsoDate(baseDate, delta));
+    setMassMonthEndDate(baseDate);
+  };
+
+  const activeMassPreset = useMemo(() => {
+    const ym = massMonthStartDate.slice(0, 7);
+    const bounds = getMonthRangeBounds(ym);
+    if (bounds && massMonthStartDate === bounds.start && massMonthEndDate === bounds.end) {
+      return 'month';
+    }
+    if (massMonthEndDate === currentDate && massMonthStartDate === shiftIsoDate(currentDate, -6)) {
+      return 'week';
+    }
+    if (massMonthEndDate === currentDate && massMonthStartDate === shiftIsoDate(currentDate, -13)) {
+      return 'fortnight';
+    }
+    return 'custom';
+  }, [massMonthStartDate, massMonthEndDate, currentDate]);
+
+  // Live preview of Mass Monthly Date Range (auto-skipping Sundays, registered holidays, & official National + Kaldik holidays)
+  const massPreview = useMemo(
+    () =>
+      computeEffectiveAttendanceDates({
+        startDate: massMonthStartDate,
+        endDate: massMonthEndDate,
+        registeredHolidays: holidays,
+        includeOfficialRedDates: autoSkipNationalHolidays,
+        includeCutiBersama: autoSkipCutiBersama,
+        includeKaldikLibur: autoSkipKaldikMadrasah,
+      }),
+    [
+      massMonthStartDate,
+      massMonthEndDate,
+      holidays,
+      autoSkipNationalHolidays,
+      autoSkipCutiBersama,
+      autoSkipKaldikMadrasah,
+    ],
+  );
+
+  // Build calendar cells for Visual Range Mosaic (up to 45 days in range)
+  const massRangeMosaic = useMemo(() => {
+    if (!massMonthStartDate || !massMonthEndDate || massMonthStartDate > massMonthEndDate) return [];
+    const [sy, sm, sd] = massMonthStartDate.split('-').map(Number);
+    const [ey, em, ed] = massMonthEndDate.split('-').map(Number);
+    if (!sy || !sm || !sd || !ey || !em || !ed) return [];
+
+    const skippedOfficialMap = new Map(
+      massPreview.skippedOfficialHolidays.map((h) => [h.date, h]),
+    );
+    const skippedRegMap = new Map(
+      massPreview.skippedRegisteredHolidays.map((h) => [h.date, h]),
+    );
+    const sundaySet = new Set(massPreview.skippedSundays);
+
+    const cells: Array<{
+      dateStr: string;
+      dayNum: number;
+      kind: 'effective' | 'sunday' | 'holiday' | 'kemenag';
+      tooltip: string;
+    }> = [];
+
+    const cursor = new Date(Date.UTC(sy, sm - 1, sd));
+    const endUtc = new Date(Date.UTC(ey, em - 1, ed));
+    while (cursor.getTime() <= endUtc.getTime() && cells.length < 45) {
+      const yy = cursor.getUTCFullYear();
+      const mm = String(cursor.getUTCMonth() + 1).padStart(2, '0');
+      const dd = String(cursor.getUTCDate()).padStart(2, '0');
+      const dateStr = `${yy}-${mm}-${dd}`;
+      const off = skippedOfficialMap.get(dateStr);
+      const reg = skippedRegMap.get(dateStr);
+
+      if (sundaySet.has(dateStr)) {
+        cells.push({
+          dateStr,
+          dayNum: Number(dd),
+          kind: 'sunday',
+          tooltip: `${formatCompactDate(dateStr)} · Minggu (Libur)`,
+        });
+      } else if (reg) {
+        cells.push({
+          dateStr,
+          dayNum: Number(dd),
+          kind: 'holiday',
+          tooltip: `${formatCompactDate(dateStr)} · ${reg.name}`,
+        });
+      } else if (off) {
+        cells.push({
+          dateStr,
+          dayNum: Number(dd),
+          kind: off.category === 'KALDIK_KEMENAG' ? 'kemenag' : 'holiday',
+          tooltip: `${formatCompactDate(dateStr)} · ${off.name}`,
+        });
+      } else {
+        cells.push({
+          dateStr,
+          dayNum: Number(dd),
+          kind: 'effective',
+          tooltip: `${formatCompactDate(dateStr)} · Hari Efektif KBM`,
+        });
+      }
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
+    }
+    return cells;
+  }, [massMonthStartDate, massMonthEndDate, massPreview]);
+
+  // 2. Save Mass Monthly Attendance (always resolves latest active teachers inside state updater)
   const handleSaveMassMonthly = () => {
     if (!massMonthStartDate || !massMonthEndDate || massMonthStartDate > massMonthEndDate) {
-      onNotify('Rentang tanggal tidak valid.', 'warning');
-      return;
-    }
-    const targetTeachers = massMonthTarget === 'all'
-      ? activeTeachers.map((t) => t.id)
-      : massMonthSelectedTeachers;
-
-    if (!targetTeachers.length) {
-      onNotify('Pilih setidaknya satu guru untuk menerapkan presensi.', 'warning');
+      onNotify('Rentang tanggal tidak valid. Pastikan tanggal mulai tidak melewati tanggal akhir.', 'warning');
       return;
     }
 
-    const dates: string[] = [];
-    const cur = new Date(massMonthStartDate);
-    const end = new Date(massMonthEndDate);
-    while (cur <= end) {
-      const dateStr = cur.toISOString().slice(0, 10);
-      const dayOfWeek = cur.getDay();
-      const isSunday = dayOfWeek === 0;
-      const isHoliday = holidays.some((h) => h.date === dateStr);
-      if (!isSunday && !isHoliday) {
-        dates.push(dateStr);
-      }
-      cur.setDate(cur.getDate() + 1);
+    const activeIdSet = new Set(activeTeachers.map((t) => t.id));
+    const selectedTargetTeachers =
+      massMonthTarget === 'all'
+        ? activeTeachers.map((t) => t.id)
+        : massMonthSelectedTeachers.filter((id) => activeIdSet.has(id));
+
+    if (!selectedTargetTeachers.length) {
+      onNotify('Pilih setidaknya satu guru sasaran terlebih dahulu.', 'warning');
+      return;
     }
+
+    const dates = massPreview.effectiveDates;
+    if (dates.length === 0) {
+      onNotify('Tidak ada hari KBM efektif dalam rentang tanggal tersebut.', 'warning');
+      return;
+    }
+
+    const nowIso = new Date().toISOString();
+    const noteText = `Input massal ${STATUS_CONFIG[massMonthStatus].label}`;
 
     onUpdateState((prev) => {
-      let list = prev.attendance ?? [];
-      for (const d of dates) {
-        for (const tId of targetTeachers) {
-          list = list.filter((a) => !(a.date === d && a.teacherId === tId));
-          list.push({
-            id: `ATT-${d}-${tId}`,
-            date: d,
-            teacherId: tId,
-            status: massMonthStatus,
-            notes: `Input massal ${massMonthStatus}`,
-            recordedAt: new Date().toISOString(),
-          });
-        }
-      }
-      return { ...prev, attendance: list };
+      const resolvedTeachers =
+        massMonthTarget === 'all'
+          ? prev.teachers.filter((t) => t.isActive !== false).map((t) => t.id)
+          : selectedTargetTeachers;
+
+      return {
+        ...prev,
+        attendance: applyMassAttendanceRecords({
+          existingAttendance: prev.attendance ?? [],
+          targetTeacherIds: resolvedTeachers,
+          startDate: massMonthStartDate,
+          endDate: massMonthEndDate,
+          effectiveDates: dates,
+          status: massMonthStatus,
+          notes: noteText,
+          recordedAt: nowIso,
+        }),
+      };
     });
-    onNotify(`Presensi ${massMonthStatus} berhasil diterapkan untuk ${targetTeachers.length} guru pada ${dates.length} hari efektif.`, 'success');
+
+    // Sync Daily tab entries immediately if currentDate falls inside the applied range
+    if (dates.includes(currentDate)) {
+      setDailyEntries((prev) => {
+        const next = { ...prev };
+        for (const tId of selectedTargetTeachers) {
+          next[tId] = { status: massMonthStatus, notes: noteText };
+        }
+        return next;
+      });
+    }
+
+    // Align active month view if applied month differs
+    const appliedMonthPrefix = dates[0]?.slice(0, 7);
+    if (appliedMonthPrefix && appliedMonthPrefix !== currentMonth) {
+      setCurrentMonth(appliedMonthPrefix);
+    }
+
+    const skippedHolidaysCount =
+      massPreview.skippedRegisteredHolidays.length + massPreview.skippedOfficialHolidays.length;
+    onNotify(
+      `Presensi ${STATUS_CONFIG[massMonthStatus].label} diterapkan untuk ${selectedTargetTeachers.length} guru pada ${dates.length} hari efektif` +
+        (skippedHolidaysCount > 0 ? ` (${skippedHolidaysCount} tanggal merah otomatis dilewati).` : '.'),
+      'success',
+    );
   };
 
-  // 3. Save Single Teacher Day
-  const handleToggleSingleTeacherDay = (dateStr: string, currentStatus?: AttendanceStatus) => {
-    const statuses: AttendanceStatus[] = ['HADIR', 'IZIN', 'SAKIT', 'DINAS_LUAR', 'ALPA'];
-    const nextStatus = currentStatus ? statuses[(statuses.indexOf(currentStatus) + 1) % statuses.length] : 'HADIR';
-
+  // 3. Direct 1-click Single Teacher Day Status Set
+  const handleSetSingleTeacherDay = (dateStr: string, status: AttendanceStatus) => {
     onUpdateState((prev) => {
-      const list = (prev.attendance ?? []).filter((a) => !(a.date === dateStr && a.teacherId === selectedTeacherId));
+      const list = (prev.attendance ?? []).filter(
+        (a) => !(a.date === dateStr && a.teacherId === selectedTeacherId),
+      );
       return {
         ...prev,
         attendance: [
@@ -220,12 +655,18 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
             id: `ATT-${dateStr}-${selectedTeacherId}`,
             date: dateStr,
             teacherId: selectedTeacherId,
-            status: nextStatus,
+            status,
             recordedAt: new Date().toISOString(),
           },
         ],
       };
     });
+    if (dateStr === currentDate && selectedTeacherId) {
+      setDailyEntries((prev) => ({
+        ...prev,
+        [selectedTeacherId]: { notes: prev[selectedTeacherId]?.notes ?? '', status },
+      }));
+    }
   };
 
   // 4. Monthly Statistics Calculation
@@ -247,7 +688,10 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
       const dayName = dayNames[curDate.getDay()];
       const dateStr = `${currentYearNum}-${String(currentMonthNum).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const isHol = holidays.some((h) => h.date === dateStr);
-      if (curDate.getDay() !== 0 && activeDays.includes(dayName) && !isHol) {
+      const isOfficialRed = Boolean(
+        isOfficialRedDate(dateStr, { includeCutiBersama: true, includeKaldikLibur: true }),
+      );
+      if (curDate.getDay() !== 0 && activeDays.includes(dayName) && !isHol && !isOfficialRed) {
         count++;
       }
     }
@@ -255,43 +699,101 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
   }, [currentYearNum, currentMonthNum, daysInCurrentMonth, holidays, state.settings.activeDays]);
 
   const holidaysInMonth = useMemo(() => {
-    return holidays.filter((h) => h.date.startsWith(currentMonth));
+    const registered = holidays.filter((h) => h.date.startsWith(currentMonth));
+    const official = getOfficialEventsForMonth(currentMonth).filter((e) => e.isRedDate);
+    const seen = new Set(registered.map((h) => h.date));
+    return [...registered, ...official.filter((o) => !seen.has(o.date))];
   }, [holidays, currentMonth]);
 
-  // Recap Data Calculation
-  const recapData = useMemo(() => {
-    return activeTeachers
-      .filter((t) => recapSelectedTeachers.includes(t.id))
-      .map((teacher, idx) => {
-        const records = attendanceList.filter(
-          (a) => a.teacherId === teacher.id && a.date.startsWith(currentMonth),
+  // Official red dates in active month that haven't been imported to state.holidays yet
+  const activeViewMonth = activeTab === 'daily' ? currentDate.slice(0, 7) : currentMonth;
+  const unaddedOfficialRedDatesInMonth = useMemo(() => {
+    const registeredDates = new Set(holidays.map((h) => h.date));
+    return getOfficialEventsForMonth(activeViewMonth).filter(
+      (ev) => ev.isRedDate && !registeredDates.has(ev.date),
+    );
+  }, [activeViewMonth, holidays]);
+
+  // Unadded official red dates in selected catalog year/month for instant 1-click chips inside Tab Hari Libur
+  const quickSuggestOfficialEvents = useMemo(() => {
+    const registeredDates = new Set(holidays.map((h) => h.date));
+    const pool = getOfficialEventsForYear(catalogYear).filter(
+      (ev) => ev.isRedDate && !registeredDates.has(ev.date),
+    );
+    if (catalogMonth !== 'ALL') {
+      const mStr = String(catalogMonth).padStart(2, '0');
+      const monthMatches = pool.filter((ev) => ev.date.slice(5, 7) === mStr);
+      if (monthMatches.length > 0) return monthMatches.slice(0, 3);
+    }
+    return pool.slice(0, 3);
+  }, [catalogYear, catalogMonth, holidays]);
+
+  // Recap Data Calculation across ALL activeTeachers (single month OR multi-month range)
+  const recapSummaryAll = useMemo(
+    () =>
+      computeRangeAttendanceRecap(
+        attendanceList,
+        activeTeachers,
+        currentMonth,
+        recapMode === 'range' ? recapEndMonth : undefined,
+      ),
+    [attendanceList, activeTeachers, currentMonth, recapMode, recapEndMonth],
+  );
+
+  const effectiveRecapDays = useMemo(() => {
+    if (!recapSummaryAll.isMultiMonth) return effectiveDaysInMonth;
+    const activeDays = state.settings.activeDays;
+    const dayNames: Day[] = ['Minggu' as Day, 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    let total = 0;
+    for (const ym of recapSummaryAll.months) {
+      const [yNum, mNum] = ym.split('-').map(Number);
+      if (!yNum || !mNum) continue;
+      const daysInM = new Date(yNum, mNum, 0).getDate();
+      let monthCount = 0;
+      for (let d = 1; d <= daysInM; d++) {
+        const curDate = new Date(yNum, mNum - 1, d);
+        const dayName = dayNames[curDate.getDay()];
+        const dateStr = `${yNum}-${String(mNum).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const isHol = holidays.some((h) => h.date === dateStr);
+        const isOfficialRed = Boolean(
+          isOfficialRedDate(dateStr, { includeCutiBersama: true, includeKaldikLibur: true }),
         );
-        const hadir = records.filter((r) => r.status === 'HADIR').length;
-        const izin = records.filter((r) => r.status === 'IZIN').length;
-        const sakit = records.filter((r) => r.status === 'SAKIT').length;
-        const alpa = records.filter((r) => r.status === 'ALPA').length;
-        const dinas = records.filter((r) => r.status === 'DINAS_LUAR').length;
-        const total = records.length;
-        const rate = effectiveDaysInMonth > 0 ? Math.min(100, Math.round(((hadir + dinas) / effectiveDaysInMonth) * 100)) : 100;
-        return {
-          no: idx + 1,
-          teacher,
-          hadir,
-          izin,
-          sakit,
-          alpa,
-          dinas,
-          total,
-          rate,
-        };
-      });
-  }, [activeTeachers, recapSelectedTeachers, attendanceList, currentMonth, effectiveDaysInMonth]);
+        if (curDate.getDay() !== 0 && activeDays.includes(dayName) && !isHol && !isOfficialRed) {
+          monthCount++;
+        }
+      }
+      total += monthCount > 0 ? monthCount : 24;
+    }
+    return total;
+  }, [recapSummaryAll.isMultiMonth, recapSummaryAll.months, effectiveDaysInMonth, state.settings.activeDays, holidays]);
+
+  const recapDataAll = useMemo(() => {
+    return recapSummaryAll.rows.map((r) => ({
+      no: r.no,
+      teacher: r.teacher,
+      hadir: r.hadirOnly,
+      izin: r.izin,
+      sakit: r.sakit,
+      alpa: r.alpa,
+      dinas: r.dinas,
+      total: r.totalRecorded,
+      hasData: r.hasData,
+      rate: r.rate,
+      predikat: r.predikat,
+      monthlyBreakdown: r.monthlyBreakdown,
+    }));
+  }, [recapSummaryAll]);
+
+  const selectedRecapSet = useMemo(() => new Set(recapSelectedTeachers), [recapSelectedTeachers]);
 
   const overallAvgRate = useMemo(() => {
-    if (recapData.length === 0) return 100;
-    const sum = recapData.reduce((acc, r) => acc + r.rate, 0);
-    return Math.round(sum / recapData.length);
-  }, [recapData]);
+    const selectedRowsWithData = recapDataAll.filter(
+      (r) => selectedRecapSet.has(r.teacher.id) && r.hasData,
+    );
+    if (selectedRowsWithData.length === 0) return 0;
+    const sum = selectedRowsWithData.reduce((acc, r) => acc + r.rate, 0);
+    return Math.round(sum / selectedRowsWithData.length);
+  }, [recapDataAll, selectedRecapSet]);
 
   // Contextual Daily Statistics
   const dailyPresentCount = useMemo(() => {
@@ -299,7 +801,9 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
   }, [activeTeachers, dailyEntries]);
 
   const dailyPermitCount = useMemo(() => {
-    return activeTeachers.filter((t) => ['IZIN', 'SAKIT', 'DINAS_LUAR'].includes(dailyEntries[t.id]?.status)).length;
+    return activeTeachers.filter((t) =>
+      ['IZIN', 'SAKIT', 'DINAS_LUAR'].includes(dailyEntries[t.id]?.status),
+    ).length;
   }, [activeTeachers, dailyEntries]);
 
   const dailyAbsentCount = useMemo(() => {
@@ -307,7 +811,9 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
   }, [activeTeachers, dailyEntries]);
 
   const dailyAttendanceRate = useMemo(() => {
-    return activeTeachers.length > 0 ? Math.round((dailyPresentCount / activeTeachers.length) * 100) : 100;
+    return activeTeachers.length > 0
+      ? Math.round((dailyPresentCount / activeTeachers.length) * 100)
+      : 100;
   }, [dailyPresentCount, activeTeachers]);
 
   // 5. Add / Edit / Delete Holiday
@@ -334,6 +840,10 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
       onNotify('Hari libur berhasil diperbarui.', 'success');
       return;
     }
+    if (holidays.some((h) => h.date === newHolidayDate)) {
+      onNotify('Tanggal ini sudah terdaftar dalam kalender libur madrasah.', 'warning');
+      return;
+    }
     const holiday: Holiday = {
       id: `HOL-${Date.now().toString(36)}`,
       date: newHolidayDate,
@@ -346,6 +856,16 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
     setNewHolidayDate('');
     setNewHolidayName('');
     onNotify(`Hari libur "${holiday.name}" ditambahkan.`, 'success');
+  };
+
+  const handleHolidayDatePickerChange = (dateVal: string) => {
+    setNewHolidayDate(dateVal);
+    if (!editingHolidayId && dateVal) {
+      const match = getOfficialEventByDate(dateVal);
+      if (match && !newHolidayName.trim()) {
+        setNewHolidayName(match.name);
+      }
+    }
   };
 
   const handleStartEditHoliday = (hol: Holiday) => {
@@ -372,7 +892,21 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
   };
 
   const isCurrentDateHoliday = holidays.find((h) => h.date === currentDate);
-  const isDateRecorded = useMemo(() => attendanceList.some((a) => a.date === currentDate), [attendanceList, currentDate]);
+  const officialCurrentDateEvent = useMemo(() => getOfficialEventByDate(currentDate), [currentDate]);
+  const isCurrentDateSunday = useMemo(() => {
+    if (!currentDate) return false;
+    const [y, m, d] = currentDate.split('-').map(Number);
+    return new Date(y, m - 1, d).getDay() === 0;
+  }, [currentDate]);
+  const recordedForDateSet = useMemo(
+    () => new Set(attendanceList.filter((a) => a.date === currentDate).map((a) => a.teacherId)),
+    [attendanceList, currentDate],
+  );
+  const isDateRecorded = recordedForDateSet.size > 0;
+  const unrecordedTeachersCount = useMemo(
+    () => activeTeachers.filter((t) => !recordedForDateSet.has(t.id)).length,
+    [activeTeachers, recordedForDateSet],
+  );
 
   // Filtered & Paginated Daily Teachers
   const filteredDailyTeachers = useMemo(() => {
@@ -385,26 +919,92 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
       }
       if (dailyStatusFilter !== 'all') {
         const entry = dailyEntries[t.id] ?? { status: 'HADIR' };
-        if (entry.status !== dailyStatusFilter) return false;
+        if (dailyStatusFilter === 'PERMIT') {
+          if (!['DINAS_LUAR', 'IZIN', 'SAKIT'].includes(entry.status)) return false;
+        } else if (entry.status !== dailyStatusFilter) {
+          return false;
+        }
       }
       return true;
     });
   }, [activeTeachers, dailySearch, dailyStatusFilter, dailyEntries]);
 
+  const totalDailyPages = Math.max(
+    1,
+    Math.ceil(filteredDailyTeachers.length / (dailyPageSize || 1)),
+  );
+  const safeDailyPage = Math.min(dailyPage, totalDailyPages);
+
   const paginatedDailyTeachers = useMemo(() => {
     if (dailyPageSize <= 0) return filteredDailyTeachers;
-    const start = (dailyPage - 1) * dailyPageSize;
+    const start = (safeDailyPage - 1) * dailyPageSize;
     return filteredDailyTeachers.slice(start, start + dailyPageSize);
-  }, [filteredDailyTeachers, dailyPage, dailyPageSize]);
+  }, [filteredDailyTeachers, safeDailyPage, dailyPageSize]);
 
-  const totalDailyPages = Math.max(1, Math.ceil(filteredDailyTeachers.length / (dailyPageSize || 1)));
+  // Full 30-day Mosaic & Filtered Ledger Rows for Tab "Per Guru"
+  const teacherMonthDays = useMemo(() => {
+    const list: Array<{
+      dayNum: number;
+      dateStr: string;
+      dayName: string;
+      isSunday: boolean;
+      hol: Holiday | undefined;
+      officialHol: OfficialCalendarEvent | undefined;
+      record: AttendanceRecord | undefined;
+      cfg: (typeof STATUS_CONFIG)[AttendanceStatus] | null;
+    }> = [];
+    for (let d = 1; d <= daysInCurrentMonth; d++) {
+      const dateStr = `${currentYearNum}-${String(currentMonthNum).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const curDate = new Date(currentYearNum, currentMonthNum - 1, d);
+      const dayName = new Intl.DateTimeFormat('id-ID', { weekday: 'long' }).format(curDate);
+      const isSunday = curDate.getDay() === 0;
+      const hol = holidays.find((h) => h.date === dateStr);
+      const officialHol = isOfficialRedDate(dateStr, {
+        includeCutiBersama: true,
+        includeKaldikLibur: true,
+      });
+      const record = attendanceList.find(
+        (a) => a.teacherId === selectedTeacherId && a.date === dateStr,
+      );
+      list.push({
+        dayNum: d,
+        dateStr,
+        dayName,
+        isSunday,
+        hol,
+        officialHol,
+        record,
+        cfg: record ? STATUS_CONFIG[record.status] : null,
+      });
+    }
+    return list;
+  }, [daysInCurrentMonth, currentYearNum, currentMonthNum, holidays, attendanceList, selectedTeacherId]);
+
+  const ledgerRows = useMemo(() => {
+    return teacherMonthDays.filter((item) => {
+      const isRed = Boolean(item.hol || item.officialHol);
+      if (ledgerFilter === 'workdays' && (item.isSunday || isRed)) return false;
+      if (ledgerFilter === 'leaves' && !item.isSunday && !isRed) return false;
+      return true;
+    });
+  }, [teacherMonthDays, ledgerFilter]);
+
+  const totalLedgerPages = Math.max(1, Math.ceil(ledgerRows.length / (ledgerPageSize || 1)));
+  const safeLedgerPage = Math.min(ledgerPage, totalLedgerPages);
+  const paginatedLedgerRows = useMemo(() => {
+    if (ledgerPageSize <= 0) return ledgerRows;
+    const start = (safeLedgerPage - 1) * ledgerPageSize;
+    return ledgerRows.slice(start, start + ledgerPageSize);
+  }, [ledgerRows, safeLedgerPage, ledgerPageSize]);
 
   // Filtered & Paginated Recap Rows
   const sortedRecapRows = useMemo(() => {
-    let rows = [...recapData];
+    let rows = [...recapDataAll];
     if (recapSearch.trim()) {
       const q = recapSearch.toLowerCase();
-      rows = rows.filter((r) => r.teacher.name.toLowerCase().includes(q) || r.teacher.code.toLowerCase().includes(q));
+      rows = rows.filter(
+        (r) => r.teacher.name.toLowerCase().includes(q) || r.teacher.code.toLowerCase().includes(q),
+      );
     }
     rows.sort((a, b) => {
       let diff = 0;
@@ -415,174 +1015,765 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
       return recapSortOrder === 'asc' ? diff : -diff;
     });
     return rows;
-  }, [recapData, recapSearch, recapSortKey, recapSortOrder]);
+  }, [recapDataAll, recapSearch, recapSortKey, recapSortOrder]);
+
+  const totalRecapPages = Math.max(1, Math.ceil(sortedRecapRows.length / (recapPageSize || 1)));
+  const safeRecapPage = Math.min(recapPage, totalRecapPages);
 
   const paginatedRecapRows = useMemo(() => {
     if (recapPageSize <= 0) return sortedRecapRows;
-    const start = (recapPage - 1) * recapPageSize;
+    const start = (safeRecapPage - 1) * recapPageSize;
     return sortedRecapRows.slice(start, start + recapPageSize);
-  }, [sortedRecapRows, recapPage, recapPageSize]);
+  }, [sortedRecapRows, safeRecapPage, recapPageSize]);
 
-  const totalRecapPages = Math.max(1, Math.ceil(sortedRecapRows.length / (recapPageSize || 1)));
+  const validRecapSelectedIds = useMemo(() => {
+    const validSet = new Set(activeTeachers.map((t) => t.id));
+    return recapSelectedTeachers.filter((id) => validSet.has(id));
+  }, [activeTeachers, recapSelectedTeachers]);
 
-  // Filtered & Paginated Holidays
+  const allVisibleRecapSelected =
+    paginatedRecapRows.length > 0 &&
+    paginatedRecapRows.every((r) => selectedRecapSet.has(r.teacher.id));
+  const someVisibleRecapSelected =
+    paginatedRecapRows.some((r) => selectedRecapSet.has(r.teacher.id)) && !allVisibleRecapSelected;
+
+  const toggleAllVisibleRecap = () => {
+    setRecapBulkEngaged(true);
+    setAttBulkConfirmDelete(false);
+    setAttBulkStatusMode(false);
+    if (allVisibleRecapSelected) {
+      const visibleIds = new Set(paginatedRecapRows.map((r) => r.teacher.id));
+      setRecapSelectedTeachers((prev) => prev.filter((id) => !visibleIds.has(id)));
+    } else {
+      setRecapSelectedTeachers((prev) => {
+        const next = new Set(prev);
+        for (const r of paginatedRecapRows) next.add(r.teacher.id);
+        return Array.from(next);
+      });
+    }
+  };
+
+  const toggleSingleRecapTeacher = (id: string) => {
+    setRecapBulkEngaged(true);
+    setAttBulkConfirmDelete(false);
+    setAttBulkStatusMode(false);
+    setRecapSelectedTeachers((prev) =>
+      prev.includes(id) ? prev.filter((tId) => tId !== id) : [...prev, id],
+    );
+  };
+
+  // --- Daily Table Bulk Selection & Handlers ---
+  const validDailySelectedIds = useMemo(() => {
+    const activeIdSet = new Set(activeTeachers.map((t) => t.id));
+    return dailySelectedIds.filter((id) => activeIdSet.has(id));
+  }, [activeTeachers, dailySelectedIds]);
+  const dailySelectedSet = useMemo(() => new Set(validDailySelectedIds), [validDailySelectedIds]);
+  const isAllDailyPageSelected =
+    paginatedDailyTeachers.length > 0 &&
+    paginatedDailyTeachers.every((t) => dailySelectedSet.has(t.id));
+  const isSomeDailyPageSelected =
+    paginatedDailyTeachers.some((t) => dailySelectedSet.has(t.id)) && !isAllDailyPageSelected;
+
+  const toggleDailySelectPage = () => {
+    setAttBulkConfirmDelete(false);
+    setAttBulkStatusMode(false);
+    const pageIds = paginatedDailyTeachers.map((t) => t.id);
+    if (isAllDailyPageSelected) {
+      const pageSet = new Set(pageIds);
+      setDailySelectedIds((prev) => prev.filter((id) => !pageSet.has(id)));
+    } else {
+      setDailySelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])));
+    }
+  };
+
+  const toggleDailySelectOne = (id: string) => {
+    setAttBulkConfirmDelete(false);
+    setAttBulkStatusMode(false);
+    setDailySelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+    );
+  };
+
+  const handleDailyBulkStatus = (status: AttendanceStatus) => {
+    if (validDailySelectedIds.length === 0) return;
+    const idSet = new Set(validDailySelectedIds);
+    const nextEntries = { ...dailyEntries };
+    for (const id of validDailySelectedIds) {
+      nextEntries[id] = { ...(nextEntries[id] ?? { status: 'HADIR', notes: '' }), status };
+    }
+    setDailyEntries(nextEntries);
+    onUpdateState((prev) => {
+      const remaining = (prev.attendance ?? []).filter(
+        (a) => !(a.date === currentDate && idSet.has(a.teacherId)),
+      );
+      const updatedRecords: AttendanceRecord[] = validDailySelectedIds.map((teacherId) => ({
+        id: `ATT-${currentDate}-${teacherId}`,
+        date: currentDate,
+        teacherId,
+        status,
+        notes: nextEntries[teacherId]?.notes ?? '',
+        recordedAt: new Date().toISOString(),
+      }));
+      return { ...prev, attendance: [...remaining, ...updatedRecords] };
+    });
+    onNotify(
+      `Status ${validDailySelectedIds.length} pendidik terpilih diubah ke "${STATUS_CONFIG[status].label}" (${formatCompactDate(currentDate)}).`,
+      'success',
+    );
+    setDailySelectedIds([]);
+    setAttBulkStatusMode(false);
+    setAttBulkConfirmDelete(false);
+  };
+
+  const handleDailyBulkExportCsv = () => {
+    if (validDailySelectedIds.length === 0) return;
+    const selectedList = activeTeachers.filter((t) => dailySelectedSet.has(t.id));
+    const rows: string[][] = [
+      ['No', 'Kode', 'Nama Pendidik', 'NIP/NPK', 'Jabatan', 'Tanggal', 'Status', 'Catatan'],
+    ];
+    selectedList.forEach((t, idx) => {
+      const entry = dailyEntries[t.id] ?? { status: 'HADIR' as AttendanceStatus, notes: '' };
+      rows.push([
+        String(idx + 1),
+        t.code,
+        t.name,
+        t.nip ?? '-',
+        t.roleTitle ?? 'Guru Mapel',
+        currentDate,
+        STATUS_CONFIG[entry.status].label,
+        entry.notes || '-',
+      ]);
+    });
+    downloadAttendanceCsv(rows, `SIGNAL-presensi-harian-${currentDate}-terpilih.csv`);
+    onNotify(`${selectedList.length} data presensi harian terpilih berhasil diekspor ke CSV.`, 'success');
+  };
+
+  const handleDailyBulkDelete = () => {
+    if (validDailySelectedIds.length === 0) return;
+    const idSet = new Set(validDailySelectedIds);
+    const nextEntries = { ...dailyEntries };
+    for (const id of validDailySelectedIds) {
+      nextEntries[id] = { status: 'HADIR', notes: '' };
+    }
+    setDailyEntries(nextEntries);
+    onUpdateState((prev) => ({
+      ...prev,
+      attendance: (prev.attendance ?? []).filter(
+        (a) => !(a.date === currentDate && idSet.has(a.teacherId)),
+      ),
+    }));
+    onNotify(
+      `Catatan presensi ${validDailySelectedIds.length} pendidik pada ${formatCompactDate(currentDate)} berhasil dihapus.`,
+      'info',
+    );
+    setDailySelectedIds([]);
+    setAttBulkConfirmDelete(false);
+    setAttBulkStatusMode(false);
+  };
+
+  // --- Teacher Ledger Bulk Selection & Handlers ---
+  const validLedgerSelectedDates = useMemo(() => {
+    const validSet = new Set(ledgerRows.map((r) => r.dateStr));
+    return ledgerSelectedDates.filter((d) => validSet.has(d));
+  }, [ledgerRows, ledgerSelectedDates]);
+  const ledgerSelectedSet = useMemo(() => new Set(validLedgerSelectedDates), [validLedgerSelectedDates]);
+  const isAllLedgerPageSelected =
+    paginatedLedgerRows.length > 0 &&
+    paginatedLedgerRows.every((r) => ledgerSelectedSet.has(r.dateStr));
+  const isSomeLedgerPageSelected =
+    paginatedLedgerRows.some((r) => ledgerSelectedSet.has(r.dateStr)) && !isAllLedgerPageSelected;
+
+  const toggleLedgerSelectPage = () => {
+    setAttBulkConfirmDelete(false);
+    setAttBulkStatusMode(false);
+    const pageDates = paginatedLedgerRows.map((r) => r.dateStr);
+    if (isAllLedgerPageSelected) {
+      const pageSet = new Set(pageDates);
+      setLedgerSelectedDates((prev) => prev.filter((d) => !pageSet.has(d)));
+    } else {
+      setLedgerSelectedDates((prev) => Array.from(new Set([...prev, ...pageDates])));
+    }
+  };
+
+  const toggleLedgerSelectOne = (dateStr: string) => {
+    setAttBulkConfirmDelete(false);
+    setAttBulkStatusMode(false);
+    setLedgerSelectedDates((prev) =>
+      prev.includes(dateStr) ? prev.filter((d) => d !== dateStr) : [...prev, dateStr],
+    );
+  };
+
+  const handleLedgerBulkStatus = (status: AttendanceStatus) => {
+    if (validLedgerSelectedDates.length === 0 || !selectedTeacherId) return;
+    const dateSet = new Set(validLedgerSelectedDates);
+    onUpdateState((prev) => {
+      const remaining = (prev.attendance ?? []).filter(
+        (a) => !(a.teacherId === selectedTeacherId && dateSet.has(a.date)),
+      );
+      const added: AttendanceRecord[] = validLedgerSelectedDates.map((d) => ({
+        id: `ATT-${d}-${selectedTeacherId}`,
+        date: d,
+        teacherId: selectedTeacherId,
+        status,
+        recordedAt: new Date().toISOString(),
+      }));
+      return { ...prev, attendance: [...remaining, ...added] };
+    });
+    onNotify(
+      `Status ${validLedgerSelectedDates.length} tanggal terpilih diubah menjadi "${STATUS_CONFIG[status].label}".`,
+      'success',
+    );
+    setLedgerSelectedDates([]);
+    setAttBulkStatusMode(false);
+    setAttBulkConfirmDelete(false);
+  };
+
+  const handleLedgerBulkExportCsv = () => {
+    if (validLedgerSelectedDates.length === 0) return;
+    const rowsSelected = ledgerRows.filter((r) => ledgerSelectedSet.has(r.dateStr));
+    const rows: string[][] = [
+      ['Tanggal', 'Hari', 'Keterangan Kalender', 'Pendidik', 'Status', 'Catatan'],
+    ];
+    for (const item of rowsSelected) {
+      rows.push([
+        item.dateStr,
+        item.dayName,
+        item.hol?.name || item.officialHol?.name || (item.isSunday ? 'Hari Minggu' : 'Hari KBM'),
+        selectedTeacherObj?.name ?? '-',
+        item.cfg?.label ?? (item.isSunday || item.hol || item.officialHol ? 'Libur' : 'Belum diisi'),
+        item.record?.notes ?? '-',
+      ]);
+    }
+    const safeCode = selectedTeacherObj?.code || 'guru';
+    downloadAttendanceCsv(rows, `SIGNAL-ledger-${safeCode}-${currentMonth}-terpilih.csv`);
+    onNotify(`${rowsSelected.length} baris riwayat presensi terpilih berhasil diekspor ke CSV.`, 'success');
+  };
+
+  const handleLedgerBulkDelete = () => {
+    if (validLedgerSelectedDates.length === 0 || !selectedTeacherId) return;
+    const dateSet = new Set(validLedgerSelectedDates);
+    onUpdateState((prev) => ({
+      ...prev,
+      attendance: (prev.attendance ?? []).filter(
+        (a) => !(a.teacherId === selectedTeacherId && dateSet.has(a.date)),
+      ),
+    }));
+    onNotify(
+      `${validLedgerSelectedDates.length} catatan presensi terpilih berhasil dihapus.`,
+      'info',
+    );
+    setLedgerSelectedDates([]);
+    setAttBulkConfirmDelete(false);
+    setAttBulkStatusMode(false);
+  };
+
+  // --- Recap Bulk Actions (Status Aktif Guru, Ekspor CSV Terpilih, Hapus Catatan Bulan Terpilih) ---
+  const handleRecapBulkToggleActive = (nextActive: boolean) => {
+    if (validRecapSelectedIds.length === 0) return;
+    const idSet = new Set(validRecapSelectedIds);
+    onUpdateState((prev) => ({
+      ...prev,
+      teachers: prev.teachers.map((t) => (idSet.has(t.id) ? { ...t, isActive: nextActive } : t)),
+    }));
+    onNotify(
+      `Status ${validRecapSelectedIds.length} pendidik terpilih diubah menjadi ${nextActive ? 'Aktif' : 'Nonaktif'}.`,
+      'success',
+    );
+    setRecapBulkEngaged(false);
+    setAttBulkStatusMode(false);
+    setAttBulkConfirmDelete(false);
+  };
+
+  const handleRecapBulkExportCsv = () => {
+    if (validRecapSelectedIds.length === 0) return;
+    const idSet = new Set(validRecapSelectedIds);
+    const rowsSelected = sortedRecapRows.filter((r) => idSet.has(r.teacher.id));
+    const extraMonthHeaders = recapSummaryAll.isMultiMonth
+      ? recapSummaryAll.monthSummaries.map((m) => `${m.shortLabel} (%)`)
+      : [];
+    const rows: string[][] = [
+      [
+        'No',
+        'Kode',
+        'Nama Pendidik',
+        'NIP/NPK',
+        ...extraMonthHeaders,
+        'Hadir',
+        'Dinas Luar',
+        'Sakit',
+        'Izin',
+        'Alpa',
+        'H+DL',
+        'Target Hari',
+        'Kehadiran (%)',
+      ],
+    ];
+    rowsSelected.forEach((r) => {
+      const monthCells = recapSummaryAll.isMultiMonth
+        ? recapSummaryAll.monthSummaries.map((m) => {
+            const b = r.monthlyBreakdown[m.monthYear];
+            return b?.hasData ? `${b.rate}%` : '-';
+          })
+        : [];
+      rows.push([
+        String(r.no),
+        r.teacher.code,
+        r.teacher.name,
+        r.teacher.nip ?? '-',
+        ...monthCells,
+        String(r.hadir),
+        String(r.dinas),
+        String(r.sakit),
+        String(r.izin),
+        String(r.alpa),
+        String(r.hadir + r.dinas),
+        String(effectiveRecapDays),
+        `${r.rate}%`,
+      ]);
+    });
+    const periodSlug = recapSummaryAll.isMultiMonth
+      ? `${recapSummaryAll.startMonth}_sd_${recapSummaryAll.endMonth}`
+      : currentMonth;
+    downloadAttendanceCsv(rows, `SIGNAL-rekap-presensi-${periodSlug}-terpilih.csv`);
+    onNotify(`${rowsSelected.length} data rekap pendidik terpilih berhasil diekspor ke CSV.`, 'success');
+  };
+
+  const handleRecapBulkDelete = () => {
+    if (validRecapSelectedIds.length === 0) return;
+    const idSet = new Set(validRecapSelectedIds);
+    const monthSet = new Set(recapSummaryAll.months);
+    onUpdateState((prev) => ({
+      ...prev,
+      attendance: (prev.attendance ?? []).filter(
+        (a) => !(monthSet.has(a.date.slice(0, 7)) && idSet.has(a.teacherId)),
+      ),
+    }));
+    onNotify(
+      `Catatan presensi periode ${recapSummaryAll.periodLabel} untuk ${validRecapSelectedIds.length} pendidik terpilih berhasil dihapus.`,
+      'info',
+    );
+    setRecapBulkEngaged(false);
+    setAttBulkConfirmDelete(false);
+    setAttBulkStatusMode(false);
+  };
+
+  // Filtered & Paginated Registered Holidays
   const filteredHolidays = useMemo(() => {
-    if (!holidaySearch.trim()) return holidays;
+    let list = holidays;
+    if (catalogMonth !== 'ALL') {
+      const ymPrefix = `${catalogYear}-${String(catalogMonth).padStart(2, '0')}`;
+      const monthMatches = list.filter((h) => h.date.startsWith(ymPrefix));
+      // Only filter registered holidays if searching isn't set AND user clicked a month? Keep all if search is active, or show all filtered cleanly
+      if (!holidaySearch.trim() && monthMatches.length > 0) {
+        list = monthMatches;
+      }
+    }
+    if (!holidaySearch.trim()) return list;
     const q = holidaySearch.toLowerCase();
     return holidays.filter((h) => h.name.toLowerCase().includes(q) || h.date.includes(q));
-  }, [holidays, holidaySearch]);
+  }, [holidays, holidaySearch, catalogMonth, catalogYear]);
+
+  const totalHolidayPages = Math.max(
+    1,
+    Math.ceil(filteredHolidays.length / (holidayPageSize || 1)),
+  );
+  const safeHolidayPage = Math.min(holidayPage, totalHolidayPages);
 
   const paginatedHolidays = useMemo(() => {
     if (holidayPageSize <= 0) return filteredHolidays;
-    const start = (holidayPage - 1) * holidayPageSize;
+    const start = (safeHolidayPage - 1) * holidayPageSize;
     return filteredHolidays.slice(start, start + holidayPageSize);
-  }, [filteredHolidays, holidayPage, holidayPageSize]);
+  }, [filteredHolidays, safeHolidayPage, holidayPageSize]);
 
-  const totalHolidayPages = Math.max(1, Math.ceil(filteredHolidays.length / (holidayPageSize || 1)));
+  // --- Holiday Table Bulk Selection & Handlers ---
+  const validHolidaySelectedIds = useMemo(() => {
+    const holSet = new Set(holidays.map((h) => h.id));
+    return holidaySelectedIds.filter((id) => holSet.has(id));
+  }, [holidays, holidaySelectedIds]);
+  const holidaySelectedSet = useMemo(() => new Set(validHolidaySelectedIds), [validHolidaySelectedIds]);
+  const isAllHolidayPageSelected =
+    paginatedHolidays.length > 0 &&
+    paginatedHolidays.every((h) => holidaySelectedSet.has(h.id));
+  const isSomeHolidayPageSelected =
+    paginatedHolidays.some((h) => holidaySelectedSet.has(h.id)) && !isAllHolidayPageSelected;
+
+  const toggleHolidaySelectPage = () => {
+    setAttBulkConfirmDelete(false);
+    setAttBulkStatusMode(false);
+    const pageIds = paginatedHolidays.map((h) => h.id);
+    if (isAllHolidayPageSelected) {
+      const pageSet = new Set(pageIds);
+      setHolidaySelectedIds((prev) => prev.filter((id) => !pageSet.has(id)));
+    } else {
+      setHolidaySelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])));
+    }
+  };
+
+  const toggleHolidaySelectOne = (id: string) => {
+    setAttBulkConfirmDelete(false);
+    setAttBulkStatusMode(false);
+    setHolidaySelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+    );
+  };
+
+  const handleHolidayBulkExportCsv = () => {
+    if (validHolidaySelectedIds.length === 0) return;
+    const selectedList = holidays.filter((h) => holidaySelectedSet.has(h.id));
+    const rows: string[][] = [['Tanggal', 'Hari', 'Nama Hari Libur']];
+    for (const h of selectedList) {
+      rows.push([h.date, formatLocalDate(h.date), h.name]);
+    }
+    downloadAttendanceCsv(rows, `SIGNAL-hari-libur-terpilih-${catalogYear}.csv`);
+    onNotify(`${selectedList.length} hari libur terpilih berhasil diekspor ke CSV.`, 'success');
+  };
+
+  const handleHolidayBulkDelete = () => {
+    if (validHolidaySelectedIds.length === 0) return;
+    const idSet = new Set(validHolidaySelectedIds);
+    if (editingHolidayId && idSet.has(editingHolidayId)) {
+      handleCancelEditHoliday();
+    }
+    onUpdateState((prev) => ({
+      ...prev,
+      holidays: (prev.holidays ?? []).filter((h) => !idSet.has(h.id)),
+    }));
+    onNotify(`${validHolidaySelectedIds.length} hari libur terpilih berhasil dihapus.`, 'info');
+    setHolidaySelectedIds([]);
+    setAttBulkConfirmDelete(false);
+    setAttBulkStatusMode(false);
+  };
+
+  // Month event counts for the 12-month quick-jump strip
+  const catalogMonthCounts = useMemo(() => {
+    const counts = Array(12).fill(0) as number[];
+    const allForYear = getOfficialEventsForYear(catalogYear).filter((e) =>
+      catalogFilter === 'ALL' ? true : e.category === catalogFilter,
+    );
+    for (const ev of allForYear) {
+      const mIdx = Number(ev.date.slice(5, 7)) - 1;
+      if (mIdx >= 0 && mIdx < 12) counts[mIdx]++;
+    }
+    return counts;
+  }, [catalogYear, catalogFilter]);
+
+  // Official Calendar Catalog for Selected Year, Category & Month
+  const catalogEvents = useMemo(() => {
+    let events = getOfficialEventsForYear(catalogYear);
+    if (catalogFilter !== 'ALL') {
+      events = events.filter((e) => e.category === catalogFilter);
+    }
+    if (catalogMonth !== 'ALL') {
+      const mStr = String(catalogMonth).padStart(2, '0');
+      events = events.filter((e) => e.date.slice(5, 7) === mStr);
+    }
+    return events;
+  }, [catalogYear, catalogFilter, catalogMonth]);
+
+  const groupedCatalogEvents = useMemo(() => {
+    const groups = new Map<string, OfficialCalendarEvent[]>();
+    for (const ev of catalogEvents) {
+      const ym = ev.date.slice(0, 7);
+      const bucket = groups.get(ym);
+      if (bucket) bucket.push(ev);
+      else groups.set(ym, [ev]);
+    }
+    return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [catalogEvents]);
+
+  const unaddedCatalogEventsInYear = useMemo(() => {
+    const registeredSet = new Set(holidays.map((h) => h.date));
+    return getOfficialEventsForYear(catalogYear).filter(
+      (e) => e.isRedDate && e.category === 'NASIONAL' && !registeredSet.has(e.date),
+    );
+  }, [catalogYear, holidays]);
+
+  const detectedOfficialManualDate = useMemo(
+    () => (newHolidayDate ? getOfficialEventByDate(newHolidayDate) : undefined),
+    [newHolidayDate],
+  );
+
+  const selectedTeacherObj = useMemo(
+    () => activeTeachers.find((t) => t.id === selectedTeacherId) ?? activeTeachers[0],
+    [activeTeachers, selectedTeacherId],
+  );
+
+  const selectedTeacherMonthSummary = useMemo(() => {
+    const recs = attendanceList.filter(
+      (a) => a.teacherId === selectedTeacherId && a.date.startsWith(currentMonth),
+    );
+    return {
+      hadir: recs.filter((r) => r.status === 'HADIR').length,
+      dinas: recs.filter((r) => r.status === 'DINAS_LUAR').length,
+      izin: recs.filter((r) => r.status === 'IZIN').length,
+      sakit: recs.filter((r) => r.status === 'SAKIT').length,
+      alpa: recs.filter((r) => r.status === 'ALPA').length,
+    };
+  }, [attendanceList, selectedTeacherId, currentMonth]);
+
+  // Composition ratios for Luxury Footbar hairline strip
+  const dailyTotal = Math.max(1, activeTeachers.length);
+  const dailyHadirPct = (dailyPresentCount / dailyTotal) * 100;
+  const dailyPermitPct = (dailyPermitCount / dailyTotal) * 100;
+  const dailyAlpaPct = (dailyAbsentCount / dailyTotal) * 100;
+
+  const teacherTotalDays = Math.max(
+    1,
+    selectedTeacherMonthSummary.hadir +
+      selectedTeacherMonthSummary.dinas +
+      selectedTeacherMonthSummary.izin +
+      selectedTeacherMonthSummary.sakit +
+      selectedTeacherMonthSummary.alpa,
+  );
+  const teacherHadirPct =
+    ((selectedTeacherMonthSummary.hadir + selectedTeacherMonthSummary.dinas) / teacherTotalDays) *
+    100;
+  const teacherPermitPct =
+    ((selectedTeacherMonthSummary.izin + selectedTeacherMonthSummary.sakit) / teacherTotalDays) *
+    100;
+  const teacherAlpaPct = (selectedTeacherMonthSummary.alpa / teacherTotalDays) * 100;
+
+  // SVG Ring progress math
+  const ringPercent = activeTab === 'daily' ? dailyAttendanceRate : overallAvgRate;
+  const ringRadius = 18;
+  const ringCircumference = 2 * Math.PI * ringRadius;
+  const ringOffset = ringCircumference * (1 - Math.min(100, Math.max(0, ringPercent)) / 100);
 
   return (
-    <div className="attendance-screen" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      {/* A. Header */}
-      <div className="page-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '14px' }}>
-        <div>
-          <div className="eyebrow" style={{ fontSize: '10px', fontWeight: 800, color: '#38635c', letterSpacing: '0.1em' }}>
-            <span className="eyebrow-line" />
-            MODUL PRESENSI & KEHADIRAN GURU
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
-            <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 700, color: '#0b3435' }}>Presensi Guru</h1>
-          </div>
-          <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#5b756e', lineHeight: 1.4 }}>
-            Pencatatan presensi harian, massal bulanan, rekapitulasi kehadiran, dan hari libur madrasah.
+    <div className="attendance-screen">
+      {/* A. Sovereign Executive Command Hero Bar + Bespoke Neo-Heritage Geometric Crest */}
+      <div className="s5-att-hero-bar">
+        <svg
+          className="s5-att-hero-ornament"
+          viewBox="0 0 180 180"
+          fill="none"
+          aria-hidden="true"
+        >
+          <g stroke="currentColor" strokeWidth="1.2">
+            <rect x="42" y="42" width="96" height="96" rx="4" />
+            <rect x="42" y="42" width="96" height="96" rx="4" transform="rotate(45 90 90)" />
+            <circle cx="90" cy="90" r="34" />
+            <circle cx="90" cy="90" r="62" strokeDasharray="4 4" />
+          </g>
+        </svg>
+
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <div className="s5-page-kicker">PRESENSI PENDIDIK &amp; KALENDER KEMENAG RI</div>
+          <h2 className="s5-page-title">Presensi Guru</h2>
+          <p className="s5-page-subtitle">
+            Catat kehadiran harian, presensi massal anti-tanggal merah, dan sinkronisasi kalender resmi Kemenag.
           </p>
         </div>
-        <div className="page-actions" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+
+        <div
+          className="page-actions"
+          style={{
+            position: 'relative',
+            zIndex: 1,
+            display: 'flex',
+            gap: '10px',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+          }}
+        >
+          <button
+            type="button"
+            className="button button-secondary"
+            onClick={() => {
+              setActiveTab('holidays');
+              setHolidayPage(1);
+            }}
+            data-s5-tooltip="Lihat daftar otomatis Tanggal Merah 2025–2028 & Kaldik Kemenag"
+            style={{ height: '40px', padding: '0 15px', borderRadius: '10px' }}
+          >
+            <CalendarCheck2 size={15} />
+            <span>Kalender Kemenag</span>
+          </button>
           <button
             type="button"
             className="button button-primary"
             onClick={() => setPdfModalOpen(true)}
-            style={{ height: '38px', gap: '8px', fontSize: '12.5px' }}
+            data-s5-tooltip="Cetak laporan resmi rekap kehadiran A4 / F4"
+            style={{ height: '40px', padding: '0 18px', borderRadius: '10px', fontSize: '12.5px' }}
           >
-            <Download size={15} /> Ekspor PDF Rekap Bulanan (A4)
+            <Download size={15} />
+            <span>Ekspor PDF Resmi</span>
           </button>
         </div>
       </div>
 
-      {/* B. Dynamic Data-Backed Summary Statistics */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '12px',
-        }}
-      >
+      {/* B. Bespoke Luxury Metric Bento Cards */}
+      <div className="s5-att-kpi-grid">
         {activeTab === 'daily' ? (
           <>
-            <div className="surface-card" style={{ padding: '14px 16px' }}>
-              <span style={{ fontSize: '11px', color: '#55726b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                GURU HADIR HARI INI
-              </span>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '3px' }}>
-                <strong style={{ fontSize: '22px', color: '#1f6952', fontWeight: 800 }}>{dailyPresentCount}</strong>
-                <span style={{ fontSize: '12px', color: '#687a75' }}>/ {activeTeachers.length} Guru</span>
+            <div className="s5-att-kpi-card">
+              <div>
+                <div className="s5-att-kpi-label">Guru Hadir Hari Ini</div>
+                <div className="s5-att-kpi-value s5-tnum">
+                  {dailyPresentCount}{' '}
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#526861' }}>
+                    / {activeTeachers.length}
+                  </span>
+                </div>
+                <div className="s5-att-kpi-sub">{formatCompactDate(currentDate)}</div>
+              </div>
+              <div className="s5-att-kpi-icon emerald">
+                <UserCheck size={20} />
               </div>
             </div>
 
-            <div className="surface-card" style={{ padding: '14px 16px' }}>
-              <span style={{ fontSize: '11px', color: '#55726b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                TINGKAT KEHADIRAN
-              </span>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '3px' }}>
-                <strong
+            <div className="s5-att-kpi-card">
+              <div>
+                <div className="s5-att-kpi-label">Tingkat Kehadiran</div>
+                <div
+                  className="s5-att-kpi-value s5-tnum"
                   style={{
-                    fontSize: '22px',
-                    fontWeight: 800,
-                    color: dailyAttendanceRate >= 90 ? '#1f6952' : dailyAttendanceRate >= 75 ? '#c98a2c' : '#b24c3d',
+                    color:
+                      dailyAttendanceRate >= 90
+                        ? '#1B5E43'
+                        : dailyAttendanceRate >= 75
+                        ? '#9C6F28'
+                        : '#A63A2E',
                   }}
                 >
                   {dailyAttendanceRate}%
-                </strong>
-                <span style={{ fontSize: '12px', color: '#687a75' }}>Tingkat Presensi</span>
+                </div>
+                <div className="s5-att-kpi-sub">Rasio kehadiran aktif</div>
+              </div>
+              <svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true">
+                <circle cx="23" cy="23" r={ringRadius} fill="none" stroke="#E5ECE8" strokeWidth="4.5" />
+                <circle
+                  cx="23"
+                  cy="23"
+                  r={ringRadius}
+                  fill="none"
+                  stroke={
+                    dailyAttendanceRate >= 90
+                      ? '#1B5E43'
+                      : dailyAttendanceRate >= 75
+                      ? '#C5A059'
+                      : '#A63A2E'
+                  }
+                  strokeWidth="4.5"
+                  strokeDasharray={ringCircumference}
+                  strokeDashoffset={ringOffset}
+                  strokeLinecap="round"
+                  transform="rotate(-90 23 23)"
+                  style={{ transition: 'stroke-dashoffset 0.35s ease' }}
+                />
+              </svg>
+            </div>
+
+            <div className="s5-att-kpi-card">
+              <div>
+                <div className="s5-att-kpi-label">Dinas Luar / Izin / Sakit</div>
+                <div className="s5-att-kpi-value s5-tnum" style={{ color: '#9A6B21' }}>
+                  {dailyPermitCount}
+                </div>
+                <div className="s5-att-kpi-sub">Pendidik dengan keterangan</div>
+              </div>
+              <div className="s5-att-kpi-icon gold">
+                <BookOpen size={20} />
               </div>
             </div>
 
-            <div className="surface-card" style={{ padding: '14px 16px' }}>
-              <span style={{ fontSize: '11px', color: '#55726b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                DISPENSASI / IJIN / SAKIT
-              </span>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '3px' }}>
-                <strong style={{ fontSize: '22px', color: '#bc945e', fontWeight: 800 }}>{dailyPermitCount}</strong>
-                <span style={{ fontSize: '12px', color: '#687a75' }}>Pendidik Tercatat</span>
-              </div>
-            </div>
-
-            <div className="surface-card" style={{ padding: '14px 16px' }}>
-              <span style={{ fontSize: '11px', color: '#55726b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                ALPA / TANPA KETERANGAN
-              </span>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '3px' }}>
-                <strong
-                  style={{
-                    fontSize: '22px',
-                    fontWeight: 800,
-                    color: dailyAbsentCount > 0 ? '#b24c3d' : '#1f6952',
-                  }}
+            <div className="s5-att-kpi-card">
+              <div>
+                <div className="s5-att-kpi-label">Tanpa Keterangan (Alpa)</div>
+                <div
+                  className="s5-att-kpi-value s5-tnum"
+                  style={{ color: dailyAbsentCount > 0 ? '#A63A2E' : '#1B5E43' }}
                 >
                   {dailyAbsentCount}
-                </strong>
-                <span style={{ fontSize: '12px', color: '#687a75' }}>
-                  {dailyAbsentCount === 0 ? 'Nihil (Tertib)' : 'Perlu Konfirmasi'}
-                </span>
+                </div>
+                <div className="s5-att-kpi-sub">
+                  {dailyAbsentCount === 0 ? 'Tertib seluruh pendidik' : 'Perlu tindak lanjut'}
+                </div>
+              </div>
+              <div className={`s5-att-kpi-icon ${dailyAbsentCount > 0 ? 'rose' : 'emerald'}`}>
+                {dailyAbsentCount > 0 ? <AlertCircle size={20} /> : <CheckCircle2 size={20} />}
               </div>
             </div>
           </>
         ) : (
           <>
-            <div className="surface-card" style={{ padding: '14px 16px' }}>
-              <span style={{ fontSize: '11px', color: '#55726b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                TOTAL GURU AKTIF
-              </span>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '3px' }}>
-                <strong style={{ fontSize: '22px', color: '#173637', fontWeight: 800 }}>{activeTeachers.length}</strong>
-                <span style={{ fontSize: '12px', color: '#687a75' }}>Pendidik Terdaftar</span>
+            <div className="s5-att-kpi-card">
+              <div>
+                <div className="s5-att-kpi-label">Pendidik Terpilih</div>
+                <div className="s5-att-kpi-value s5-tnum">
+                  {recapSelectedTeachers.length}{' '}
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#526861' }}>
+                    / {activeTeachers.length}
+                  </span>
+                </div>
+                <div className="s5-att-kpi-sub">Siap direkap &amp; ekspor PDF</div>
+              </div>
+              <div className="s5-att-kpi-icon slate">
+                <Users size={20} />
               </div>
             </div>
 
-            <div className="surface-card" style={{ padding: '14px 16px' }}>
-              <span style={{ fontSize: '11px', color: '#55726b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                HARI EFEKTIF BULAN INI
-              </span>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '3px' }}>
-                <strong style={{ fontSize: '22px', color: '#1f6952', fontWeight: 800 }}>{effectiveDaysInMonth}</strong>
-                <span style={{ fontSize: '12px', color: '#687a75' }}>Hari KBM Aktif</span>
+            <div className="s5-att-kpi-card">
+              <div>
+                <div className="s5-att-kpi-label">Hari Efektif KBM</div>
+                <div className="s5-att-kpi-value s5-tnum" style={{ color: '#1B5E43' }}>
+                  {effectiveDaysInMonth}
+                </div>
+                <div className="s5-att-kpi-sub">Periode {currentMonth}</div>
+              </div>
+              <div className="s5-att-kpi-icon emerald">
+                <CalendarDays size={20} />
               </div>
             </div>
 
-            <div className="surface-card" style={{ padding: '14px 16px' }}>
-              <span style={{ fontSize: '11px', color: '#55726b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                RATA-RATA KEHADIRAN BULANAN
-              </span>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '3px' }}>
-                <strong
+            <div className="s5-att-kpi-card">
+              <div>
+                <div className="s5-att-kpi-label">Rata-rata Kehadiran</div>
+                <div
+                  className="s5-att-kpi-value s5-tnum"
                   style={{
-                    fontSize: '22px',
-                    fontWeight: 800,
-                    color: overallAvgRate >= 90 ? '#1f6952' : overallAvgRate >= 75 ? '#c98a2c' : '#b24c3d',
+                    color:
+                      overallAvgRate >= 90
+                        ? '#1B5E43'
+                        : overallAvgRate >= 75
+                        ? '#9C6F28'
+                        : '#A63A2E',
                   }}
                 >
                   {overallAvgRate}%
-                </strong>
-                <span style={{ fontSize: '12px', color: '#687a75' }}>Bulan {currentMonth}</span>
+                </div>
+                <div className="s5-att-kpi-sub">Akumulasi pendidik terpilih</div>
               </div>
+              <svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true">
+                <circle cx="23" cy="23" r={ringRadius} fill="none" stroke="#E5ECE8" strokeWidth="4.5" />
+                <circle
+                  cx="23"
+                  cy="23"
+                  r={ringRadius}
+                  fill="none"
+                  stroke={
+                    overallAvgRate >= 90 ? '#1B5E43' : overallAvgRate >= 75 ? '#C5A059' : '#A63A2E'
+                  }
+                  strokeWidth="4.5"
+                  strokeDasharray={ringCircumference}
+                  strokeDashoffset={ringOffset}
+                  strokeLinecap="round"
+                  transform="rotate(-90 23 23)"
+                  style={{ transition: 'stroke-dashoffset 0.35s ease' }}
+                />
+              </svg>
             </div>
 
-            <div className="surface-card" style={{ padding: '14px 16px' }}>
-              <span style={{ fontSize: '11px', color: '#55726b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                HARI LIBUR BULAN INI
-              </span>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '3px' }}>
-                <strong style={{ fontSize: '22px', color: '#bc945e', fontWeight: 800 }}>{holidaysInMonth.length}</strong>
-                <span style={{ fontSize: '12px', color: '#687a75' }}>Tanggal Libur Terjadwal</span>
+            <div className="s5-att-kpi-card">
+              <div>
+                <div className="s5-att-kpi-label">Tanggal Merah Bulan Ini</div>
+                <div className="s5-att-kpi-value s5-tnum" style={{ color: '#9A6B21' }}>
+                  {holidaysInMonth.length}
+                </div>
+                <div className="s5-att-kpi-sub">Libur madrasah &amp; nasional</div>
+              </div>
+              <div className="s5-att-kpi-icon gold">
+                <Calendar size={20} />
               </div>
             </div>
           </>
@@ -590,268 +1781,454 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
       </div>
 
       {/* C. Sub-navigasi Tugas (Segmented Navigation) */}
-      <div className="segmented-tabs" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', background: '#eef3ef', padding: '4px', borderRadius: '10px' }}>
+      <div className="s5-segmented-nav" style={{ marginBottom: 0 }}>
         <button
           type="button"
-          className={`view-switch-btn ${activeTab === 'daily' ? 'active' : ''}`}
-          onClick={() => { setActiveTab('daily'); setDailyPage(1); }}
+          className={`s5-segmented-btn ${activeTab === 'daily' ? 'active' : ''}`}
+          onClick={() => {
+            switchTabSafe('daily');
+            setDailyPage(1);
+          }}
         >
-          <CalendarDays size={14} style={{ marginRight: '6px' }} />
-          Harian
+          <CalendarDays size={14} />
+          <span>Harian</span>
         </button>
         <button
           type="button"
-          className={`view-switch-btn ${activeTab === 'monthly' ? 'active' : ''}`}
-          onClick={() => setActiveTab('monthly')}
+          className={`s5-segmented-btn ${activeTab === 'monthly' ? 'active' : ''}`}
+          onClick={() => switchTabSafe('monthly')}
         >
-          <Calendar size={14} style={{ marginRight: '6px' }} />
-          Massal Bulanan
+          <Calendar size={14} />
+          <span>Massal Bulanan</span>
         </button>
         <button
           type="button"
-          className={`view-switch-btn ${activeTab === 'teacher' ? 'active' : ''}`}
-          onClick={() => { setActiveTab('teacher'); setLedgerPage(1); }}
+          className={`s5-segmented-btn ${activeTab === 'teacher' ? 'active' : ''}`}
+          onClick={() => {
+            switchTabSafe('teacher');
+            setLedgerPage(1);
+          }}
         >
-          <Users size={14} style={{ marginRight: '6px' }} />
-          Per Guru
+          <Users size={14} />
+          <span>Per Guru</span>
         </button>
         <button
           type="button"
-          className={`view-switch-btn ${activeTab === 'recap' ? 'active' : ''}`}
-          onClick={() => { setActiveTab('recap'); setRecapPage(1); }}
+          className={`s5-segmented-btn ${activeTab === 'recap' ? 'active' : ''}`}
+          onClick={() => {
+            switchTabSafe('recap');
+            setRecapPage(1);
+          }}
         >
-          <UserCheck size={14} style={{ marginRight: '6px' }} />
-          Rekap & PDF
+          <UserCheck size={14} />
+          <span>Rekap &amp; PDF</span>
         </button>
         <button
           type="button"
-          className={`view-switch-btn ${activeTab === 'holidays' ? 'active' : ''}`}
-          onClick={() => { setActiveTab('holidays'); setHolidayPage(1); }}
+          className={`s5-segmented-btn ${activeTab === 'holidays' ? 'active' : ''}`}
+          onClick={() => {
+            switchTabSafe('holidays');
+            setHolidayPage(1);
+          }}
         >
-          <Clock size={14} style={{ marginRight: '6px' }} />
-          Hari Libur ({holidays.length})
+          <Clock size={14} />
+          <span className="s5-tnum">Hari Libur ({holidays.length})</span>
         </button>
       </div>
 
-      {/* ========================================================================= */}
-      {/* TAB 1: INPUT MASSAL SEMUA GURU PER HARI (HARIAN)                           */}
-      {/* ========================================================================= */}
-      {activeTab === 'daily' && (
-        <div className="surface-card" style={{ padding: '16px 20px' }}>
-          <div className="card-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
-            <div>
-              <div className="card-eyebrow" style={{ fontSize: '10px', color: '#55726b', fontWeight: 800 }}>
-                PRESENSI HARIAN
-              </div>
-              <h3 style={{ margin: '2px 0 0', fontSize: '16px', color: '#103f3e', fontWeight: 700 }}>
-                Pencatatan Kehadiran Guru Harian
-              </h3>
+      {/* Proactive Smart National Holiday & Kaldik Kemenag Banner (with direct 1-click chips) */}
+      {unaddedOfficialRedDatesInMonth.length > 0 && activeTab !== 'holidays' && (
+        <div className="s5-holiday-alert-banner kemenag">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: '260px' }}>
+            <div className="s5-att-kpi-icon gold" style={{ width: '38px', height: '38px' }}>
+              <BellRing size={17} />
             </div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <button type="button" className="button button-secondary" onClick={handleSetAllPresent} title="Setel status seluruh guru aktif menjadi Hadir">
-                <CheckCircle2 size={14} /> Set Semua Hadir
-              </button>
-              <button type="button" className="button button-primary" onClick={handleSaveDaily}>
-                <Save size={14} /> Simpan Presensi Hari Ini
-              </button>
+            <div>
+              <strong style={{ fontSize: '13px', color: '#5F4311', display: 'block' }}>
+                Pemberitahuan Tanggal Merah ({activeViewMonth}): {unaddedOfficialRedDatesInMonth.length} Libur Resmi belum didaftarkan
+              </strong>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
+                {unaddedOfficialRedDatesInMonth.slice(0, 3).map((ev) => (
+                  <button
+                    key={ev.date}
+                    type="button"
+                    className="s5-quick-red-chip"
+                    onClick={() => handleQuickToggleOfficialEvent(ev)}
+                    data-s5-tooltip={`${ev.decree} · Klik untuk menambahkan langsung`}
+                  >
+                    <Plus size={12} />
+                    <span>
+                      {formatCompactDate(ev.date)} · {ev.name}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Contextual Filter & Date Toolbar */}
-          <div className="toolbar-card" style={{ marginBottom: '14px', flexWrap: 'wrap', gap: '12px' }}>
-            <div className="class-selector-wrap">
-              <label htmlFor="daily-date">TANGGAL PRESENSI</label>
-              <div className="select-with-icon">
-                <CalendarDays size={15} />
-                <input
-                  id="daily-date"
-                  type="date"
-                  value={currentDate}
-                  onChange={(e) => { setCurrentDate(e.target.value); setDailyPage(1); }}
-                  style={{ border: 'none', background: 'transparent', outline: 'none', fontWeight: 600, fontSize: '12px' }}
-                />
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={() =>
+                handleBatchImportHolidays(
+                  unaddedOfficialRedDatesInMonth,
+                  `Bulan ${activeViewMonth}`,
+                )
+              }
+              style={{ height: '34px', fontSize: '12px' }}
+            >
+              <CheckCircle2 size={14} /> Tambah Semua ({unaddedOfficialRedDatesInMonth.length})
+            </button>
+            <button
+              type="button"
+              className="button button-quiet"
+              onClick={() => {
+                setCatalogYear(Number(activeViewMonth.slice(0, 4)) || 2026);
+                setCatalogMonth(Number(activeViewMonth.slice(5, 7)) || 'ALL');
+                setActiveTab('holidays');
+              }}
+              style={{ height: '34px', fontSize: '12px' }}
+            >
+              Buka Katalog
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 1: INPUT HARIAN                                                       */}
+      {/* ========================================================================= */}
+      {activeTab === 'daily' && (
+        <div className="s5-att-panel">
+          <div className="s5-att-panel-header">
+            <div>
+              <div className="s5-page-kicker">PRESENSI HARIAN</div>
+              <h3 style={{ margin: '3px 0 0', fontSize: '17px', color: '#0B2923', fontWeight: 700 }}>
+                Pencatatan Kehadiran Pendidik
+              </h3>
+            </div>
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={handleSetAllPresent}
+              data-s5-tooltip="Setel seluruh pendidik aktif menjadi Hadir"
+              style={{ height: '38px' }}
+            >
+              <CheckCircle2 size={14} /> Set Semua Hadir
+            </button>
+          </div>
+
+          {/* Contextual Date Stepper & Quick Filter Toolbar */}
+          <div className="s5-att-toolbar">
+            <div className="s5-field-chip">
+              <label htmlFor="daily-date">Tanggal</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <button
+                  type="button"
+                  className="s5-date-stepper-btn"
+                  onClick={() => {
+                    setCurrentDate(shiftIsoDate(currentDate, -1));
+                    setDailyPage(1);
+                  }}
+                  data-s5-tooltip="Hari sebelumnya"
+                  aria-label="Hari sebelumnya"
+                >
+                  <ChevronLeft size={15} />
+                </button>
+                <div className="s5-input-shell">
+                  <CalendarDays size={14} color="#124037" />
+                  <input
+                    id="daily-date"
+                    type="date"
+                    value={currentDate}
+                    onChange={(e) => {
+                      setCurrentDate(e.target.value);
+                      setDailyPage(1);
+                    }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="s5-date-stepper-btn"
+                  onClick={() => {
+                    setCurrentDate(shiftIsoDate(currentDate, 1));
+                    setDailyPage(1);
+                  }}
+                  data-s5-tooltip="Hari berikutnya"
+                  aria-label="Hari berikutnya"
+                >
+                  <ChevronRight size={15} />
+                </button>
               </div>
             </div>
 
-            <div className="toolbar-divider" />
-
-            {/* Quick Status / Teacher Filter */}
-            <div className="class-selector-wrap">
-              <label htmlFor="daily-search">CARI GURU</label>
-              <div className="select-with-icon" style={{ minWidth: '160px' }}>
-                <Search size={14} />
+            <div className="s5-field-chip" style={{ flex: 1, minWidth: '180px', maxWidth: '250px' }}>
+              <label htmlFor="daily-search">Cari Guru</label>
+              <div className="s5-input-shell" style={{ width: '100%' }}>
+                <Search size={14} color="#687E77" />
                 <input
                   id="daily-search"
                   type="text"
-                  placeholder="Ketik nama / kode guru…"
+                  placeholder="Nama atau kode…"
                   value={dailySearch}
-                  onChange={(e) => { setDailySearch(e.target.value); setDailyPage(1); }}
-                  style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', width: '100%' }}
+                  onChange={(e) => {
+                    setDailySearch(e.target.value);
+                    setDailyPage(1);
+                  }}
+                  style={{ width: '100%' }}
                 />
               </div>
             </div>
 
-            <div className="class-selector-wrap">
-              <label htmlFor="daily-filter">STATUS</label>
-              <select
-                id="daily-filter"
-                value={dailyStatusFilter}
-                onChange={(e) => { setDailyStatusFilter(e.target.value); setDailyPage(1); }}
-                style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid #d8e2dc', fontSize: '12px', fontWeight: 600 }}
-              >
-                <option value="all">Semua Status</option>
-                <option value="HADIR">Hadir</option>
-                <option value="DINAS_LUAR">Dinas Luar</option>
-                <option value="IZIN">Izin</option>
-                <option value="SAKIT">Sakit</option>
-                <option value="ALPA">Alpa</option>
-              </select>
+            <div className="s5-field-chip">
+              <label>Filter Cepat</label>
+              <div className="s5-status-segmented" role="group" aria-label="Filter status kehadiran">
+                {(
+                  [
+                    { id: 'all', label: `Semua (${activeTeachers.length})` },
+                    { id: 'HADIR', label: `Hadir (${dailyPresentCount})` },
+                    { id: 'PERMIT', label: `DL/I/S (${dailyPermitCount})` },
+                    { id: 'ALPA', label: `Alpa (${dailyAbsentCount})` },
+                  ] as const
+                ).map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`s5-status-chip ${dailyStatusFilter === item.id ? 'is-active HADIR' : ''}`}
+                    style={{ padding: '0 10px', whiteSpace: 'nowrap' }}
+                    onClick={() => {
+                      setDailyStatusFilter(item.id);
+                      setDailyPage(1);
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="toolbar-spacer" />
 
-            <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'right' }}>
-              <span style={{ fontSize: '12px', fontWeight: 700, color: '#103f3e' }}>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#0B2923' }}>
                 {formatLocalDate(currentDate)}
-              </span>
-              {isCurrentDateHoliday ? (
-                <span style={{ color: '#b24c3d', fontSize: '11px', fontWeight: 700 }}>
-                  ⚠️ Libur: {isCurrentDateHoliday.name}
-                </span>
-              ) : (
-                <span style={{ fontSize: '10.5px', color: '#5e756e' }}>
-                  Menampilkan {filteredDailyTeachers.length} dari {activeTeachers.length} guru
-                </span>
-              )}
+              </div>
+              <div className="s5-tnum" style={{ fontSize: '11px', color: '#526861' }}>
+                Menampilkan {filteredDailyTeachers.length} dari {activeTeachers.length} pendidik
+              </div>
             </div>
           </div>
 
-          {/* Inviting Empty State Prompt for Dates with No Saved Records */}
-          {!isDateRecorded && (
-            <div
-              style={{
-                padding: '14px 18px',
-                background: '#f4fbf7',
-                border: '1.5px dashed #86efac',
-                borderRadius: '10px',
-                marginBottom: '14px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '12px',
-              }}
-            >
+          {/* Red-Date / Official Holiday / Sunday Alert on Current Date */}
+          {(isCurrentDateHoliday ||
+            (officialCurrentDateEvent && officialCurrentDateEvent.isRedDate) ||
+            isCurrentDateSunday) && (
+            <div className="s5-holiday-alert-banner">
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div
-                  style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '50%',
-                    background: '#dcfce7',
-                    color: '#15803d',
-                    display: 'grid',
-                    placeItems: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <CalendarDays size={18} />
+                <div className="s5-att-kpi-icon rose" style={{ width: '38px', height: '38px' }}>
+                  <Calendar size={17} />
                 </div>
                 <div>
-                  <strong style={{ fontSize: '13px', color: '#14532d', display: 'block' }}>
-                    Belum ada presensi tersimpan untuk {formatLocalDate(currentDate)}
+                  <strong style={{ fontSize: '13px', color: '#8F2D24', display: 'block' }}>
+                    {isCurrentDateHoliday
+                      ? `Hari Libur Terdaftar: ${isCurrentDateHoliday.name}`
+                      : officialCurrentDateEvent
+                      ? `Tanggal Merah (${getCategoryLabel(officialCurrentDateEvent.category)}): ${officialCurrentDateEvent.name}`
+                      : 'Hari Minggu — Libur Akhir Pekan'}
                   </strong>
-                  <span style={{ fontSize: '11.5px', color: '#166534' }}>
-                    Anda dapat menetapkan seluruh guru berstatus Hadir secara instan, atau sesuaikan status pendidik pada tabel di bawah lalu simpan.
+                  <span style={{ fontSize: '11.5px', color: '#7D3C36' }}>
+                    {isCurrentDateHoliday
+                      ? 'Tanggal ini otomatis dikecualikan pada rekap KBM efektif.'
+                      : officialCurrentDateEvent
+                      ? `Terdeteksi dari ${officialCurrentDateEvent.decree}.`
+                      : 'Tidak ada jadwal KBM reguler pada hari Ahad.'}
                   </span>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              {officialCurrentDateEvent && !isCurrentDateHoliday && (
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  onClick={() => handleQuickToggleOfficialEvent(officialCurrentDateEvent)}
+                  style={{ height: '34px', fontSize: '12px' }}
+                >
+                  <Plus size={14} /> Daftarkan Libur Ini
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Calm Notice When Date Has No Saved Records OR Newly Added Unrecorded Teachers */}
+          {(!isDateRecorded || unrecordedTeachersCount > 0) &&
+            !isCurrentDateHoliday &&
+            !(officialCurrentDateEvent && officialCurrentDateEvent.isRedDate) &&
+            !isCurrentDateSunday && (
+              <div className="s5-holiday-alert-banner calm">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div className="s5-att-kpi-icon emerald" style={{ width: '36px', height: '36px' }}>
+                    <Sparkles size={16} />
+                  </div>
+                  <div>
+                    <strong style={{ fontSize: '13px', color: '#0B2923', display: 'block' }}>
+                      {!isDateRecorded
+                        ? 'Presensi tanggal ini belum tersimpan'
+                        : `${unrecordedTeachersCount} pendidik baru belum tercatat pada tanggal ini`}
+                    </strong>
+                    <span style={{ fontSize: '11.5px', color: '#2F443E' }}>
+                      Klik status cepat (H / DL / I / S / A) pada tabel atau simpan langsung seluruh guru hadir.
+                    </span>
+                  </div>
+                </div>
                 <button
                   type="button"
                   className="button button-primary"
-                  onClick={() => {
-                    handleSetAllPresent();
-                    handleSaveDaily();
-                  }}
-                  style={{ height: '32px', fontSize: '11.5px', gap: '6px' }}
+                  onClick={handleSetAllPresentAndSave}
+                  style={{ height: '36px', fontSize: '12px' }}
                 >
                   <CheckCircle2 size={14} /> Tandai Semua Hadir &amp; Simpan
                 </button>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Table */}
-          <div className="data-table-wrap" style={{ overflowX: 'auto', border: '1px solid #e1e7e3', borderRadius: '10px' }}>
-            <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+          {/* Dedicated Figma Pro Daily Attendance Table (.s5-daily-table) */}
+          <div className="s5-daily-table-wrap">
+            <table className="data-table s5-daily-table">
               <thead>
-                <tr style={{ background: '#f5faf7', borderBottom: '1px solid #dce5df' }}>
-                  <th style={{ width: '45px', textAlign: 'center', padding: '10px' }}>No</th>
-                  <th style={{ width: '85px', textAlign: 'center', padding: '10px' }}>Kode</th>
-                  <th style={{ textAlign: 'left', padding: '10px' }}>Nama Lengkap & NIP Pendidik</th>
-                  <th style={{ width: '180px', textAlign: 'center', padding: '10px' }}>Status Kehadiran</th>
-                  <th style={{ textAlign: 'left', padding: '10px' }}>Keterangan / Catatan</th>
+                <tr>
+                  <th className="s5-checkbox-col">
+                    <label
+                      className="s5-checkbox-label"
+                      title={isAllDailyPageSelected ? 'Batal pilih halaman ini' : 'Pilih semua di halaman ini'}
+                    >
+                      <input
+                        type="checkbox"
+                        className="s5-checkbox-input"
+                        checked={isAllDailyPageSelected}
+                        onChange={toggleDailySelectPage}
+                        aria-label="Pilih semua pendidik di halaman ini"
+                      />
+                      <span className={`s5-checkbox-box ${isSomeDailyPageSelected ? 'indeterminate' : ''}`}>
+                        {isAllDailyPageSelected ? (
+                          <Check size={12} strokeWidth={3} />
+                        ) : isSomeDailyPageSelected ? (
+                          <Minus size={12} strokeWidth={3} />
+                        ) : null}
+                      </span>
+                    </label>
+                  </th>
+                  <th style={{ width: '52px', textAlign: 'center' }}>No</th>
+                  <th style={{ width: '88px', textAlign: 'center' }}>Kode</th>
+                  <th>Pendidik</th>
+                  <th style={{ width: '250px', textAlign: 'center' }}>Status Kehadiran (1-Klik)</th>
+                  <th>Keterangan</th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedDailyTeachers.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: '#687a75' }}>
-                      Tidak ada guru yang sesuai dengan kriteria filter.
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: '#526861' }}>
+                      Tidak ada pendidik yang cocok dengan filter aktif.
                     </td>
                   </tr>
                 ) : (
                   paginatedDailyTeachers.map((teacher, index) => {
                     const entry = dailyEntries[teacher.id] ?? { status: 'HADIR', notes: '' };
-                    const cfg = STATUS_CONFIG[entry.status];
-                    const globalIdx = (dailyPage - 1) * (dailyPageSize || filteredDailyTeachers.length) + index + 1;
+                    const globalIdx =
+                      (safeDailyPage - 1) * (dailyPageSize || filteredDailyTeachers.length) +
+                      index +
+                      1;
+                    const rowStateClass =
+                      entry.status === 'ALPA'
+                        ? 'is-alpa'
+                        : entry.status !== 'HADIR'
+                        ? 'is-non-present'
+                        : '';
+                    const isSelected = dailySelectedSet.has(teacher.id);
                     return (
-                      <tr key={teacher.id} style={{ borderBottom: '1px solid #edf2ee' }}>
-                        <td style={{ textAlign: 'center', color: '#7a8a86', fontSize: '11.5px' }}>{globalIdx}</td>
-                        <td style={{ textAlign: 'center' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#274b45' }}>{teacher.code}</span>
+                      <tr
+                        key={teacher.id}
+                        className={`s5-daily-row ${rowStateClass} ${isSelected ? 's5-row-selected' : ''}`}
+                      >
+                        <td className="s5-checkbox-col">
+                          <label className="s5-checkbox-label" title={`Pilih ${teacher.name}`}>
+                            <input
+                              type="checkbox"
+                              className="s5-checkbox-input"
+                              checked={isSelected}
+                              onChange={() => toggleDailySelectOne(teacher.id)}
+                              aria-label={`Pilih ${teacher.name}`}
+                            />
+                            <span className="s5-checkbox-box">
+                              {isSelected && <Check size={12} strokeWidth={3} />}
+                            </span>
+                          </label>
+                        </td>
+                        <td
+                          className="s5-tnum"
+                          style={{ textAlign: 'center', color: '#526861', fontSize: '11.5px' }}
+                        >
+                          {globalIdx}
+                        </td>
+                        <td
+                          className="s5-tnum"
+                          style={{
+                            textAlign: 'center',
+                            fontWeight: 700,
+                            color: '#124037',
+                            fontSize: '12px',
+                          }}
+                        >
+                          {teacher.code}
                         </td>
                         <td>
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <strong style={{ fontSize: '12.5px', color: '#123735' }}>{teacher.name}</strong>
-                            <span style={{ fontSize: '10.5px', color: '#6c827d' }}>
-                              {teacher.roleTitle || 'Guru Mapel'}{teacher.nip ? ` · NIP. ${teacher.nip}` : ''}
-                            </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <MadrasahTeacherAvatar teacher={teacher} size={34} showStatusDot={false} />
+                            <div>
+                              <strong style={{ fontSize: '13px', color: '#0F201C', display: 'block' }}>
+                                {teacher.name}
+                              </strong>
+                              <span style={{ fontSize: '11px', color: '#526861' }}>
+                                {teacher.roleTitle || 'Guru Mapel'}
+                                {teacher.nip ? ` · NIP. ${teacher.nip}` : ''}
+                              </span>
+                            </div>
                           </div>
                         </td>
                         <td style={{ textAlign: 'center' }}>
-                          <select
-                            value={entry.status}
-                            onChange={(e) =>
-                              setDailyEntries({
-                                ...dailyEntries,
-                                [teacher.id]: { ...entry, status: e.target.value as AttendanceStatus },
-                              })
-                            }
-                            style={{
-                              padding: '5px 10px',
-                              borderRadius: '6px',
-                              fontWeight: 700,
-                              fontSize: '11.5px',
-                              border: `1px solid ${cfg.border}`,
-                              background: cfg.bg,
-                              color: cfg.color,
-                              cursor: 'pointer',
-                              width: '100%',
-                              maxWidth: '140px',
-                            }}
+                          <div
+                            className="s5-status-segmented"
+                            role="group"
+                            aria-label={`Status ${teacher.name}`}
                           >
-                            <option value="HADIR">Hadir (H)</option>
-                            <option value="DINAS_LUAR">Dinas Luar (DL)</option>
-                            <option value="IZIN">Izin (I)</option>
-                            <option value="SAKIT">Sakit (S)</option>
-                            <option value="ALPA">Alpa (A)</option>
-                          </select>
+                            {QUICK_STATUS_ORDER.map((statusKey) => {
+                              const cfg = STATUS_CONFIG[statusKey];
+                              const isActive = entry.status === statusKey;
+                              return (
+                                <button
+                                  key={statusKey}
+                                  type="button"
+                                  className={`s5-status-chip ${statusKey} ${isActive ? 'is-active' : ''}`}
+                                  onClick={() =>
+                                    setDailyEntries({
+                                      ...dailyEntries,
+                                      [teacher.id]: { ...entry, status: statusKey },
+                                    })
+                                  }
+                                  data-s5-tooltip={cfg.label}
+                                  aria-label={`${cfg.label} untuk ${teacher.name}`}
+                                  aria-pressed={isActive}
+                                >
+                                  {cfg.short}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </td>
                         <td>
                           <input
                             type="text"
+                            className="s5-daily-note-input"
                             placeholder="Catatan opsional…"
                             value={entry.notes}
                             onChange={(e) =>
@@ -860,14 +2237,6 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
                                 [teacher.id]: { ...entry, notes: e.target.value },
                               })
                             }
-                            style={{
-                              width: '100%',
-                              padding: '5px 8px',
-                              fontSize: '11.5px',
-                              borderRadius: '6px',
-                              border: '1px solid #dce2de',
-                              background: '#fff',
-                            }}
                           />
                         </td>
                       </tr>
@@ -878,178 +2247,415 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
             </table>
           </div>
 
-          {/* Pagination Toolbar */}
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginTop: '12px',
-              flexWrap: 'wrap',
-              gap: '10px',
-              fontSize: '12px',
-              color: '#5e756e',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>Tampilkan per halaman:</span>
-              <select
-                value={dailyPageSize}
-                onChange={(e) => { setDailyPageSize(Number(e.target.value)); setDailyPage(1); }}
-                style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #d0dad4' }}
-              >
-                <option value={10}>10 Baris</option>
-                <option value={20}>20 Baris</option>
-                <option value={25}>25 Baris</option>
-                <option value={0}>Semua ({filteredDailyTeachers.length})</option>
-              </select>
-              <span>Total {filteredDailyTeachers.length} guru</span>
+          {/* Luxury Architectural Footbar (.s5-att-footbar) */}
+          <div className="s5-att-footbar">
+            <div className="s5-footbar-composition" aria-hidden="true">
+              <div className="s5-footbar-seg hadir" style={{ width: `${dailyHadirPct}%` }} />
+              <div className="s5-footbar-seg permit" style={{ width: `${dailyPermitPct}%` }} />
+              <div className="s5-footbar-seg alpa" style={{ width: `${dailyAlpaPct}%` }} />
             </div>
 
-            {dailyPageSize > 0 && totalDailyPages > 1 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <button
-                  type="button"
-                  className="button button-quiet"
-                  style={{ padding: '4px 8px' }}
-                  disabled={dailyPage <= 1}
-                  onClick={() => setDailyPage((p) => Math.max(1, p - 1))}
+            <div className="s5-att-footbar-row">
+              <div className="s5-footbar-meta">
+                <select
+                  aria-label="Jumlah baris tabel harian"
+                  className="s5-footbar-select"
+                  value={dailyPageSize}
+                  onChange={(e) => {
+                    setDailyPageSize(Number(e.target.value));
+                    setDailyPage(1);
+                  }}
                 >
-                  <ChevronLeft size={14} /> Sebelumnya
-                </button>
-                <span>
-                  Halaman <strong>{dailyPage}</strong> dari <strong>{totalDailyPages}</strong>
+                  <option value={10}>10 Baris</option>
+                  <option value={20}>20 Baris</option>
+                  <option value={25}>25 Baris</option>
+                  <option value={0}>Semua ({filteredDailyTeachers.length})</option>
+                </select>
+                <span className="s5-tnum">
+                  Hadir <strong style={{ color: '#1B5E43' }}>{dailyPresentCount}</strong> · Ket.{' '}
+                  <strong style={{ color: '#9C6F28' }}>{dailyPermitCount}</strong> · Alpa{' '}
+                  <strong style={{ color: dailyAbsentCount > 0 ? '#A63A2E' : undefined }}>
+                    {dailyAbsentCount}
+                  </strong>
                 </span>
+              </div>
+
+              <div className="s5-footbar-actions">
+                {dailyPageSize > 0 && totalDailyPages > 1 && (
+                  <div className="s5-pagination-group" aria-label="Navigasi halaman tabel harian">
+                    <button
+                      type="button"
+                      className="s5-page-btn"
+                      disabled={safeDailyPage <= 1}
+                      onClick={() => setDailyPage((p) => Math.max(1, p - 1))}
+                      aria-label="Halaman sebelumnya"
+                    >
+                      <ChevronLeft size={14} />
+                    </button>
+                    {getPaginationItems(safeDailyPage, totalDailyPages).map((item, idx) =>
+                      item === 'ellipsis' ? (
+                        <span key={`d-ell-${idx}`} style={{ padding: '0 4px', color: '#8A9B95' }}>
+                          …
+                        </span>
+                      ) : (
+                        <button
+                          key={`d-pg-${item}`}
+                          type="button"
+                          className={`s5-page-btn s5-tnum ${safeDailyPage === item ? 'is-active' : ''}`}
+                          onClick={() => setDailyPage(item)}
+                        >
+                          {item}
+                        </button>
+                      ),
+                    )}
+                    <button
+                      type="button"
+                      className="s5-page-btn"
+                      disabled={safeDailyPage >= totalDailyPages}
+                      onClick={() => setDailyPage((p) => Math.min(totalDailyPages, p + 1))}
+                      aria-label="Halaman berikutnya"
+                    >
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                )}
+
                 <button
                   type="button"
-                  className="button button-quiet"
-                  style={{ padding: '4px 8px' }}
-                  disabled={dailyPage >= totalDailyPages}
-                  onClick={() => setDailyPage((p) => Math.min(totalDailyPages, p + 1))}
+                  className="button button-primary"
+                  onClick={handleSaveDaily}
+                  style={{ height: '36px', padding: '0 16px', fontSize: '12.5px' }}
                 >
-                  Berikutnya <ChevronRight size={14} />
+                  <Save size={14} /> Simpan Presensi
                 </button>
               </div>
-            )}
+            </div>
           </div>
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 2: INPUT ABSENSI PER BULAN (MASSAL BULANAN)                           */}
+      {/* TAB 2: INPUT MASSAL BULANAN (AUTO-SKIP TANGGAL MERAH & KALDIK KEMENAG)    */}
       {/* ========================================================================= */}
       {activeTab === 'monthly' && (
-        <div className="surface-card" style={{ padding: '16px 20px' }}>
-          <div className="card-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+        <div className="s5-att-panel">
+          <div className="s5-att-panel-header">
             <div>
-              <div className="card-eyebrow" style={{ fontSize: '10px', color: '#55726b', fontWeight: 800 }}>
-                PRESENSI MASSAL BULANAN
-              </div>
-              <h3 style={{ margin: '2px 0 0', fontSize: '16px', color: '#103f3e', fontWeight: 700 }}>
-                Penerapan Status Presensi Massal dalam Rentang Tanggal
+              <div className="s5-page-kicker">PRESENSI MASSAL BULANAN</div>
+              <h3 style={{ margin: '3px 0 0', fontSize: '17px', color: '#0B2923', fontWeight: 700 }}>
+                Terapkan Status Kehadiran Rentang Tanggal
               </h3>
             </div>
-            <button
-              type="button"
-              className="button button-quiet"
-              onClick={() => setShowMonthlyHelp(!showMonthlyHelp)}
-              style={{ fontSize: '11.5px', gap: '5px' }}
-            >
-              <Info size={14} /> {showMonthlyHelp ? 'Sembunyikan Petunjuk' : 'Petunjuk Penggunaan'}
-            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <div className="s5-input-shell" style={{ height: '34px' }}>
+                <Calendar size={14} color="#124037" />
+                <input
+                  id="mass-month-quick"
+                  aria-label="Pilih bulan penuh untuk input massal"
+                  type="month"
+                  value={massMonthStartDate.slice(0, 7)}
+                  onChange={(e) => applyMassMonthRange(e.target.value)}
+                />
+              </div>
+
+              <div className="s5-status-segmented" role="group" aria-label="Preset rentang tanggal">
+                <button
+                  type="button"
+                  className={`s5-status-chip ${activeMassPreset === 'week' ? 'is-active HADIR' : ''}`}
+                  style={{ padding: '0 10px' }}
+                  onClick={() => applyMassPreset('week')}
+                >
+                  7 Hari
+                </button>
+                <button
+                  type="button"
+                  className={`s5-status-chip ${activeMassPreset === 'fortnight' ? 'is-active HADIR' : ''}`}
+                  style={{ padding: '0 10px' }}
+                  onClick={() => applyMassPreset('fortnight')}
+                >
+                  14 Hari
+                </button>
+                <button
+                  type="button"
+                  className={`s5-status-chip ${activeMassPreset === 'month' ? 'is-active HADIR' : ''}`}
+                  style={{ padding: '0 10px' }}
+                  onClick={() => applyMassPreset('month')}
+                >
+                  Bulan Penuh
+                </button>
+              </div>
+            </div>
           </div>
 
-          {/* Collapsible Info Panel */}
-          {showMonthlyHelp && (
-            <div
-              style={{
-                padding: '12px 14px',
-                background: '#f4faf7',
-                border: '1px solid #c9e0d5',
-                borderRadius: '8px',
-                marginBottom: '14px',
-                fontSize: '12px',
-                color: '#2a544c',
-                lineHeight: 1.5,
-              }}
-            >
-              <strong>Petunjuk Operasional:</strong> Gunakan fitur ini untuk mengatur status kehadiran default (misal: setel seluruh guru <em>Hadir</em>, atau menandai <em>Dinas Luar</em> pada agenda rapat kerja madrasah) ke seluruh atau sebagian guru. Hari libur terjadwal dan hari Minggu secara otomatis dilewati dan tidak akan tertimpa.
-            </div>
-          )}
-
-          {/* Form Controls */}
+          {/* Clean Form Grid */}
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: '12px',
-              padding: '14px',
-              background: '#fcfbf8',
-              border: '1px solid #e7e4d8',
-              borderRadius: '10px',
-              marginBottom: '14px',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+              gap: '14px',
+              padding: '16px',
+              background: '#F8FAF8',
+              border: '0.75px solid #DCE5E0',
+              borderRadius: '14px',
             }}
           >
-            <div className="field-group">
-              <label style={{ fontSize: '11px', fontWeight: 800, color: '#31544e' }}>Status yang Diterapkan</label>
-              <select
-                value={massMonthStatus}
-                onChange={(e) => setMassMonthStatus(e.target.value as AttendanceStatus)}
-                style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid #d2ded7', fontSize: '12.5px', fontWeight: 600 }}
-              >
-                <option value="HADIR">Hadir (H)</option>
-                <option value="DINAS_LUAR">Dinas Luar (DL)</option>
-                <option value="IZIN">Izin (I)</option>
-                <option value="SAKIT">Sakit (S)</option>
-                <option value="ALPA">Alpa (A)</option>
-              </select>
+            <div className="s5-field-chip">
+              <label htmlFor="mass-status">Status Diterapkan</label>
+              <div className="s5-input-shell">
+                <select
+                  id="mass-status"
+                  value={massMonthStatus}
+                  onChange={(e) => setMassMonthStatus(e.target.value as AttendanceStatus)}
+                  style={{ width: '100%' }}
+                >
+                  <option value="HADIR">Hadir (H)</option>
+                  <option value="DINAS_LUAR">Dinas Luar (DL)</option>
+                  <option value="IZIN">Izin (I)</option>
+                  <option value="SAKIT">Sakit (S)</option>
+                  <option value="ALPA">Alpa (A)</option>
+                </select>
+              </div>
             </div>
 
-            <div className="field-group">
-              <label style={{ fontSize: '11px', fontWeight: 800, color: '#31544e' }}>Sasaran Pendidik</label>
-              <select
-                value={massMonthTarget}
-                onChange={(e) => setMassMonthTarget(e.target.value as 'all' | 'selected')}
-                style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid #d2ded7', fontSize: '12.5px', fontWeight: 600 }}
-              >
-                <option value="all">Terapkan ke Seluruh Guru ({activeTeachers.length})</option>
-                <option value="selected">Pilih Guru Tertentu ({massMonthSelectedTeachers.length})</option>
-              </select>
+            <div className="s5-field-chip">
+              <label htmlFor="mass-target">Sasaran Pendidik</label>
+              <div className="s5-input-shell">
+                <select
+                  id="mass-target"
+                  value={massMonthTarget}
+                  onChange={(e) => {
+                    const nextTarget = e.target.value as 'all' | 'selected';
+                    setMassMonthTarget(nextTarget);
+                    if (nextTarget === 'selected' && massMonthSelectedTeachers.length === 0) {
+                      setMassMonthSelectedTeachers(activeTeachers.map((t) => t.id));
+                    }
+                  }}
+                  style={{ width: '100%' }}
+                >
+                  <option value="all">Seluruh Guru Aktif ({activeTeachers.length})</option>
+                  <option value="selected">Guru Pilihan ({massMonthSelectedTeachers.length})</option>
+                </select>
+              </div>
             </div>
 
-            <div className="field-group">
-              <label style={{ fontSize: '11px', fontWeight: 800, color: '#31544e' }}>Mulai Tanggal</label>
+            <div className="s5-field-chip">
+              <label htmlFor="mass-start">Mulai Tanggal</label>
+              <div className="s5-input-shell">
+                <input
+                  id="mass-start"
+                  type="date"
+                  value={massMonthStartDate}
+                  onChange={(e) => setMassMonthStartDate(e.target.value)}
+                  style={{ width: '100%' }}
+                />
+              </div>
+            </div>
+
+            <div className="s5-field-chip">
+              <label htmlFor="mass-end">Sampai Tanggal</label>
+              <div className="s5-input-shell">
+                <input
+                  id="mass-end"
+                  type="date"
+                  value={massMonthEndDate}
+                  onChange={(e) => setMassMonthEndDate(e.target.value)}
+                  style={{ width: '100%' }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 3 Automatic Red-Date Exclusion Switches */}
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '18px',
+              marginTop: '14px',
+              paddingLeft: '4px',
+            }}
+          >
+            <label
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '12.5px',
+                fontWeight: 600,
+                color: '#0F201C',
+                cursor: 'pointer',
+              }}
+            >
               <input
-                type="date"
-                value={massMonthStartDate}
-                onChange={(e) => setMassMonthStartDate(e.target.value)}
-                style={{ padding: '7px 10px', borderRadius: '8px', border: '1px solid #d2ded7', fontSize: '12.5px' }}
+                type="checkbox"
+                checked={autoSkipNationalHolidays}
+                onChange={(e) => setAutoSkipNationalHolidays(e.target.checked)}
+                style={{ width: '16px', height: '16px', accentColor: '#124037' }}
               />
+              <span>Kecualikan Libur Nasional (SKB 3 Menteri)</span>
+            </label>
+
+            <label
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '12.5px',
+                fontWeight: 600,
+                color: '#2F443E',
+                cursor: 'pointer',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={autoSkipCutiBersama}
+                disabled={!autoSkipNationalHolidays}
+                onChange={(e) => setAutoSkipCutiBersama(e.target.checked)}
+                style={{ width: '16px', height: '16px', accentColor: '#124037' }}
+              />
+              <span>Kecualikan Cuti Bersama</span>
+            </label>
+
+            <label
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '12.5px',
+                fontWeight: 600,
+                color: '#2F443E',
+                cursor: 'pointer',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={autoSkipKaldikMadrasah}
+                disabled={!autoSkipNationalHolidays}
+                onChange={(e) => setAutoSkipKaldikMadrasah(e.target.checked)}
+                style={{ width: '16px', height: '16px', accentColor: '#124037' }}
+              />
+              <span>Kecualikan Libur Kaldik Kemenag RI</span>
+            </label>
+          </div>
+
+          {/* Live Date Range Preview & Visual Mosaic Calendar Strip */}
+          <div className="s5-mass-preview-box">
+            <div className="s5-mass-stat-row">
+              <div>
+                <div
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    color: '#526861',
+                  }}
+                >
+                  Hari Efektif Diisi
+                </div>
+                <strong className="s5-tnum" style={{ fontSize: '20px', fontWeight: 700, color: '#1B5E43' }}>
+                  {massPreview.effectiveDates.length} Hari KBM
+                </strong>
+              </div>
+
+              <div className="s5-topbar-divider" style={{ height: '30px' }} />
+
+              <div>
+                <div
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    color: '#526861',
+                  }}
+                >
+                  Minggu Dilewati
+                </div>
+                <strong className="s5-tnum" style={{ fontSize: '16px', fontWeight: 700, color: '#2F443E' }}>
+                  {massPreview.skippedSundays.length} Hari
+                </strong>
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    color: '#526861',
+                  }}
+                >
+                  Tanggal Merah Dikecualikan
+                </div>
+                <strong className="s5-tnum" style={{ fontSize: '16px', fontWeight: 700, color: '#A63A2E' }}>
+                  {massPreview.skippedRegisteredHolidays.length +
+                    massPreview.skippedOfficialHolidays.length}{' '}
+                  Hari
+                </strong>
+              </div>
             </div>
 
-            <div className="field-group">
-              <label style={{ fontSize: '11px', fontWeight: 800, color: '#31544e' }}>Sampai Tanggal</label>
-              <input
-                type="date"
-                value={massMonthEndDate}
-                onChange={(e) => setMassMonthEndDate(e.target.value)}
-                style={{ padding: '7px 10px', borderRadius: '8px', border: '1px solid #d2ded7', fontSize: '12.5px' }}
-              />
-            </div>
+            {massRangeMosaic.length > 0 && (
+              <div className="s5-range-mosaic" aria-label="Peta hari efektif rentang tanggal">
+                {massRangeMosaic.map((cell) => (
+                  <span
+                    key={cell.dateStr}
+                    className={`s5-mosaic-cell s5-tnum ${cell.kind}`}
+                    data-s5-tooltip={cell.tooltip}
+                  >
+                    {cell.dayNum}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {(massPreview.skippedRegisteredHolidays.length > 0 ||
+              massPreview.skippedOfficialHolidays.length > 0) && (
+              <div className="s5-excluded-date-list">
+                {massPreview.skippedRegisteredHolidays.map((h) => (
+                  <span key={`reg-${h.date}`} className="s5-excluded-date-item">
+                    {formatCompactDate(h.date)} · {h.name}
+                  </span>
+                ))}
+                {massPreview.skippedOfficialHolidays.map((h) => (
+                  <span key={`off-${h.date}`} className="s5-excluded-date-item">
+                    {formatCompactDate(h.date)} · {h.name}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Teacher Checklist when target is 'selected' */}
           {massMonthTarget === 'selected' && (
-            <div style={{ marginBottom: '14px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <label style={{ fontSize: '11px', fontWeight: 800, color: '#385c57' }}>
-                  CENTANG GURU SASARAN ({massMonthSelectedTeachers.length} TERPILIH):
-                </label>
+            <div style={{ marginTop: '16px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '8px',
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color: '#2F443E',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                  }}
+                >
+                  Pilih Guru Sasaran ({massMonthSelectedTeachers.length} terpilih)
+                </span>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button
                     type="button"
                     className="button button-quiet"
-                    style={{ fontSize: '11px', padding: '2px 6px' }}
+                    style={{ fontSize: '11.5px', padding: '4px 8px' }}
                     onClick={() => setMassMonthSelectedTeachers(activeTeachers.map((t) => t.id))}
                   >
                     Pilih Semua
@@ -1057,28 +2663,37 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
                   <button
                     type="button"
                     className="button button-quiet"
-                    style={{ fontSize: '11px', padding: '2px 6px' }}
+                    style={{ fontSize: '11.5px', padding: '4px 8px' }}
                     onClick={() => setMassMonthSelectedTeachers([])}
                   >
-                    Hapus Pilihan
+                    Reset
                   </button>
                 </div>
               </div>
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                  gap: '6px',
-                  maxHeight: '160px',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
+                  gap: '8px',
+                  maxHeight: '165px',
                   overflowY: 'auto',
-                  border: '1px solid #dce2dc',
-                  padding: '8px 10px',
-                  borderRadius: '8px',
-                  background: '#fff',
+                  border: '0.75px solid #D5E0DA',
+                  padding: '12px',
+                  borderRadius: '12px',
+                  background: '#FFFFFF',
                 }}
               >
                 {activeTeachers.map((teacher) => (
-                  <label key={teacher.id} style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '11.5px', cursor: 'pointer' }}>
+                  <label
+                    key={teacher.id}
+                    style={{
+                      display: 'flex',
+                      gap: '8px',
+                      alignItems: 'center',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                    }}
+                  >
                     <input
                       type="checkbox"
                       checked={massMonthSelectedTeachers.includes(teacher.id)}
@@ -1086,57 +2701,107 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
                         if (e.target.checked) {
                           setMassMonthSelectedTeachers([...massMonthSelectedTeachers, teacher.id]);
                         } else {
-                          setMassMonthSelectedTeachers(massMonthSelectedTeachers.filter((id) => id !== teacher.id));
+                          setMassMonthSelectedTeachers(
+                            massMonthSelectedTeachers.filter((id) => id !== teacher.id),
+                          );
                         }
                       }}
                     />
-                    <span>{teacher.name} ({teacher.code})</span>
+                    <span>
+                      {teacher.name} <span style={{ color: '#526861' }}>({teacher.code})</span>
+                    </span>
                   </label>
                 ))}
               </div>
             </div>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
-            <button
-              type="button"
-              className="button button-primary"
-              onClick={handleSaveMassMonthly}
-              style={{ gap: '6px' }}
-            >
-              <Check size={14} /> Terapkan Presensi Massal
-            </button>
+          {/* Mass Monthly Luxury Footbar */}
+          <div className="s5-att-footbar">
+            <div className="s5-att-footbar-row">
+              <div className="s5-footbar-meta s5-tnum">
+                <span>
+                  Sasaran:{' '}
+                  <strong>
+                    {massMonthTarget === 'all'
+                      ? activeTeachers.length
+                      : massMonthSelectedTeachers.length}{' '}
+                    Guru
+                  </strong>
+                </span>
+                <span>·</span>
+                <span>
+                  Hari KBM Efektif:{' '}
+                  <strong style={{ color: '#1B5E43' }}>{massPreview.effectiveDates.length} hari</strong>
+                </span>
+                <span>·</span>
+                <span>
+                  Dilewati:{' '}
+                  <strong style={{ color: '#A63A2E' }}>
+                    {massPreview.skippedSundays.length +
+                      massPreview.skippedRegisteredHolidays.length +
+                      massPreview.skippedOfficialHolidays.length}{' '}
+                    hari
+                  </strong>
+                </span>
+              </div>
+
+              <button
+                type="button"
+                className="button button-primary"
+                onClick={handleSaveMassMonthly}
+                style={{ height: '38px', padding: '0 20px', fontSize: '12.5px' }}
+              >
+                <Check size={15} /> Terapkan Presensi ({massPreview.effectiveDates.length} Hari Efektif)
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 3: INPUT PRESENSI PER GURU (INDIVIDUAL LEDGER)                         */}
+      {/* TAB 3: PER GURU (INDIVIDUAL LEDGER + 30-DAY MOSAIC + 1-CLICK INLINE)      */}
       {/* ========================================================================= */}
       {activeTab === 'teacher' && (
-        <div className="surface-card" style={{ padding: '16px 20px' }}>
-          <div className="card-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+        <div className="s5-att-panel">
+          <div className="s5-att-panel-header">
             <div>
-              <div className="card-eyebrow" style={{ fontSize: '10px', color: '#55726b', fontWeight: 800 }}>
-                LEDGER INDIVIDUAL
-              </div>
-              <h3 style={{ margin: '2px 0 0', fontSize: '16px', color: '#103f3e', fontWeight: 700 }}>
-                Pencatatan Presensi Kalender per Guru
+              <div className="s5-page-kicker">LEDGER INDIVIDUAL</div>
+              <h3 style={{ margin: '3px 0 0', fontSize: '17px', color: '#0B2923', fontWeight: 700 }}>
+                Riwayat Kalender Presensi per Pendidik
               </h3>
             </div>
+            {selectedTeacherObj && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <MadrasahTeacherAvatar teacher={selectedTeacherObj} size={36} showStatusDot={false} />
+                <div>
+                  <strong style={{ fontSize: '13px', color: '#0B2923', display: 'block' }}>
+                    {selectedTeacherObj.name}
+                  </strong>
+                  <span className="s5-tnum" style={{ fontSize: '11.5px', color: '#526861' }}>
+                    H: {selectedTeacherMonthSummary.hadir} · DL: {selectedTeacherMonthSummary.dinas} · I:{' '}
+                    {selectedTeacherMonthSummary.izin} · S: {selectedTeacherMonthSummary.sakit} · A:{' '}
+                    {selectedTeacherMonthSummary.alpa}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Contextual Toolbar */}
-          <div className="toolbar-card" style={{ marginBottom: '14px', flexWrap: 'wrap', gap: '12px' }}>
-            <div className="class-selector-wrap">
-              <label htmlFor="teacher-picker">PILIH GURU</label>
-              <div className="select-with-icon">
-                <Users size={15} />
+          <div className="s5-att-toolbar">
+            <div className="s5-field-chip" style={{ minWidth: '210px' }}>
+              <label htmlFor="teacher-picker">Pilih Pendidik</label>
+              <div className="s5-input-shell">
+                <Users size={14} color="#124037" />
                 <select
                   id="teacher-picker"
                   value={selectedTeacherId}
-                  onChange={(e) => { setSelectedTeacherId(e.target.value); setLedgerPage(1); }}
-                  style={{ fontSize: '12px', fontWeight: 600 }}
+                  onChange={(e) => {
+                    setSelectedTeacherId(e.target.value);
+                    setLedgerPage(1);
+                  }}
+                  style={{ width: '100%' }}
                 >
                   {activeTeachers.map((t) => (
                     <option key={t.id} value={t.id}>
@@ -1147,387 +2812,708 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
               </div>
             </div>
 
-            <div className="toolbar-divider" />
-
-            <div className="class-selector-wrap">
-              <label htmlFor="month-picker">BULAN & TAHUN</label>
-              <div className="select-with-icon">
-                <Calendar size={15} />
+            <div className="s5-field-chip">
+              <label htmlFor="month-picker">Bulan &amp; Tahun</label>
+              <div className="s5-input-shell">
+                <Calendar size={14} color="#124037" />
                 <input
                   id="month-picker"
                   type="month"
                   value={currentMonth}
-                  onChange={(e) => { setCurrentMonth(e.target.value); setLedgerPage(1); }}
-                  style={{ border: 'none', background: 'transparent', outline: 'none', fontWeight: 600, fontSize: '12px' }}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setCurrentMonth(val);
+                    setLedgerPage(1);
+                    if (/^\d{4}-\d{2}$/.test(val)) {
+                      const [yNum, mNum] = val.split('-').map(Number);
+                      const lastDay = new Date(yNum, mNum, 0).getDate();
+                      setMassMonthStartDate(`${val}-01`);
+                      setMassMonthEndDate(`${val}-${String(lastDay).padStart(2, '0')}`);
+                    }
+                  }}
                 />
               </div>
             </div>
 
-            <div className="class-selector-wrap">
-              <label htmlFor="ledger-filter">FILTER TAMPILAN</label>
-              <select
-                id="ledger-filter"
-                value={ledgerFilter}
-                onChange={(e) => { setLedgerFilter(e.target.value as any); setLedgerPage(1); }}
-                style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid #d8e2dc', fontSize: '12px', fontWeight: 600 }}
-              >
-                <option value="all">Semua Tanggal Bulan Ini</option>
-                <option value="workdays">Hanya Hari Efektif (KBM)</option>
-                <option value="leaves">Hanya Hari Libur / Minggu</option>
-              </select>
+            <div className="s5-field-chip">
+              <label htmlFor="ledger-filter">Filter Tanggal</label>
+              <div className="s5-input-shell">
+                <select
+                  id="ledger-filter"
+                  value={ledgerFilter}
+                  onChange={(e) => {
+                    setLedgerFilter(e.target.value as 'all' | 'workdays' | 'leaves');
+                    setLedgerPage(1);
+                  }}
+                >
+                  <option value="all">Semua Tanggal</option>
+                  <option value="workdays">Hari Efektif KBM</option>
+                  <option value="leaves">Libur &amp; Tanggal Merah</option>
+                </select>
+              </div>
             </div>
           </div>
 
+          {/* 30-Day Mini Attendance Mosaic */}
+          <div className="s5-teacher-mosaic" aria-label="Ringkasan visual presensi bulan aktif">
+            <span
+              style={{
+                fontSize: '11px',
+                fontWeight: 600,
+                color: '#2F443E',
+                marginRight: '6px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+              }}
+            >
+              Pola {currentMonth}:
+            </span>
+            {teacherMonthDays.map((d) => {
+              const isHol = d.isSunday || Boolean(d.hol || d.officialHol);
+              const cls = d.record ? d.record.status : isHol ? 'LIBUR' : '';
+              const tip = d.record
+                ? `${formatCompactDate(d.dateStr)} · ${STATUS_CONFIG[d.record.status].label}`
+                : isHol
+                ? `${formatCompactDate(d.dateStr)} · ${d.hol?.name || d.officialHol?.name || 'Hari Minggu'}`
+                : `${formatCompactDate(d.dateStr)} · Belum diisi`;
+              return (
+                <span key={d.dateStr} className={`s5-teacher-mosaic-dot s5-tnum ${cls}`} data-s5-tooltip={tip}>
+                  {d.dayNum}
+                </span>
+              );
+            })}
+          </div>
+
           {/* Interactive Date Ledger Table */}
-          <div className="data-table-wrap" style={{ overflowX: 'auto', border: '1px solid #e1e7e3', borderRadius: '10px' }}>
-            <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div className="data-table-wrap s5-figma-table-wrap">
+            <table className="data-table s5-figma-table">
               <thead>
-                <tr style={{ background: '#f5faf7', borderBottom: '1px solid #dce5df' }}>
-                  <th style={{ width: '120px', textAlign: 'left', padding: '10px' }}>Tanggal</th>
-                  <th style={{ width: '110px', textAlign: 'left', padding: '10px' }}>Hari</th>
-                  <th style={{ width: '150px', textAlign: 'center', padding: '10px' }}>Status Hari Ini</th>
-                  <th style={{ textAlign: 'left', padding: '10px' }}>Catatan</th>
-                  <th style={{ width: '130px', textAlign: 'center', padding: '10px' }}>Aksi Cepat</th>
+                <tr>
+                  <th className="s5-checkbox-col">
+                    <label
+                      className="s5-checkbox-label"
+                      title={isAllLedgerPageSelected ? 'Batal pilih halaman ini' : 'Pilih semua tanggal di halaman ini'}
+                    >
+                      <input
+                        type="checkbox"
+                        className="s5-checkbox-input"
+                        checked={isAllLedgerPageSelected}
+                        onChange={toggleLedgerSelectPage}
+                        aria-label="Pilih semua tanggal di halaman ini"
+                      />
+                      <span className={`s5-checkbox-box ${isSomeLedgerPageSelected ? 'indeterminate' : ''}`}>
+                        {isAllLedgerPageSelected ? (
+                          <Check size={12} strokeWidth={3} />
+                        ) : isSomeLedgerPageSelected ? (
+                          <Minus size={12} strokeWidth={3} />
+                        ) : null}
+                      </span>
+                    </label>
+                  </th>
+                  <th style={{ width: '120px' }}>Tanggal</th>
+                  <th style={{ width: '230px' }}>Hari / Keterangan Kalender</th>
+                  <th style={{ width: '130px', textAlign: 'center' }}>Status</th>
+                  <th>Catatan</th>
+                  <th style={{ width: '215px', textAlign: 'center' }}>Ubah Cepat (1-Klik)</th>
                 </tr>
               </thead>
               <tbody>
-                {(() => {
-                  const rows = [];
-                  for (let d = 1; d <= daysInCurrentMonth; d++) {
-                    const dateStr = `${currentYearNum}-${String(currentMonthNum).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                    const curDate = new Date(currentYearNum, currentMonthNum - 1, d);
-                    const dayName = new Intl.DateTimeFormat('id-ID', { weekday: 'long' }).format(curDate);
-                    const isSunday = curDate.getDay() === 0;
-                    const hol = holidays.find((h) => h.date === dateStr);
-
-                    if (ledgerFilter === 'workdays' && (isSunday || hol)) continue;
-                    if (ledgerFilter === 'leaves' && (!isSunday && !hol)) continue;
-
-                    const record = attendanceList.find(
-                      (a) => a.teacherId === selectedTeacherId && a.date === dateStr,
-                    );
-                    const cfg = record ? STATUS_CONFIG[record.status] : null;
-
-                    rows.push({
-                      dateStr,
-                      dayName,
-                      isSunday,
-                      hol,
-                      record,
-                      cfg,
-                    });
-                  }
-
-                  const start = (ledgerPage - 1) * ledgerPageSize;
-                  const paginatedRows = ledgerPageSize > 0 ? rows.slice(start, start + ledgerPageSize) : rows;
-
-                  if (paginatedRows.length === 0) {
+                {paginatedLedgerRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '28px', color: '#526861' }}>
+                      Tidak ada tanggal sesuai filter yang dipilih.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedLedgerRows.map((item) => {
+                    const isRed = Boolean(item.hol || item.officialHol);
+                    const rowClass = isRed ? 's5-row-holiday' : item.isSunday ? 's5-row-sunday' : '';
+                    const isSelected = ledgerSelectedSet.has(item.dateStr);
                     return (
-                      <tr>
-                        <td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: '#687a75' }}>
-                          Tidak ada catatan untuk filter yang dipilih.
+                      <tr
+                        key={item.dateStr}
+                        className={`${rowClass} ${isSelected ? 's5-row-selected' : ''}`.trim()}
+                      >
+                        <td className="s5-checkbox-col">
+                          <label className="s5-checkbox-label" title={`Pilih tanggal ${item.dateStr}`}>
+                            <input
+                              type="checkbox"
+                              className="s5-checkbox-input"
+                              checked={isSelected}
+                              onChange={() => toggleLedgerSelectOne(item.dateStr)}
+                              aria-label={`Pilih tanggal ${item.dateStr}`}
+                            />
+                            <span className="s5-checkbox-box">
+                              {isSelected && <Check size={12} strokeWidth={3} />}
+                            </span>
+                          </label>
+                        </td>
+                        <td className="s5-tnum" style={{ fontWeight: 700, color: '#0F201C' }}>
+                          {item.dateStr}
+                        </td>
+                        <td>
+                          <span
+                            style={{
+                              fontWeight: item.isSunday || isRed ? 700 : 500,
+                              color: item.isSunday || isRed ? '#A63A2E' : '#274744',
+                            }}
+                          >
+                            {item.dayName}
+                          </span>
+                          {(item.hol || item.officialHol) && (
+                            <span style={{ display: 'block', fontSize: '11px', color: '#A63A2E', fontWeight: 600 }}>
+                              {item.hol?.name || item.officialHol?.name}
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          {item.record ? (
+                            <span
+                              style={{
+                                display: 'inline-block',
+                                padding: '4px 10px',
+                                borderRadius: '7px',
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                background: item.cfg?.bg,
+                                color: item.cfg?.color,
+                                border: `0.75px solid ${item.cfg?.border}`,
+                              }}
+                            >
+                              {item.cfg?.label}
+                            </span>
+                          ) : item.isSunday || isRed ? (
+                            <span style={{ fontSize: '11.5px', color: '#9C4238', fontWeight: 600 }}>
+                              Libur
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: '11.5px', color: '#788B85' }}>Belum diisi</span>
+                          )}
+                        </td>
+                        <td style={{ fontSize: '12px', color: '#526861' }}>
+                          {item.record?.notes || '—'}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <div className="s5-status-segmented" role="group" aria-label={`Status ${item.dateStr}`}>
+                            {QUICK_STATUS_ORDER.map((statusKey) => {
+                              const cfg = STATUS_CONFIG[statusKey];
+                              const active = item.record?.status === statusKey;
+                              return (
+                                <button
+                                  key={statusKey}
+                                  type="button"
+                                  className={`s5-status-chip compact ${statusKey} ${active ? 'is-active' : ''}`}
+                                  onClick={() => handleSetSingleTeacherDay(item.dateStr, statusKey)}
+                                  data-s5-tooltip={`${cfg.label} (${item.dateStr})`}
+                                  aria-label={`Set ${cfg.label} tanggal ${item.dateStr}`}
+                                >
+                                  {cfg.short}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </td>
                       </tr>
                     );
-                  }
-
-                  return paginatedRows.map((item) => (
-                    <tr key={item.dateStr} style={{ borderBottom: '1px solid #edf2ee', background: item.isSunday ? '#faf8f5' : undefined }}>
-                      <td style={{ fontSize: '12px', fontWeight: 600, color: '#173637' }}>{item.dateStr}</td>
-                      <td>
-                        <span style={{ fontSize: '11.5px', color: item.isSunday ? '#b24c3d' : '#274744', fontWeight: item.isSunday ? 700 : 500 }}>
-                          {item.dayName}
-                        </span>
-                        {item.hol && (
-                          <small style={{ display: 'block', color: '#b24c3d', fontWeight: 700 }}>
-                            {item.hol.name}
-                          </small>
-                        )}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        {item.record ? (
-                          <span
-                            style={{
-                              display: 'inline-block',
-                              padding: '4px 10px',
-                              borderRadius: '6px',
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              background: item.cfg?.bg,
-                              color: item.cfg?.color,
-                              border: `1px solid ${item.cfg?.border}`,
-                            }}
-                          >
-                            {item.cfg?.label}
-                          </span>
-                        ) : item.isSunday || item.hol ? (
-                          <span style={{ fontSize: '11px', color: '#97a39e', fontStyle: 'italic' }}>Libur</span>
-                        ) : (
-                          <span style={{ fontSize: '11px', color: '#97a39e' }}>Belum diisi</span>
-                        )}
-                      </td>
-                      <td style={{ fontSize: '11.5px', color: '#6b807b' }}>
-                        {item.record?.notes || '—'}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <button
-                          type="button"
-                          className="button button-quiet"
-                          style={{ padding: '3px 8px', fontSize: '10.5px', gap: '4px' }}
-                          onClick={() => handleToggleSingleTeacherDay(item.dateStr, item.record?.status)}
-                          title="Klik untuk mengubah status secara berurutan"
-                        >
-                          <RefreshCw size={11} /> Ubah
-                        </button>
-                      </td>
-                    </tr>
-                  ));
-                })()}
+                  })
+                )}
               </tbody>
             </table>
           </div>
 
-          {/* Ledger Pagination */}
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginTop: '12px',
-              flexWrap: 'wrap',
-              gap: '10px',
-              fontSize: '12px',
-              color: '#5e756e',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>Tampilkan per halaman:</span>
-              <select
-                value={ledgerPageSize}
-                onChange={(e) => { setLedgerPageSize(Number(e.target.value)); setLedgerPage(1); }}
-                style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #d0dad4' }}
-              >
-                <option value={10}>10 Baris</option>
-                <option value={15}>15 Baris</option>
-                <option value={0}>Semua Hari ({daysInCurrentMonth})</option>
-              </select>
+          {/* Ledger Architectural Footbar (.s5-att-footbar) */}
+          <div className="s5-att-footbar">
+            <div className="s5-footbar-composition" aria-hidden="true">
+              <div className="s5-footbar-seg hadir" style={{ width: `${teacherHadirPct}%` }} />
+              <div className="s5-footbar-seg permit" style={{ width: `${teacherPermitPct}%` }} />
+              <div className="s5-footbar-seg alpa" style={{ width: `${teacherAlpaPct}%` }} />
             </div>
 
-            {ledgerPageSize > 0 && Math.ceil(daysInCurrentMonth / ledgerPageSize) > 1 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <button
-                  type="button"
-                  className="button button-quiet"
-                  style={{ padding: '4px 8px' }}
-                  disabled={ledgerPage <= 1}
-                  onClick={() => setLedgerPage((p) => Math.max(1, p - 1))}
+            <div className="s5-att-footbar-row">
+              <div className="s5-footbar-meta">
+                <select
+                  aria-label="Jumlah baris kalender pendidik"
+                  className="s5-footbar-select"
+                  value={ledgerPageSize}
+                  onChange={(e) => {
+                    setLedgerPageSize(Number(e.target.value));
+                    setLedgerPage(1);
+                  }}
                 >
-                  <ChevronLeft size={14} /> Sebelumnya
-                </button>
-                <span>
-                  Halaman <strong>{ledgerPage}</strong> dari <strong>{Math.ceil(daysInCurrentMonth / ledgerPageSize)}</strong>
+                  <option value={10}>10 Baris</option>
+                  <option value={15}>15 Baris</option>
+                  <option value={0}>Semua ({ledgerRows.length})</option>
+                </select>
+                <span className="s5-tnum">
+                  H: <strong>{selectedTeacherMonthSummary.hadir}</strong> · DL:{' '}
+                  <strong>{selectedTeacherMonthSummary.dinas}</strong> · I/S:{' '}
+                  <strong>{selectedTeacherMonthSummary.izin + selectedTeacherMonthSummary.sakit}</strong> · A:{' '}
+                  <strong>{selectedTeacherMonthSummary.alpa}</strong>
                 </span>
-                <button
-                  type="button"
-                  className="button button-quiet"
-                  style={{ padding: '4px 8px' }}
-                  disabled={ledgerPage >= Math.ceil(daysInCurrentMonth / ledgerPageSize)}
-                  onClick={() => setLedgerPage((p) => Math.min(Math.ceil(daysInCurrentMonth / ledgerPageSize), p + 1))}
-                >
-                  Berikutnya <ChevronRight size={14} />
-                </button>
               </div>
-            )}
+
+              {ledgerPageSize > 0 && totalLedgerPages > 1 && (
+                <div className="s5-pagination-group" aria-label="Navigasi halaman ledger guru">
+                  <button
+                    type="button"
+                    className="s5-page-btn"
+                    disabled={safeLedgerPage <= 1}
+                    onClick={() => setLedgerPage((p) => Math.max(1, p - 1))}
+                    aria-label="Halaman sebelumnya"
+                  >
+                    <ChevronLeft size={14} />
+                  </button>
+                  {getPaginationItems(safeLedgerPage, totalLedgerPages).map((item, idx) =>
+                    item === 'ellipsis' ? (
+                      <span key={`l-ell-${idx}`} style={{ padding: '0 4px', color: '#8A9B95' }}>
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={`l-pg-${item}`}
+                        type="button"
+                        className={`s5-page-btn s5-tnum ${safeLedgerPage === item ? 'is-active' : ''}`}
+                        onClick={() => setLedgerPage(item)}
+                      >
+                        {item}
+                      </button>
+                    ),
+                  )}
+                  <button
+                    type="button"
+                    className="s5-page-btn"
+                    disabled={safeLedgerPage >= totalLedgerPages}
+                    onClick={() => setLedgerPage((p) => Math.min(totalLedgerPages, p + 1))}
+                    aria-label="Halaman berikutnya"
+                  >
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 4: REKAP BULANAN & EKSPOR PDF RESMI                                    */}
+      {/* TAB 4: REKAP BULANAN & EKSPOR PDF RESMI (CHECKBOX SYNC KE PDF)            */}
       {/* ========================================================================= */}
       {activeTab === 'recap' && (
-        <div className="surface-card" style={{ padding: '16px 20px' }}>
-          <div className="card-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+        <div className="s5-att-panel">
+          <div className="s5-att-panel-header">
             <div>
-              <div className="card-eyebrow" style={{ fontSize: '10px', color: '#55726b', fontWeight: 800 }}>
-                REKAPITULASI & LAPORAN RESMI
-              </div>
-              <h3 style={{ margin: '2px 0 0', fontSize: '16px', color: '#103f3e', fontWeight: 700 }}>
-                Rekapitulasi Persentase Kehadiran Bulanan
+              <div className="s5-page-kicker">REKAPITULASI &amp; DOKUMEN RESMI</div>
+              <h3 style={{ margin: '3px 0 0', fontSize: '17px', color: '#0B2923', fontWeight: 700 }}>
+                {recapSummaryAll.isMultiMonth
+                  ? `Rekap Kehadiran Multi-Bulan · ${recapSummaryAll.periodLabel}`
+                  : `Rekap Persentase Kehadiran · ${recapSummaryAll.periodLabel}`}
               </h3>
             </div>
-            <button
-              type="button"
-              className="button button-primary"
-              onClick={() => setPdfModalOpen(true)}
-              style={{ gap: '6px' }}
-            >
-              <Download size={14} /> Ekspor Dokumen PDF Resmi
-            </button>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div
+                style={{
+                  display: 'inline-flex',
+                  padding: '3px',
+                  borderRadius: '9px',
+                  background: '#EAF0EC',
+                  border: '0.75px solid #D0DDD6',
+                  gap: '3px',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRecapMode('single');
+                    setRecapPage(1);
+                  }}
+                  className={`s5-studio-preset-btn ${recapMode === 'single' ? 'is-active' : ''}`}
+                  style={{ height: '28px', border: 'none' }}
+                >
+                  1 Bulan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRecapMode('range');
+                    if (recapEndMonth <= currentMonth) {
+                      const [y, m] = currentMonth.split('-').map(Number);
+                      const nextM = Math.min(12, (m || 1) + 2);
+                      setRecapEndMonth(`${y || new Date().getFullYear()}-${String(nextM).padStart(2, '0')}`);
+                    }
+                    setRecapPage(1);
+                  }}
+                  className={`s5-studio-preset-btn ${recapMode === 'range' ? 'is-active' : ''}`}
+                  style={{ height: '28px', border: 'none' }}
+                >
+                  Multi-Bulan
+                </button>
+              </div>
+
+              <button
+                type="button"
+                className="s5-studio-preset-btn"
+                style={{ height: '30px' }}
+                onClick={() => {
+                  const yr = currentYearNum || new Date().getFullYear();
+                  setRecapMode('range');
+                  setCurrentMonth(`${yr}-07`);
+                  setRecapEndMonth(`${yr}-12`);
+                  setRecapPage(1);
+                }}
+                title="Pilih rentang Semester Ganjil (Juli – Desember)"
+              >
+                Jul–Des
+              </button>
+              <button
+                type="button"
+                className="s5-studio-preset-btn"
+                style={{ height: '30px' }}
+                onClick={() => {
+                  const yr = currentYearNum || new Date().getFullYear();
+                  setRecapMode('range');
+                  setCurrentMonth(`${yr}-01`);
+                  setRecapEndMonth(`${yr}-06`);
+                  setRecapPage(1);
+                }}
+                title="Pilih rentang Semester Genap (Januari – Juni)"
+              >
+                Jan–Jun
+              </button>
+
+              <span className="s5-tnum" style={{ fontSize: '12px', color: '#526861', marginLeft: '4px' }}>
+                <strong>{recapSelectedTeachers.length}</strong> guru terpilih untuk PDF
+              </span>
+            </div>
           </div>
 
-          {/* Contextual Month & Teacher Filter Toolbar */}
-          <div className="toolbar-card" style={{ marginBottom: '14px', flexWrap: 'wrap', gap: '12px' }}>
-            <div className="class-selector-wrap">
-              <label htmlFor="recap-month">PILIH BULAN REKAP</label>
-              <div className="select-with-icon">
-                <Calendar size={15} />
+          {/* Contextual Month / Range & Teacher Filter Toolbar */}
+          <div className="s5-att-toolbar">
+            <div className="s5-field-chip">
+              <label htmlFor="recap-month">{recapMode === 'range' ? 'Dari Bulan' : 'Bulan Rekap'}</label>
+              <div className="s5-input-shell">
+                <Calendar size={14} color="#124037" />
                 <input
                   id="recap-month"
                   type="month"
                   value={currentMonth}
-                  onChange={(e) => { setCurrentMonth(e.target.value); setRecapPage(1); }}
-                  style={{ border: 'none', background: 'transparent', outline: 'none', fontWeight: 600, fontSize: '12px' }}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setCurrentMonth(val);
+                    setRecapPage(1);
+                    if (/^\d{4}-\d{2}$/.test(val)) {
+                      const [yNum, mNum] = val.split('-').map(Number);
+                      const lastDay = new Date(yNum, mNum, 0).getDate();
+                      setMassMonthStartDate(`${val}-01`);
+                      setMassMonthEndDate(`${val}-${String(lastDay).padStart(2, '0')}`);
+                    }
+                  }}
                 />
               </div>
             </div>
 
-            <div className="toolbar-divider" />
+            {recapMode === 'range' && (
+              <div className="s5-field-chip">
+                <label htmlFor="recap-end-month">Sampai Bulan</label>
+                <div className="s5-input-shell">
+                  <Calendar size={14} color="#124037" />
+                  <input
+                    id="recap-end-month"
+                    type="month"
+                    value={recapEndMonth}
+                    onChange={(e) => {
+                      setRecapEndMonth(e.target.value);
+                      setRecapPage(1);
+                    }}
+                  />
+                </div>
+              </div>
+            )}
 
-            <div className="class-selector-wrap">
-              <label htmlFor="recap-search">CARI GURU</label>
-              <div className="select-with-icon" style={{ minWidth: '160px' }}>
-                <Search size={14} />
+            <div className="s5-field-chip" style={{ flex: 1, minWidth: '180px', maxWidth: '280px' }}>
+              <label htmlFor="recap-search">Cari Guru</label>
+              <div className="s5-input-shell" style={{ width: '100%' }}>
+                <Search size={14} color="#687E77" />
                 <input
                   id="recap-search"
                   type="text"
-                  placeholder="Ketik nama guru…"
+                  placeholder="Ketik nama atau kode guru…"
                   value={recapSearch}
-                  onChange={(e) => { setRecapSearch(e.target.value); setRecapPage(1); }}
-                  style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', width: '100%' }}
+                  onChange={(e) => {
+                    setRecapSearch(e.target.value);
+                    setRecapPage(1);
+                  }}
+                  style={{ width: '100%' }}
                 />
               </div>
             </div>
 
             <div className="toolbar-spacer" />
 
-            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <button
                 type="button"
                 className="button button-quiet"
-                style={{ fontSize: '11px', padding: '4px 8px' }}
-                onClick={() => setRecapSelectedTeachers(activeTeachers.map((t) => t.id))}
+                style={{ height: '34px', fontSize: '12px' }}
+                onClick={() => {
+                  setRecapSelectedTeachers(activeTeachers.map((t) => t.id));
+                  setRecapBulkEngaged(true);
+                  setAttBulkConfirmDelete(false);
+                  setAttBulkStatusMode(false);
+                }}
               >
                 Pilih Semua ({activeTeachers.length})
               </button>
               <button
                 type="button"
                 className="button button-quiet"
-                style={{ fontSize: '11px', padding: '4px 8px' }}
-                onClick={() => setRecapSelectedTeachers([])}
+                style={{ height: '34px', fontSize: '12px', color: '#A63A2E' }}
+                onClick={() => {
+                  setRecapSelectedTeachers([]);
+                  setRecapBulkEngaged(false);
+                  setAttBulkConfirmDelete(false);
+                  setAttBulkStatusMode(false);
+                }}
               >
-                Hapus Pilihan
+                Kosongkan
               </button>
             </div>
           </div>
 
-          {/* Teacher Selection Strip */}
-          <div style={{ marginBottom: '14px', padding: '8px 12px', background: '#fcfaf5', borderRadius: '8px', border: '1px solid #e8e2d4' }}>
-            <div style={{ fontSize: '10.5px', fontWeight: 800, color: '#6a7e78', marginBottom: '6px' }}>
-              GURU TERPILIH UNTUK REKAP ({recapSelectedTeachers.length} DARI {activeTeachers.length}):
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxHeight: '70px', overflowY: 'auto' }}>
-              {activeTeachers.map((teacher) => (
-                <label
-                  key={teacher.id}
+          {recapSummaryAll.isMultiMonth && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                flexWrap: 'wrap',
+                padding: '10px 14px',
+                borderRadius: '11px',
+                background: '#F4F8F5',
+                border: '0.75px solid #D5E2DB',
+                marginBottom: '12px',
+              }}
+            >
+              <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#124037', marginRight: '4px' }}>
+                Ringkasan Per Bulan:
+              </span>
+              {recapSummaryAll.monthSummaries.map((mb) => (
+                <span
+                  key={mb.monthYear}
+                  className="s5-tnum"
                   style={{
-                    display: 'flex',
+                    display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '4px',
-                    fontSize: '11px',
-                    background: recapSelectedTeachers.includes(teacher.id) ? '#e9f2ee' : '#fff',
-                    padding: '2px 6px',
-                    borderRadius: '5px',
-                    border: '1px solid #d8e2dc',
-                    cursor: 'pointer',
+                    gap: '6px',
+                    padding: '4px 10px',
+                    borderRadius: '8px',
+                    background: '#FFFFFF',
+                    border: `0.75px solid ${mb.recordedDaysCount > 0 ? '#BFD8CC' : '#DCE2DE'}`,
+                    fontSize: '11.5px',
+                    color: '#0F201C',
                   }}
                 >
-                  <input
-                    type="checkbox"
-                    checked={recapSelectedTeachers.includes(teacher.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setRecapSelectedTeachers([...recapSelectedTeachers, teacher.id]);
-                      } else {
-                        setRecapSelectedTeachers(recapSelectedTeachers.filter((id) => id !== teacher.id));
-                      }
-                    }}
-                  />
-                  <span>{teacher.name}</span>
-                </label>
+                  <strong style={{ color: '#124037' }}>{mb.shortLabel}</strong>
+                  <span style={{ color: '#526861' }}>
+                    {mb.recordedDaysCount > 0 ? `${mb.recordedDaysCount} hr` : 'kosong'}
+                  </span>
+                  <strong style={{ color: mb.recordedDaysCount > 0 ? '#1B5E43' : '#687E77' }}>
+                    {mb.recordedDaysCount > 0 ? `${mb.overallAvgRate}%` : '—'}
+                  </strong>
+                </span>
               ))}
             </div>
-          </div>
+          )}
 
-          {/* Recap Summary Table */}
-          <div className="data-table-wrap" style={{ overflowX: 'auto', border: '1px solid #e1e7e3', borderRadius: '10px' }}>
-            <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+          {/* Recap Summary Table with Figma Pro Checkboxes */}
+          <div className="data-table-wrap s5-figma-table-wrap">
+            <table className="data-table s5-figma-table">
               <thead>
-                <tr style={{ background: '#f5faf7', borderBottom: '1px solid #dce5df' }}>
-                  <th onClick={() => handleToggleRecapSort('no')} style={{ width: '45px', textAlign: 'center', padding: '9px', cursor: 'pointer' }} title="Klik untuk mengurutkan">No {recapSortKey === 'no' ? (recapSortOrder === 'asc' ? '▲' : '▼') : ''}</th>
-                  <th style={{ width: '80px', textAlign: 'center', padding: '9px' }}>Kode</th>
-                  <th onClick={() => handleToggleRecapSort('name')} style={{ textAlign: 'left', padding: '9px', cursor: 'pointer' }} title="Klik untuk mengurutkan">Nama Lengkap & NIP Pendidik {recapSortKey === 'name' ? (recapSortOrder === 'asc' ? '▲' : '▼') : ''}</th>
-                  <th onClick={() => handleToggleRecapSort('hadir')} style={{ width: '70px', textAlign: 'center', padding: '9px', cursor: 'pointer' }} title="Klik untuk mengurutkan">Hadir (H) {recapSortKey === 'hadir' ? (recapSortOrder === 'asc' ? '▲' : '▼') : ''}</th>
-                  <th style={{ width: '70px', textAlign: 'center', padding: '9px' }}>Dinas (DL)</th>
-                  <th style={{ width: '65px', textAlign: 'center', padding: '9px' }}>Sakit (S)</th>
-                  <th style={{ width: '65px', textAlign: 'center', padding: '9px' }}>Izin (I)</th>
-                  <th style={{ width: '65px', textAlign: 'center', padding: '9px' }}>Alpa (A)</th>
-                  <th style={{ width: '90px', textAlign: 'center', padding: '9px' }}>Total (H+DL)</th>
-                  <th style={{ width: '80px', textAlign: 'center', padding: '9px' }}>Target (HE)</th>
-                  <th onClick={() => handleToggleRecapSort('rate')} style={{ width: '85px', textAlign: 'center', padding: '9px', cursor: 'pointer' }} title="Klik untuk mengurutkan">% Hadir {recapSortKey === 'rate' ? (recapSortOrder === 'asc' ? '▲' : '▼') : ''}</th>
-                  <th style={{ width: '120px', textAlign: 'center', padding: '9px' }}>Predikat</th>
+                <tr>
+                  <th className="s5-checkbox-col">
+                    <label
+                      className="s5-checkbox-label"
+                      title={allVisibleRecapSelected ? 'Batal pilih halaman ini' : 'Pilih semua guru di halaman ini'}
+                    >
+                      <input
+                        type="checkbox"
+                        className="s5-checkbox-input"
+                        checked={allVisibleRecapSelected}
+                        onChange={toggleAllVisibleRecap}
+                        aria-label="Pilih semua guru rekap"
+                      />
+                      <span className={`s5-checkbox-box ${someVisibleRecapSelected ? 'indeterminate' : ''}`}>
+                        {allVisibleRecapSelected ? (
+                          <Check size={12} strokeWidth={3} />
+                        ) : someVisibleRecapSelected ? (
+                          <Minus size={12} strokeWidth={3} />
+                        ) : null}
+                      </span>
+                    </label>
+                  </th>
+                  <th
+                    onClick={() => handleToggleRecapSort('no')}
+                    style={{ width: '48px', textAlign: 'center', cursor: 'pointer' }}
+                  >
+                    No {recapSortKey === 'no' ? (recapSortOrder === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  <th style={{ width: '76px', textAlign: 'center' }}>Kode</th>
+                  <th onClick={() => handleToggleRecapSort('name')} style={{ cursor: 'pointer' }}>
+                    Pendidik {recapSortKey === 'name' ? (recapSortOrder === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  <th
+                    onClick={() => handleToggleRecapSort('hadir')}
+                    style={{ width: '64px', textAlign: 'center', cursor: 'pointer' }}
+                  >
+                    H {recapSortKey === 'hadir' ? (recapSortOrder === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  <th style={{ width: '60px', textAlign: 'center' }}>DL</th>
+                  <th style={{ width: '56px', textAlign: 'center' }}>S</th>
+                  <th style={{ width: '56px', textAlign: 'center' }}>I</th>
+                  <th style={{ width: '56px', textAlign: 'center' }}>A</th>
+                  <th style={{ width: '82px', textAlign: 'center' }}>H + DL</th>
+                  <th style={{ width: '72px', textAlign: 'center' }}>Target</th>
+                  <th
+                    onClick={() => handleToggleRecapSort('rate')}
+                    style={{ width: '126px', textAlign: 'center', cursor: 'pointer' }}
+                  >
+                    Kehadiran {recapSortKey === 'rate' ? (recapSortOrder === 'asc' ? '▲' : '▼') : ''}
+                  </th>
+                  <th style={{ width: '116px', textAlign: 'center' }}>Predikat</th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedRecapRows.length === 0 ? (
                   <tr>
-                    <td colSpan={12} style={{ textAlign: 'center', padding: '24px', color: '#687a75' }}>
-                      Tidak ada data guru untuk rekapitulasi.
+                    <td colSpan={13} style={{ textAlign: 'center', padding: '28px', color: '#526861' }}>
+                      Tidak ada data guru untuk pencarian aktif.
                     </td>
                   </tr>
                 ) : (
                   paginatedRecapRows.map((r) => {
+                    const isChecked = selectedRecapSet.has(r.teacher.id);
                     const totalPresent = r.hadir + r.dinas;
-                    let predikat = 'Sangat Baik';
-                    let predikatColor = '#1f6952';
-                    if (r.rate < 75) {
-                      predikat = 'Perlu Pembinaan';
-                      predikatColor = '#b24c3d';
+                    const predikat = r.predikat;
+                    let predikatColor = '#1B5E43';
+                    if (!r.hasData) {
+                      predikatColor = '#687E77';
+                    } else if (r.rate < 75) {
+                      predikatColor = '#A63A2E';
                     } else if (r.rate < 85) {
-                      predikat = 'Cukup';
-                      predikatColor = '#9c6f28';
+                      predikatColor = '#9C6F28';
                     } else if (r.rate < 95) {
-                      predikat = 'Baik';
-                      predikatColor = '#2f7771';
+                      predikatColor = '#2F7771';
                     }
                     return (
-                      <tr key={r.teacher.id} style={{ borderBottom: '1px solid #edf2ee' }}>
-                        <td style={{ textAlign: 'center', color: '#7a8a86', fontSize: '11px' }}>{r.no}</td>
-                        <td style={{ textAlign: 'center' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#274b45' }}>{r.teacher.code}</span>
+                      <tr
+                        key={r.teacher.id}
+                        className={isChecked ? 's5-row-selected' : ''}
+                        style={{ opacity: isChecked ? 1 : 0.62 }}
+                      >
+                        <td className="s5-checkbox-col">
+                          <label className="s5-checkbox-label" title={`Pilih ${r.teacher.name}`}>
+                            <input
+                              type="checkbox"
+                              className="s5-checkbox-input"
+                              checked={isChecked}
+                              onChange={() => toggleSingleRecapTeacher(r.teacher.id)}
+                              aria-label={`Pilih ${r.teacher.name} untuk tindakan massal dan PDF`}
+                            />
+                            <span className="s5-checkbox-box">
+                              {isChecked && <Check size={12} strokeWidth={3} />}
+                            </span>
+                          </label>
+                        </td>
+                        <td
+                          className="s5-tnum"
+                          style={{ textAlign: 'center', color: '#526861', fontSize: '11.5px' }}
+                        >
+                          {r.no}
+                        </td>
+                        <td
+                          className="s5-tnum"
+                          style={{ textAlign: 'center', fontWeight: 700, color: '#124037' }}
+                        >
+                          {r.teacher.code}
                         </td>
                         <td>
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <strong style={{ fontSize: '12px', color: '#123735' }}>{r.teacher.name}</strong>
-                            <span style={{ fontSize: '10px', color: '#6c827d' }}>
-                              {r.teacher.roleTitle || 'Guru Mapel'}{r.teacher.nip ? ` · NIP. ${r.teacher.nip}` : ''}
-                            </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <MadrasahTeacherAvatar teacher={r.teacher} size={32} showStatusDot={false} />
+                            <div>
+                              <strong style={{ fontSize: '12.5px', color: '#0F201C', display: 'block' }}>
+                                {r.teacher.name}
+                              </strong>
+                              <span style={{ fontSize: '11px', color: '#526861' }}>
+                                {r.teacher.roleTitle || 'Guru Mapel'}
+                                {r.teacher.nip ? ` · NIP. ${r.teacher.nip}` : ''}
+                              </span>
+                            </div>
                           </div>
                         </td>
-                        <td style={{ textAlign: 'center', fontWeight: 600, color: '#1f6952' }}>{r.hadir}</td>
-                        <td style={{ textAlign: 'center', fontWeight: 600, color: '#685094' }}>{r.dinas}</td>
-                        <td style={{ textAlign: 'center', color: '#4b7596' }}>{r.sakit}</td>
-                        <td style={{ textAlign: 'center', color: '#9c6f28' }}>{r.izin}</td>
-                        <td style={{ textAlign: 'center', color: r.alpa > 0 ? '#b24c3d' : '#8a9b95', fontWeight: r.alpa > 0 ? 700 : 400 }}>
+                        <td
+                          className="s5-tnum"
+                          style={{ textAlign: 'center', fontWeight: 700, color: '#1B5E43' }}
+                        >
+                          {r.hadir}
+                        </td>
+                        <td
+                          className="s5-tnum"
+                          style={{ textAlign: 'center', fontWeight: 600, color: '#5D478B' }}
+                        >
+                          {r.dinas}
+                        </td>
+                        <td className="s5-tnum" style={{ textAlign: 'center', color: '#36648B' }}>
+                          {r.sakit}
+                        </td>
+                        <td className="s5-tnum" style={{ textAlign: 'center', color: '#9C6F28' }}>
+                          {r.izin}
+                        </td>
+                        <td
+                          className="s5-tnum"
+                          style={{
+                            textAlign: 'center',
+                            color: r.alpa > 0 ? '#A63A2E' : '#526861',
+                            fontWeight: r.alpa > 0 ? 700 : 400,
+                          }}
+                        >
                           {r.alpa}
                         </td>
-                        <td style={{ textAlign: 'center', fontWeight: 700, color: '#0b3435' }}>{totalPresent}</td>
-                        <td style={{ textAlign: 'center', color: '#687a75' }}>{effectiveDaysInMonth}</td>
-                        <td style={{ textAlign: 'center' }}>
-                          <strong style={{ fontSize: '12px', color: predikatColor }}>{r.rate}%</strong>
+                        <td
+                          className="s5-tnum"
+                          style={{ textAlign: 'center', fontWeight: 700, color: '#0B2923' }}
+                        >
+                          {totalPresent}
+                        </td>
+                        <td className="s5-tnum" style={{ textAlign: 'center', color: '#526861' }}>
+                          {effectiveRecapDays}
                         </td>
                         <td style={{ textAlign: 'center' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 600, color: predikatColor }}>{predikat}</span>
+                          {r.hasData ? (
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                              <span className="s5-rate-bar-track">
+                                <span
+                                  className="s5-rate-bar-fill"
+                                  style={{ width: `${r.rate}%`, background: predikatColor }}
+                                />
+                              </span>
+                              <strong className="s5-tnum" style={{ fontSize: '12px', color: predikatColor }}>
+                                {r.rate}%
+                              </strong>
+                            </div>
+                          ) : (
+                            <span className="s5-tnum" style={{ fontSize: '12px', color: '#687E77' }}>
+                              —
+                            </span>
+                          )}
+                        </td>
+                        <td
+                          style={{
+                            textAlign: 'center',
+                            fontSize: '11.5px',
+                            fontWeight: 600,
+                            color: predikatColor,
+                          }}
+                        >
+                          {predikat}
                         </td>
                       </tr>
                     );
@@ -1537,274 +3523,834 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
             </table>
           </div>
 
-          {/* Recap Pagination Toolbar */}
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginTop: '12px',
-              flexWrap: 'wrap',
-              gap: '10px',
-              fontSize: '12px',
-              color: '#5e756e',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>Tampilkan per halaman:</span>
-              <select
-                value={recapPageSize}
-                onChange={(e) => { setRecapPageSize(Number(e.target.value)); setRecapPage(1); }}
-                style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #d0dad4' }}
-              >
-                <option value={10}>10 Baris</option>
-                <option value={20}>20 Baris</option>
-                <option value={25}>25 Baris</option>
-                <option value={0}>Semua ({sortedRecapRows.length})</option>
-              </select>
-              <span>Total {sortedRecapRows.length} guru</span>
+          {/* Recap Architectural Footbar (.s5-att-footbar) */}
+          <div className="s5-att-footbar">
+            <div className="s5-footbar-composition" aria-hidden="true">
+              <div className="s5-footbar-seg hadir" style={{ width: `${overallAvgRate}%` }} />
             </div>
 
-            {recapPageSize > 0 && totalRecapPages > 1 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <button
-                  type="button"
-                  className="button button-quiet"
-                  style={{ padding: '4px 8px' }}
-                  disabled={recapPage <= 1}
-                  onClick={() => setRecapPage((p) => Math.max(1, p - 1))}
+            <div className="s5-att-footbar-row">
+              <div className="s5-footbar-meta">
+                <select
+                  aria-label="Jumlah baris tabel rekap"
+                  className="s5-footbar-select"
+                  value={recapPageSize}
+                  onChange={(e) => {
+                    setRecapPageSize(Number(e.target.value));
+                    setRecapPage(1);
+                  }}
                 >
-                  <ChevronLeft size={14} /> Sebelumnya
-                </button>
-                <span>
-                  Halaman <strong>{recapPage}</strong> dari <strong>{totalRecapPages}</strong>
+                  <option value={10}>10 Baris</option>
+                  <option value={20}>20 Baris</option>
+                  <option value={25}>25 Baris</option>
+                  <option value={0}>Semua ({sortedRecapRows.length})</option>
+                </select>
+                <span className="s5-tnum">
+                  <strong>{recapSelectedTeachers.length}</strong> terpilih · Rata-rata kehadiran{' '}
+                  <strong>{overallAvgRate}%</strong>
                 </span>
+              </div>
+
+              <div className="s5-footbar-actions">
+                {recapPageSize > 0 && totalRecapPages > 1 && (
+                  <div className="s5-pagination-group" aria-label="Navigasi halaman tabel rekap">
+                    <button
+                      type="button"
+                      className="s5-page-btn"
+                      disabled={safeRecapPage <= 1}
+                      onClick={() => setRecapPage((p) => Math.max(1, p - 1))}
+                      aria-label="Halaman sebelumnya"
+                    >
+                      <ChevronLeft size={14} />
+                    </button>
+                    {getPaginationItems(safeRecapPage, totalRecapPages).map((item, idx) =>
+                      item === 'ellipsis' ? (
+                        <span key={`r-ell-${idx}`} style={{ padding: '0 4px', color: '#8A9B95' }}>
+                          …
+                        </span>
+                      ) : (
+                        <button
+                          key={`r-pg-${item}`}
+                          type="button"
+                          className={`s5-page-btn s5-tnum ${safeRecapPage === item ? 'is-active' : ''}`}
+                          onClick={() => setRecapPage(item)}
+                        >
+                          {item}
+                        </button>
+                      ),
+                    )}
+                    <button
+                      type="button"
+                      className="s5-page-btn"
+                      disabled={safeRecapPage >= totalRecapPages}
+                      onClick={() => setRecapPage((p) => Math.min(totalRecapPages, p + 1))}
+                      aria-label="Halaman berikutnya"
+                    >
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                )}
+
                 <button
                   type="button"
-                  className="button button-quiet"
-                  style={{ padding: '4px 8px' }}
-                  disabled={recapPage >= totalRecapPages}
-                  onClick={() => setRecapPage((p) => Math.min(totalRecapPages, p + 1))}
+                  className="button button-primary"
+                  onClick={() => setPdfModalOpen(true)}
+                  disabled={recapSelectedTeachers.length === 0}
+                  style={{ height: '36px', padding: '0 16px', fontSize: '12.5px' }}
                 >
-                  Berikutnya <ChevronRight size={14} />
+                  <Download size={14} /> Ekspor PDF ({recapSelectedTeachers.length} Guru)
                 </button>
               </div>
-            )}
+            </div>
           </div>
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 5: PENGATURAN HARI LIBUR & KALENDER MADRASAH                           */}
+      {/* TAB 5: DUAL-PANE ZERO-SCROLL HARI LIBUR & KALDIK KEMENAG RI               */}
       {/* ========================================================================= */}
       {activeTab === 'holidays' && (
-        <div className="surface-card" style={{ padding: '16px 20px' }}>
-          <div className="card-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+        <div className="s5-att-panel">
+          <div className="s5-att-panel-header">
             <div>
-              <div className="card-eyebrow" style={{ fontSize: '10px', color: '#55726b', fontWeight: 800 }}>
-                KALENDER LIBUR MADRASAH
-              </div>
-              <h3 style={{ margin: '2px 0 0', fontSize: '16px', color: '#103f3e', fontWeight: 700 }}>
-                Daftar Hari Libur Nasional & Khusus Madrasah
+              <div className="s5-page-kicker">KALENDER RESMI NASIONAL &amp; KEMENAG RI</div>
+              <h3 style={{ margin: '3px 0 0', fontSize: '17px', color: '#0B2923', fontWeight: 700 }}>
+                Daftar Tanggal Merah, Cuti Bersama &amp; Libur Madrasah
               </h3>
+            </div>
+            <button
+              type="button"
+              className="button button-primary"
+              onClick={() =>
+                handleBatchImportHolidays(
+                  unaddedCatalogEventsInYear,
+                  `Nasional ${catalogYear}`,
+                )
+              }
+              disabled={unaddedCatalogEventsInYear.length === 0}
+              style={{ height: '38px', fontSize: '12px' }}
+            >
+              <Plus size={14} />
+              {unaddedCatalogEventsInYear.length > 0
+                ? `Sinkronkan Nasional ${catalogYear} (${unaddedCatalogEventsInYear.length})`
+                : `Nasional ${catalogYear} Lengkap`}
+            </button>
+          </div>
+
+          {/* Single-Row Top Controls (Year 2025–2028 + Category) */}
+          <div className="s5-holidays-topbar">
+            <div className="s5-status-segmented" role="group" aria-label="Pilih tahun kalender">
+              {AVAILABLE_HOLIDAY_YEARS.map((y) => (
+                <button
+                  key={y}
+                  type="button"
+                  className={`s5-status-chip s5-tnum ${catalogYear === y ? 'is-active HADIR' : ''}`}
+                  onClick={() => {
+                    setCatalogYear(y);
+                    setHolidayPage(1);
+                  }}
+                >
+                  {y}
+                </button>
+              ))}
+            </div>
+
+            <div className="s5-status-segmented" role="group" aria-label="Filter kategori libur">
+              {(
+                [
+                  { id: 'ALL', label: 'Semua' },
+                  { id: 'NASIONAL', label: 'Libur Nasional' },
+                  { id: 'CUTI_BERSAMA', label: 'Cuti Bersama' },
+                  { id: 'KALDIK_KEMENAG', label: 'Kaldik Kemenag' },
+                ] as const
+              ).map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  className={`s5-status-chip ${catalogFilter === cat.id ? 'is-active HADIR' : ''}`}
+                  style={{ padding: '0 10px', whiteSpace: 'nowrap' }}
+                  onClick={() => setCatalogFilter(cat.id)}
+                >
+                  {cat.label}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Form Tambah/Edit Hari Libur */}
-          <form
-            onSubmit={handleSaveHoliday}
-            style={{
-              display: 'flex',
-              gap: '10px',
-              alignItems: 'flex-end',
-              flexWrap: 'wrap',
-              padding: '12px 14px',
-              background: '#f9fcfa',
-              border: '1px solid #d8e5df',
-              borderRadius: '8px',
-              marginBottom: '16px',
-            }}
-          >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '11px', fontWeight: 800, color: '#31544e' }}>Tanggal Libur</label>
-              <input
-                type="date"
-                value={newHolidayDate}
-                onChange={(e) => setNewHolidayDate(e.target.value)}
-                style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #c9d8d1', fontSize: '12px' }}
-                required
-              />
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: '200px' }}>
-              <label style={{ fontSize: '11px', fontWeight: 800, color: '#31544e' }}>Nama Hari Libur / Keterangan</label>
-              <input
-                type="text"
-                placeholder="Contoh: Libur Awal Ramadhan, Hari Santri…"
-                value={newHolidayName}
-                onChange={(e) => setNewHolidayName(e.target.value)}
-                style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #c9d8d1', fontSize: '12px' }}
-                required
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <button type="submit" className="button button-primary" style={{ gap: '6px', height: '34px' }}>
-                {editingHolidayId ? <Save size={13} /> : <Plus size={13} />}
-                {editingHolidayId ? 'Simpan Perubahan' : 'Tambah Hari Libur'}
-              </button>
-              {editingHolidayId && (
+          {/* 12-Month Instant Quick-Jump Strip (Zero Scroll Across 12 Months) */}
+          <div className="s5-month-strip" role="group" aria-label="Lompat cepat bulan">
+            <button
+              type="button"
+              className={`s5-month-pill ${catalogMonth === 'ALL' ? 'is-active' : ''}`}
+              onClick={() => {
+                setCatalogMonth('ALL');
+                setHolidayPage(1);
+              }}
+            >
+              Semua Bulan
+            </button>
+            {SHORT_MONTHS_ID.map((mLabel, mIdx) => {
+              const monthNum = mIdx + 1;
+              const cnt = catalogMonthCounts[mIdx] ?? 0;
+              const isActive = catalogMonth === monthNum;
+              return (
                 <button
+                  key={mLabel}
                   type="button"
-                  className="button button-quiet"
-                  onClick={handleCancelEditHoliday}
-                  style={{ height: '34px' }}
+                  className={`s5-month-pill ${isActive ? 'is-active' : ''}`}
+                  onClick={() => {
+                    setCatalogMonth(monthNum);
+                    setHolidayPage(1);
+                  }}
                 >
-                  <X size={13} /> Batal
+                  <span>{mLabel}</span>
+                  {cnt > 0 && <span className="s5-month-pill-count s5-tnum">({cnt})</span>}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Dual-Pane Zero-Scroll Split Workspace */}
+          <div className="s5-holidays-split">
+            {/* LEFT PANE: Compact Official SKB 3 Menteri & Kaldik Kemenag 1-Click Catalog */}
+            <div>
+              <div className="s5-holidays-pane-head">
+                <strong style={{ fontSize: '13px', color: '#0B2923' }}>
+                  Tanggal Merah Otomatis {catalogYear}
+                  {catalogMonth !== 'ALL' ? ` · ${MONTHS_FULL_ID[catalogMonth - 1]}` : ''}
+                </strong>
+                <span className="s5-tnum" style={{ fontSize: '11.5px', color: '#526861' }}>
+                  {catalogEvents.length} agenda · 1-klik Tambah / Lepas
+                </span>
+              </div>
+
+              <div className="s5-kaldik-scroll">
+                {groupedCatalogEvents.length === 0 ? (
+                  <div style={{ padding: '28px 16px', textAlign: 'center', fontSize: '12px', color: '#526861' }}>
+                    Tidak ada agenda libur resmi pada bulan ini. Pilih bulan lain atau &ldquo;Semua Bulan&rdquo;.
+                  </div>
+                ) : (
+                  groupedCatalogEvents.map(([ym, events]) => {
+                    const monthIndex = Number(ym.slice(5, 7)) - 1;
+                    const monthTitle = `${MONTHS_FULL_ID[monthIndex] ?? ym} ${ym.slice(0, 4)}`;
+                    return (
+                      <div key={ym}>
+                        <div className="s5-kaldik-month-label">{monthTitle}</div>
+                        {events.map((ev) => {
+                          const isRegistered = holidays.some((h) => h.date === ev.date);
+                          const [, mStr, dStr] = ev.date.split('-');
+                          const monthShort = SHORT_MONTHS_ID[Number(mStr) - 1] ?? mStr;
+                          const boxType =
+                            ev.category === 'KALDIK_KEMENAG'
+                              ? 'kemenag'
+                              : ev.category === 'CUTI_BERSAMA'
+                              ? 'cuti'
+                              : '';
+                          return (
+                            <div
+                              key={`${ev.date}-${ev.category}`}
+                              className={`s5-kaldik-row ${isRegistered ? 'is-registered' : ''}`}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                                <div className={`s5-kaldik-datebox ${boxType}`}>
+                                  <span className="s5-kaldik-day s5-tnum">{Number(dStr)}</span>
+                                  <span className="s5-kaldik-mon">{monthShort}</span>
+                                </div>
+                                <div style={{ minWidth: 0 }}>
+                                  <strong
+                                    style={{
+                                      fontSize: '12.5px',
+                                      color: '#0F201C',
+                                      display: 'block',
+                                      lineHeight: 1.25,
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                    }}
+                                  >
+                                    {ev.name}
+                                  </strong>
+                                  <span
+                                    style={{ fontSize: '11px', color: '#526861' }}
+                                    data-s5-tooltip={ev.decree}
+                                  >
+                                    {getCategoryLabel(ev.category)}
+                                    {ev.isRedDate ? ' · Tanggal Merah' : ' · Agenda Madrasah'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                className={`button ${isRegistered ? 'button-quiet' : 'button-secondary'}`}
+                                onClick={() => handleQuickToggleOfficialEvent(ev)}
+                                data-s5-tooltip={
+                                  isRegistered
+                                    ? 'Klik untuk melepas dari daftar libur madrasah'
+                                    : 'Klik untuk menambahkan ke libur madrasah'
+                                }
+                                style={{
+                                  height: '30px',
+                                  padding: '0 10px',
+                                  fontSize: '11.5px',
+                                  flexShrink: 0,
+                                  color: isRegistered ? '#1B5E43' : undefined,
+                                }}
+                              >
+                                {isRegistered ? (
+                                  <>
+                                    <Check size={13} /> Aktif
+                                  </>
+                                ) : (
+                                  <>
+                                    <Plus size={13} /> Tambah
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* RIGHT PANE: Compact Form + Instant Official Red-Date Suggestions + Registered Table + Footbar */}
+            <div>
+              <div className="s5-holidays-pane-head">
+                <strong style={{ fontSize: '13px', color: '#0B2923' }}>
+                  Kalender Libur Madrasah Terdaftar
+                </strong>
+                <span className="s5-tnum" style={{ fontSize: '11.5px', color: '#526861' }}>
+                  {filteredHolidays.length} tanggal tersimpan
+                </span>
+              </div>
+
+              {/* Compact 1-Row Inline Add / Edit Form */}
+              <form
+                onSubmit={handleSaveHoliday}
+                style={{
+                  display: 'flex',
+                  gap: '8px',
+                  alignItems: 'flex-end',
+                  flexWrap: 'wrap',
+                  padding: '10px 12px',
+                  background: '#F8FAF8',
+                  border: '0.75px solid #D5E0DA',
+                  borderRadius: '12px',
+                  marginBottom: '8px',
+                }}
+              >
+                <div className="s5-field-chip">
+                  <label htmlFor="manual-hol-date">Tanggal</label>
+                  <div className="s5-input-shell" style={{ height: '34px' }}>
+                    <input
+                      id="manual-hol-date"
+                      type="date"
+                      value={newHolidayDate}
+                      onChange={(e) => handleHolidayDatePickerChange(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="s5-field-chip" style={{ flex: 1, minWidth: '160px' }}>
+                  <label htmlFor="manual-hol-name">Keterangan Hari Libur</label>
+                  <div className="s5-input-shell" style={{ width: '100%', height: '34px' }}>
+                    <input
+                      id="manual-hol-name"
+                      type="text"
+                      placeholder="Contoh: Milad Madrasah…"
+                      value={newHolidayName}
+                      onChange={(e) => setNewHolidayName(e.target.value)}
+                      style={{ width: '100%' }}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button
+                    type="submit"
+                    className="button button-primary"
+                    style={{ height: '34px', padding: '0 13px', fontSize: '12px' }}
+                  >
+                    {editingHolidayId ? <Save size={14} /> : <Plus size={14} />}
+                    {editingHolidayId ? 'Simpan' : 'Tambah'}
+                  </button>
+                  {editingHolidayId && (
+                    <button
+                      type="button"
+                      className="button button-quiet"
+                      onClick={handleCancelEditHoliday}
+                      style={{ height: '34px', padding: '0 10px' }}
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+              </form>
+
+              {/* Auto-Suggested Official Dates Right Inside Form Area (1-Click Fill/Add) */}
+              {detectedOfficialManualDate && !editingHolidayId ? (
+                <div
+                  className="s5-holiday-alert-banner calm"
+                  style={{ marginBottom: '8px', padding: '8px 12px' }}
+                >
+                  <span style={{ fontSize: '11.5px', color: '#124037', fontWeight: 600 }}>
+                    {formatCompactDate(detectedOfficialManualDate.date)}:{' '}
+                    <strong>{detectedOfficialManualDate.name}</strong>
+                  </span>
+                  <button
+                    type="button"
+                    className="button button-quiet"
+                    onClick={() => setNewHolidayName(detectedOfficialManualDate.name)}
+                    style={{ height: '26px', fontSize: '11px' }}
+                  >
+                    Pakai Nama Resmi
+                  </button>
+                </div>
+              ) : (
+                quickSuggestOfficialEvents.length > 0 &&
+                !editingHolidayId && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      flexWrap: 'wrap',
+                      marginBottom: '8px',
+                    }}
+                  >
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: '#526861' }}>
+                      Tambah cepat:
+                    </span>
+                    {quickSuggestOfficialEvents.map((ev) => (
+                      <button
+                        key={ev.date}
+                        type="button"
+                        className="s5-quick-red-chip"
+                        onClick={() => handleQuickToggleOfficialEvent(ev)}
+                      >
+                        <Plus size={11} />
+                        <span>
+                          {formatCompactDate(ev.date)} · {ev.name.split('(')[0].trim()}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )
+              )}
+
+              {/* Compact Search Bar */}
+              <div className="s5-att-toolbar" style={{ padding: '7px 10px', marginBottom: '8px' }}>
+                <div className="s5-field-chip" style={{ flex: 1 }}>
+                  <div className="s5-input-shell" style={{ width: '100%', height: '32px' }}>
+                    <Search size={14} color="#687E77" />
+                    <input
+                      id="hol-search"
+                      aria-label="Cari hari libur terdaftar"
+                      type="text"
+                      placeholder="Cari tanggal atau nama hari libur…"
+                      value={holidaySearch}
+                      onChange={(e) => {
+                        setHolidaySearch(e.target.value);
+                        setHolidayPage(1);
+                      }}
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Registered Holiday Figma Pro Table (Fixed Compact Height = Zero Outer Scroll) */}
+              <div className="data-table-wrap s5-figma-table-wrap s5-holiday-table-scroll">
+                <table className="data-table s5-figma-table">
+                  <thead>
+                    <tr>
+                      <th className="s5-checkbox-col">
+                        <label
+                          className="s5-checkbox-label"
+                          title={isAllHolidayPageSelected ? 'Batal pilih halaman ini' : 'Pilih semua di halaman ini'}
+                        >
+                          <input
+                            type="checkbox"
+                            className="s5-checkbox-input"
+                            checked={isAllHolidayPageSelected}
+                            onChange={toggleHolidaySelectPage}
+                            aria-label="Pilih semua hari libur di halaman ini"
+                          />
+                          <span className={`s5-checkbox-box ${isSomeHolidayPageSelected ? 'indeterminate' : ''}`}>
+                            {isAllHolidayPageSelected ? (
+                              <Check size={12} strokeWidth={3} />
+                            ) : isSomeHolidayPageSelected ? (
+                              <Minus size={12} strokeWidth={3} />
+                            ) : null}
+                          </span>
+                        </label>
+                      </th>
+                      <th style={{ width: '44px', textAlign: 'center' }}>No</th>
+                      <th style={{ width: '110px' }}>Tanggal</th>
+                      <th>Nama Hari Libur</th>
+                      <th style={{ width: '88px', textAlign: 'center' }}>Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedHolidays.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: '#526861' }}>
+                          Belum ada hari libur terdaftar. Klik + Tambah di sebelah kiri.
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedHolidays.map((hol, idx) => {
+                        const globalIdx =
+                          (safeHolidayPage - 1) * (holidayPageSize || filteredHolidays.length) +
+                          idx +
+                          1;
+                        const isSelected = holidaySelectedSet.has(hol.id);
+                        return (
+                          <tr key={hol.id} className={isSelected ? 's5-row-selected' : undefined}>
+                            <td className="s5-checkbox-col">
+                              <label className="s5-checkbox-label" title={`Pilih ${hol.name}`}>
+                                <input
+                                  type="checkbox"
+                                  className="s5-checkbox-input"
+                                  checked={isSelected}
+                                  onChange={() => toggleHolidaySelectOne(hol.id)}
+                                  aria-label={`Pilih ${hol.name}`}
+                                />
+                                <span className="s5-checkbox-box">
+                                  {isSelected && <Check size={12} strokeWidth={3} />}
+                                </span>
+                              </label>
+                            </td>
+                            <td
+                              className="s5-tnum"
+                              style={{ textAlign: 'center', color: '#526861', fontSize: '11.5px' }}
+                            >
+                              {globalIdx}
+                            </td>
+                            <td className="s5-tnum" style={{ fontWeight: 700, color: '#A63A2E' }}>
+                              {hol.date}
+                            </td>
+                            <td style={{ fontWeight: 600, color: '#0F201C' }}>{hol.name}</td>
+                            <td style={{ textAlign: 'center' }}>
+                              <div className="s5-action-dock">
+                                <button
+                                  type="button"
+                                  className="s5-dock-btn primary"
+                                  onClick={() => handleStartEditHoliday(hol)}
+                                  data-s5-tooltip="Edit hari libur"
+                                  aria-label={`Edit ${hol.name}`}
+                                >
+                                  <Edit2 size={13} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="s5-dock-btn"
+                                  style={{ color: '#A63A2E' }}
+                                  onClick={() => handleDeleteHoliday(hol.id)}
+                                  data-s5-tooltip="Hapus hari libur"
+                                  aria-label={`Hapus ${hol.name}`}
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Holiday Footbar (.s5-att-footbar) */}
+              <div className="s5-att-footbar">
+                <div className="s5-att-footbar-row">
+                  <div className="s5-footbar-meta">
+                    <select
+                      aria-label="Jumlah baris tabel hari libur"
+                      className="s5-footbar-select"
+                      value={holidayPageSize}
+                      onChange={(e) => {
+                        setHolidayPageSize(Number(e.target.value));
+                        setHolidayPage(1);
+                      }}
+                    >
+                      <option value={6}>6 Baris</option>
+                      <option value={10}>10 Baris</option>
+                      <option value={20}>20 Baris</option>
+                      <option value={0}>Semua ({filteredHolidays.length})</option>
+                    </select>
+                    <span className="s5-tnum">{filteredHolidays.length} hari libur</span>
+                  </div>
+
+                  {holidayPageSize > 0 && totalHolidayPages > 1 && (
+                    <div className="s5-pagination-group" aria-label="Navigasi halaman hari libur">
+                      <button
+                        type="button"
+                        className="s5-page-btn"
+                        disabled={safeHolidayPage <= 1}
+                        onClick={() => setHolidayPage((p) => Math.max(1, p - 1))}
+                        aria-label="Halaman sebelumnya"
+                      >
+                        <ChevronLeft size={14} />
+                      </button>
+                      {getPaginationItems(safeHolidayPage, totalHolidayPages).map((item, idx) =>
+                        item === 'ellipsis' ? (
+                          <span key={`h-ell-${idx}`} style={{ padding: '0 4px', color: '#8A9B95' }}>
+                            …
+                          </span>
+                        ) : (
+                          <button
+                            key={`h-pg-${item}`}
+                            type="button"
+                            className={`s5-page-btn s5-tnum ${safeHolidayPage === item ? 'is-active' : ''}`}
+                            onClick={() => setHolidayPage(item)}
+                          >
+                            {item}
+                          </button>
+                        ),
+                      )}
+                      <button
+                        type="button"
+                        className="s5-page-btn"
+                        disabled={safeHolidayPage >= totalHolidayPages}
+                        onClick={() => setHolidayPage((p) => Math.min(totalHolidayPages, p + 1))}
+                        aria-label="Halaman berikutnya"
+                      >
+                        <ChevronRight size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Bulk Action Toolbar for Presensi Guru Tables */}
+      {(() => {
+        const showDaily = activeTab === 'daily' && validDailySelectedIds.length > 0;
+        const showLedger = activeTab === 'teacher' && validLedgerSelectedDates.length > 0;
+        const showRecap = activeTab === 'recap' && recapBulkEngaged && validRecapSelectedIds.length > 0;
+        const showHolidays = activeTab === 'holidays' && validHolidaySelectedIds.length > 0;
+        if (!showDaily && !showLedger && !showRecap && !showHolidays) return null;
+
+        const selectedCount = showDaily
+          ? validDailySelectedIds.length
+          : showLedger
+          ? validLedgerSelectedDates.length
+          : showRecap
+          ? validRecapSelectedIds.length
+          : validHolidaySelectedIds.length;
+
+        const totalAvailableCount = showDaily
+          ? filteredDailyTeachers.length
+          : showLedger
+          ? ledgerRows.length
+          : showRecap
+          ? sortedRecapRows.length
+          : filteredHolidays.length;
+
+        const entityLabel = showDaily
+          ? 'Pendidik'
+          : showLedger
+          ? 'Tanggal'
+          : showRecap
+          ? 'Pendidik'
+          : 'Hari Libur';
+
+        const handleSelectAllScope = () => {
+          setAttBulkConfirmDelete(false);
+          setAttBulkStatusMode(false);
+          if (showDaily) setDailySelectedIds(filteredDailyTeachers.map((t) => t.id));
+          else if (showLedger) setLedgerSelectedDates(ledgerRows.map((r) => r.dateStr));
+          else if (showRecap) setRecapSelectedTeachers(sortedRecapRows.map((r) => r.teacher.id));
+          else if (showHolidays) setHolidaySelectedIds(filteredHolidays.map((h) => h.id));
+        };
+
+        const handleCloseBar = () => {
+          setAttBulkConfirmDelete(false);
+          setAttBulkStatusMode(false);
+          if (showDaily) setDailySelectedIds([]);
+          else if (showLedger) setLedgerSelectedDates([]);
+          else if (showRecap) setRecapBulkEngaged(false);
+          else if (showHolidays) setHolidaySelectedIds([]);
+        };
+
+        return (
+          <div className="s5-bulk-floating-bar" role="region" aria-label="Toolbar Tindakan Massal Presensi Guru">
+            <div className="s5-bulk-selection-meta">
+              <span className="s5-bulk-count-badge s5-tnum">{selectedCount}</span>
+              <span className="s5-bulk-label">{entityLabel} Terpilih</span>
+              {totalAvailableCount > selectedCount && (
+                <button type="button" className="s5-bulk-select-all-link" onClick={handleSelectAllScope}>
+                  Pilih Semua ({totalAvailableCount})
                 </button>
               )}
             </div>
-          </form>
 
-          {/* Holiday Search */}
-          <div className="toolbar-card" style={{ marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
-            <div className="class-selector-wrap" style={{ flex: 1, maxWidth: '280px' }}>
-              <label htmlFor="hol-search">CARI HARI LIBUR</label>
-              <div className="select-with-icon">
-                <Search size={14} />
-                <input
-                  id="hol-search"
-                  type="text"
-                  placeholder="Ketik nama atau tanggal libur…"
-                  value={holidaySearch}
-                  onChange={(e) => { setHolidaySearch(e.target.value); setHolidayPage(1); }}
-                  style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', width: '100%' }}
-                />
-              </div>
-            </div>
-            <div className="toolbar-spacer" />
-            <span style={{ fontSize: '11.5px', color: '#687a75' }}>
-              Total {filteredHolidays.length} hari libur terdaftar
-            </span>
-          </div>
+            <div className="s5-bulk-divider" aria-hidden="true" />
 
-          {/* Holiday Table */}
-          <div className="data-table-wrap" style={{ overflowX: 'auto', border: '1px solid #e1e7e3', borderRadius: '10px' }}>
-            <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: '#f5faf7', borderBottom: '1px solid #dce5df' }}>
-                  <th style={{ width: '45px', textAlign: 'center', padding: '9px' }}>No</th>
-                  <th style={{ width: '130px', textAlign: 'left', padding: '9px' }}>Tanggal</th>
-                  <th style={{ textAlign: 'left', padding: '9px' }}>Nama Hari Libur</th>
-                  <th style={{ width: '100px', textAlign: 'center', padding: '9px' }}>Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedHolidays.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} style={{ textAlign: 'center', padding: '24px', color: '#687a75' }}>
-                      Belum ada hari libur yang terdaftar.
-                    </td>
-                  </tr>
+            <div className="s5-bulk-actions">
+              {!attBulkConfirmDelete && !attBulkStatusMode ? (
+                <>
+                  {(showDaily || showLedger || showRecap) && (
+                    <button
+                      type="button"
+                      className="s5-bulk-btn status"
+                      onClick={() => setAttBulkStatusMode(true)}
+                      title={
+                        showRecap
+                          ? `Ubah status aktif ${selectedCount} pendidik terpilih`
+                          : `Ubah status kehadiran ${selectedCount} ${entityLabel.toLowerCase()} terpilih`
+                      }
+                    >
+                      <ToggleRight size={14} />
+                      <span>{showRecap ? 'Ubah Status Aktif' : 'Ubah Status'}</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    className="s5-bulk-btn export"
+                    onClick={() => {
+                      if (showDaily) handleDailyBulkExportCsv();
+                      else if (showLedger) handleLedgerBulkExportCsv();
+                      else if (showRecap) handleRecapBulkExportCsv();
+                      else if (showHolidays) handleHolidayBulkExportCsv();
+                    }}
+                    title={`Ekspor ${selectedCount} ${entityLabel.toLowerCase()} terpilih ke CSV`}
+                  >
+                    <Download size={14} />
+                    <span>Ekspor CSV Terpilih</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="s5-bulk-btn danger"
+                    onClick={() => setAttBulkConfirmDelete(true)}
+                    title={`Hapus data ${selectedCount} ${entityLabel.toLowerCase()} terpilih`}
+                  >
+                    <Trash2 size={14} />
+                    <span>Hapus Terpilih</span>
+                  </button>
+                </>
+              ) : attBulkStatusMode ? (
+                showRecap ? (
+                  <>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#E5C378', marginRight: '2px' }}>
+                      Status {selectedCount} Pendidik:
+                    </span>
+                    <button
+                      type="button"
+                      className="s5-bulk-btn activate"
+                      onClick={() => handleRecapBulkToggleActive(true)}
+                    >
+                      <CheckCircle2 size={14} />
+                      <span>Aktifkan</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="s5-bulk-btn deactivate"
+                      onClick={() => handleRecapBulkToggleActive(false)}
+                    >
+                      <XCircle size={14} />
+                      <span>Nonaktifkan</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="s5-bulk-btn subtle"
+                      onClick={() => setAttBulkStatusMode(false)}
+                    >
+                      Batal
+                    </button>
+                  </>
                 ) : (
-                  paginatedHolidays.map((hol, idx) => {
-                    const globalIdx = (holidayPage - 1) * (holidayPageSize || filteredHolidays.length) + idx + 1;
-                    return (
-                      <tr key={hol.id} style={{ borderBottom: '1px solid #edf2ee' }}>
-                        <td style={{ textAlign: 'center', color: '#7a8a86', fontSize: '11px' }}>{globalIdx}</td>
-                        <td style={{ fontSize: '12px', fontWeight: 600, color: '#103f3e' }}>{hol.date}</td>
-                        <td style={{ fontSize: '12px', color: '#274744', fontWeight: 600 }}>{hol.name}</td>
-                        <td style={{ textAlign: 'center' }}>
-                          <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-                            <button
-                              type="button"
-                              className="icon-button"
-                              onClick={() => handleStartEditHoliday(hol)}
-                              title="Edit hari libur"
-                              style={{ width: '28px', height: '28px' }}
-                            >
-                              <Edit2 size={13} />
-                            </button>
-                            <button
-                              type="button"
-                              className="icon-button"
-                              onClick={() => handleDeleteHoliday(hol.id)}
-                              title="Hapus hari libur"
-                              style={{ width: '28px', height: '28px', color: '#b24c3d' }}
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Holiday Pagination */}
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginTop: '12px',
-              flexWrap: 'wrap',
-              gap: '10px',
-              fontSize: '12px',
-              color: '#5e756e',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>Tampilkan:</span>
-              <select
-                value={holidayPageSize}
-                onChange={(e) => { setHolidayPageSize(Number(e.target.value)); setHolidayPage(1); }}
-                style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #d0dad4' }}
-              >
-                <option value={10}>10 Baris</option>
-                <option value={20}>20 Baris</option>
-                <option value={0}>Semua ({filteredHolidays.length})</option>
-              </select>
+                  <>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#E5C378', marginRight: '2px' }}>
+                      Set {selectedCount} {entityLabel}:
+                    </span>
+                    {QUICK_STATUS_ORDER.map((statusKey) => (
+                      <button
+                        key={statusKey}
+                        type="button"
+                        className={`s5-bulk-btn att-${statusKey}`}
+                        onClick={() => {
+                          if (showDaily) handleDailyBulkStatus(statusKey);
+                          else if (showLedger) handleLedgerBulkStatus(statusKey);
+                        }}
+                      >
+                        <span>{STATUS_CONFIG[statusKey].label}</span>
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      className="s5-bulk-btn subtle"
+                      onClick={() => setAttBulkStatusMode(false)}
+                    >
+                      Batal
+                    </button>
+                  </>
+                )
+              ) : (
+                <>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#FCA5A5', marginRight: '2px' }}>
+                    {showRecap
+                      ? `Hapus presensi ${recapSummaryAll.periodLabel} (${selectedCount} guru)?`
+                      : `Hapus ${selectedCount} ${entityLabel}?`}
+                  </span>
+                  <button
+                    type="button"
+                    className="s5-bulk-btn confirm-danger"
+                    onClick={() => {
+                      if (showDaily) handleDailyBulkDelete();
+                      else if (showLedger) handleLedgerBulkDelete();
+                      else if (showRecap) handleRecapBulkDelete();
+                      else if (showHolidays) handleHolidayBulkDelete();
+                    }}
+                  >
+                    <Check size={14} />
+                    <span>Ya, Hapus</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="s5-bulk-btn subtle"
+                    onClick={() => setAttBulkConfirmDelete(false)}
+                  >
+                    Batal
+                  </button>
+                </>
+              )}
             </div>
 
-            {holidayPageSize > 0 && totalHolidayPages > 1 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <button
-                  type="button"
-                  className="button button-quiet"
-                  style={{ padding: '4px 8px' }}
-                  disabled={holidayPage <= 1}
-                  onClick={() => setHolidayPage((p) => Math.max(1, p - 1))}
-                >
-                  <ChevronLeft size={14} /> Sebelumnya
-                </button>
-                <span>
-                  Halaman <strong>{holidayPage}</strong> dari <strong>{totalHolidayPages}</strong>
-                </span>
-                <button
-                  type="button"
-                  className="button button-quiet"
-                  style={{ padding: '4px 8px' }}
-                  disabled={holidayPage >= totalHolidayPages}
-                  onClick={() => setHolidayPage((p) => Math.min(totalHolidayPages, p + 1))}
-                >
-                  Berikutnya <ChevronRight size={14} />
-                </button>
-              </div>
-            )}
+            <button
+              type="button"
+              className="s5-bulk-close"
+              onClick={handleCloseBar}
+              title={showRecap ? 'Tutup bilah tindakan' : 'Batalkan pilihan'}
+              aria-label={showRecap ? 'Tutup bilah tindakan' : 'Batalkan pilihan'}
+            >
+              <X size={15} />
+            </button>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
-      {/* Ekspor PDF Modal */}
+      {/* Ekspor PDF Studio Modal (Synced with Selected Recap Teachers & Month Range) */}
       {pdfModalOpen && (
         <AttendancePdfExportModal
           state={state}
           isOpen={pdfModalOpen}
-          initialMonth={currentMonth}
+          initialMonth={recapMode === 'range' ? recapSummaryAll.startMonth : currentMonth}
+          initialEndMonth={recapMode === 'range' ? recapSummaryAll.endMonth : undefined}
+          initialSelectedTeacherIds={validRecapSelectedIds}
           onClose={() => setPdfModalOpen(false)}
           onNotify={onNotify}
         />

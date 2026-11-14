@@ -9,7 +9,7 @@ const rootDir = process.cwd();
 const distPath = path.resolve(rootDir, 'dist');
 const hasDist = fs.existsSync(path.join(distPath, 'index.html'));
 const port = Number(process.env.PORT) || 3000;
-const isProduction = process.env.NODE_ENV === 'production' || hasDist || Boolean(process.env.PORT && process.env.PORT !== '3000');
+const isProduction = process.env.NODE_ENV === 'production';
 const enableGemini = process.env.ENABLE_GEMINI_ASSISTANT === 'true';
 const apiKey = process.env.GEMINI_API_KEY?.trim();
 const corsOrigins = (process.env.CORS_ORIGIN || '').split(',').map((value) => value.trim()).filter(Boolean);

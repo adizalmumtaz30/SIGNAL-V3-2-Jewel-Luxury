@@ -6,7 +6,7 @@
 /* Typography: Fraunces Display Serif + Inter Operational Sans               */
 /* ========================================================================= */
 
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
   /* 1. Signature Jewel Palette */
@@ -57,7 +57,8 @@
 
   /* 3. Typography & Elevation */
   --serif: 'Fraunces', Georgia, serif;
-  --sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
   --shadow-sm: 0 2px 6px rgba(23, 61, 50, 0.05);
   --shadow-md: 0 8px 24px rgba(23, 61, 50, 0.08);
   --shadow-lg: 0 18px 42px rgba(22, 39, 32, 0.12);

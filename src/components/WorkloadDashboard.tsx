@@ -20,6 +20,7 @@ import {
 import type { AppState, Day } from '../domain/types';
 import { jpToAstronomical } from '../domain/time';
 import { exportScheduleTeacherPDF } from '../utils/pdfExport';
+import { MadrasahTeacherAvatar } from './MadrasahTeacherAvatar';
 
 interface WorkloadDashboardProps {
   state: AppState;
@@ -125,7 +126,7 @@ export function WorkloadDashboard({
         isUnderloaded,
       };
     });
-  }, [activeTeachers, entries, periodMinutes, activeDays]);
+  }, [activeTeachers, filteredEntries, periodMinutes, activeDays]);
 
   // Overall workspace stats
   const totalScheduledJP = useMemo(() => entries.length, [entries]);
@@ -178,19 +179,20 @@ export function WorkloadDashboard({
           </div>
           <div>
             <h2 style={{ margin: 0 }}>Statistik &amp; Distribusi Beban Guru</h2>
-            <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#5e7d83' }}>
+            <p className="s5-workload-hero-desc">
               Distribusi jam tatap muka mingguan, konversi jam astronomis, dan pemenuhan batas kuota guru.
             </p>
           </div>
         </div>
-        <div className="workload-hero-badges">
-          <div className="stat-pill">
-            <Clock size={15} />
-            <span>1 JP = {periodMinutes} Menit Astronomis</span>
+        <div className="s5-hero-meta-strip">
+          <div className="s5-hero-meta-item">
+            <Clock size={14} />
+            <span className="s5-tnum">1 JP = {periodMinutes} Menit Astronomis</span>
           </div>
-          <div className="stat-pill">
-            <CalendarDays size={15} />
-            <span>{activeDays.length} Hari KBM Aktif</span>
+          <span className="s5-hero-meta-sep" aria-hidden="true" />
+          <div className="s5-hero-meta-item">
+            <CalendarDays size={14} />
+            <span className="s5-tnum">{activeDays.length} Hari KBM Aktif</span>
           </div>
         </div>
       </div>
@@ -354,11 +356,9 @@ export function WorkloadDashboard({
             <div className="card-eyebrow">TEACHER ALLOCATION & SESSIONS</div>
             <h3>Rincian Beban Mengajar per Guru</h3>
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <span className="status-pill status-neutral">
-              Menampilkan {displayTeachers.length} dari {activeTeachers.length} Guru
-            </span>
-          </div>
+          <span className="s5-table-count-label s5-tnum">
+            Menampilkan {displayTeachers.length} dari {activeTeachers.length} guru
+          </span>
         </div>
 
         <div className="data-table-wrap">
@@ -415,16 +415,14 @@ export function WorkloadDashboard({
                 return (
                   <tr key={stat.teacher.id}>
                     <td>
-                      <div className="record-primary">
-                        <div className="record-avatar teacher-record">
-                          {stat.teacher.name.split(' ').slice(0, 2).map((p) => p[0]).join('')}
-                        </div>
+                      <div className="record-primary" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <MadrasahTeacherAvatar teacher={stat.teacher} size={38} showStatusDot={false} />
                         <div>
                           <strong>{stat.teacher.name}</strong>
                           <span style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                             <span className="code-pill">{stat.teacher.code}</span>
                             {stat.classesTaught.length > 0 && (
-                              <small style={{ color: '#8b9b94' }}>
+                              <small style={{ color: '#526861', fontSize: '11px' }}>
                                 · {stat.classesTaught.length} Kelas
                               </small>
                             )}
@@ -453,7 +451,7 @@ export function WorkloadDashboard({
                           <span style={{ fontWeight: 700, color: isOver ? '#b8685b' : '#335e58' }}>
                             {stat.percentage}%
                           </span>
-                          {isOver && <span style={{ color: '#b8685b', fontSize: '10px', fontWeight: 800 }}>LEBIH</span>}
+                          {isOver && <span style={{ color: '#b8685b', fontSize: '11px', fontWeight: 700 }}>LEBIH</span>}
                         </div>
                         <div className="progress-track" style={{ height: '7px' }}>
                           <span
@@ -467,30 +465,26 @@ export function WorkloadDashboard({
                     </td>
 
                     <td>
-                      <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
+                      <div className="s5-mini-heatmap" title={activeDays.map(d => `${d}: ${stat.dayDist[d] || 0} JP`).join(' · ')}>
                         {activeDays.map((day) => {
                           const count = stat.dayDist[day] || 0;
+                          const heightPct = Math.min(100, Math.max(16, (count / 8) * 100));
+                          const tone = count === 0 ? '' : count > 6 ? 'overload' : count >= 5 ? 'heavy' : 'optimal';
                           return (
                             <div
                               key={day}
+                              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end', gap: '2px' }}
                               title={`${day}: ${count} JP`}
-                              style={{
-                                width: '22px',
-                                height: '24px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                borderRadius: '4px',
-                                background: count > 0 ? 'rgba(56, 116, 104, 0.12)' : 'rgba(0,0,0,0.03)',
-                                border: count > 0 ? '1px solid rgba(56, 116, 104, 0.25)' : '1px solid transparent',
-                              }}
                             >
-                              <span style={{ fontSize: '7px', color: count > 0 ? '#275249' : '#a2aca5', fontWeight: 700 }}>
+                              <div
+                                className={`s5-heat-bar ${tone}`}
+                                style={{
+                                  height: `${heightPct}%`,
+                                  opacity: count === 0 ? 0.25 : 1,
+                                }}
+                              />
+                              <span style={{ fontSize: '7.5px', fontWeight: 700, color: '#556663', lineHeight: 1 }}>
                                 {day.slice(0, 1)}
-                              </span>
-                              <span style={{ fontSize: '9px', fontWeight: 800, color: count > 0 ? '#1b4139' : '#bbb' }}>
-                                {count}
                               </span>
                             </div>
                           );
@@ -500,24 +494,27 @@ export function WorkloadDashboard({
 
                     <td>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                        <span style={{ fontSize: '11px', fontWeight: 700, color: '#274744' }}>
+                        <span className="s5-tnum" style={{ fontSize: '11.5px', fontWeight: 700, color: '#0B2923' }}>
                           {stat.totalSessions} sesi
                         </span>
-                        <small style={{ fontSize: '9px', color: '#7a8a86' }}>
+                        <small style={{ fontSize: '9.5px', color: '#556663' }}>
                           {stat.doubleBlocks} blok 2-JP · {stat.singleBlocks} tunggal
                         </small>
                       </div>
                     </td>
 
                     <td>
-                      <button
-                        type="button"
-                        className="button button-sm button-quiet"
-                        onClick={() => exportScheduleTeacherPDF(state, stat.teacher.id)}
-                        title="Unduh Jadwal Guru PDF"
-                      >
-                        <Download size={13} /> PDF
-                      </button>
+                      <div className="s5-action-dock" style={{ display: 'inline-flex' }}>
+                        <button
+                          type="button"
+                          className="s5-dock-btn primary"
+                          onClick={() => exportScheduleTeacherPDF(state, stat.teacher.id)}
+                          title="Unduh Jadwal Guru PDF"
+                        >
+                          <Download size={13} />
+                          <span>PDF</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

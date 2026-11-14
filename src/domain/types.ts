@@ -19,6 +19,8 @@ export interface Teacher {
   isActive: boolean;
   roleTitle?: string; // Jabatan guru (isi manual, misal: Waka Kurikulum, Guru Mapel, Guru BK, dll)
   nip?: string; // NIP / NPK / NUPTK
+  gender?: 'male' | 'female'; // Gender identitas avatar madrasah (male: asatidz/peci, female: ustadzah/jilbab)
+  availableDays?: Day[]; // Hari kesiapan mengajar
 }
 
 export interface Subject {

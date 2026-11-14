@@ -5,16 +5,29 @@ import { buildTimeSlots, createDefaultPeriodDefinitions } from '../domain/time';
 import { generateSchedule } from '../domain/generator';
 
 const DB_NAME = 'signal-academic-studio';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = 'workspace';
+export const SNAPSHOT_STORE_NAME = 'snapshots';
+export const AUDIT_STORE_NAME = 'audit_log';
 
 let dbPromise: Promise<IDBPDatabase> | undefined;
 
-function openSignalDB() {
+export function openSignalDB() {
   if (!dbPromise) {
     dbPromise = openDB(DB_NAME, DB_VERSION, {
       upgrade(db) {
-        if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains(SNAPSHOT_STORE_NAME)) {
+          const snapshotStore = db.createObjectStore(SNAPSHOT_STORE_NAME, { keyPath: 'id' });
+          snapshotStore.createIndex('timestamp', 'timestamp');
+          snapshotStore.createIndex('isStarred', 'isStarred');
+        }
+        if (!db.objectStoreNames.contains(AUDIT_STORE_NAME)) {
+          const auditStore = db.createObjectStore(AUDIT_STORE_NAME, { keyPath: 'id' });
+          auditStore.createIndex('timestamp', 'timestamp');
+        }
       },
     });
   }

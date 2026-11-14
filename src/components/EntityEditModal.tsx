@@ -19,6 +19,7 @@ import type {
 } from '../domain/types';
 import { teachingPeriodsForDay } from '../domain/time';
 import { COMMON_TEACHER_POSITIONS } from '../utils/madrasahLogo';
+import { MadrasahTeacherAvatar, detectTeacherGender } from './MadrasahTeacherAvatar';
 
 export type EntityKind = 'class' | 'teacher' | 'subject' | 'requirement';
 
@@ -59,6 +60,7 @@ export function EntityEditModal({
   const [teacherCode, setTeacherCode] = useState('');
   const [teacherRoleTitle, setTeacherRoleTitle] = useState('Guru Mapel');
   const [teacherNip, setTeacherNip] = useState('');
+  const [teacherGender, setTeacherGender] = useState<'male' | 'female'>('male');
   const [teacherSubjectIds, setTeacherSubjectIds] = useState<string[]>([]);
   const [teacherMaxJP, setTeacherMaxJP] = useState('24');
   const [teacherIsActive, setTeacherIsActive] = useState(true);
@@ -93,6 +95,7 @@ export function EntityEditModal({
       setTeacherCode(item?.code ?? '');
       setTeacherRoleTitle(item?.roleTitle ?? 'Guru Mapel');
       setTeacherNip(item?.nip ?? '');
+      setTeacherGender(item?.gender ?? detectTeacherGender(item?.name ?? '', item?.roleTitle ?? ''));
       setTeacherSubjectIds(item?.subjectIds ?? []);
       setTeacherMaxJP(String(item?.maxWeeklyJP ?? 24));
       setTeacherIsActive(item?.isActive ?? true);
@@ -169,6 +172,7 @@ export function EntityEditModal({
         code,
         roleTitle: teacherRoleTitle.trim() || 'Guru Mapel',
         nip: teacherNip.trim() || undefined,
+        gender: teacherGender,
         subjectIds: teacherSubjectIds,
         maxWeeklyJP: maxJP,
         isActive: teacherIsActive,
@@ -357,6 +361,76 @@ export function EntityEditModal({
           {/* 2. TEACHER FORM */}
           {target.kind === 'teacher' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {/* Avatar Preview & Gender Selection */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px',
+                  background: '#f4f8f5',
+                  padding: '12px 16px',
+                  borderRadius: '10px',
+                  border: '1px solid #dce8e0',
+                }}
+              >
+                <MadrasahTeacherAvatar
+                  teacher={{
+                    id: target.item?.id || 'preview',
+                    name: teacherName || 'Guru',
+                    code: teacherCode || 'T',
+                    roleTitle: teacherRoleTitle,
+                    nip: teacherNip,
+                    gender: teacherGender,
+                    subjectIds: teacherSubjectIds,
+                    maxWeeklyJP: 24,
+                    isActive: teacherIsActive,
+                  }}
+                  size={52}
+                  showStatusDot={true}
+                />
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#16483f', display: 'block', marginBottom: '6px' }}>
+                    Tipe Avatar Madrasah
+                  </span>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setTeacherGender('male')}
+                      style={{
+                        padding: '5px 12px',
+                        borderRadius: '6px',
+                        border: teacherGender === 'male' ? '1.5px solid #16483f' : '1px solid #d4d7cc',
+                        background: teacherGender === 'male' ? '#ffffff' : 'transparent',
+                        color: teacherGender === 'male' ? '#0b3435' : '#4b635c',
+                        fontWeight: teacherGender === 'male' ? 700 : 500,
+                        fontSize: '11.5px',
+                        cursor: 'pointer',
+                        boxShadow: teacherGender === 'male' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                      }}
+                    >
+                      👳‍♂️ Asatidz (Songkok / Peci)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTeacherGender('female')}
+                      style={{
+                        padding: '5px 12px',
+                        borderRadius: '6px',
+                        border: teacherGender === 'female' ? '1.5px solid #16483f' : '1px solid #d4d7cc',
+                        background: teacherGender === 'female' ? '#ffffff' : 'transparent',
+                        color: teacherGender === 'female' ? '#0b3435' : '#4b635c',
+                        fontWeight: teacherGender === 'female' ? 700 : 500,
+                        fontSize: '11.5px',
+                        cursor: 'pointer',
+                        boxShadow: teacherGender === 'female' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                      }}
+                    >
+                      🧕 Ustadzah (Hijab / Jilbab)
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px' }}>
                 <div className="field-group">
                   <label>Nama Lengkap & Gelar Guru</label>
@@ -401,7 +475,7 @@ export function EntityEditModal({
                           background: teacherRoleTitle === pos ? '#e0efe7' : '#f4f4f0',
                           border: `1px solid ${teacherRoleTitle === pos ? '#1f6952' : '#d8dad2'}`,
                           color: teacherRoleTitle === pos ? '#1f6952' : '#455653',
-                          fontSize: '10px',
+                          fontSize: '11px',
                           padding: '2px 7px',
                           borderRadius: '4px',
                           cursor: 'pointer',
@@ -421,7 +495,7 @@ export function EntityEditModal({
                     value={teacherNip}
                     onChange={(e) => setTeacherNip(e.target.value)}
                   />
-                  <small style={{ color: '#7a887b', fontSize: '10.5px' }}>
+                  <small style={{ color: '#526861', fontSize: '11px' }}>
                     Dicantumkan pada kolom tanda tangan &amp; rekap PDF resmi.
                   </small>
                 </div>
@@ -638,7 +712,7 @@ export function EntityEditModal({
                   value={reqJP}
                   onChange={(e) => setReqJP(e.target.value)}
                 />
-                <small style={{ color: '#7a887b' }}>
+                <small style={{ color: '#526861' }}>
                   Jumlah JP mingguan yang akan dialokasikan oleh generator ke kelas ini.
                 </small>
               </div>
@@ -688,7 +762,7 @@ export function EntityEditModal({
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 800, color: '#16483f', letterSpacing: '0.04em' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 600, color: '#16483f', letterSpacing: '0.04em' }}>
                         VALIDASI REAL-TIME DATA MASTER
                       </span>
                       {isTeacherOver || isClassOver ? (
@@ -720,7 +794,7 @@ export function EntityEditModal({
                             }}
                           />
                         </div>
-                        <span style={{ fontSize: '10px', color: isClassOver ? '#b24c3d' : isClassExact ? '#1f6952' : '#6b7280', marginTop: '3px', display: 'block' }}>
+                        <span style={{ fontSize: '11px', color: isClassOver ? '#b24c3d' : isClassExact ? '#1f6952' : '#526861', marginTop: '3px', display: 'block' }}>
                           {isClassOver
                             ? `Kelebihan ${totalClassJP - totalWeeklySlots} JP dari slot mingguan`
                             : isClassExact
@@ -746,7 +820,7 @@ export function EntityEditModal({
                             }}
                           />
                         </div>
-                        <span style={{ fontSize: '10px', color: isTeacherOver ? '#b24c3d' : '#6b7280', marginTop: '3px', display: 'block' }}>
+                        <span style={{ fontSize: '11px', color: isTeacherOver ? '#b24c3d' : '#526861', marginTop: '3px', display: 'block' }}>
                           {isTeacherOver
                             ? `Kelebihan beban ${totalTeacherJP - teacherMaxJP} JP dari batas maksimum`
                             : `${Math.round((totalTeacherJP / teacherMaxJP) * 100)}% dari batas maksimum guru`}

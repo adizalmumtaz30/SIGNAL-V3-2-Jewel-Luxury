@@ -1,13 +1,27 @@
 import { useMemo, useState } from 'react';
 import {
+  CalendarRange,
+  Check,
   Download,
-  X,
-  ChevronDown,
-  ChevronUp,
+  FileEdit,
+  FileText,
   RotateCcw,
+  Search,
+  SlidersHorizontal,
+  X,
 } from 'lucide-react';
-import type { AppState, Day } from '../domain/types';
-import { exportAttendanceRecapPDF, type AttendanceRecapPdfOptions, type PaperSize } from '../utils/pdfExport';
+import type { AppState } from '../domain/types';
+import {
+  computeRangeAttendanceRecap,
+  enumerateMonthsInRange,
+  formatPeriodRangeLabel,
+} from '../domain/attendanceRecap';
+import {
+  buildRightSignerTitle,
+  exportAttendanceRecapPDF,
+  type AttendanceRecapPdfOptions,
+  type PaperSize,
+} from '../utils/pdfExport';
 
 interface AttendancePdfExportModalProps {
   state: AppState;
@@ -15,6 +29,43 @@ interface AttendancePdfExportModalProps {
   onClose: () => void;
   onNotify: (message: string, kind?: 'success' | 'warning' | 'error' | 'info') => void;
   initialMonth?: string;
+  initialEndMonth?: string;
+  initialSelectedTeacherIds?: string[];
+}
+
+type StudioMainTab = 'config' | 'content';
+type ContentSubTab = 'kop' | 'title' | 'signer';
+
+const MONTHS_FULL_ID = [
+  'Januari',
+  'Februari',
+  'Maret',
+  'April',
+  'Mei',
+  'Juni',
+  'Juli',
+  'Agustus',
+  'September',
+  'Oktober',
+  'November',
+  'Desember',
+];
+
+const DEFAULT_SINGLE_TITLE = 'LAPORAN REKAPITULASI KEHADIRAN GURU BULANAN';
+const DEFAULT_MULTI_TITLE = 'LAPORAN REKAPITULASI KEHADIRAN GURU MULTI-BULAN';
+
+function formatCleanNip(nip?: string): string {
+  const cleaned = (nip ?? '').trim();
+  if (!cleaned || /^[.\-\u2014\s]+$/.test(cleaned)) return '';
+  return cleaned;
+}
+
+function parseYmParts(ym: string, fallbackYear: number, fallbackMonth: number) {
+  const [y, m] = ym.split('-').map(Number);
+  return {
+    year: y && y >= 2000 && y <= 2100 ? y : fallbackYear,
+    month: m && m >= 1 && m <= 12 ? m : fallbackMonth,
+  };
 }
 
 export function AttendancePdfExportModal({
@@ -23,58 +74,163 @@ export function AttendancePdfExportModal({
   onClose,
   onNotify,
   initialMonth,
+  initialEndMonth,
+  initialSelectedTeacherIds,
 }: AttendancePdfExportModalProps) {
-  const activeTeachers = useMemo(() => state.teachers.filter((t) => t.isActive), [state.teachers]);
+  const activeTeachers = useMemo(
+    () => state.teachers.filter((t) => t.isActive !== false),
+    [state.teachers],
+  );
 
-  const [monthYear, setMonthYear] = useState<string>(() => initialMonth || new Date().toISOString().slice(0, 7));
+  const fallbackYm = new Date().toISOString().slice(0, 7);
+  const startInit = initialMonth || fallbackYm;
+  const isInitMulti = Boolean(initialEndMonth && initialEndMonth !== startInit);
+
+  const [studioTab, setStudioTab] = useState<StudioMainTab>('config');
+  const [contentSubTab, setContentSubTab] = useState<ContentSubTab>('kop');
+
+  const [periodMode, setPeriodMode] = useState<'single' | 'range'>(() =>
+    isInitMulti ? 'range' : 'single',
+  );
+  const [monthYear, setMonthYear] = useState<string>(() => startInit);
+  const [endMonthYear, setEndMonthYear] = useState<string>(() => initialEndMonth || startInit);
+
   const [paperSize, setPaperSize] = useState<PaperSize>('a4');
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
+  const [layoutDensity, setLayoutDensity] = useState<'compact' | 'standard'>('compact');
   const [includeKop, setIncludeKop] = useState<boolean>(true);
   const [includeSignature, setIncludeSignature] = useState<boolean>(true);
+  const [includeNotes, setIncludeNotes] = useState<boolean>(true);
+  const [includePrintMeta, setIncludePrintMeta] = useState<boolean>(true);
 
-  // Document Customization Overrides (initialized from Madrasah Profile settings)
-  const [showTextEditor, setShowTextEditor] = useState<boolean>(false);
-  const [editorSubTab, setEditorSubTab] = useState<'kop' | 'title' | 'signer'>('kop');
-
-  const [ministry, setMinistry] = useState<string>(() => state.settings.ministry || 'KEMENTERIAN AGAMA REPUBLIK INDONESIA');
-  const [regionalOffice, setRegionalOffice] = useState<string>(() => state.settings.regionalOffice || 'KANTOR KEMENTERIAN AGAMA KABUPATEN MALANG');
-  const [schoolName, setSchoolName] = useState<string>(() => state.settings.schoolName || 'MTs Cendekia Nusantara');
+  const [ministry, setMinistry] = useState<string>(
+    () => state.settings.ministry || 'KEMENTERIAN AGAMA REPUBLIK INDONESIA',
+  );
+  const [regionalOffice, setRegionalOffice] = useState<string>(
+    () => state.settings.regionalOffice || 'KANTOR KEMENTERIAN AGAMA KABUPATEN MALANG',
+  );
+  const [schoolName, setSchoolName] = useState<string>(
+    () => state.settings.schoolName || 'MTs Cendekia Nusantara',
+  );
   const [nsm, setNsm] = useState<string>(() => state.settings.nsm || '121235070001');
   const [npsn, setNpsn] = useState<string>(() => state.settings.npsn || '20580001');
-  const [address, setAddress] = useState<string>(() => state.settings.address || 'Jl. Raya Cendekia No. 45, Sumberpucung');
+  const [address, setAddress] = useState<string>(
+    () => state.settings.address || 'Jl. Raya Cendekia No. 45, Sumberpucung',
+  );
   const [city, setCity] = useState<string>(() => state.settings.city || 'Kabupaten Malang');
   const [postalCode, setPostalCode] = useState<string>(() => state.settings.postalCode || '65165');
-  const [phone, setPhone] = useState<string>(() => state.settings.phone || '(0341) 395882 / 0812-3456-7890');
-  const [email, setEmail] = useState<string>(() => state.settings.email || 'mts.cendekia@kemenag.go.id');
-  const [website, setWebsite] = useState<string>(() => state.settings.website || 'www.mtscendekia.sch.id');
+  const [phone, setPhone] = useState<string>(
+    () => state.settings.phone || '(0341) 395882 / 0812-3456-7890',
+  );
+  const [email, setEmail] = useState<string>(
+    () => state.settings.email || 'mts.cendekia@kemenag.go.id',
+  );
+  const [website, setWebsite] = useState<string>(
+    () => state.settings.website || 'www.mtscendekia.sch.id',
+  );
 
-  // Document Title & Periods
-  const [documentTitle, setDocumentTitle] = useState<string>('LAPORAN REKAPITULASI KEHADIRAN GURU BULANAN');
-  const [academicYear, setAcademicYear] = useState<string>(() => state.settings.academicYear || '2026/2027');
-  const [semester, setSemester] = useState<'Ganjil' | 'Genap'>(() => state.settings.semester || 'Ganjil');
+  const [documentTitle, setDocumentTitle] = useState<string>(() =>
+    isInitMulti ? DEFAULT_MULTI_TITLE : DEFAULT_SINGLE_TITLE,
+  );
+  const [academicYear, setAcademicYear] = useState<string>(
+    () => state.settings.academicYear || '2026/2027',
+  );
+  const [semester, setSemester] = useState<'Ganjil' | 'Genap'>(
+    () => state.settings.semester || 'Ganjil',
+  );
 
-  // Signer data initialized from Madrasah Profile
-  const [signerCity, setSignerCity] = useState<string>(() => state.settings.city || 'Kabupaten Malang');
+  const [signerCity, setSignerCity] = useState<string>(
+    () => state.settings.city || 'Kabupaten Malang',
+  );
   const [signerDate, setSignerDate] = useState<string>(() =>
-    new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date()),
+    new Intl.DateTimeFormat('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(new Date()),
   );
-  const [principalTitle, setPrincipalTitle] = useState<string>(() => state.settings.headmasterTitle || 'Kepala Madrasah');
-  const [principalName, setPrincipalName] = useState<string>(() => state.settings.headmasterName || 'H. Ahmad Fauzi, S.Ag., M.Pd.I.');
-  const [principalNip, setPrincipalNip] = useState<string>(() => state.settings.headmasterNip || '19750812 200212 1 003');
-  const [officerTitle, setOfficerTitle] = useState<string>(() => state.settings.curriculumLeaderTitle || 'Koordinator Akademik & Kurikulum');
-  const [officerName, setOfficerName] = useState<string>(() => state.settings.curriculumLeaderName || 'Siti Aminah, S.Pd.I., M.Pd.');
-  const [officerNip, setOfficerNip] = useState<string>(() => state.settings.curriculumLeaderNip || '19820315 200901 2 008');
+  const [principalTitle, setPrincipalTitle] = useState<string>(
+    () => state.settings.headmasterTitle || 'Kepala Madrasah',
+  );
+  const [principalName, setPrincipalName] = useState<string>(
+    () => state.settings.headmasterName || 'H. Ahmad Fauzi, S.Ag., M.Pd.I.',
+  );
+  const [principalNip, setPrincipalNip] = useState<string>(
+    () => state.settings.headmasterNip || '19750812 200212 1 003',
+  );
+  const [officerTitle, setOfficerTitle] = useState<string>(
+    () => state.settings.curriculumLeaderTitle || 'Koordinator Akademik & Kurikulum',
+  );
+  const [officerName, setOfficerName] = useState<string>(
+    () => state.settings.curriculumLeaderName || 'Siti Aminah, S.Pd.I., M.Pd.',
+  );
+  const [officerNip, setOfficerNip] = useState<string>(
+    () => state.settings.curriculumLeaderNip || '19820315 200901 2 008',
+  );
 
-  // Selected teachers list
-  const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>(() =>
-    activeTeachers.map((t) => t.id),
-  );
+  const [teacherSearch, setTeacherSearch] = useState<string>('');
+  const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>(() => {
+    if (initialSelectedTeacherIds && initialSelectedTeacherIds.length > 0) {
+      const validIds = new Set(activeTeachers.map((t) => t.id));
+      const filtered = initialSelectedTeacherIds.filter((id) => validIds.has(id));
+      if (filtered.length > 0) return filtered;
+    }
+    return activeTeachers.map((t) => t.id);
+  });
 
   const [isExporting, setIsExporting] = useState<boolean>(false);
 
+  const effectiveEndMonth = periodMode === 'range' ? endMonthYear : undefined;
+  const activeMonths = useMemo(
+    () => enumerateMonthsInRange(monthYear, effectiveEndMonth || monthYear),
+    [monthYear, effectiveEndMonth],
+  );
+  const isMultiMonth = activeMonths.length > 1;
+  const activePeriodLabel = useMemo(
+    () => formatPeriodRangeLabel(monthYear, effectiveEndMonth),
+    [monthYear, effectiveEndMonth],
+  );
+
+  const switchPeriodMode = (nextMode: 'single' | 'range') => {
+    setPeriodMode(nextMode);
+    if (nextMode === 'single') {
+      if (documentTitle.trim() === DEFAULT_MULTI_TITLE) {
+        setDocumentTitle(DEFAULT_SINGLE_TITLE);
+      }
+    } else {
+      if (documentTitle.trim() === DEFAULT_SINGLE_TITLE) {
+        setDocumentTitle(DEFAULT_MULTI_TITLE);
+      }
+      if (endMonthYear <= monthYear) {
+        const [y, m] = monthYear.split('-').map(Number);
+        const endM = Math.min(12, (m || 1) + 2);
+        setEndMonthYear(`${y || new Date().getFullYear()}-${String(endM).padStart(2, '0')}`);
+      }
+    }
+  };
+
+  const applySemesterPreset = (preset: 'odd' | 'even') => {
+    const baseYear = parseYmParts(monthYear, new Date().getFullYear(), new Date().getMonth() + 1).year;
+    setPeriodMode('range');
+    if (preset === 'odd') {
+      setMonthYear(`${baseYear}-07`);
+      setEndMonthYear(`${baseYear}-12`);
+      setSemester('Ganjil');
+    } else {
+      setMonthYear(`${baseYear}-01`);
+      setEndMonthYear(`${baseYear}-06`);
+      setSemester('Genap');
+    }
+    if (documentTitle.trim() === DEFAULT_SINGLE_TITLE) {
+      setDocumentTitle(DEFAULT_MULTI_TITLE);
+    }
+  };
+
   const handleResetToSettings = () => {
     setMinistry(state.settings.ministry || 'KEMENTERIAN AGAMA REPUBLIK INDONESIA');
-    setRegionalOffice(state.settings.regionalOffice || 'KANTOR KEMENTERIAN AGAMA KABUPATEN MALANG');
+    setRegionalOffice(
+      state.settings.regionalOffice || 'KANTOR KEMENTERIAN AGAMA KABUPATEN MALANG',
+    );
     setSchoolName(state.settings.schoolName || 'MTs Cendekia Nusantara');
     setNsm(state.settings.nsm || '121235070001');
     setNpsn(state.settings.npsn || '20580001');
@@ -86,71 +242,66 @@ export function AttendancePdfExportModal({
     setWebsite(state.settings.website || 'www.mtscendekia.sch.id');
     setAcademicYear(state.settings.academicYear || '2026/2027');
     setSemester(state.settings.semester || 'Ganjil');
-    setDocumentTitle('LAPORAN REKAPITULASI KEHADIRAN GURU BULANAN');
+    setDocumentTitle(isMultiMonth ? DEFAULT_MULTI_TITLE : DEFAULT_SINGLE_TITLE);
     setSignerCity(state.settings.city || 'Kabupaten Malang');
     setPrincipalTitle(state.settings.headmasterTitle || 'Kepala Madrasah');
     setPrincipalName(state.settings.headmasterName || 'H. Ahmad Fauzi, S.Ag., M.Pd.I.');
     setPrincipalNip(state.settings.headmasterNip || '19750812 200212 1 003');
-    setOfficerTitle(state.settings.curriculumLeaderTitle || 'Koordinator Akademik & Kurikulum');
+    setOfficerTitle(
+      state.settings.curriculumLeaderTitle || 'Koordinator Akademik & Kurikulum',
+    );
     setOfficerName(state.settings.curriculumLeaderName || 'Siti Aminah, S.Pd.I., M.Pd.');
     setOfficerNip(state.settings.curriculumLeaderNip || '19820315 200901 2 008');
     onNotify('Seluruh teks dokumen resmi dikembalikan sesuai Pengaturan Madrasah.', 'info');
   };
 
-  // Compute live preview statistics
   const previewStats = useMemo(() => {
     const attendanceList = state.attendance ?? [];
-    const [yearStr, monthStr] = monthYear.split('-');
-    const yearNum = Number(yearStr);
-    const monthNum = Number(monthStr);
-
-    const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
-    const activeDays = state.settings.activeDays;
-    const holidays = state.holidays ?? [];
-
-    const dayMap: Record<number, Day> = {
-      0: 'Minggu' as Day,
-      1: 'Senin',
-      2: 'Selasa',
-      3: 'Rabu',
-      4: 'Kamis',
-      5: 'Jumat',
-      6: 'Sabtu',
-    };
-
-    let effectiveDays = 0;
-    for (let d = 1; d <= daysInMonth; d++) {
-      const curDate = new Date(yearNum, monthNum - 1, d);
-      const dayOfWeek = dayMap[curDate.getDay()];
-      const dateStr = `${yearNum}-${String(monthNum).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const isHoliday = holidays.some((h) => h.date === dateStr);
-      if (dayOfWeek !== ('Minggu' as Day) && activeDays.includes(dayOfWeek) && !isHoliday) {
-        effectiveDays++;
-      }
-    }
-    if (effectiveDays === 0) effectiveDays = 24;
-
     const chosenTeachers = activeTeachers.filter((t) => selectedTeacherIds.includes(t.id));
-    let totalPresentSum = 0;
-
-    for (const t of chosenTeachers) {
-      const records = attendanceList.filter((a) => a.teacherId === t.id && a.date.startsWith(monthYear));
-      const hadir = records.filter((r) => r.status === 'HADIR').length;
-      const dinas = records.filter((r) => r.status === 'DINAS_LUAR').length;
-      const rate = Math.min(100, Math.round(((hadir + dinas) / effectiveDays) * 100));
-      totalPresentSum += rate;
-    }
-
-    const avgRate = chosenTeachers.length > 0 ? Math.round(totalPresentSum / chosenTeachers.length) : 100;
+    const summary = computeRangeAttendanceRecap(
+      attendanceList,
+      chosenTeachers,
+      monthYear,
+      effectiveEndMonth,
+    );
 
     return {
-      effectiveDays,
+      recordedDays: summary.recordedDaysCount,
+      monthCount: summary.months.length,
+      isMultiMonth: summary.isMultiMonth,
+      monthSummaries: summary.monthSummaries,
       teacherCount: chosenTeachers.length,
-      avgRate,
+      avgRate: summary.overallAvgRate,
+      hasData: summary.teachersWithRecordsCount > 0,
+      sampleRows: summary.rows.slice(0, 5),
+      months: summary.months,
     };
-  }, [state, monthYear, selectedTeacherIds, activeTeachers]);
+  }, [state.attendance, monthYear, effectiveEndMonth, selectedTeacherIds, activeTeachers]);
+
+  const filteredTeachersList = useMemo(() => {
+    if (!teacherSearch.trim()) return activeTeachers;
+    const q = teacherSearch.toLowerCase();
+    return activeTeachers.filter(
+      (t) => t.name.toLowerCase().includes(q) || t.code.toLowerCase().includes(q),
+    );
+  }, [activeTeachers, teacherSearch]);
 
   if (!isOpen) return null;
+
+  const paperDimensionText =
+    paperSize === 'a4'
+      ? orientation === 'landscape'
+        ? '297 × 210 mm'
+        : '210 × 297 mm'
+      : orientation === 'landscape'
+      ? '330 × 210 mm'
+      : '210 × 330 mm';
+
+  const paperLabel = paperSize === 'a4' ? 'A4 Standar' : 'F4 / Folio Kemenag';
+
+  const showInlineMonthCols =
+    previewStats.isMultiMonth && orientation === 'landscape' && previewStats.months.length <= 5;
+  const showAppendixMonthMatrix = previewStats.isMultiMonth && !showInlineMonthCols;
 
   const handleDownload = () => {
     if (selectedTeacherIds.length === 0) {
@@ -163,7 +314,12 @@ export function AttendancePdfExportModal({
       const options: AttendanceRecapPdfOptions = {
         paperSize,
         orientation,
+        endMonth: effectiveEndMonth,
+        layoutDensity,
         kopSurat: includeKop,
+        includeSignature,
+        includeNotes,
+        includePrintMeta,
         ministry: ministry.trim(),
         regionalOffice: regionalOffice.trim(),
         schoolName: schoolName.trim(),
@@ -189,13 +345,16 @@ export function AttendancePdfExportModal({
         leftTitle: officerTitle.trim(),
         leftName: officerName.trim(),
         leftNip: officerNip.trim(),
-        rightTitle: `${principalTitle.trim()} ${schoolName.trim()}`,
+        rightTitle: buildRightSignerTitle(principalTitle, schoolName),
         rightName: principalName.trim(),
         rightNip: principalNip.trim(),
       };
 
       exportAttendanceRecapPDF(state, monthYear, selectedTeacherIds, options);
-      onNotify(`Laporan Rekapitulasi Presensi Resmi (${paperSize.toUpperCase()}) berhasil diunduh.`, 'success');
+      onNotify(
+        `Laporan Presensi ${activePeriodLabel} (${paperSize.toUpperCase()}) berhasil diunduh.`,
+        'success',
+      );
       onClose();
     } catch (err) {
       console.error('Attendance PDF export failed:', err);
@@ -214,6 +373,51 @@ export function AttendancePdfExportModal({
   const selectAll = () => setSelectedTeacherIds(activeTeachers.map((t) => t.id));
   const deselectAll = () => setSelectedTeacherIds([]);
 
+  const currentYearFallback = new Date().getFullYear();
+  const startParts = parseYmParts(monthYear, currentYearFallback, new Date().getMonth() + 1);
+  const endParts = parseYmParts(endMonthYear, startParts.year, startParts.month);
+  const selectableYears = Array.from(
+    new Set([
+      ...Array.from({ length: 9 }, (_, i) => currentYearFallback - 3 + i),
+      startParts.year,
+      endParts.year,
+    ]),
+  ).sort((a, b) => a - b);
+
+  const updateStartMonth = (newMonth: number) => {
+    setMonthYear(`${startParts.year}-${String(newMonth).padStart(2, '0')}`);
+  };
+  const updateStartYear = (newYear: number) => {
+    setMonthYear(`${newYear}-${String(startParts.month).padStart(2, '0')}`);
+  };
+  const updateEndMonth = (newMonth: number) => {
+    setEndMonthYear(`${endParts.year}-${String(newMonth).padStart(2, '0')}`);
+  };
+  const updateEndYear = (newYear: number) => {
+    setEndMonthYear(`${newYear}-${String(endParts.month).padStart(2, '0')}`);
+  };
+
+  const applyTodaySignerDate = () => {
+    setSignerDate(
+      new Intl.DateTimeFormat('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      }).format(new Date()),
+    );
+  };
+  const applyEndOfMonthSignerDate = () => {
+    const refParts = periodMode === 'range' ? endParts : startParts;
+    const endOfSelectedMonth = new Date(refParts.year, refParts.month, 0);
+    setSignerDate(
+      new Intl.DateTimeFormat('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      }).format(endOfSelectedMonth),
+    );
+  };
+
   return (
     <div
       className="modal-scrim"
@@ -223,23 +427,29 @@ export function AttendancePdfExportModal({
       }}
     >
       <div
-        className="modal-panel"
-        style={{ maxWidth: '640px', width: '94vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}
+        className="modal-panel s5-export-studio-panel"
         role="dialog"
         aria-modal="true"
-        aria-label="Ekspor Rekapitulasi Presensi Bulanan Resmi (A4)"
+        aria-label="Ekspor Rekapitulasi Presensi Guru"
       >
         {/* Header */}
-        <div className="modal-head">
-          <div className="modal-title-icon" style={{ background: '#e3efe8', color: '#1f6952' }}>
-            <Download size={20} />
+        <div
+          className="modal-head"
+          style={{
+            padding: '15px 22px',
+            borderBottom: '0.75px solid #DCE5DF',
+            background: '#FFFFFF',
+          }}
+        >
+          <div className="modal-title-icon" style={{ background: '#E8F4EE', color: '#124037' }}>
+            <FileText size={19} />
           </div>
-          <div>
-            <h2 style={{ fontSize: '15px', margin: 0, color: '#173637' }}>
-              Ekspor Rekapitulasi Presensi Guru (A4)
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h2 style={{ fontSize: '16px', margin: 0, color: '#0B2923', fontWeight: 700 }}>
+              Studio Ekspor Rekapitulasi Presensi Guru
             </h2>
-            <p style={{ margin: 0, fontSize: '11px', color: '#687a75' }}>
-              Format cetak formal madrasah dengan kop resmi, persentase kehadiran otomatis, dan tanda tangan pejabat
+            <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#526861' }}>
+              Dukungan rekap 1 bulan maupun rentang multi-bulan dengan pratinjau dokumen cetak resmi madrasah
             </p>
           </div>
           <button className="icon-button" onClick={onClose} aria-label="Tutup dialog">
@@ -247,608 +457,1146 @@ export function AttendancePdfExportModal({
           </button>
         </div>
 
-        {/* Modal Scrollable Body */}
-        <div style={{ padding: '18px 20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Live Metric Preview Card */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: '10px',
-              padding: '12px 14px',
-              background: '#f2f8f5',
-              borderRadius: '10px',
-              border: '1px solid #cce5d7',
-            }}
-          >
-            <div>
-              <span style={{ fontSize: '10.5px', color: '#52776d', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                HARI EFEKTIF (HE)
-              </span>
-              <strong style={{ fontSize: '16px', color: '#173637', display: 'block', marginTop: '2px', fontWeight: 800 }}>
-                {previewStats.effectiveDays} Hari KBM
-              </strong>
-            </div>
+        {/* Studio Dual-Column Body */}
+        <div className="s5-studio-body">
+          <div className="s5-pdf-studio-grid">
+            {/* LEFT COLUMN: Clean 2-Tab Configuration */}
+            <div className="s5-studio-left-pane">
+              <div className="s5-studio-tabs" role="tablist" aria-label="Panel Pengaturan Presensi PDF">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={studioTab === 'config'}
+                  className={`s5-studio-tab-btn ${studioTab === 'config' ? 'is-active' : ''}`}
+                  onClick={() => setStudioTab('config')}
+                >
+                  <SlidersHorizontal size={14} />
+                  <span>Periode, Kertas &amp; Pendidik</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={studioTab === 'content'}
+                  className={`s5-studio-tab-btn ${studioTab === 'content' ? 'is-active' : ''}`}
+                  onClick={() => setStudioTab('content')}
+                >
+                  <FileEdit size={14} />
+                  <span>Kop, Judul &amp; Pejabat</span>
+                </button>
+              </div>
 
-            <div>
-              <span style={{ fontSize: '10.5px', color: '#52776d', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                GURU DIREKAP
-              </span>
-              <strong style={{ fontSize: '16px', color: '#173637', display: 'block', marginTop: '2px', fontWeight: 800 }}>
-                {previewStats.teacherCount} Guru Terpilih
-              </strong>
-            </div>
+              {studioTab === 'config' ? (
+                <>
+                  {/* Card 1: Periode Laporan (1 Bulan vs Multi-Bulan) */}
+                  <div className="s5-studio-card">
+                    <div className="s5-studio-section-head">
+                      <span
+                        className="s5-studio-kicker"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        <CalendarRange size={13} color="#124037" />
+                        <span>1. Periode Rekapitulasi</span>
+                      </span>
+                      <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => switchPeriodMode('single')}
+                          className={`s5-studio-preset-btn ${periodMode === 'single' ? 'is-active' : ''}`}
+                        >
+                          1 Bulan
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => switchPeriodMode('range')}
+                          className={`s5-studio-preset-btn ${periodMode === 'range' ? 'is-active' : ''}`}
+                        >
+                          Rentang Multi-Bulan
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => applySemesterPreset('odd')}
+                          className="s5-studio-preset-btn"
+                          title="Pilih cepat Juli – Desember"
+                        >
+                          Jul–Des
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => applySemesterPreset('even')}
+                          className="s5-studio-preset-btn"
+                          title="Pilih cepat Januari – Juni"
+                        >
+                          Jan–Jun
+                        </button>
+                      </div>
+                    </div>
 
-            <div>
-              <span style={{ fontSize: '10.5px', color: '#52776d', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                RATA-RATA OTOMATIS
-              </span>
-              <strong
-                style={{
-                  fontSize: '16px',
-                  fontWeight: 800,
-                  color: previewStats.avgRate >= 90 ? '#1f6952' : '#b24c3d',
-                  display: 'block',
-                  marginTop: '2px',
-                }}
-              >
-                {previewStats.avgRate}% Kehadiran
-              </strong>
-            </div>
-          </div>
+                    {periodMode === 'single' ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 0.85fr', gap: '10px' }}>
+                        <div className="field-group">
+                          <label htmlFor="pdf-month-select" style={{ fontSize: '11px' }}>
+                            Bulan Laporan
+                          </label>
+                          <select
+                            id="pdf-month-select"
+                            value={startParts.month}
+                            onChange={(e) => updateStartMonth(Number(e.target.value))}
+                            style={{ height: '36px', fontSize: '12.5px' }}
+                          >
+                            {MONTHS_FULL_ID.map((mName, idx) => (
+                              <option key={mName} value={idx + 1}>
+                                {mName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
 
-          {/* Universal Paper Size Selector (A4 & F4 Indonesia) */}
-          <div style={{ padding: '12px 14px', background: '#f8faf9', border: '1px solid #dbe6e0', borderRadius: '10px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <label style={{ fontSize: '11px', fontWeight: 800, color: '#0b3435', letterSpacing: '0.04em' }}>
-                UKURAN KERTAS DOKUMEN (A4 &amp; F4 INDONESIA)
-              </label>
-              <span style={{ fontSize: '10px', color: '#55726b', fontWeight: 600 }}>
-                {paperSize === 'a4' ? '210 × 297 mm · Standar Cetak Umum' : '210 × 330 mm · Folio Madrasah (+33mm Ruang Kolom)'}
-              </span>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-              <button
-                type="button"
-                onClick={() => setPaperSize('a4')}
-                style={{
-                  padding: '9px 12px',
-                  borderRadius: '8px',
-                  border: paperSize === 'a4' ? '2px solid #16483f' : '1px solid #d4d7cc',
-                  background: paperSize === 'a4' ? '#e7f2ed' : '#ffffff',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-              >
-                <div style={{ fontWeight: 800, fontSize: '12px', color: paperSize === 'a4' ? '#0b3435' : '#173637' }}>
-                  Kertas A4 (210 × 297 mm)
+                        <div className="field-group">
+                          <label htmlFor="pdf-year-select" style={{ fontSize: '11px' }}>
+                            Tahun Laporan
+                          </label>
+                          <select
+                            id="pdf-year-select"
+                            className="s5-tnum"
+                            value={startParts.year}
+                            onChange={(e) => updateStartYear(Number(e.target.value))}
+                            style={{ height: '36px', fontSize: '12.5px' }}
+                          >
+                            {selectableYears.map((yr) => (
+                              <option key={yr} value={yr}>
+                                {yr}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
+                        <div
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: '1fr 1fr',
+                            gap: '10px',
+                          }}
+                        >
+                          <div
+                            style={{
+                              padding: '9px 10px',
+                              borderRadius: '9px',
+                              background: '#F7FAF8',
+                              border: '0.75px solid #D8E2DC',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '6px',
+                            }}
+                          >
+                            <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#2F443E' }}>
+                              DARI BULAN
+                            </span>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1.35fr 0.95fr', gap: '6px' }}>
+                              <select
+                                aria-label="Dari bulan"
+                                value={startParts.month}
+                                onChange={(e) => updateStartMonth(Number(e.target.value))}
+                                style={{ height: '34px', fontSize: '12px' }}
+                              >
+                                {MONTHS_FULL_ID.map((mName, idx) => (
+                                  <option key={mName} value={idx + 1}>
+                                    {mName}
+                                  </option>
+                                ))}
+                              </select>
+                              <select
+                                aria-label="Dari tahun"
+                                className="s5-tnum"
+                                value={startParts.year}
+                                onChange={(e) => updateStartYear(Number(e.target.value))}
+                                style={{ height: '34px', fontSize: '12px' }}
+                              >
+                                {selectableYears.map((yr) => (
+                                  <option key={yr} value={yr}>
+                                    {yr}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          <div
+                            style={{
+                              padding: '9px 10px',
+                              borderRadius: '9px',
+                              background: '#F7FAF8',
+                              border: '0.75px solid #D8E2DC',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '6px',
+                            }}
+                          >
+                            <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#2F443E' }}>
+                              SAMPAI BULAN
+                            </span>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1.35fr 0.95fr', gap: '6px' }}>
+                              <select
+                                aria-label="Sampai bulan"
+                                value={endParts.month}
+                                onChange={(e) => updateEndMonth(Number(e.target.value))}
+                                style={{ height: '34px', fontSize: '12px' }}
+                              >
+                                {MONTHS_FULL_ID.map((mName, idx) => (
+                                  <option key={mName} value={idx + 1}>
+                                    {mName}
+                                  </option>
+                                ))}
+                              </select>
+                              <select
+                                aria-label="Sampai tahun"
+                                className="s5-tnum"
+                                value={endParts.year}
+                                onChange={(e) => updateEndYear(Number(e.target.value))}
+                                style={{ height: '34px', fontSize: '12px' }}
+                              >
+                                {selectableYears.map((yr) => (
+                                  <option key={yr} value={yr}>
+                                    {yr}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div
+                          className="s5-tnum"
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '6px 10px',
+                            borderRadius: '8px',
+                            background: '#EFF7F3',
+                            border: '0.75px solid #C6DFD1',
+                            fontSize: '11.5px',
+                            color: '#124037',
+                            fontWeight: 600,
+                          }}
+                        >
+                          <span>Cakupan: {activePeriodLabel}</span>
+                          <span>
+                            {showInlineMonthCols
+                              ? 'Rincian bulanan tampil di Hal. 1'
+                              : isMultiMonth
+                              ? '+ Lampiran Matriks Per Bulan'
+                              : ''}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Card 2: Kertas, Tata Letak & Titimangsa */}
+                  <div className="s5-studio-card">
+                    <div className="s5-studio-section-head">
+                      <span className="s5-studio-kicker">2. Kertas, Tata Letak &amp; Pengesahan</span>
+                      <span className="s5-tnum" style={{ fontSize: '11px', color: '#526861' }}>
+                        {paperDimensionText}
+                      </span>
+                    </div>
+
+                    <div className="s5-studio-choice-grid">
+                      {(
+                        [
+                          {
+                            id: 'a4' as const,
+                            title: 'Kertas A4',
+                            sub: '210 × 297 mm · Standar Umum',
+                          },
+                          {
+                            id: 'f4' as const,
+                            title: 'Kertas F4 / Folio',
+                            sub: '210 × 330 mm · Standar Kemenag',
+                          },
+                        ]
+                      ).map((opt) => {
+                        const active = paperSize === opt.id;
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => setPaperSize(opt.id)}
+                            className={`s5-studio-choice-card ${active ? 'is-active' : ''}`}
+                          >
+                            <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#0B2923' }}>
+                              {opt.title}
+                            </span>
+                            <span style={{ fontSize: '11px', color: '#526861' }}>{opt.sub}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div className="field-group">
+                        <label htmlFor="pdf-orientation" style={{ fontSize: '11px' }}>
+                          Orientasi Halaman
+                        </label>
+                        <select
+                          id="pdf-orientation"
+                          value={orientation}
+                          onChange={(e) =>
+                            setOrientation(e.target.value as 'landscape' | 'portrait')
+                          }
+                          style={{ height: '35px', fontSize: '12px' }}
+                        >
+                          <option value="landscape">{paperSize.toUpperCase()} Landscape</option>
+                          <option value="portrait">{paperSize.toUpperCase()} Portrait</option>
+                        </select>
+                      </div>
+
+                      <div className="field-group">
+                        <label htmlFor="pdf-layout-density" style={{ fontSize: '11px' }}>
+                          Kepadatan Tabel
+                        </label>
+                        <select
+                          id="pdf-layout-density"
+                          value={layoutDensity}
+                          onChange={(e) =>
+                            setLayoutDensity(e.target.value as 'compact' | 'standard')
+                          }
+                          style={{ height: '35px', fontSize: '12px' }}
+                        >
+                          <option value="compact">Presisi 1 Halaman</option>
+                          <option value="standard">Standar Lega</option>
+                        </select>
+                      </div>
+
+                      <div className="field-group">
+                        <label htmlFor="pdf-print-place" style={{ fontSize: '11px' }}>
+                          Tempat Titimangsa
+                        </label>
+                        <input
+                          id="pdf-print-place"
+                          type="text"
+                          value={signerCity}
+                          onChange={(e) => setSignerCity(e.target.value)}
+                          style={{ height: '35px', fontSize: '12px' }}
+                        />
+                      </div>
+
+                      <div className="field-group">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <label htmlFor="pdf-print-date" style={{ fontSize: '11px' }}>
+                            Tanggal Pengesahan
+                          </label>
+                          <span style={{ display: 'inline-flex', gap: '6px' }}>
+                            <button
+                              type="button"
+                              onClick={applyTodaySignerDate}
+                              style={{
+                                border: 0,
+                                background: 'transparent',
+                                padding: 0,
+                                fontSize: '10.5px',
+                                fontWeight: 600,
+                                color: '#1B5E43',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Hari Ini
+                            </button>
+                            <button
+                              type="button"
+                              onClick={applyEndOfMonthSignerDate}
+                              style={{
+                                border: 0,
+                                background: 'transparent',
+                                padding: 0,
+                                fontSize: '10.5px',
+                                fontWeight: 600,
+                                color: '#8C6226',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Akhir Bln
+                            </button>
+                          </span>
+                        </div>
+                        <input
+                          id="pdf-print-date"
+                          type="text"
+                          value={signerDate}
+                          onChange={(e) => setSignerDate(e.target.value)}
+                          style={{ height: '35px', fontSize: '12px' }}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px' }}>
+                      {[
+                        { label: 'Kop Surat Kemenag', checked: includeKop, onChange: setIncludeKop },
+                        { label: 'Blok Tanda Tangan', checked: includeSignature, onChange: setIncludeSignature },
+                        { label: 'Catatan Keterangan', checked: includeNotes, onChange: setIncludeNotes },
+                        { label: 'Info Cetak di Footer', checked: includePrintMeta, onChange: setIncludePrintMeta },
+                      ].map((item) => (
+                        <label
+                          key={item.label}
+                          className={`s5-studio-switch-row ${item.checked ? 'is-checked' : ''}`}
+                          style={{ padding: '7px 9px' }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={item.checked}
+                            onChange={(e) => item.onChange(e.target.checked)}
+                            style={{ accentColor: '#124037', marginTop: '2px' }}
+                          />
+                          <span style={{ fontSize: '12px', fontWeight: 600, color: '#0F201C' }}>
+                            {item.label}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Card 3: Daftar Pendidik Sasaran */}
+                  <div className="s5-studio-card">
+                    <div className="s5-studio-section-head">
+                      <span className="s5-studio-kicker s5-tnum">
+                        3. Daftar Pendidik ({selectedTeacherIds.length}/{activeTeachers.length})
+                      </span>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={selectAll}
+                          className="s5-studio-preset-btn"
+                          style={{ color: '#1B5E43' }}
+                        >
+                          Pilih Semua
+                        </button>
+                        <button
+                          type="button"
+                          onClick={deselectAll}
+                          className="s5-studio-preset-btn"
+                          style={{ color: '#A63A2E' }}
+                        >
+                          Kosongkan
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="s5-input-shell" style={{ height: '34px', padding: '0 10px', width: '100%' }}>
+                      <Search size={13} color="#687E77" />
+                      <input
+                        type="text"
+                        placeholder="Cari nama atau kode pendidik…"
+                        value={teacherSearch}
+                        onChange={(e) => setTeacherSearch(e.target.value)}
+                        style={{ width: '100%', fontSize: '12px' }}
+                      />
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(175px, 1fr))',
+                        gap: '6px',
+                        maxHeight: '146px',
+                        overflowY: 'auto',
+                        padding: '2px',
+                      }}
+                    >
+                      {filteredTeachersList.map((teacher) => {
+                        const isChecked = selectedTeacherIds.includes(teacher.id);
+                        return (
+                          <button
+                            key={teacher.id}
+                            type="button"
+                            onClick={() => toggleTeacher(teacher.id)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '6px 9px',
+                              borderRadius: '8px',
+                              background: isChecked ? '#E8F4EE' : '#FAFBF9',
+                              border: `0.75px solid ${isChecked ? '#8DC2A7' : '#DCE5DF'}`,
+                              fontSize: '11.5px',
+                              cursor: 'pointer',
+                              textAlign: 'left',
+                              transition: 'all 0.12s ease',
+                            }}
+                          >
+                            <span
+                              className={`s5-checkbox-box ${isChecked ? 'checked' : ''}`}
+                              style={{ width: '16px', height: '16px', flexShrink: 0 }}
+                            >
+                              {isChecked && <Check size={11} color="#FFFFFF" strokeWidth={2.8} />}
+                            </span>
+                            <span
+                              style={{
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                color: '#0F201C',
+                                fontWeight: isChecked ? 600 : 500,
+                              }}
+                            >
+                              {teacher.name}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                /* TAB 2: Kop Surat, Judul & Pejabat Pengesah */
+                <div className="s5-studio-card">
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '10px',
+                      paddingBottom: '10px',
+                      borderBottom: '0.75px solid #E8EFEA',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      {(
+                        [
+                          { id: 'kop', label: 'Kop Madrasah' },
+                          { id: 'title', label: 'Judul & Periode' },
+                          { id: 'signer', label: 'Pejabat & TTD' },
+                        ] as const
+                      ).map((tab) => (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setContentSubTab(tab.id)}
+                          className={`s5-studio-preset-btn ${contentSubTab === tab.id ? 'is-active' : ''}`}
+                          style={{ height: '30px', padding: '0 12px', fontSize: '12px' }}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleResetToSettings}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        height: '30px',
+                        padding: '0 10px',
+                        borderRadius: '8px',
+                        border: '0.75px solid #E8CFCB',
+                        background: '#FDF6F5',
+                        color: '#9F352B',
+                        fontSize: '11.5px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <RotateCcw size={12} />
+                      <span>Reset Default</span>
+                    </button>
+                  </div>
+
+                  {contentSubTab === 'kop' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div className="field-group" style={{ gridColumn: 'span 2' }}>
+                        <label style={{ fontSize: '11px' }}>Kementerian Pembina</label>
+                        <input
+                          type="text"
+                          value={ministry}
+                          onChange={(e) => setMinistry(e.target.value)}
+                          style={{ height: '34px', fontSize: '12px' }}
+                        />
+                      </div>
+                      <div className="field-group" style={{ gridColumn: 'span 2' }}>
+                        <label style={{ fontSize: '11px' }}>Kantor Kemenag / Yayasan</label>
+                        <input
+                          type="text"
+                          value={regionalOffice}
+                          onChange={(e) => setRegionalOffice(e.target.value)}
+                          style={{ height: '34px', fontSize: '12px' }}
+                        />
+                      </div>
+                      <div className="field-group" style={{ gridColumn: 'span 2' }}>
+                        <label style={{ fontSize: '11px' }}>Nama Resmi Madrasah</label>
+                        <input
+                          type="text"
+                          value={schoolName}
+                          onChange={(e) => setSchoolName(e.target.value)}
+                          style={{ height: '34px', fontSize: '12px', fontWeight: 700 }}
+                        />
+                      </div>
+                      <div className="field-group">
+                        <label style={{ fontSize: '11px' }}>NSM</label>
+                        <input
+                          type="text"
+                          value={nsm}
+                          onChange={(e) => setNsm(e.target.value)}
+                          style={{ height: '34px', fontSize: '12px' }}
+                        />
+                      </div>
+                      <div className="field-group">
+                        <label style={{ fontSize: '11px' }}>NPSN</label>
+                        <input
+                          type="text"
+                          value={npsn}
+                          onChange={(e) => setNpsn(e.target.value)}
+                          style={{ height: '34px', fontSize: '12px' }}
+                        />
+                      </div>
+                      <div className="field-group" style={{ gridColumn: 'span 2' }}>
+                        <label style={{ fontSize: '11px' }}>Alamat Lengkap</label>
+                        <input
+                          type="text"
+                          value={address}
+                          onChange={(e) => setAddress(e.target.value)}
+                          style={{ height: '34px', fontSize: '12px' }}
+                        />
+                      </div>
+                      <div className="field-group">
+                        <label style={{ fontSize: '11px' }}>Kota / Kabupaten</label>
+                        <input
+                          type="text"
+                          value={city}
+                          onChange={(e) => setCity(e.target.value)}
+                          style={{ height: '34px', fontSize: '12px' }}
+                        />
+                      </div>
+                      <div className="field-group">
+                        <label style={{ fontSize: '11px' }}>Telepon</label>
+                        <input
+                          type="text"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          style={{ height: '34px', fontSize: '12px' }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {contentSubTab === 'title' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div className="field-group" style={{ gridColumn: 'span 2' }}>
+                        <label style={{ fontSize: '11px' }}>Judul Utama Dokumen</label>
+                        <input
+                          type="text"
+                          value={documentTitle}
+                          onChange={(e) => setDocumentTitle(e.target.value)}
+                          style={{ height: '36px', fontSize: '12.5px', fontWeight: 700 }}
+                        />
+                      </div>
+                      <div className="field-group">
+                        <label style={{ fontSize: '11px' }}>Tahun Ajaran</label>
+                        <input
+                          type="text"
+                          value={academicYear}
+                          onChange={(e) => setAcademicYear(e.target.value)}
+                          style={{ height: '34px', fontSize: '12px' }}
+                        />
+                      </div>
+                      <div className="field-group">
+                        <label style={{ fontSize: '11px' }}>Semester</label>
+                        <select
+                          value={semester}
+                          onChange={(e) => setSemester(e.target.value as 'Ganjil' | 'Genap')}
+                          style={{ height: '34px', fontSize: '12px' }}
+                        >
+                          <option value="Ganjil">Semester Ganjil</option>
+                          <option value="Genap">Semester Genap</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+
+                  {contentSubTab === 'signer' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '11px' }}>
+                      <div
+                        style={{
+                          padding: '10px 12px',
+                          background: '#F7FAF8',
+                          borderRadius: '10px',
+                          border: '0.75px solid #D8E2DC',
+                          display: 'grid',
+                          gridTemplateColumns: '1fr 1fr',
+                          gap: '8px',
+                        }}
+                      >
+                        <div style={{ gridColumn: 'span 2', fontSize: '11px', fontWeight: 700, color: '#124037' }}>
+                          Penandatangan Kiri (Pemeriksa)
+                        </div>
+                        <div className="field-group">
+                          <label style={{ fontSize: '11px' }}>Jabatan Kiri</label>
+                          <input
+                            type="text"
+                            value={officerTitle}
+                            onChange={(e) => setOfficerTitle(e.target.value)}
+                            style={{ height: '32px', fontSize: '12px' }}
+                          />
+                        </div>
+                        <div className="field-group">
+                          <label style={{ fontSize: '11px' }}>Nama Pejabat Kiri</label>
+                          <input
+                            type="text"
+                            value={officerName}
+                            onChange={(e) => setOfficerName(e.target.value)}
+                            style={{ height: '32px', fontSize: '12px' }}
+                          />
+                        </div>
+                        <div className="field-group" style={{ gridColumn: 'span 2' }}>
+                          <label style={{ fontSize: '11px' }}>NIP Pejabat Kiri</label>
+                          <input
+                            type="text"
+                            value={officerNip}
+                            onChange={(e) => setOfficerNip(e.target.value)}
+                            style={{ height: '32px', fontSize: '12px' }}
+                          />
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          padding: '10px 12px',
+                          background: '#FBF9F4',
+                          borderRadius: '10px',
+                          border: '0.75px solid #E5DCC9',
+                          display: 'grid',
+                          gridTemplateColumns: '1fr 1fr',
+                          gap: '8px',
+                        }}
+                      >
+                        <div style={{ gridColumn: 'span 2', fontSize: '11px', fontWeight: 700, color: '#7A5B25' }}>
+                          Penandatangan Kanan (Kepala Madrasah)
+                        </div>
+                        <div className="field-group">
+                          <label style={{ fontSize: '11px' }}>Jabatan Pengesah</label>
+                          <input
+                            type="text"
+                            value={principalTitle}
+                            onChange={(e) => setPrincipalTitle(e.target.value)}
+                            style={{ height: '32px', fontSize: '12px' }}
+                          />
+                        </div>
+                        <div className="field-group">
+                          <label style={{ fontSize: '11px' }}>Nama Kepala Madrasah</label>
+                          <input
+                            type="text"
+                            value={principalName}
+                            onChange={(e) => setPrincipalName(e.target.value)}
+                            style={{ height: '32px', fontSize: '12px' }}
+                          />
+                        </div>
+                        <div className="field-group" style={{ gridColumn: 'span 2' }}>
+                          <label style={{ fontSize: '11px' }}>NIP Kepala Madrasah</label>
+                          <input
+                            type="text"
+                            value={principalNip}
+                            onChange={(e) => setPrincipalNip(e.target.value)}
+                            style={{ height: '32px', fontSize: '12px' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <small style={{ fontSize: '10px', color: '#687a75' }}>Standar internasional &amp; printer madrasah</small>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPaperSize('f4')}
-                style={{
-                  padding: '9px 12px',
-                  borderRadius: '8px',
-                  border: paperSize === 'f4' ? '2px solid #16483f' : '1px solid #d4d7cc',
-                  background: paperSize === 'f4' ? '#e7f2ed' : '#ffffff',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-              >
-                <div style={{ fontWeight: 800, fontSize: '12px', color: paperSize === 'f4' ? '#0b3435' : '#173637' }}>
-                  Kertas F4 / Folio (210 × 330 mm)
-                </div>
-                <small style={{ fontSize: '10px', color: '#687a75' }}>Standar administrasi Kemenag (+33mm lebar)</small>
-              </button>
-            </div>
-          </div>
-
-          {/* Form Options Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-            <div className="field-group">
-              <label>Bulan &amp; Tahun Rekapitulasi</label>
-              <input
-                type="month"
-                value={monthYear}
-                onChange={(e) => setMonthYear(e.target.value)}
-                style={{ height: '38px', fontSize: '12.5px' }}
-              />
+              )}
             </div>
 
-            <div className="field-group">
-              <label>Tata Letak &amp; Orientasi Kertas ({paperSize.toUpperCase()})</label>
-              <select
-                value={orientation}
-                onChange={(e) => setOrientation(e.target.value as 'landscape' | 'portrait')}
-                style={{ height: '38px', fontSize: '12.5px' }}
-              >
-                <option value="landscape">{paperSize.toUpperCase()} Landscape (Tabel Lebar &amp; Lengkap - Rekomendasi)</option>
-                <option value="portrait">{paperSize.toUpperCase()} Portrait (Vertikal Standar)</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Formal Letterhead & Signature Settings Checkboxes */}
-          <div
-            style={{
-              padding: '12px 14px',
-              background: '#fffdf8',
-              borderRadius: '9px',
-              border: '1px solid #e5e3d7',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '10px',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '11px', fontWeight: 800, color: '#31544d', letterSpacing: '0.05em' }}>
-                KOMPONEN DOKUMEN RESMI
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowTextEditor(!showTextEditor)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  background: showTextEditor ? '#e5f3eb' : '#f0ede6',
-                  color: showTextEditor ? '#1f6952' : '#4a5b56',
-                  border: '1px solid #d4cfc5',
-                  borderRadius: '6px',
-                  padding: '3px 8px',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-              >
-                <span>✏️ Sesuaikan Teks Dokumen Resmi</span>
-                {showTextEditor ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', color: '#173637', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={includeKop}
-                  onChange={(e) => setIncludeKop(e.target.checked)}
-                />
-                <strong>Sertakan Kop Surat Resmi Madrasah (Kemenag)</strong>
-              </label>
-
-              <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', color: '#173637', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={includeSignature}
-                  onChange={(e) => setIncludeSignature(e.target.checked)}
-                />
-                <strong>Sertakan Blok Tanda Tangan &amp; Pengesahan</strong>
-              </label>
-            </div>
-
-            {/* Collapsible Document Text Customizer */}
-            {showTextEditor && (
+            {/* RIGHT COLUMN: Live Scaled Kemenag Document Studio Preview */}
+            <div className="s5-pdf-paper-stage">
               <div
                 style={{
-                  marginTop: '6px',
-                  padding: '12px',
-                  background: '#ffffff',
-                  borderRadius: '8px',
-                  border: '1px solid #dcd9cf',
                   display: 'flex',
-                  flexDirection: 'column',
-                  gap: '12px',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '8px',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eae7dd', paddingBottom: '8px' }}>
-                  {/* Sub-tabs */}
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    <button
-                      type="button"
-                      onClick={() => setEditorSubTab('kop')}
-                      style={{
-                        padding: '4px 9px',
-                        borderRadius: '5px',
-                        border: '1px solid',
-                        borderColor: editorSubTab === 'kop' ? '#1f6952' : '#dedcd3',
-                        background: editorSubTab === 'kop' ? '#e9f5ee' : '#faf9f5',
-                        color: editorSubTab === 'kop' ? '#1f6952' : '#5a6b65',
-                        fontWeight: editorSubTab === 'kop' ? 700 : 500,
-                        fontSize: '11px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      1. Kop Surat &amp; Instansi
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditorSubTab('title')}
-                      style={{
-                        padding: '4px 9px',
-                        borderRadius: '5px',
-                        border: '1px solid',
-                        borderColor: editorSubTab === 'title' ? '#1f6952' : '#dedcd3',
-                        background: editorSubTab === 'title' ? '#e9f5ee' : '#faf9f5',
-                        color: editorSubTab === 'title' ? '#1f6952' : '#5a6b65',
-                        fontWeight: editorSubTab === 'title' ? 700 : 500,
-                        fontSize: '11px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      2. Judul &amp; Periode
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditorSubTab('signer')}
-                      style={{
-                        padding: '4px 9px',
-                        borderRadius: '5px',
-                        border: '1px solid',
-                        borderColor: editorSubTab === 'signer' ? '#1f6952' : '#dedcd3',
-                        background: editorSubTab === 'signer' ? '#e9f5ee' : '#faf9f5',
-                        color: editorSubTab === 'signer' ? '#1f6952' : '#5a6b65',
-                        fontWeight: editorSubTab === 'signer' ? 700 : 500,
-                        fontSize: '11px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      3. Titimangsa &amp; Penandatangan
-                    </button>
-                  </div>
+                <span className="s5-studio-kicker">Pratinjau Dokumen Resmi</span>
+                <span className="s5-tnum" style={{ fontSize: '11px', color: '#526861', fontWeight: 600 }}>
+                  {paperLabel} · {orientation === 'landscape' ? 'Landscape' : 'Portrait'}
+                </span>
+              </div>
 
-                  <button
-                    type="button"
-                    onClick={handleResetToSettings}
+              {/* 3 Live Metric Tiles */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                <div
+                  style={{
+                    padding: '9px 10px',
+                    background: '#FFFFFF',
+                    borderRadius: '9px',
+                    border: '0.75px solid #D5E0DA',
+                  }}
+                >
+                  <div style={{ fontSize: '10px', color: '#526861', fontWeight: 600 }}>
+                    {previewStats.isMultiMonth ? 'CAKUPAN' : 'HARI TERCATAT'}
+                  </div>
+                  <strong
+                    className="s5-tnum"
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      background: 'transparent',
-                      border: 'none',
-                      color: '#b24c3d',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
+                      fontSize: '14px',
+                      color: previewStats.recordedDays > 0 ? '#0B2923' : '#687E77',
                     }}
-                    title="Kembalikan semua teks ke nilai default Profil Madrasah"
                   >
-                    <RotateCcw size={11} />
-                    <span>Reset Default</span>
-                  </button>
+                    {previewStats.isMultiMonth
+                      ? `${previewStats.monthCount} Bln · ${previewStats.recordedDays} Hr`
+                      : previewStats.recordedDays > 0
+                      ? `${previewStats.recordedDays} Hari`
+                      : 'Belum Ada'}
+                  </strong>
+                </div>
+                <div
+                  style={{
+                    padding: '9px 10px',
+                    background: '#FFFFFF',
+                    borderRadius: '9px',
+                    border: '0.75px solid #D5E0DA',
+                  }}
+                >
+                  <div style={{ fontSize: '10px', color: '#526861', fontWeight: 600 }}>PENDIDIK</div>
+                  <strong className="s5-tnum" style={{ fontSize: '14.5px', color: '#0B2923' }}>
+                    {previewStats.teacherCount} Guru
+                  </strong>
+                </div>
+                <div
+                  style={{
+                    padding: '9px 10px',
+                    background: '#FFFFFF',
+                    borderRadius: '9px',
+                    border: '0.75px solid #D5E0DA',
+                  }}
+                >
+                  <div style={{ fontSize: '10px', color: '#526861', fontWeight: 600 }}>RATA-RATA</div>
+                  <strong
+                    className="s5-tnum"
+                    style={{
+                      fontSize: '14.5px',
+                      color: !previewStats.hasData
+                        ? '#687E77'
+                        : previewStats.avgRate >= 85
+                        ? '#1B5E43'
+                        : '#A63A2E',
+                    }}
+                  >
+                    {previewStats.hasData ? `${previewStats.avgRate}%` : '—'}
+                  </strong>
+                </div>
+              </div>
+
+              {previewStats.recordedDays === 0 && (
+                <div
+                  style={{
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    background: '#FBF6EB',
+                    border: '0.75px solid #E5D4B0',
+                    fontSize: '11px',
+                    color: '#7A5A22',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  Periode {activePeriodLabel} belum memiliki catatan presensi. Isi di tab Harian atau Massal agar persentase riil terhitung otomatis.
+                </div>
+              )}
+
+              {/* Live Paper Mockup Sheet */}
+              <div className="s5-pdf-paper-sheet">
+                {includeKop && (
+                  <>
+                    <div style={{ textAlign: 'center', lineHeight: 1.25 }}>
+                      <div style={{ fontSize: '9.5px', fontWeight: 600, color: '#2F443E', letterSpacing: '0.03em' }}>
+                        {ministry}
+                      </div>
+                      <div style={{ fontSize: '9.5px', fontWeight: 600, color: '#2F443E' }}>
+                        {regionalOffice}
+                      </div>
+                      <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#0B2923', marginTop: '2px' }}>
+                        {schoolName}
+                      </div>
+                      <div style={{ fontSize: '9.5px', color: '#526861', marginTop: '1px' }}>
+                        NSM {nsm} · NPSN {npsn} · {address}, {city}
+                      </div>
+                    </div>
+                    <div className="s5-pdf-kop-line" />
+                  </>
+                )}
+
+                <div style={{ textAlign: 'center', margin: '8px 0 8px' }}>
+                  <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#0B2923', letterSpacing: '0.02em' }}>
+                    {documentTitle || (isMultiMonth ? DEFAULT_MULTI_TITLE : DEFAULT_SINGLE_TITLE)}
+                  </div>
+                  <div className="s5-tnum" style={{ fontSize: '10px', color: '#526861', marginTop: '1px' }}>
+                    Periode {activePeriodLabel} · TA {academicYear} ({semester})
+                  </div>
+                  <div
+                    style={{
+                      width: '44px',
+                      height: '1.5px',
+                      background: '#C5A059',
+                      margin: '4px auto 0',
+                      borderRadius: '2px',
+                    }}
+                  />
                 </div>
 
-                {/* SubTab 1: Kop Surat & Instansi */}
-                {editorSubTab === 'kop' && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <div className="field-group" style={{ gridColumn: 'span 2' }}>
-                      <label style={{ fontSize: '10.5px' }}>Kementerian Pembina / Naungan</label>
-                      <input
-                        type="text"
-                        value={ministry}
-                        onChange={(e) => setMinistry(e.target.value)}
-                        placeholder="KEMENTERIAN AGAMA REPUBLIK INDONESIA"
-                        style={{ height: '32px', fontSize: '11px' }}
-                      />
-                    </div>
-                    <div className="field-group" style={{ gridColumn: 'span 2' }}>
-                      <label style={{ fontSize: '10.5px' }}>Kantor Wilayah / Kantor Kemenag Kabupaten</label>
-                      <input
-                        type="text"
-                        value={regionalOffice}
-                        onChange={(e) => setRegionalOffice(e.target.value)}
-                        placeholder="KANTOR KEMENTERIAN AGAMA KABUPATEN..."
-                        style={{ height: '32px', fontSize: '11px' }}
-                      />
-                    </div>
-                    <div className="field-group" style={{ gridColumn: 'span 2' }}>
-                      <label style={{ fontSize: '10.5px' }}>Nama Resmi Madrasah</label>
-                      <input
-                        type="text"
-                        value={schoolName}
-                        onChange={(e) => setSchoolName(e.target.value)}
-                        placeholder="MTs Cendekia Nusantara"
-                        style={{ height: '32px', fontSize: '11px', fontWeight: 600 }}
-                      />
-                    </div>
-                    <div className="field-group">
-                      <label style={{ fontSize: '10.5px' }}>Nomor Statistik Madrasah (NSM)</label>
-                      <input
-                        type="text"
-                        value={nsm}
-                        onChange={(e) => setNsm(e.target.value)}
-                        placeholder="121235..."
-                        style={{ height: '32px', fontSize: '11px' }}
-                      />
-                    </div>
-                    <div className="field-group">
-                      <label style={{ fontSize: '10.5px' }}>NPSN</label>
-                      <input
-                        type="text"
-                        value={npsn}
-                        onChange={(e) => setNpsn(e.target.value)}
-                        placeholder="20580..."
-                        style={{ height: '32px', fontSize: '11px' }}
-                      />
-                    </div>
-                    <div className="field-group" style={{ gridColumn: 'span 2' }}>
-                      <label style={{ fontSize: '10.5px' }}>Alamat Lengkap</label>
-                      <input
-                        type="text"
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                        placeholder="Jl. Raya..."
-                        style={{ height: '32px', fontSize: '11px' }}
-                      />
-                    </div>
-                    <div className="field-group">
-                      <label style={{ fontSize: '10.5px' }}>Kota / Kabupaten</label>
-                      <input
-                        type="text"
-                        value={city}
-                        onChange={(e) => setCity(e.target.value)}
-                        placeholder="Kabupaten Malang"
-                        style={{ height: '32px', fontSize: '11px' }}
-                      />
-                    </div>
-                    <div className="field-group">
-                      <label style={{ fontSize: '10.5px' }}>Kode Pos</label>
-                      <input
-                        type="text"
-                        value={postalCode}
-                        onChange={(e) => setPostalCode(e.target.value)}
-                        placeholder="65165"
-                        style={{ height: '32px', fontSize: '11px' }}
-                      />
-                    </div>
-                    <div className="field-group">
-                      <label style={{ fontSize: '10.5px' }}>Telepon / Kontak</label>
-                      <input
-                        type="text"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        placeholder="(0341)..."
-                        style={{ height: '32px', fontSize: '11px' }}
-                      />
-                    </div>
-                    <div className="field-group">
-                      <label style={{ fontSize: '10.5px' }}>Email Resmi</label>
-                      <input
-                        type="text"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="info@madrasah.sch.id"
-                        style={{ height: '32px', fontSize: '11px' }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* SubTab 2: Judul & Periode */}
-                {editorSubTab === 'title' && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <div className="field-group" style={{ gridColumn: 'span 2' }}>
-                      <label style={{ fontSize: '10.5px' }}>Judul Utama Dokumen</label>
-                      <input
-                        type="text"
-                        value={documentTitle}
-                        onChange={(e) => setDocumentTitle(e.target.value)}
-                        placeholder="LAPORAN REKAPITULASI KEHADIRAN GURU BULANAN"
-                        style={{ height: '32px', fontSize: '11px', fontWeight: 600 }}
-                      />
-                    </div>
-                    <div className="field-group">
-                      <label style={{ fontSize: '10.5px' }}>Tahun Ajaran</label>
-                      <input
-                        type="text"
-                        value={academicYear}
-                        onChange={(e) => setAcademicYear(e.target.value)}
-                        placeholder="2026/2027"
-                        style={{ height: '32px', fontSize: '11px' }}
-                      />
-                    </div>
-                    <div className="field-group">
-                      <label style={{ fontSize: '10.5px' }}>Semester</label>
-                      <select
-                        value={semester}
-                        onChange={(e) => setSemester(e.target.value as 'Ganjil' | 'Genap')}
-                        style={{ height: '32px', fontSize: '11px' }}
-                      >
-                        <option value="Ganjil">Semester Ganjil</option>
-                        <option value="Genap">Semester Genap</option>
-                      </select>
-                    </div>
-                  </div>
-                )}
-
-                {/* SubTab 3: Titimangsa & Penandatangan */}
-                {editorSubTab === 'signer' && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <div className="field-group">
-                      <label style={{ fontSize: '10.5px' }}>Kota Titimangsa Surat</label>
-                      <input
-                        type="text"
-                        value={signerCity}
-                        onChange={(e) => setSignerCity(e.target.value)}
-                        placeholder="Kabupaten Malang"
-                        style={{ height: '32px', fontSize: '11px' }}
-                      />
-                    </div>
-                    <div className="field-group">
-                      <label style={{ fontSize: '10.5px' }}>Tanggal Pengesahan Surat</label>
-                      <input
-                        type="text"
-                        value={signerDate}
-                        onChange={(e) => setSignerDate(e.target.value)}
-                        placeholder="24 Oktober 2026"
-                        style={{ height: '32px', fontSize: '11px' }}
-                      />
-                    </div>
-
-                    <div style={{ gridColumn: 'span 2', height: '1px', background: '#eee', margin: '4px 0' }} />
-
-                    {/* Left signatory: Curriculum Coordinator / Officer */}
-                    <div className="field-group" style={{ gridColumn: 'span 2' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 700, color: '#31544d' }}>Penandatangan Kiri (Pemeriksa / Koordinator)</span>
-                    </div>
-                    <div className="field-group">
-                      <label style={{ fontSize: '10.5px' }}>Jabatan</label>
-                      <input
-                        type="text"
-                        value={officerTitle}
-                        onChange={(e) => setOfficerTitle(e.target.value)}
-                        placeholder="Koordinator Akademik & Kurikulum"
-                        style={{ height: '32px', fontSize: '11px' }}
-                      />
-                    </div>
-                    <div className="field-group">
-                      <label style={{ fontSize: '10.5px' }}>Nama Lengkap &amp; Gelar</label>
-                      <input
-                        type="text"
-                        value={officerName}
-                        onChange={(e) => setOfficerName(e.target.value)}
-                        placeholder="Siti Aminah, S.Pd.I., M.Pd."
-                        style={{ height: '32px', fontSize: '11px' }}
-                      />
-                    </div>
-                    <div className="field-group" style={{ gridColumn: 'span 2' }}>
-                      <label style={{ fontSize: '10.5px' }}>NIP / NUPTK</label>
-                      <input
-                        type="text"
-                        value={officerNip}
-                        onChange={(e) => setOfficerNip(e.target.value)}
-                        placeholder="19820315 200901 2 008"
-                        style={{ height: '32px', fontSize: '11px' }}
-                      />
-                    </div>
-
-                    <div style={{ gridColumn: 'span 2', height: '1px', background: '#eee', margin: '4px 0' }} />
-
-                    {/* Right signatory: Headmaster */}
-                    <div className="field-group" style={{ gridColumn: 'span 2' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 700, color: '#31544d' }}>Penandatangan Kanan (Pengesah / Kepala Madrasah)</span>
-                    </div>
-                    <div className="field-group">
-                      <label style={{ fontSize: '10.5px' }}>Jabatan</label>
-                      <input
-                        type="text"
-                        value={principalTitle}
-                        onChange={(e) => setPrincipalTitle(e.target.value)}
-                        placeholder="Kepala Madrasah"
-                        style={{ height: '32px', fontSize: '11px' }}
-                      />
-                    </div>
-                    <div className="field-group">
-                      <label style={{ fontSize: '10.5px' }}>Nama Lengkap &amp; Gelar</label>
-                      <input
-                        type="text"
-                        value={principalName}
-                        onChange={(e) => setPrincipalName(e.target.value)}
-                        placeholder="H. Ahmad Fauzi, S.Ag., M.Pd.I."
-                        style={{ height: '32px', fontSize: '11px' }}
-                      />
-                    </div>
-                    <div className="field-group" style={{ gridColumn: 'span 2' }}>
-                      <label style={{ fontSize: '10.5px' }}>NIP / NUPTK</label>
-                      <input
-                        type="text"
-                        value={principalNip}
-                        onChange={(e) => setPrincipalNip(e.target.value)}
-                        placeholder="19750812 200212 1 003"
-                        style={{ height: '32px', fontSize: '11px' }}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Teacher Selection Strip */}
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontSize: '11px', fontWeight: 800, color: '#31544d', letterSpacing: '0.04em' }}>
-                PILIH GURU UNTUK DIREKAP ({selectedTeacherIds.length} DARI {activeTeachers.length} GURU)
-              </span>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  type="button"
-                  onClick={selectAll}
-                  style={{ border: 0, background: 'transparent', color: '#1f6952', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
-                >
-                  Pilih Semua
-                </button>
-                <span style={{ color: '#ccc' }}>·</span>
-                <button
-                  type="button"
-                  onClick={deselectAll}
-                  style={{ border: 0, background: 'transparent', color: '#b24c3d', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
-                >
-                  Hapus Pilihan
-                </button>
-              </div>
-            </div>
-
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-                gap: '6px',
-                maxHeight: '160px',
-                overflowY: 'auto',
-                padding: '8px',
-                background: '#faf9f5',
-                borderRadius: '8px',
-                border: '1px solid #e2ded5',
-              }}
-            >
-              {activeTeachers.map((teacher) => {
-                const isChecked = selectedTeacherIds.includes(teacher.id);
-                return (
-                  <label
-                    key={teacher.id}
+                {/* Multi-Month Mini Summary Strip */}
+                {previewStats.isMultiMonth && (
+                  <div
                     style={{
                       display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '5px 8px',
-                      borderRadius: '6px',
-                      background: isChecked ? '#e9f4ee' : '#ffffff',
-                      border: `1px solid ${isChecked ? '#b2ddc7' : '#dedcd3'}`,
-                      fontSize: '11px',
-                      cursor: 'pointer',
+                      flexWrap: 'wrap',
+                      gap: '5px',
+                      marginBottom: '8px',
+                      justifyContent: 'center',
                     }}
                   >
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      onChange={() => toggleTeacher(teacher.id)}
-                    />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#173637' }}>
-                      {teacher.name}
+                    {previewStats.monthSummaries.slice(0, 6).map((mb) => (
+                      <span
+                        key={mb.monthYear}
+                        className="s5-tnum"
+                        style={{
+                          padding: '2px 7px',
+                          borderRadius: '6px',
+                          background: mb.recordedDaysCount > 0 ? '#EEF6F1' : '#F4F5F4',
+                          border: `0.5px solid ${mb.recordedDaysCount > 0 ? '#C2DDD0' : '#DCE0DD'}`,
+                          fontSize: '9.5px',
+                          color: mb.recordedDaysCount > 0 ? '#124037' : '#687E77',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {mb.shortLabel}: {mb.recordedDaysCount > 0 ? `${mb.overallAvgRate}%` : '—'}
+                      </span>
+                    ))}
+                    {previewStats.monthSummaries.length > 6 && (
+                      <span style={{ fontSize: '9.5px', color: '#526861', alignSelf: 'center' }}>
+                        +{previewStats.monthSummaries.length - 6} bln lainnya
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Miniature Recap Table */}
+                <div
+                  style={{
+                    border: '0.75px solid #D5E0DA',
+                    borderRadius: '6px',
+                    overflow: 'hidden',
+                    marginBottom: '10px',
+                  }}
+                >
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px' }}>
+                    <thead>
+                      <tr style={{ background: '#124037', color: '#FFFFFF' }}>
+                        <th style={{ padding: '4px 6px', textAlign: 'left', fontWeight: 600 }}>Pendidik</th>
+                        {showInlineMonthCols &&
+                          previewStats.monthSummaries.slice(0, 3).map((mb) => (
+                            <th
+                              key={`th-${mb.monthYear}`}
+                              className="s5-tnum"
+                              style={{ padding: '4px 4px', textAlign: 'center', fontWeight: 600 }}
+                            >
+                              {mb.shortLabel}
+                            </th>
+                          ))}
+                        <th style={{ padding: '4px 4px', textAlign: 'center', fontWeight: 600 }}>H</th>
+                        <th style={{ padding: '4px 4px', textAlign: 'center', fontWeight: 600 }}>S</th>
+                        <th style={{ padding: '4px 4px', textAlign: 'center', fontWeight: 600 }}>I</th>
+                        <th style={{ padding: '4px 4px', textAlign: 'center', fontWeight: 600 }}>A</th>
+                        <th style={{ padding: '4px 6px', textAlign: 'right', fontWeight: 600 }}>%</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {previewStats.sampleRows.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={6 + (showInlineMonthCols ? Math.min(3, previewStats.monthSummaries.length) : 0)}
+                            style={{ padding: '12px', textAlign: 'center', color: '#687E77' }}
+                          >
+                            Belum ada pendidik dipilih
+                          </td>
+                        </tr>
+                      ) : (
+                        previewStats.sampleRows.map((row, idx) => (
+                          <tr
+                            key={row.teacher.id}
+                            style={{
+                              background: idx % 2 === 0 ? '#FFFFFF' : '#F8FAF8',
+                              borderTop: '0.5px solid #E5ECE8',
+                            }}
+                          >
+                            <td
+                              style={{
+                                padding: '4px 6px',
+                                color: '#0F201C',
+                                fontWeight: 600,
+                                maxWidth: '115px',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {row.teacher.name}
+                            </td>
+                            {showInlineMonthCols &&
+                              previewStats.monthSummaries.slice(0, 3).map((mb) => {
+                                const bucket = row.monthlyBreakdown[mb.monthYear];
+                                return (
+                                  <td
+                                    key={`td-${row.teacher.id}-${mb.monthYear}`}
+                                    className="s5-tnum"
+                                    style={{
+                                      padding: '4px 4px',
+                                      textAlign: 'center',
+                                      color: bucket?.hasData ? '#124037' : '#8A9B95',
+                                      fontWeight: bucket?.hasData ? 600 : 400,
+                                    }}
+                                  >
+                                    {bucket?.hasData ? `${bucket.rate}%` : '—'}
+                                  </td>
+                                );
+                              })}
+                            <td className="s5-tnum" style={{ padding: '4px 4px', textAlign: 'center', fontWeight: 600 }}>
+                              {row.hadir}
+                            </td>
+                            <td className="s5-tnum" style={{ padding: '4px 4px', textAlign: 'center' }}>
+                              {row.sakit}
+                            </td>
+                            <td className="s5-tnum" style={{ padding: '4px 4px', textAlign: 'center' }}>
+                              {row.izin}
+                            </td>
+                            <td
+                              className="s5-tnum"
+                              style={{
+                                padding: '4px 4px',
+                                textAlign: 'center',
+                                fontWeight: row.alpa > 0 ? 700 : 400,
+                                color: row.alpa > 0 ? '#A63A2E' : '#2F443E',
+                              }}
+                            >
+                              {row.alpa}
+                            </td>
+                            <td
+                              className="s5-tnum"
+                              style={{
+                                padding: '4px 6px',
+                                textAlign: 'right',
+                                fontWeight: 700,
+                                color: !row.hasData
+                                  ? '#687E77'
+                                  : row.rate >= 90
+                                  ? '#1B5E43'
+                                  : row.rate >= 75
+                                  ? '#9C6F28'
+                                  : '#A63A2E',
+                              }}
+                            >
+                              {row.hasData ? `${row.rate}%` : '—'}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                  {(previewStats.teacherCount > 5 || showAppendixMonthMatrix) && (
+                    <div
+                      className="s5-tnum"
+                      style={{
+                        padding: '3px 8px',
+                        fontSize: '9.5px',
+                        color: '#47615A',
+                        background: '#F4F7F5',
+                        borderTop: '0.5px solid #E5ECE8',
+                        textAlign: 'center',
+                      }}
+                    >
+                      {previewStats.teacherCount > 5 ? `+${previewStats.teacherCount - 5} pendidik lainnya` : ''}
+                      {previewStats.teacherCount > 5 && showAppendixMonthMatrix ? ' · ' : ''}
+                      {showAppendixMonthMatrix
+                        ? `Hal. 2: Matriks Rincian ${previewStats.monthCount} Bulan`
+                        : ''}
+                    </div>
+                  )}
+                </div>
+
+                {/* Live Dual Signature Block Preview */}
+                {includeSignature && (
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: '12px',
+                      paddingTop: '4px',
+                      fontSize: '9.5px',
+                      lineHeight: 1.32,
+                      color: '#2F443E',
+                    }}
+                  >
+                    <div>
+                      <div>Mengetahui / Memeriksa,</div>
+                      <div style={{ fontWeight: 600, color: '#0F201C' }}>{officerTitle}</div>
+                      <div style={{ height: '14px' }} />
+                      <div style={{ fontWeight: 700, color: '#0B2923', textDecoration: 'underline' }}>
+                        {officerName}
+                      </div>
+                      <div className="s5-tnum">
+                        {formatCleanNip(officerNip) ? `NIP. ${formatCleanNip(officerNip)}` : 'NIP. —'}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'left' }}>
+                      <div>
+                        {signerCity || 'Madrasah'}, {signerDate}
+                      </div>
+                      <div style={{ fontWeight: 600, color: '#0F201C', wordBreak: 'break-word' }}>
+                        {buildRightSignerTitle(principalTitle, schoolName)}
+                      </div>
+                      <div style={{ height: '14px' }} />
+                      <div style={{ fontWeight: 700, color: '#0B2923', textDecoration: 'underline' }}>
+                        {principalName}
+                      </div>
+                      <div className="s5-tnum">
+                        {formatCleanNip(principalNip) ? `NIP. ${formatCleanNip(principalNip)}` : 'NIP. —'}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {includePrintMeta && (
+                  <div
+                    className="s5-tnum"
+                    style={{
+                      marginTop: '9px',
+                      paddingTop: '5px',
+                      borderTop: '0.5px solid #DCE5E0',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      fontSize: '9px',
+                      color: '#687E77',
+                    }}
+                  >
+                    <span>
+                      Dicetak di {signerCity || 'Madrasah'} · {activePeriodLabel}
                     </span>
-                  </label>
-                );
-              })}
+                    <span>
+                      Halaman 1 dari {showAppendixMonthMatrix ? 2 : 1}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
         {/* Modal Footer Actions */}
-        <div
-          style={{
-            padding: '14px 20px',
-            borderTop: '1px solid #edebe1',
-            background: '#faf9f4',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <span style={{ fontSize: '11px', color: '#687a75' }}>
-            Ukuran Kertas: <strong>A4 ({orientation === 'landscape' ? '297 × 210 mm' : '210 × 297 mm'})</strong>
+        <div className="s5-studio-footer">
+          <span className="s5-tnum" style={{ fontSize: '12px', color: '#526861' }}>
+            Format: <strong>{paperLabel}</strong> ({paperDimensionText}) · {activePeriodLabel}
           </span>
 
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -856,7 +1604,7 @@ export function AttendancePdfExportModal({
               type="button"
               className="button button-secondary"
               onClick={onClose}
-              style={{ height: '36px', fontSize: '12px' }}
+              style={{ height: '38px', fontSize: '12.5px' }}
             >
               Batal
             </button>
@@ -865,10 +1613,12 @@ export function AttendancePdfExportModal({
               className="button button-primary"
               onClick={handleDownload}
               disabled={isExporting || selectedTeacherIds.length === 0}
-              style={{ height: '36px', fontSize: '12px' }}
+              style={{ height: '38px', padding: '0 18px', fontSize: '12.5px' }}
             >
               <Download size={15} />
-              {isExporting ? 'Memproses PDF…' : 'Unduh Dokumen PDF Resmi (A4)'}
+              {isExporting
+                ? 'Memproses PDF…'
+                : `Unduh Dokumen PDF Resmi (${paperSize.toUpperCase()})`}
             </button>
           </div>
         </div>

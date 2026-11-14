@@ -123,7 +123,12 @@ describe('Ekspor PDF Jadwal & Rekap', () => {
     expect(() => exportScheduleMasterPDF(state, { paperSize: 'f4' })).not.toThrow();
   });
 
-  it('dapat menghasilkan dokumen Rekapitulasi Presensi Guru dengan kustomisasi teks dokumen resmi', () => {
+  it('dapat menghasilkan dokumen Rekapitulasi Presensi Guru dengan kustomisasi teks dokumen resmi', async () => {
+    const { buildRightSignerTitle } = await import('../src/utils/pdfExport');
+    expect(
+      buildRightSignerTitle('Kepala Madrasah', 'MADRASAH TSANAWIYAH DARUT TAFSIR AL-HUSAINI'),
+    ).toBe('Kepala Madrasah Tsanawiyah Darut Tafsir Al-Husaini');
+
     const state = createDemoState();
     const teacherIds = state.teachers.map((t) => t.id);
 
@@ -131,12 +136,46 @@ describe('Ekspor PDF Jadwal & Rekap', () => {
       exportAttendanceRecapPDF(state, '2026-10', teacherIds, {
         orientation: 'landscape',
         kopSurat: true,
+        includeSignature: true,
+        includeNotes: true,
+        includePrintMeta: true,
+        layoutDensity: 'compact',
+        signerCity: 'Depok',
         documentTitle: 'REKAPITULASI PRESENSI GURU BULAN OKTOBER 2026',
         schoolName: 'MTs Model Riset',
         principalName: 'Drs. Kepala Madrasah, M.Pd.',
-        principalNip: '19700101 200003 1 001',
+        principalNip: '.',
         officerName: 'Siti Aminah, M.Pd.',
         officerNip: '19800202 200501 2 002',
+      }),
+    ).not.toThrow();
+
+    // Uji dengan bulan kosong (belum ada catatan presensi) & tanpa blok tanda tangan (F4 portrait)
+    expect(() =>
+      exportAttendanceRecapPDF(state, '2029-02', teacherIds, {
+        paperSize: 'f4',
+        orientation: 'portrait',
+        kopSurat: true,
+        includeSignature: false,
+        includeNotes: false,
+        includePrintMeta: false,
+      }),
+    ).not.toThrow();
+
+    // Uji multi-bulan 3 bulan (Landscape dengan kolom bulanan inline) & 6 bulan (Portrait + Lampiran Matriks Per Bulan)
+    expect(() =>
+      exportAttendanceRecapPDF(state, '2026-07', teacherIds, {
+        endMonth: '2026-09',
+        orientation: 'landscape',
+        paperSize: 'a4',
+      }),
+    ).not.toThrow();
+
+    expect(() =>
+      exportAttendanceRecapPDF(state, '2026-07', teacherIds, {
+        endMonth: '2026-12',
+        orientation: 'portrait',
+        paperSize: 'f4',
       }),
     ).not.toThrow();
   });

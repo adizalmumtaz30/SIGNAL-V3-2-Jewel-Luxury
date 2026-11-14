@@ -129,7 +129,7 @@ export function QuickValidationModal({
           </div>
           <div>
             <h2 style={{ fontSize: '18px', margin: 0, color: '#173637' }}>Quick Validation Report</h2>
-            <p style={{ margin: 0, fontSize: '11px', color: '#758582' }}>
+            <p style={{ margin: 0, fontSize: '11.5px', color: '#526861' }}>
               Hasil audit otomatis seluruh aturan keras (hard constraints) dan preferensi jadwal
             </p>
           </div>
@@ -152,7 +152,7 @@ export function QuickValidationModal({
           }}
         >
           <div>
-            <div style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.08em', color: statusType === 'PASS' ? '#1f6952' : statusType === 'FAIL' ? '#b24c3d' : '#a1752b' }}>
+            <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', color: statusType === 'PASS' ? '#1f6952' : statusType === 'FAIL' ? '#b24c3d' : '#a1752b' }}>
               {statusType === 'PASS' ? 'STATUS: LOLOS PEMERIKSAAN' : statusType === 'FAIL' ? 'STATUS: PERLU TINDAKAN SEGERA' : 'STATUS: LOLOS DENGAN CATATAN'}
             </div>
             <strong style={{ fontSize: '15px', color: '#173637' }}>
@@ -264,7 +264,7 @@ export function QuickValidationModal({
                     {isExpanded && (
                       <div className="issue-expanded" style={{ borderTop: '1px solid #f0eee6', padding: '12px 16px' }}>
                         <div>
-                          <span style={{ fontSize: '10px', fontWeight: 800, color: '#7a8a86' }}>
+                          <span style={{ fontSize: '11px', fontWeight: 600, color: '#526861' }}>
                             REKOMENDASI PENYELESAIAN
                           </span>
                           <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#274744' }}>
@@ -310,7 +310,7 @@ export function QuickValidationModal({
             borderRadius: '0 0 14px 14px',
           }}
         >
-          <span style={{ fontSize: '11px', color: '#7a8a86', display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <span style={{ fontSize: '11.5px', color: '#526861', display: 'flex', alignItems: 'center', gap: '5px' }}>
             <FileCheck2 size={14} /> Validator Deterministik v1.0 · Single source of truth
           </span>
           <button className="button button-primary" onClick={onClose}>
