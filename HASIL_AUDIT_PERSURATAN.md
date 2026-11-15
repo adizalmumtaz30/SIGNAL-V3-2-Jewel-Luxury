@@ -3,21 +3,87 @@
 > Dokumen audit teknis. File ini diperbarui setiap kali audit dijalankan. Entri audit terbaru berada paling atas.
 
 ## Ringkasan Terakhir
-- **Status terbaru:** **PHASE-3 Selesai** (Galeri Template S02 dengan 30 template terstruktur & Pemisahan Sumber Resmi Beban Mengajar Guru berbasis `ScheduleVersion`)
-- **Tanggal dan jam selesai:** Senin, 16 November 2026, pukul 03:10:05 WIB (`2026-11-16T03:10:05+07:00`)
-- **Perubahan temuan terkait (`PERS-*` / `BP-*`):** `BP-008` **SESUAI BLUEPRINT (S02 selesai)**; `BP-017` **SESUAI SEBAGIAN / SUMBER SELESAI** (pemisahan sumber & verifikasi `ScheduleVersion` aktif di `WorkloadDashboard`, `InspectorSlideDrawer`, `scheduleSources.ts`, `publishDraft()`, `seed.ts`; alur SK S04/S05 menyusul Tahap 9); `BP-018` **SEBAGIAN (Tahap 3 Ditambah)**; `PERS-005` **SEBAGIAN TERKENDALI / SUMBER TERPISAH**; `PERS-001` **SEBAGIAN (Tahap 3 Selesai: S01 + S02)**.
-- **Hasil verifikasi akhir:** `npm run lint` (`tsc -b`) Exit `0` · `npm test` **13/13 file, 84/84 tests lulus** (66 sebelumnya + 9 S02 + 9 Sumber Beban Guru) · `npm run build` Exit `0` (`1869` modul, `6.62s`)
-- **Status verifikasi repository:** Tidak dapat diverifikasi dari `.git` lokal (direktori `.git` tidak tersedia di container `/app/applet`; commit dasar `9afa5fe429f1d573be9919e8b49d2455ba0209fd` tidak dapat diverifikasi langsung via `git` di container)
-- **Status sinkronisasi GitHub:** Perubahan hanya tersimpan di workspace AI Studio (`/app/applet`); **belum di-commit atau di-push** ke repository GitHub `adizalmumtaz30/SIGNAL-V3-2-Jewel-Luxury`
+- **Status terbaru:** **PHASE-3-REMEDIATION Selesai (Lulus Acceptance Gate Lokal Pra-Tahap 4)** — Implementasi Tahap 3 telah tersedia di GitHub (`f9dd49916ba9027b0524e6ba168344569baf45f8` pada `main`); pengaman sentral `jsPDF.save()` Vitest terpasang dan seluruh 14 berkas PDF root (`9` PDF terpulihkan + `5` PDF lainnya) terverifikasi **100% identik** terhadap baseline Tahap 2 (`9afa5fe429f1d573be9919e8b49d2455ba0209fd`) sebelum maupun sesudah `npm test`.
+- **Tanggal dan jam selesai remediasi:** Senin, 16 November 2026, pukul 04:39:45 WIB (`2026-11-16T04:39:45+07:00`)
+- **Commit Tahap 3 yang terverifikasi di GitHub:** [`f9dd49916ba9027b0524e6ba168344569baf45f8`](https://github.com/adizalmumtaz30/SIGNAL-V3-2-Jewel-Luxury/commit/f9dd49916ba9027b0524e6ba168344569baf45f8) (`refactor: update correspondence workspace and labels`, `2026-11-15T20:55:41Z` / Senin, 16 November 2026 pukul 03:55:41 WIB)
+- **Hasil verifikasi akhir:** `npm run lint` (`tsc -b`) Exit `0` · `npm test` **14/14 file, 87/87 tests lulus** (`9.24s`) · `npm run build` Exit `0` (`1869` modul, `6.42s`) · `diff` SHA-256 14/14 PDF sebelum vs sesudah tes **0 perbedaan**
+- **Status verifikasi & sinkronisasi Git:** Implementasi Tahap 3 sudah berada di GitHub `main` (`f9dd499...`), sedangkan **perubahan remediasi pra-Tahap 4 ini** (`vite.config.ts`, `tests/setup.ts`, `tests/pdf_save_guard.test.ts`, pemulihan 9 PDF baseline, dan `HASIL_AUDIT_PERSURATAN.md`) masih berada di workspace AI Studio (`/app/applet`) dan **belum di-commit / di-push ke GitHub** (direktori `.git` tidak tersedia di container sandbox).
 
 ## Daftar Riwayat Audit
 
 | ID Audit | Mulai (WIB) | Selesai (WIB) | Status | Temuan Kritis | Tinggi | Sedang | Rendah | Info | Commit/Revision |
 |---|---|---|---|---:|---:|---:|---:|---:|---|
-| PHASE-3 | 2026-11-16 02:56:58 WIB | 2026-11-16 03:10:05 WIB | Selesai (Tahap 3) | 0 baru (`BP-008` S02 selesai) | `PERS-005`, `BP-017` sumber terpisah | `BP-018` sebagian, `PERS-001` S01+S02 | — | — | Tidak tersedia (tanpa `.git`) |
-| PHASE-2 | 2026-11-15 22:47:29 WIB | 2026-11-15 22:56:27 WIB | Selesai (Tahap 2) | 0 baru (`PERS-001` Tahap 2 S01 selesai) | `BP-005`, `BP-007` selesai | `BP-015`, `BP-018` sebagian | — | — | Tidak tersedia (tanpa `.git`) |
+| PHASE-3-REMEDIATION | 2026-11-16 04:36:33 WIB | 2026-11-16 04:39:45 WIB | Selesai (Lulus Gate Lokal) | 0 baru | 2 ditutup (PDF guard + 9 PDF pulih) | — | — | 1 koreksi lap. Git | Workspace lokal (basis GitHub `f9dd499...`) |
+| PHASE-3 | 2026-11-16 02:56:58 WIB | 2026-11-16 03:10:05 WIB | Selesai (Tahap 3) | 0 baru (`BP-008` S02 selesai) | `PERS-005`, `BP-017` sumber terpisah | `BP-018` sebagian, `PERS-001` S01+S02 | — | — | GitHub `f9dd49916ba9027b0524e6ba168344569baf45f8` |
+| PHASE-2 | 2026-11-15 22:47:29 WIB | 2026-11-15 22:56:27 WIB | Selesai (Tahap 2) | 0 baru (`PERS-001` Tahap 2 S01 selesai) | `BP-005`, `BP-007` selesai | `BP-015`, `BP-018` sebagian | — | — | `9afa5fe429f1d573be9919e8b49d2455ba0209fd` |
 | PHASE-1 | 2026-11-15 22:11:18 WIB | 2026-11-15 22:17:50 WIB | Selesai (Tahap 1) | 0 baru (`PERS-003` selesai) | `PERS-006` fondasi selesai | — | — | — | Tidak tersedia (tanpa `.git`) |
 | AUDIT #01 | 2026-11-15 21:51:28 WIB | 2026-11-15 21:52:56 WIB | Selesai | 2 | 5 | 3 | 1 | 1 | Tidak tersedia (tanpa `.git`) |
+
+---
+
+## PERBAIKAN PRA-TAHAP 4 — PENGAMAN EKSPOR PDF VITEST & PEMULIHAN PDF BASELINE TAHAP 2
+
+- **ID Entri:** `PHASE-3-REMEDIATION`
+- **Status Pelaksanaan:** **SELESAI (LULUS ACCEPTANCE GATE LOKAL PRA-TAHAP 4)**
+- **Waktu mulai:** Senin, 16 November 2026, pukul 04:36:33 WIB (`2026-11-16T04:36:33+07:00`)
+- **Waktu selesai:** Senin, 16 November 2026, pukul 04:39:45 WIB (`2026-11-16T04:39:45+07:00`)
+- **Zona waktu:** Asia/Jakarta (WIB, UTC+07:00)
+- **Identitas Repository & Commit yang Diverifikasi via GitHub API:**
+  - **Repository:** `adizalmumtaz30/SIGNAL-V3-2-Jewel-Luxury` (`main`)
+  - **Commit Baseline Tahap 2:** `9afa5fe429f1d573be9919e8b49d2455ba0209fd`
+  - **Commit Awal Tahap 3 yang Diperbaiki:** [`f9dd49916ba9027b0524e6ba168344569baf45f8`](https://github.com/adizalmumtaz30/SIGNAL-V3-2-Jewel-Luxury/commit/f9dd49916ba9027b0524e6ba168344569baf45f8) · Pesan: `refactor: update correspondence workspace and labels` · Waktu GitHub: `2026-11-15T20:55:41Z` (Senin, 16 November 2026, pukul 03:55:41 WIB)
+  - **Status Git Lokal Sandbox:** Direktori `.git` tidak tersedia pada container `/app/applet`, sehingga branch lokal `fix/phase3-pdf-regression-audit` serta commit/push Git belum dapat dijalankan dari dalam container.
+
+### R.1 Ringkasan Temuan & Perbaikan Masalah A, B, dan C
+
+1. **Masalah A — Kontaminasi Tes Lama (`tests/workload_and_pdf.test.ts` & `tests/attendance_recap.test.ts`) yang Menulis Ulang PDF ke Root:**
+   - **Akar Masalah Terbukti:** Pada `jspdf` `^4.2.1` (`dist/jspdf.node.min.js`), `save` dipasang langsung pada instance baru di konstruktor (tidak berada pada `jsPDF.prototype`, melainkan ditimpa oleh properti `jsPDF.API` saat inisialisasi). Karena suite tes lama memanggil `exportScheduleMasterPDF`, `exportScheduleClassPDF`, `exportScheduleTeacherPDF`, `exportAllClassesSinglePageA4PDF`, dan `exportAttendanceRecapPDF` di Node tanpa mock `save`, `jsPDF` menjalankan `fs.writeFileSync` dan menimpa 9 file PDF di root workspace setiap kali `npm test` dijalankan.
+   - **Perbaikan Sentral (`tests/setup.ts` + `vite.config.ts`):**
+     - Membuat `tests/setup.ts` yang mencegat `jsPDF.API.save` di lingkungan Vitest (memasang `noopSave` aman di tingkat modul, memasang `vi.spyOn(api, 'save')` pada `beforeEach`, dan memasang kembali `noopSave` setelah `vi.restoreAllMocks()` pada `afterEach`).
+     - Mendaftarkan `setupFiles: ['./tests/setup.ts']` di `vite.config.ts`.
+     - **Tanpa mengubah perilaku produksi browser:** `src/utils/pdfExport.ts` tidak diubah dan tidak mengimpor file setup tes, sehingga unduhan PDF oleh pengguna di browser tetap berjalan normal.
+   - **Verifikasi Regresi (`tests/pdf_save_guard.test.ts`):** Membuktikan dokumen tetap dirender di memori (`output('arraybuffer')` menghasilkan header `%PDF-` valid), seluruh 6 fungsi `export*PDF` memanggil `.save()` tanpa membuat/menimpa berkas PDF pada direktori kerja, dan pengaman bertahan setelah `vi.restoreAllMocks()`.
+   - **Koreksi Penemuan Lama (`PHASE-2`):** Dikonfirmasi ulang bahwa sumber perubahan 9 checksum PDF pada saat pengujian sebelumnya berasal semata-mata dari tes lama Vitest di Node yang memanggil `jsPDF.save()`, bukan dari proses eksternal lain.
+
+2. **Masalah B — Pemulihan 9 Berkas PDF Root Byte-for-Byte ke Baseline Tahap 2 (`9afa5fe429f1d573be9919e8b49d2455ba0209fd`):**
+   - Karena `.git` tidak tersedia di sandbox, kesembilan berkas PDF diunduh biner langsung dari URL raw commit baseline `https://raw.githubusercontent.com/adizalmumtaz30/SIGNAL-V3-2-Jewel-Luxury/9afa5fe429f1d573be9919e8b49d2455ba0209fd/<path>`, divalidasi header `%PDF-`, serta dicocokkan Git Blob SHA-1 lokal terhadap objek tree commit `9afa5fe429f1d573be9919e8b49d2455ba0209fd` di GitHub API (**9/9 match 100%**). Lima berkas PDF root lainnya juga diverifikasi identik terhadap baseline `9afa5fe...`.
+
+3. **Masalah C — Sinkronisasi Laporan Audit:**
+   - Memperbarui `Ringkasan Terakhir` agar tidak lagi mempertahankan pernyataan usang *"belum di-commit atau di-push"* untuk implementasi Tahap 3 (karena Tahap 3 sudah berada pada commit `f9dd49916ba9027b0524e6ba168344569baf45f8` di GitHub `main`), sekaligus membedakan secara jujur bahwa **perubahan remediasi pra-Tahap 4** baru tersimpan di workspace lokal dan menunggu commit/push oleh pemilik repository.
+   - Mempertahankan seluruh entri historis `PHASE-3`, `PHASE-2`, `PHASE-1`, dan `AUDIT #01` di bawah bagian ini tanpa penghapusan.
+
+### R.2 Tabel Verifikasi Checksum SHA-256 Sembilan PDF Baseline vs Pra/Pasca Tes
+
+| # | Nama Berkas PDF Root | Kondisi Awal (Commit `f9dd499...` / Pasca Tes Lama) | Baseline `9afa5fe...` & Setelah Pemulihan | Sebelum `npm test` Pasca-Perbaikan | Sesudah `npm test` Pasca-Perbaikan | Status Akhir |
+|---|---|---|---|---|---|---|
+| 1 | `SIGNAL_Jadwal_Guru_Ahmad_Fauzi__S_Pd_.pdf` | `2ef000e6d906c69fa555feddceb7e4b9517ddc5f0da41a88cdf20d1487eea869` | `b0930c54d6b3fbd48baf0e4ec1964dc10c89b1922986c8808074230cdf34a1e2` | `b0930c54d6b3fbd48baf0e4ec1964dc10c89b1922986c8808074230cdf34a1e2` | `b0930c54d6b3fbd48baf0e4ec1964dc10c89b1922986c8808074230cdf34a1e2` | **IDENTIK** (blob `dc51f209...`) |
+| 2 | `SIGNAL_Jadwal_Mingguan_Kelas_VII_A_A4.pdf` | `f1d7f53bf247e0d5e4e8ffb133eea93be84c1e17197d8ee88bec4bb68ad71f75` | `0f76a594a38b0da8bea9666ec1dd14c08ecfb79fba5ee45c16de490bbcd5c213` | `0f76a594a38b0da8bea9666ec1dd14c08ecfb79fba5ee45c16de490bbcd5c213` | `0f76a594a38b0da8bea9666ec1dd14c08ecfb79fba5ee45c16de490bbcd5c213` | **IDENTIK** (blob `c0f6e772...`) |
+| 3 | `SIGNAL_Jadwal_Semua_Kelas_A4_2026_2027.pdf` | `baa9581df18c2b40ff05f49934d2dfb7871c1d739bab5ccc628bc5a5713dd963` | `08cb6d64b9d3fd33ff6ebcd837bd34938ba6e965e0110e366d4587ee7c3d8862` | `08cb6d64b9d3fd33ff6ebcd837bd34938ba6e965e0110e366d4587ee7c3d8862` | `08cb6d64b9d3fd33ff6ebcd837bd34938ba6e965e0110e366d4587ee7c3d8862` | **IDENTIK** (blob `d24b7f7c...`) |
+| 4 | `SIGNAL_Jadwal_Semua_Kelas_F4_2026_2027.pdf` | `9fb71cc17aed71485b9ec0b6590cbc0014380f378f7a8a796d8f0f4be50e7c65` | `d2cc5f801f8585c5a5ba71a20849c330104931143559ac15d033d69af3448386` | `d2cc5f801f8585c5a5ba71a20849c330104931143559ac15d033d69af3448386` | `d2cc5f801f8585c5a5ba71a20849c330104931143559ac15d033d69af3448386` | **IDENTIK** (blob `3d0542ff...`) |
+| 5 | `SIGNAL_Rekap_Presensi_Guru_A4_Januari_2026.pdf` | `6e77c64ebdc84ffd3065c98642fd1ce33b1e7a80ba67b4ad95026dda1bfffa3b` | `d81e90e31ed7219ae549ca2d70bc7f6490ffab190c108cb6d1fd5d50b2f4bf7b` | `d81e90e31ed7219ae549ca2d70bc7f6490ffab190c108cb6d1fd5d50b2f4bf7b` | `d81e90e31ed7219ae549ca2d70bc7f6490ffab190c108cb6d1fd5d50b2f4bf7b` | **IDENTIK** (blob `5ce168fd...`) |
+| 6 | `SIGNAL_Rekap_Presensi_Guru_A4_Juli_September_2026_3_Bulan.pdf` | `8f9fc717d0c47f2c8c31b037ab5736317f62da35672f9b20d7235029061ea066` | `d64286c347a33ad6a0193fc8e85439da146c2924c88052f64ba91d28392b95eb` | `d64286c347a33ad6a0193fc8e85439da146c2924c88052f64ba91d28392b95eb` | `d64286c347a33ad6a0193fc8e85439da146c2924c88052f64ba91d28392b95eb` | **IDENTIK** (blob `e1602d5d...`) |
+| 7 | `SIGNAL_Rekap_Presensi_Guru_A4_Oktober_2026.pdf` | `c84076d3eb633adf1b22fb07e8aa661249263ab957ee37b9c007ea2872ebfd67` | `04e9b239cd431d7d61fe73d520979f9cb4628605c65efc61060a3a5a4f5512ea` | `04e9b239cd431d7d61fe73d520979f9cb4628605c65efc61060a3a5a4f5512ea` | `04e9b239cd431d7d61fe73d520979f9cb4628605c65efc61060a3a5a4f5512ea` | **IDENTIK** (blob `7a2d2982...`) |
+| 8 | `SIGNAL_Rekap_Presensi_Guru_F4_Februari_2029.pdf` | `fff13795227389063cccd3dad0e3dd106484ae700068dfab2ca55b21a7fcb660` | `03912dbcfa5ddb509edfa253e467ba1d21a3d6b05cb137b55658a1e7c0095538` | `03912dbcfa5ddb509edfa253e467ba1d21a3d6b05cb137b55658a1e7c0095538` | `03912dbcfa5ddb509edfa253e467ba1d21a3d6b05cb137b55658a1e7c0095538` | **IDENTIK** (blob `8672bc3b...`) |
+| 9 | `SIGNAL_Rekap_Presensi_Guru_F4_Juli_Desember_2026_6_Bulan.pdf` | `d285f228edbec1f2f3383fe3f842a46fea64ff37b4e986f2691c3f165ceb15eb` | `47e3cd491e624f4ce81c6aa3859459afe7bd4dfb5ba69a3dfaa2ca02f3303e17` | `47e3cd491e624f4ce81c6aa3859459afe7bd4dfb5ba69a3dfaa2ca02f3303e17` | `47e3cd491e624f4ce81c6aa3859459afe7bd4dfb5ba69a3dfaa2ca02f3303e17` | **IDENTIK** (blob `93093192...`) |
+
+*Konfirmasi 5 PDF root lainnya (`SIGNAL_Jadwal_Kelas_VII_A.pdf`, `SIGNAL_Jadwal_Mingguan_Kelas_VII_A.pdf`, `SIGNAL_Jadwal_Sekolah_2026_2027.pdf`, `SIGNAL_Jadwal_Semua_Kelas_Satu_Halaman_2026_2027.pdf`, `SIGNAL_Rekap_Presensi_Guru_Oktober_2026.pdf`):* **Tetap 100% identik** terhadap baseline `9afa5fe...` sebelum dan sesudah `npm test`.
+
+### R.3 Daftar File Teks yang Diubah / Ditambahkan & Hasil Verifikasi Aktual
+
+| File | Jenis Perubahan | Ringkasan Peran |
+|---|---|---|
+| `tests/setup.ts` | Baru | Setup global Vitest untuk menonaktifkan penulisan file oleh `jsPDF.save()` dengan tetap merender objek PDF di memori |
+| `vite.config.ts` | Diubah | Menambahkan `setupFiles: ['./tests/setup.ts']` pada blok `test` |
+| `tests/pdf_save_guard.test.ts` | Baru | 3 kasus uji regresi pengaman sentral `jsPDF.save()`, validasi `%PDF-` di memori, dan ketahanan pasca `vi.restoreAllMocks()` |
+| `HASIL_AUDIT_PERSURATAN.md` | Diubah (Prepend) | Menambahkan entri `PHASE-3-REMEDIATION` dan memperbarui `Ringkasan Terakhir` dengan fakta GitHub `f9dd499...` |
+
+| Pemeriksaan | Hasil | Detail Aktual |
+|---|---|---|
+| `npm run lint` (`tsc -b`) | **Exit `0`** | Lulus penuh tanpa error TypeScript |
+| `npm test` (`vitest run`) | **Exit `0`** | **14/14 file test lulus, 87/87 tests lulus** (durasi `9.24s`; mencakup `pdf_save_guard.test.ts`) |
+| `npm run build` (`tsc -b && vite build`) | **Exit `0`** | **1869 modul**, selesai dalam `6.42s` |
+| `diff -u` SHA-256 14 PDF sebelum vs sesudah tes | **Exit `0` (0 diff)** | Seluruh 14 berkas PDF root tetap byte-identical pasca `npm test` |
+| Pengujian browser visual (`1440×900` / `1280×720`) | **Belum dijalankan** | Lingkungan pengujian saat ini masih Node/SSR; pengujian runtime browser langsung tetap harus dijalankan di host |
 
 ---
 
