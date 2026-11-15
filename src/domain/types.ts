@@ -171,6 +171,59 @@ export interface Holiday {
   isRecurringYearly?: boolean;
 }
 
+export type TeacherAssignmentType =
+  | 'TEACHING'
+  | 'HOMEROOM'
+  | 'ADDITIONAL_DUTY'
+  | 'COMMITTEE'
+  | 'COORDINATOR'
+  | 'TRAINING'
+  | 'OTHER';
+
+export type TeacherAssignmentStatus = 'DRAFT' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+
+export type TeacherAssignmentSource =
+  | 'LEGACY_MIGRATION'
+  | 'MANUAL'
+  | 'PUBLISHED_SCHEDULE'
+  | 'IMPORTED';
+
+export interface TeacherAssignment {
+  id: string;
+  teacherId: string;
+  assignmentType: TeacherAssignmentType;
+  title: string;
+  description?: string;
+  startDate: string | null; // 'YYYY-MM-DD' or null when legacy/unknown
+  endDate: string | null; // 'YYYY-MM-DD' or null when ongoing/unknown
+  isDateUnknown?: boolean;
+  academicYear?: string;
+  semester?: 'Ganjil' | 'Genap' | null;
+  classId?: string | null;
+  subjectIds?: string[];
+  weeklyJP?: number | null;
+  status: TeacherAssignmentStatus;
+  sourceType: TeacherAssignmentSource;
+  sourceScheduleVersionId?: string | null;
+  documentId?: string | null;
+  legacyRoleTitle?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AuditEvent {
+  id: string;
+  entityType: 'WORKSPACE' | 'SNAPSHOT' | 'TEACHER_ASSIGNMENT' | 'BACKUP' | 'SYSTEM';
+  entityId: string;
+  action: string;
+  actor: string;
+  timestamp: string;
+  summary: string;
+  previousChecksum?: string;
+  newChecksum?: string;
+}
+
 export interface AppState {
   schemaVersion: number;
   dataMode: 'demo' | 'custom';
@@ -187,6 +240,7 @@ export interface AppState {
   lastBackupAt: string | null;
   attendance?: AttendanceRecord[];
   holidays?: Holiday[];
+  teacherAssignments?: TeacherAssignment[];
 }
 
 export interface GenerateResult {

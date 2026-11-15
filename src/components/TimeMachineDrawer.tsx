@@ -21,9 +21,10 @@ import {
   deleteSnapshot,
   restoreSnapshot,
   exportSignalFile,
-  parseSignalFile,
+  parseSignalFileDetailed,
   getStorageEstimate,
 } from '../storage/snapshotEngine';
+import type { BackupParseResult } from '../storage/db';
 
 interface TimeMachineDrawerProps {
   isOpen: boolean;
@@ -46,6 +47,7 @@ export const TimeMachineDrawer: React.FC<TimeMachineDrawerProps> = ({
   const [newLabel, setNewLabel] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [confirmRestoreId, setConfirmRestoreId] = useState<string | null>(null);
+  const [pendingImport, setPendingImport] = useState<{ fileName: string; parsed: BackupParseResult } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -129,18 +131,19 @@ export const TimeMachineDrawer: React.FC<TimeMachineDrawerProps> = ({
       if (restored) {
         onStateRestored(restored);
         setConfirmRestoreId(null);
-        onNotify('Data madrasah berhasil dipulihkan dari titik snapshot!', 'success');
+        onNotify('Data madrasah berhasil dipulihkan dan terverifikasi dari titik snapshot!', 'success');
         onClose();
       }
-    } catch (err) {
-      onNotify('Gagal memulihkan data dari snapshot.', 'error');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gagal memulihkan data dari snapshot.';
+      onNotify(msg, 'error');
     }
   };
 
   const handleExportFile = async () => {
     try {
       await exportSignalFile(currentState);
-      onNotify('Berkas cadangan .signal berhasil diunduh.', 'success');
+      onNotify('Berkas cadangan .signal (ber-checksum SHA-256) berhasil diunduh.', 'success');
     } catch (err) {
       onNotify('Gagal mengekspor berkas cadangan.', 'error');
     }
@@ -150,17 +153,33 @@ export const TimeMachineDrawer: React.FC<TimeMachineDrawerProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const parsed = await parseSignalFile(file);
-      // Create safety snapshot before restoring imported file
-      await createSnapshot(currentState, `Pra-Impor Berkas: ${file.name}`, 'pre_rollback', true);
-      onStateRestored(parsed);
-      onNotify(`Berhasil memulihkan madrasah dari berkas "${file.name}"!`, 'success');
-      onClose();
+      const parsed = await parseSignalFileDetailed(file);
+      setPendingImport({ fileName: file.name, parsed });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Berkas tidak valid';
       onNotify(msg, 'error');
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const confirmExecuteImport = async () => {
+    if (!pendingImport) return;
+    const { fileName, parsed } = pendingImport;
+    try {
+      await createSnapshot(currentState, `Pra-Impor Berkas: ${fileName}`, 'pre_rollback', true);
+      onStateRestored(parsed.state);
+      setPendingImport(null);
+      onNotify(
+        parsed.verification === 'legacy_unverified'
+          ? `Berkas lama "${fileName}" dipulihkan (tanpa verifikasi SHA-256).`
+          : `Berhasil memulihkan madrasah dari berkas terverifikasi "${fileName}"!`,
+        parsed.verification === 'legacy_unverified' ? 'warning' : 'success'
+      );
+      onClose();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gagal memulihkan berkas cadangan.';
+      onNotify(msg, 'error');
     }
   };
 
@@ -294,7 +313,7 @@ export const TimeMachineDrawer: React.FC<TimeMachineDrawerProps> = ({
             </button>
             <button
               onClick={handleExportFile}
-              title="Unduh Berkas Cadangan Terenkripsi .signal"
+              title="Unduh Berkas Cadangan Terverifikasi SHA-256 .signal"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -564,6 +583,115 @@ export const TimeMachineDrawer: React.FC<TimeMachineDrawerProps> = ({
                 }}
               >
                 Ya, Pulihkan Sekarang
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal for File Import (.signal / .json) */}
+      {pendingImport && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'grid',
+            placeItems: 'center',
+            zIndex: 360,
+            padding: '16px',
+          }}
+          onClick={() => setPendingImport(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Konfirmasi Impor Berkas Cadangan"
+            style={{
+              width: '460px',
+              maxWidth: '100%',
+              background: '#FFFFFF',
+              borderRadius: '12px',
+              padding: '20px',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                marginBottom: '10px',
+                color: pendingImport.parsed.verification === 'legacy_unverified' ? '#92400E' : '#124037',
+              }}
+            >
+              <AlertTriangle size={20} />
+              <strong style={{ fontSize: '15px' }}>
+                {pendingImport.parsed.verification === 'legacy_unverified'
+                  ? 'Peringatan: Berkas Lama Tanpa Checksum SHA-256'
+                  : 'Konfirmasi Pemulihan Berkas Terverifikasi SHA-256'}
+              </strong>
+            </div>
+
+            <div
+              style={{
+                padding: '10px 12px',
+                borderRadius: '8px',
+                background: pendingImport.parsed.verification === 'legacy_unverified' ? '#FEF3C7' : '#ECFDF5',
+                border: `1px solid ${pendingImport.parsed.verification === 'legacy_unverified' ? '#F59E0B' : '#A7F3D0'}`,
+                color: pendingImport.parsed.verification === 'legacy_unverified' ? '#92400E' : '#065F46',
+                fontSize: '11.5px',
+                lineHeight: 1.45,
+                marginBottom: '12px',
+              }}
+            >
+              {pendingImport.parsed.verification === 'legacy_unverified'
+                ? pendingImport.parsed.warnings[0]
+                : 'Checksum SHA-256 cocok. Checksum hanya memverifikasi keutuhan berkas dari kerusakan/perubahan, bukan enkripsi maupun tanda tangan digital.'}
+            </div>
+
+            <p style={{ fontSize: '12px', color: '#3B504A', lineHeight: 1.5, marginBottom: '14px' }}>
+              Berkas <strong>{pendingImport.fileName}</strong> berisi{' '}
+              <strong>{pendingImport.parsed.state.classes.length} kelas</strong>,{' '}
+              <strong>{pendingImport.parsed.state.teachers.length} guru</strong>,{' '}
+              <strong>{pendingImport.parsed.state.subjects.length} mapel</strong>, dan{' '}
+              <strong>{pendingImport.parsed.state.teacherAssignments?.length ?? 0} penugasan guru</strong>.
+              Salinan keselamatan (pre-rollback) dari kondisi saat ini akan dibuat otomatis sebelum data diterapkan.
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={() => setPendingImport(null)}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: '7px',
+                  border: '0.75px solid #CCD8D2',
+                  background: '#FFFFFF',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                }}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={confirmExecuteImport}
+                style={{
+                  padding: '7px 16px',
+                  borderRadius: '7px',
+                  border: 'none',
+                  background: pendingImport.parsed.verification === 'legacy_unverified' ? '#B45309' : '#124037',
+                  color: '#FFFFFF',
+                  fontWeight: 700,
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                }}
+              >
+                {pendingImport.parsed.verification === 'legacy_unverified'
+                  ? 'Tetap Pulihkan (Unverified)'
+                  : 'Ya, Pulihkan Sekarang'}
               </button>
             </div>
           </div>

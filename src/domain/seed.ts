@@ -1,6 +1,7 @@
 import type { AppState, AttendanceRecord, Holiday, Requirement, SchoolClass, Subject, Teacher } from './types';
 import { buildTimeSlots, createDefaultPeriodDefinitions } from './time';
 import { generateSchedule } from './generator';
+import { migrateLegacyRoleTitlesToAssignments } from './teacherAssignments';
 
 export function createDemoState(): AppState {
   const settings: AppState['settings'] = {
@@ -223,7 +224,7 @@ export function createDemoState(): AppState {
   }
 
   const baseState: AppState = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     dataMode: 'demo',
     settings: { ...settings, activeDays: [...settings.activeDays] },
     classes,
@@ -238,7 +239,9 @@ export function createDemoState(): AppState {
     lastBackupAt: null,
     attendance,
     holidays,
+    teacherAssignments: [],
   };
+  baseState.teacherAssignments = migrateLegacyRoleTitlesToAssignments(baseState, '2026-08-01T08:00:00Z');
 
   // Pre-generate a verified draft schedule for the demo so user can test instantly
   const genResult = generateSchedule(baseState, 42);
@@ -277,5 +280,6 @@ export function createEmptyState(): AppState {
     history: [],
     attendance: [],
     holidays: [],
+    teacherAssignments: [],
   };
 }

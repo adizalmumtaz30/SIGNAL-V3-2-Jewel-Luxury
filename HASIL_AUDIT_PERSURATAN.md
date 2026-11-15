@@ -3,18 +3,114 @@
 > Dokumen audit teknis. File ini diperbarui setiap kali audit dijalankan. Entri audit terbaru berada paling atas.
 
 ## Ringkasan Terakhir
-- **Status audit terbaru:** Selesai (Read-Only Audit Source Code + Blueprint Utama)
-- **Tanggal dan jam selesai:** Minggu, 15 November 2026, pukul 21:52:56 WIB (`2026-11-15T21:52:56+07:00`)
-- **Jumlah temuan teknis (`PERS-*`) per tingkat risiko:** 2 Kritis · 5 Tinggi · 3 Sedang · 1 Rendah · 1 Info (Total: 12 temuan)
-- **Ringkasan status kesesuaian Blueprint (`BP-001` s.d. `BP-028`):** 2 Sesuai Blueprint · 4 Sesuai Sebagian · 16 Belum Diimplementasikan · 4 Tidak Sesuai/Berkonflik · 2 Belum Dapat Diverifikasi · 0 Tidak Relevan (Total: 28 butir persyaratan)
-- **Status verifikasi repository:** Tidak dapat diverifikasi dari `.git` lokal (direktori `.git` tidak tersedia di container `/app/applet`; identitas aplikasi diverifikasi dari `package.json`, `metadata.json`, `index.html`, dan CSS Jewel Luxury)
-- **Status sinkronisasi GitHub:** Tersimpan di workspace AI Studio saja (`/HASIL_AUDIT_PERSURATAN.md`); belum di-commit atau di-push ke repository GitHub `adizalmumtaz30/SIGNAL-V3-2-Jewel-Luxury`
+- **Status terbaru:** **PHASE-1 Selesai** (Integritas Backup/Restore SHA-256, Migrasi IndexedDB v2 → v3, & Model Domain `TeacherAssignment`)
+- **Tanggal dan jam selesai:** Minggu, 15 November 2026, pukul 22:17:50 WIB (`2026-11-15T22:17:50+07:00`)
+- **Perubahan temuan terkait (`PERS-*` / `BP-*`):** `PERS-003` diselesaikan (verifikasi SHA-256 ketat & penutupan bypass `.signal`/`.json`); fondasi domain `PERS-006` (`TeacherAssignment`) & store IDB v3 selesai; pembaruan status `BP-016`, `BP-018`, `BP-019`, `BP-021`.
+- **Hasil verifikasi akhir:** `npm run lint` Exit `0` · `npm test` **10/10 file, 56/56 tests lulus** (37 lama + 19 baru) · `npm run build` Exit `0`
+- **Status verifikasi repository:** Tidak dapat diverifikasi dari `.git` lokal (direktori `.git` tidak tersedia di container `/app/applet`; verifikasi identitas dari file workspace)
+- **Status sinkronisasi GitHub:** Perubahan hanya tersimpan di workspace AI Studio (`/app/applet`); **belum di-commit atau di-push** ke repository GitHub `adizalmumtaz30/SIGNAL-V3-2-Jewel-Luxury`
 
 ## Daftar Riwayat Audit
 
 | ID Audit | Mulai (WIB) | Selesai (WIB) | Status | Temuan Kritis | Tinggi | Sedang | Rendah | Info | Commit/Revision |
 |---|---|---|---|---:|---:|---:|---:|---:|---|
+| PHASE-1 | 2026-11-15 22:11:18 WIB | 2026-11-15 22:17:50 WIB | Selesai (Tahap 1) | 0 baru (`PERS-003` selesai) | `PERS-006` fondasi selesai | — | — | — | Tidak tersedia (tanpa `.git`) |
 | AUDIT #01 | 2026-11-15 21:51:28 WIB | 2026-11-15 21:52:56 WIB | Selesai | 2 | 5 | 3 | 1 | 1 | Tidak tersedia (tanpa `.git`) |
+
+---
+
+## IMPLEMENTASI TAHAP 1 — INTEGRITAS DATA & TEACHER ASSIGNMENT
+
+- **ID Entri:** `PHASE-1`
+- **Status Pelaksanaan:** **SELESAI** (Seluruh ruang lingkup Tahap 1A, 1B, dan 1C terimplementasi dan teruji; fitur UI Persuratan S01–S07 sengaja belum dibangun sesuai batas tahap)
+- **Waktu mulai:** Minggu, 15 November 2026, pukul 22:11:18 WIB (`2026-11-15T22:11:18+07:00`)
+- **Waktu selesai:** Minggu, 15 November 2026, pukul 22:17:50 WIB (`2026-11-15T22:17:50+07:00`)
+- **Zona waktu:** Asia/Jakarta (WIB, UTC+07:00)
+- **Status verifikasi repository:** Tidak dapat diverifikasi dari workspace (`.git` tidak tersedia pada container `/app/applet`; `branch` dan `commit HEAD` tidak dapat dipastikan dari workspace).
+
+### 1.1 Ringkasan Perubahan Teknis
+
+#### A. Penguatan Integritas Backup / Restore & Time Machine
+1. **Utilitas Checksum Kanonik Bersama (`src/storage/checksum.ts`)**:
+   - Menyediakan `canonicalStringify()` yang mengurutkan kunci objek secara deterministik di setiap kedalaman sambil mempertahankan urutan elemen array, sehingga perbedaan urutan key properti JSON tidak memengaruhi hash SHA-256.
+   - Menggunakan Web Crypto `crypto.subtle.digest('SHA-256', ...)` melalui `computeCanonicalSha256()` dan validator hex 64-karakter `isSha256Hex()`.
+   - Menambahkan dokumentasi jujur bahwa SHA-256 memverifikasi **keutuhan/deteksi perubahan file** — bukan enkripsi dan bukan tanda tangan elektronik.
+2. **Hardening `SIGNAL-LOCAL-BACKUP` (`src/storage/db.ts`)**:
+   - `buildBackupEnvelope()` dan `exportAppState()` menghasilkan format `formatVersion: 2`, `schemaVersion: 2`, `checksumAlgorithm: 'SHA-256'`, serta checksum kanonik SHA-256.
+   - `parseBackupContent()` dan `parseBackupFileDetailed()` mendukung `schemaVersion` `1` dan `2`, menolak versi lain (`0`, `3`, `99`, tipe invalid), menolak JSON rusak dan struktur array/objek tidak lengkap, serta **mewajibkan checksum SHA-256 valid** pada format v2 dan pada setiap berkas v1 yang menyertakan properti `checksum`.
+   - Format legacy v1 yang benar-benar tidak memiliki properti `checksum` tidak diloloskan diam-diam: ditandai eksplisit sebagai `verification: 'legacy_unverified'` beserta pesan peringatan ke operator sebelum restore dijalankan.
+   - Pemulihan ke IndexedDB dikerjakan lewat `restoreWorkspaceSafely()` dalam satu transaksi `readwrite` (`workspace` + `teacher_assignments`) setelah validasi struktur lolos, sehingga kegagalan baca/validasi tidak menyentuh state aktif dan kegagalan transaksi dibatalkan atomik oleh IndexedDB.
+3. **Hardening `.signal` & Time Machine Snapshot (`src/storage/snapshotEngine.ts`)**:
+   - Menghapus bypass di `parseSignalFile()` / `parseSignalContent()`: menolak objek mentah tanpa amplop resmi, mendelegasikan `SIGNAL-LOCAL-BACKUP` langsung ke `parseBackupContent()`, serta mewajibkan checksum SHA-256 pada kontainer `SIGNAL-V5-SEAL` v2 (`legacy_unverified` + peringatan wajib hanya untuk format v1 lama tanpa key `checksum`).
+   - `createSnapshot()` menghitung checksum kanonik (`checksumVersion: 2`), sedangkan `restoreSnapshot()` **memverifikasi SHA-256 snapshot target terlebih dahulu** sebelum membuat snapshot `pre_rollback` atau mengembalikan state hasil pemulihan.
+   - Memperbaiki teks UI/tooltip di `TimeMachineDrawer.tsx:291` dan komentar di `snapshotEngine.ts` dari *"Terenkripsi"* menjadi *"Terverifikasi SHA-256"* serta menambahkan modal konfirmasi eksplisit di `TimeMachineDrawer.tsx` & `App.tsx` (menggantikan `window.confirm`).
+
+#### B. Migrasi IndexedDB v2 → v3 Non-Destruktif & Idempotent
+1. **Upgrade Skema `signal-academic-studio` (`DB_VERSION = 2 → 3`) (`src/storage/db.ts`)**:
+   - `applySignalDatabaseUpgrade()` dijalankan di dalam `upgrade()` `idb` secara murni sinkron (tanpa panggilan jaringan/async eksternal yang berisiko `TransactionInactiveError`), **tidak memanggil `deleteDatabase()`** dan **tidak menghapus store lama** (`workspace`, `snapshots`, `audit_log`).
+   - Menambahkan object store baru `teacher_assignments` (`keyPath: 'id'`) beserta index `teacherId`, `status`, dan `sourceType`.
+2. **Migrasi State & Data Idempotent (`migrateAppStateSchema` & `migrateWorkspaceRecordInDatabase`)**:
+   - Meningkatkan `schemaVersion` dari `1 → 2` dan memigrasikan `Teacher.roleTitle` eksplisit non-generik secara non-destruktif tanpa mengubah jadwal aktif (`activeSchedule`), `draft`, `history`, `requirements`, `attendance`, `holidays`, maupun identitas `settings`.
+   - Memperbaiki `loadAppState()` agar tidak lagi menimpa field `settings` yang sengaja dikosongkan pada `dataMode === 'custom'` dan tidak meregenerasi jadwal pada workspace custom saat reload.
+
+#### C. Model Domain `TeacherAssignment` (`src/domain/types.ts` & `src/domain/teacherAssignments.ts`)
+1. Menambahkan tipe `TeacherAssignmentType`, `TeacherAssignmentStatus`, `TeacherAssignmentSource`, `TeacherAssignment`, `AuditEvent`, serta `AppState.teacherAssignments?: TeacherAssignment[]` sambil **mempertahankan penuh `Teacher.roleTitle`** untuk tabel Master, presensi, dan PDF ekspor eksisting.
+2. Menyediakan helper domain murni: `isValidIsoDate()` (pengecekan tanggal kalender nyata, mis. menolak `2026-02-30`), `isGenericRoleTitle()`, `inferAssignmentTypeFromTitle()`, `validateTeacherAssignment()` (mendukung banyak/riwayat tugas paralel per guru, menolak `teacherId` hilang atau `endDate < startDate`, memberi peringatan non-fatal bila guru nonaktif masih punya tugas `ACTIVE`), `normalizeTeacherAssignment()`, dan `migrateLegacyRoleTitlesToAssignments()` (idempoten, `startDate: null`, `endDate: null`, `isDateUnknown: true`, `sourceType: 'LEGACY_MIGRATION'`, tidak mempromosikan peran generik `'Guru Mapel'`).
+
+### 1.2 Pembaruan Status Temuan (`PERS-*`) dan Butir Blueprint (`BP-*`)
+
+| ID | Status Sebelum (Audit #01) | Status Setelah Tahap 1 | Keterangan Aktual |
+|---|---|---|---|
+| `PERS-003` | Kritis/Tinggi (Terbuka) | **SELESAI** | Verifikasi SHA-256 wajib & bypass impor `.signal`/`.json` telah ditutup beserta konfirmasi `legacy_unverified`. |
+| `PERS-006` | Tinggi (Terbuka) | **SEBAGIAN (Fondasi Selesai)** | Model `TeacherAssignment`, store IDB `teacher_assignments`, dan migrasi non-destruktif selesai; UI manajemen penugasan menunggu Tahap 9. |
+| `PERS-007` | Tinggi (Terbuka) | **SEBAGIAN (Ditingkatkan)** | `loadAppState()` kini tidak menimpa `settings` pada `dataMode === 'custom'`; modal cek identitas sebelum finalisasi SK menyusul di tahap persuratan. |
+| `BP-016` | Tidak Sesuai/Berkonflik | **SESUAI SEBAGIAN** | Entitas & migrasi `TeacherAssignment` aktif; manajemen UI di Data Master & link SK dijadwalkan di Tahap 9. |
+| `BP-018` | Belum Diimplementasikan | **SEBAGIAN (Tahap 1 Selesai)** | `TeacherAssignment` & `AuditEvent` ditambahkan ke `types.ts`; model dokumen (`DocumentRecord`, `DocumentTemplate`, `DocumentVersion`, `DocumentAttachment`) disiapkan saat masuk modul Persuratan. |
+| `BP-019` | Belum Diimplementasikan | **SESUAI SEBAGIAN** | IDB upgrade v2 → v3 idempotent + `teacher_assignments` store selesai; 4 store dokumen & Blob menyusul sebelum S01–S06/lampiran. |
+| `BP-021` | Tidak Sesuai/Berkonflik | **SESUAI SEBAGIAN** | Verifikasi SHA-256, schema versioned v1/v2, peringatan `legacy_unverified`, dan restore transaksional selesai; dukungan paket lampiran Blob menyusul pada Tahap 10. |
+
+### 1.3 Daftar File yang Diubah / Ditambahkan pada Tahap 1
+
+| File | Jenis Perubahan | Ringkasan Peran |
+|---|---|---|
+| `src/storage/checksum.ts` | Baru | Serializer JSON kanonik + helper SHA-256 Web Crypto bersama |
+| `src/domain/teacherAssignments.ts` | Baru | Validator tanggal/relasi, normalizer, & migrator `roleTitle` idempoten |
+| `src/domain/types.ts` | Diubah | Tambah `TeacherAssignment`, `AuditEvent`, `AppState.teacherAssignments` (`roleTitle` tetap utuh) |
+| `src/domain/seed.ts` | Diubah | Update `schemaVersion: 2` & inisialisasi `teacherAssignments` awal |
+| `src/storage/db.ts` | Diubah | IDB v2 → v3 (`teacher_assignments`), transaksi restore aman, & validasi ketat `SIGNAL-LOCAL-BACKUP` |
+| `src/storage/snapshotEngine.ts` | Diubah | Verifikasi SHA-256 pada snapshot & `.signal`, hapus bypass parsing, & perbaiki istilah non-enkripsi |
+| `src/components/TimeMachineDrawer.tsx` | Diubah | Modal konfirmasi status verifikasi / `legacy_unverified` & perbaikan tooltip tombol `.signal` |
+| `src/App.tsx` | Diubah | Konfirmasi modal restore backup terverifikasi/`legacy_unverified` & transaksi `restoreWorkspaceSafely` |
+| `tests/phase1_integrity_and_assignments.test.ts` | Baru | 19 kasus uji otomatis integritas backup, `.signal`, snapshot, IDB v2→v3, & `TeacherAssignment` |
+| `/HASIL_AUDIT_PERSURATAN.md` | Diubah (Append) | Penambahan laporan `PHASE-1` ini tanpa mengubah isi `AUDIT #01` |
+
+### 1.4 Perbandingan Baseline vs Hasil Verifikasi Akhir
+
+| Pemeriksaan | Baseline (Audit #01 / Sebelum Edit) | Akhir Tahap 1 (Setelah Semua Edit Kode) | Exit Code |
+|---|---|---|---|
+| `npm run lint` (`tsc -b`) | Lulus (0 error) | **Lulus (0 error TypeScript)** | `0` |
+| `npm test` (`vitest run`) | 9 file, 37/37 tests lulus | **10 file, 56/56 tests lulus** (37 eksisting + 19 baru) | `0` |
+| `npm run build` (`tsc -b && vite build`) | Lulus (`dist/` terbangun) | **Lulus** (1860 modul, 10.84s, `dist/` terbangun) | `0` |
+
+**Batasan Pengujian yang Perlu Dicatat secara Jujur:**
+- `vitest` pada proyek ini berjalan di `environment: 'node'` (`vite.config.ts:13`). Oleh karena itu, pengujian migrasi IndexedDB v2 → v3 dan rollback transaksi pada `tests/phase1_integrity_and_assignments.test.ts` menggunakan adapter/simulator IndexedDB in-memory deterministik yang menjalankan fungsi produksi aktual (`applySignalDatabaseUpgrade`, `migrateWorkspaceRecordInDatabase`, `restoreWorkspaceSafelyWithDb`, `restoreSnapshot`), sementara fungsi browser live `openDB('signal-academic-studio', 3)` dan eksekusi UI klik-melalui headless browser tidak dijalankan di lingkungan Node CLI ini.
+
+### 1.5 Risiko Migrasi & Panduan Operator
+
+1. **Cadangkan Data Sebelum Membuka Versi Baru:** Operator disarankan mengekspor backup `.json` atau `.signal` sebelum memperbarui aplikasi di browser yang sudah memiliki data lama.
+2. **Arti Verifikasi SHA-256:** Checksum SHA-256 menjamin berkas tidak rusak saat unduh/salin atau diubah sembarang byte; checksum **bukan** enkripsi isi file dan **bukan** tanda tangan elektronik tersertifikasi.
+3. **File Backup Lama (`v1`) Tanpa Checksum:** Aplikasi tetap mengizinkan pemulihan berkas backup lama v1 yang memang dibuat sebelum ada field `checksum`, tetapi **selalu memunculkan peringatan `legacy_unverified`** dan menuntut konfirmasi eksplisit operator. Berkas yang checksum-nya rusak/dihapus pada format v2 ditolak otomatis.
+
+### 1.6 Status Sub-Tugas Tahap 1 & Sinkronisasi
+
+| Sub-Tugas | Status | Catatan |
+|---|---|---|
+| A. Integritas Backup / Restore & Snapshot | **SELESAI** | Backup `.json`, `.signal`, & snapshot Time Machine terverifikasi SHA-256 |
+| B. Migrasi IndexedDB v2 → v3 Non-Destruktif | **SELESAI** | Store `teacher_assignments` + migrasi state v1→v2 idempoten tanpa sentuh jadwal |
+| C. Model Domain `TeacherAssignment` | **SELESAI** | Tipe, validasi, & migrasi `roleTitle` non-destruktif; `Teacher.roleTitle` utuh |
+| UI Persuratan & Document Studio (S01–S07) | **TERTUNDA (Sesuai Rencana Tahap 2–11)** | Sengaja tidak disentuh agar Tahap 1 fokus stabil & bebas regresi |
+
+- **Status sinkronisasi GitHub:** Tersimpan di workspace AI Studio (`/app/applet`); **belum** di-commit maupun di-push ke `https://github.com/adizalmumtaz30/SIGNAL-V3-2-Jewel-Luxury` (tidak ada `.git` lokal pada environment).
 
 ---
 

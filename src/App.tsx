@@ -76,7 +76,14 @@ import {
 import { createDemoState } from './domain/seed';
 import { generateSchedule } from './domain/generator';
 import { buildScheduleFingerprint, validateMasterData, validateSchedule } from './domain/validator';
-import { exportAppState, loadAppState, parseBackupFile, saveAppState } from './storage/db';
+import {
+  exportAppState,
+  loadAppState,
+  parseBackupFileDetailed,
+  restoreWorkspaceSafely,
+  saveAppState,
+  type BackupParseResult,
+} from './storage/db';
 import { WorkloadDashboard } from './components/WorkloadDashboard';
 import { AttendanceScreen } from './components/AttendanceScreen';
 import { SettingsScreen } from './components/SettingsScreen';
@@ -238,6 +245,10 @@ export default function App() {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isTimeMachineOpen, setIsTimeMachineOpen] = useState(false);
   const [inspectorTarget, setInspectorTarget] = useState<InspectorTarget | null>(null);
+  const [pendingBackupRestore, setPendingBackupRestore] = useState<{
+    fileName: string;
+    result: BackupParseResult;
+  } | null>(null);
 
   // Global Ctrl + K / Cmd + K listener
   useEffect(() => {
@@ -980,15 +991,34 @@ export default function App() {
   const importBackup = async (file?: File) => {
     if (!workspace || !file) return;
     try {
-      const restored = await parseBackupFile(file);
-      if (!window.confirm(`Impor backup ini? Data lokal saat ini akan diganti. Ditemukan ${restored.classes.length} kelas, ${restored.teachers.length} guru, dan ${restored.subjects.length} mapel.`)) return;
-      const check = validateMasterData(restored);
+      const parsedResult = await parseBackupFileDetailed(file);
+      const check = validateMasterData(parsedResult.state);
       const fatal = check.filter((item) => item.severity === 'error');
-      if (fatal.length) { notify(`Backup tidak diterapkan: ${fatal[0].title}.`, 'error'); return; }
-      setWorkspace({ ...restored, dataMode: 'custom' });
-      notify('Backup berhasil dipulihkan.', 'success');
+      if (fatal.length) {
+        notify(`Backup tidak diterapkan: ${fatal[0].title}.`, 'error');
+        return;
+      }
+      setPendingBackupRestore({ fileName: file.name, result: parsedResult });
     } catch (error) {
       notify(error instanceof Error ? error.message : 'File backup tidak dapat dibaca.', 'error');
+    }
+  };
+
+  const confirmApplyBackupRestore = async () => {
+    if (!pendingBackupRestore) return;
+    const { fileName, result } = pendingBackupRestore;
+    try {
+      const restored = await restoreWorkspaceSafely({ ...result.state, dataMode: 'custom' });
+      setWorkspace(restored);
+      setPendingBackupRestore(null);
+      notify(
+        result.verification === 'legacy_unverified'
+          ? `Backup lama "${fileName}" dipulihkan tanpa verifikasi checksum SHA-256.`
+          : `Backup "${fileName}" berhasil diverifikasi SHA-256 dan dipulihkan.`,
+        result.verification === 'legacy_unverified' ? 'warning' : 'success'
+      );
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Gagal menyimpan pemulihan backup.', 'error');
     }
   };
 
@@ -1602,8 +1632,7 @@ export default function App() {
         onClose={() => setIsTimeMachineOpen(false)}
         currentState={workspace}
         onStateRestored={(newState) => {
-          setWorkspace(newState);
-          updateWorkspace(() => newState, true);
+          setWorkspace({ ...newState, dataMode: 'custom' });
         }}
         onNotify={notify}
       />
@@ -1674,6 +1703,67 @@ export default function App() {
               >
                 <Save size={14} />
                 <span>Simpan &amp; Lanjutkan</span>
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Backup Restore Verification & Confirmation Modal */}
+      {pendingBackupRestore && (
+        <Modal
+          title={
+            pendingBackupRestore.result.verification === 'legacy_unverified'
+              ? 'Peringatan: Backup Lama Tanpa Checksum SHA-256'
+              : 'Konfirmasi Pemulihan Backup Terverifikasi SHA-256'
+          }
+          subtitle={`Berkas: ${pendingBackupRestore.fileName}`}
+          icon={AlertTriangle}
+          onClose={() => setPendingBackupRestore(null)}
+        >
+          <div style={{ padding: '18px 22px 22px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div
+              style={{
+                padding: '10px 12px',
+                borderRadius: '8px',
+                background:
+                  pendingBackupRestore.result.verification === 'legacy_unverified' ? '#FEF3C7' : '#ECFDF5',
+                border: `1px solid ${
+                  pendingBackupRestore.result.verification === 'legacy_unverified' ? '#F59E0B' : '#A7F3D0'
+                }`,
+                color:
+                  pendingBackupRestore.result.verification === 'legacy_unverified' ? '#92400E' : '#065F46',
+                fontSize: '12.5px',
+                lineHeight: 1.5,
+              }}
+            >
+              {pendingBackupRestore.result.verification === 'legacy_unverified'
+                ? pendingBackupRestore.result.warnings[0]
+                : 'Checksum SHA-256 cocok. Checksum memverifikasi keutuhan berkas dari kerusakan atau perubahan, bukan enkripsi maupun tanda tangan digital.'}
+            </div>
+            <p style={{ margin: 0, fontSize: '13.5px', lineHeight: 1.55, color: 'var(--s5-ink-secondary)' }}>
+              Data lokal saat ini akan diganti dengan cadangan berisi{' '}
+              <strong>{pendingBackupRestore.result.state.classes.length} kelas</strong>,{' '}
+              <strong>{pendingBackupRestore.result.state.teachers.length} guru</strong>,{' '}
+              <strong>{pendingBackupRestore.result.state.subjects.length} mapel</strong>, dan{' '}
+              <strong>{pendingBackupRestore.result.state.teacherAssignments?.length ?? 0} penugasan guru</strong>.
+            </p>
+            <div className="modal-actions" style={{ justifyContent: 'flex-end', flexWrap: 'wrap', gap: '8px' }}>
+              <button
+                type="button"
+                className="button button-quiet"
+                onClick={() => setPendingBackupRestore(null)}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                className="button button-primary"
+                onClick={confirmApplyBackupRestore}
+              >
+                {pendingBackupRestore.result.verification === 'legacy_unverified'
+                  ? 'Tetap Pulihkan (Unverified)'
+                  : 'Pulihkan Sekarang'}
               </button>
             </div>
           </div>
