@@ -240,6 +240,7 @@ export function createDemoState(): AppState {
     attendance,
     holidays,
     teacherAssignments: [],
+    documents: [],
   };
   baseState.teacherAssignments = migrateLegacyRoleTitlesToAssignments(baseState, '2026-08-01T08:00:00Z');
 
@@ -281,5 +282,6 @@ export function createEmptyState(): AppState {
     attendance: [],
     holidays: [],
     teacherAssignments: [],
+    documents: [],
   };
 }

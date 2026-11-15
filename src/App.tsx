@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type
 import {
   Activity,
   AlertTriangle,
+  Archive,
   ArrowRight,
   BookOpen,
   CalendarDays,
@@ -86,6 +87,7 @@ import {
 } from './storage/db';
 import { WorkloadDashboard } from './components/WorkloadDashboard';
 import { AttendanceScreen } from './components/AttendanceScreen';
+import { CorrespondenceCenter } from './components/persuratan/CorrespondenceCenter';
 import { SettingsScreen } from './components/SettingsScreen';
 import { QuickValidationModal } from './components/QuickValidationModal';
 import { SchedulePdfExportModal } from './components/SchedulePdfExportModal';
@@ -106,6 +108,7 @@ type ScreenId =
   | 'schedule'
   | 'workload'
   | 'attendance'
+  | 'persuratan'
   | 'generator'
   | 'master'
   | 'requirements'
@@ -133,6 +136,7 @@ const navGroups: NavGroup[] = [
       { id: 'validation', label: 'Validasi & Konflik', icon: ShieldCheck },
       { id: 'workload', label: 'Beban Guru', icon: Users },
       { id: 'attendance', label: 'Presensi Guru', icon: UserCheck },
+      { id: 'persuratan', label: 'Persuratan & Arsip', icon: Archive },
     ],
   },
   {
@@ -168,6 +172,7 @@ function titleForScreen(screen: ScreenId) {
     schedule: 'Jadwal Pelajaran',
     workload: 'Statistik Beban Guru',
     attendance: 'Presensi Guru',
+    persuratan: 'Pusat Persuratan & Arsip',
     generator: 'Schedule Generator',
     master: 'Data Master Madrasah',
     requirements: 'Kebutuhan & Alokasi JP',
@@ -249,6 +254,7 @@ export default function App() {
     fileName: string;
     result: BackupParseResult;
   } | null>(null);
+  const [storageError, setStorageError] = useState<string | null>(null);
 
   // Global Ctrl + K / Cmd + K listener
   useEffect(() => {
@@ -281,16 +287,39 @@ export default function App() {
 
   useEffect(() => {
     if (!ready || !workspace) return;
-    saveAppState(workspace).catch((error) => {
-      console.error('Could not persist SIGNAL data:', error);
-      setToast({ message: 'Penyimpanan lokal tidak tersedia. Segera ekspor backup sebelum menutup.', kind: 'warning' });
-    });
+    saveAppState(workspace)
+      .then(() => {
+        setStorageError(null);
+      })
+      .catch((error) => {
+        console.error('Could not persist SIGNAL data:', error);
+        const msg =
+          'Penyimpanan lokal browser (IndexedDB) gagal atau tidak tersedia. Segera ekspor backup sebelum menutup.';
+        setStorageError(msg);
+        setToast({ message: 'Penyimpanan lokal tidak tersedia. Segera ekspor backup sebelum menutup.', kind: 'warning' });
+      });
   }, [workspace, ready]);
 
   const notify = useCallback((message: string, kind: ToastData['kind'] = 'success') => {
     setToast({ message, kind });
     window.setTimeout(() => setToast(null), 4500);
   }, []);
+
+  const retrySaveWorkspace = useCallback(() => {
+    if (!workspace) return;
+    saveAppState(workspace)
+      .then(() => {
+        setStorageError(null);
+        notify('Penyimpanan lokal berhasil dipulihkan dan disinkronkan.', 'success');
+      })
+      .catch((error) => {
+        console.error('Retry persist SIGNAL data failed:', error);
+        setStorageError(
+          'Penyimpanan lokal browser (IndexedDB) masih gagal diakses. Segera ekspor backup sebelum menutup.'
+        );
+        notify('Penyimpanan lokal masih gagal diakses. Segera ekspor backup.', 'warning');
+      });
+  }, [workspace, notify]);
 
   const updateWorkspace = useCallback((updater: (current: AppState) => AppState, markCustom = false) => {
     setWorkspace((current) => {
@@ -1284,6 +1313,15 @@ export default function App() {
                 state={workspace}
                 onUpdateState={updateWorkspace}
                 onNotify={notify}
+              />
+            )}
+
+            {/* SCREEN S01: PUSAT PERSURATAN & ARSIP (TAHAP 2) */}
+            {screen === 'persuratan' && (
+              <CorrespondenceCenter
+                state={workspace}
+                storageError={storageError}
+                onRetryStorage={retrySaveWorkspace}
               />
             )}
 

@@ -1,3 +1,5 @@
+import type { DocumentRecord } from './persuratan/types';
+
 export const DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as const;
 export type Day = (typeof DAYS)[number];
 export type SlotKind = 'TEACHING' | 'BREAK';
@@ -241,6 +243,7 @@ export interface AppState {
   attendance?: AttendanceRecord[];
   holidays?: Holiday[];
   teacherAssignments?: TeacherAssignment[];
+  documents?: DocumentRecord[];
 }
 
 export interface GenerateResult {

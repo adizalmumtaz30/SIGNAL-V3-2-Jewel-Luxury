@@ -3,10 +3,10 @@
 > Dokumen audit teknis. File ini diperbarui setiap kali audit dijalankan. Entri audit terbaru berada paling atas.
 
 ## Ringkasan Terakhir
-- **Status terbaru:** **PHASE-1 Selesai** (Integritas Backup/Restore SHA-256, Migrasi IndexedDB v2 → v3, & Model Domain `TeacherAssignment`)
-- **Tanggal dan jam selesai:** Minggu, 15 November 2026, pukul 22:17:50 WIB (`2026-11-15T22:17:50+07:00`)
-- **Perubahan temuan terkait (`PERS-*` / `BP-*`):** `PERS-003` diselesaikan (verifikasi SHA-256 ketat & penutupan bypass `.signal`/`.json`); fondasi domain `PERS-006` (`TeacherAssignment`) & store IDB v3 selesai; pembaruan status `BP-016`, `BP-018`, `BP-019`, `BP-021`.
-- **Hasil verifikasi akhir:** `npm run lint` Exit `0` · `npm test` **10/10 file, 56/56 tests lulus** (37 lama + 19 baru) · `npm run build` Exit `0`
+- **Status terbaru:** **PHASE-2 Selesai** (Pusat Persuratan & Arsip S01 + 1 Menu Sidebar `Persuratan & Arsip` + Fondasi Metadata `AppState.documents`)
+- **Tanggal dan jam selesai:** Minggu, 15 November 2026, pukul 22:56:27 WIB (`2026-11-15T22:56:27+07:00`)
+- **Perubahan temuan terkait (`PERS-*` / `BP-*`):** `BP-005` & `BP-007` **SESUAI BLUEPRINT** (menu tunggal & layar S01 selesai); `BP-015` **SEBAGIAN** (tab Surat Masuk aktif); `BP-018` & `PERS-001` **SEBAGIAN** (`DocumentRecord` S01 & shell S01 selesai; S02–S07 dijadwalkan pada Tahap 3–10).
+- **Hasil verifikasi akhir:** `npm run lint` (`tsc -b`) Exit `0` · `npm test` **11/11 file, 66/66 tests lulus** (37 lama + 19 Tahap 1 + 10 Tahap 2) · `npm run build` Exit `0` (`1863` modul, `7.05s`)
 - **Status verifikasi repository:** Tidak dapat diverifikasi dari `.git` lokal (direktori `.git` tidak tersedia di container `/app/applet`; verifikasi identitas dari file workspace)
 - **Status sinkronisasi GitHub:** Perubahan hanya tersimpan di workspace AI Studio (`/app/applet`); **belum di-commit atau di-push** ke repository GitHub `adizalmumtaz30/SIGNAL-V3-2-Jewel-Luxury`
 
@@ -14,8 +14,83 @@
 
 | ID Audit | Mulai (WIB) | Selesai (WIB) | Status | Temuan Kritis | Tinggi | Sedang | Rendah | Info | Commit/Revision |
 |---|---|---|---|---:|---:|---:|---:|---:|---|
+| PHASE-2 | 2026-11-15 22:47:29 WIB | 2026-11-15 22:56:27 WIB | Selesai (Tahap 2) | 0 baru (`PERS-001` Tahap 2 S01 selesai) | `BP-005`, `BP-007` selesai | `BP-015`, `BP-018` sebagian | — | — | Tidak tersedia (tanpa `.git`) |
 | PHASE-1 | 2026-11-15 22:11:18 WIB | 2026-11-15 22:17:50 WIB | Selesai (Tahap 1) | 0 baru (`PERS-003` selesai) | `PERS-006` fondasi selesai | — | — | — | Tidak tersedia (tanpa `.git`) |
 | AUDIT #01 | 2026-11-15 21:51:28 WIB | 2026-11-15 21:52:56 WIB | Selesai | 2 | 5 | 3 | 1 | 1 | Tidak tersedia (tanpa `.git`) |
+
+---
+
+## IMPLEMENTASI TAHAP 2 — PUSAT PERSURATAN & ARSIP (S01)
+
+- **ID Entri:** `PHASE-2`
+- **Status Pelaksanaan:** **SELESAI** (Menu tunggal `Persuratan & Arsip`, layar S01 Pusat Persuratan & Arsip, dan fondasi metadata minimum `AppState.documents` terimplementasi dan teruji; S02–S07 sengaja ditunda ke Tahap 3–10)
+- **Waktu mulai:** Minggu, 15 November 2026, pukul 22:47:29 WIB (`2026-11-15T22:47:29+07:00`)
+- **Waktu selesai:** Minggu, 15 November 2026, pukul 22:56:27 WIB (`2026-11-15T22:56:27+07:00`)
+- **Zona waktu:** Asia/Jakarta (WIB, UTC+07:00)
+- **Status verifikasi repository:** Tidak dapat diverifikasi dari `.git` lokal (direktori `.git` tidak ditemukan di `/app/applet`; identifikasi proyek berdasarkan `package.json`, `metadata.json`, dan `BLUEPRINT_UTAMA_SIGNAL_PERSURATAN_ARSIP_DOCUMENT_STUDIO.md`).
+
+### 2.1 Ringkasan Perubahan Teknis
+
+#### A. Model Metadata Minimum & Penyimpanan Terpusat (`src/domain/persuratan/`, `src/domain/types.ts`, `src/domain/seed.ts`, `src/storage/db.ts`)
+1. **Model & Selektor Persuratan (`src/domain/persuratan/types.ts` & `selectors.ts`)**:
+   - Mendefinisikan `DocumentDirection`, `DocumentStatus`, `DocumentKind`, `DocumentRecord`, `CorrespondenceTab`, `CorrespondenceSortKey`, `SortDirection`, `CorrespondenceFilterState`, dan `CorrespondenceStats`.
+   - Menyediakan fungsi deterministik murni: `computeCorrespondenceStats()` (dengan deduplikasi ID di dalam tiap kartu), `collectAvailableYears()`, `getRelatedTeacherNames()` (hanya nama pendidik tanpa mengekspos NIP/NPK), `filterCorrespondenceDocuments()`, `sortCorrespondenceDocuments()`, `paginateCorrespondenceDocuments()`, serta `formatIndonesianDate()`.
+2. **Integrasi Skema `AppState.documents` Tanpa Data Palsu**:
+   - Menambahkan `documents?: DocumentRecord[]` pada `AppState` (`src/domain/types.ts`) dan menginisialisasi `documents: []` di `createDemoState()` maupun `createEmptyState()` (`src/domain/seed.ts`) tanpa menyisipkan satu pun dokumen contoh palsu.
+   - Karena `documents` tersimpan di `AppState` sebagai sumber kebenaran tunggal pada Tahap 2, metadata dokumen otomatis terlindungi oleh backup SHA-256 JSON (`SIGNAL-LOCAL-BACKUP`), `.signal` (`SIGNAL-V5-SEAL`), Time Machine snapshot, dan `restoreWorkspaceSafely()`.
+   - Memperbarui `validateAppStateStructure()` dan `migrateAppStateSchema()` (`src/storage/db.ts`) secara non-destruktif & idempoten (`documents` lama yang belum ada dinormalisasi menjadi `[]` sesudah verifikasi SHA-256 selesai, sehingga backup format Tahap 1 tetap terverifikasi SHA-256 100%).
+
+#### B. Layar S01 & Integrasi Shell SIGNAL (`src/components/persuratan/CorrespondenceCenter.tsx`, `CorrespondenceCenter.css`, `src/App.tsx`)
+1. **Menu Tunggal di Sidebar (`src/App.tsx`)**:
+   - Menambahkan tepat **1 item menu** `'persuratan'` berlabel **Persuratan & Arsip** pada `OPERASIONAL UTAMA` menggunakan shell `SIGNAL` yang ada, tanpa memodifikasi atau memindah menu akademik eksisting.
+   - Melacak kegagalan `saveAppState()` secara eksplisit via state `storageError` + aksi `retrySaveWorkspace` yang diteruskan ke S01 agar banner peringatan & tombol `"Coba Simpan Ulang"` bekerja nyata tanpa klaim tersimpan palsu.
+2. **Komponen S01 (`CorrespondenceCenter.tsx` & `CorrespondenceCenter.css`)**:
+   - **Header & CTA Jujur**: Judul *Pusat Persuratan & Arsip* dengan tombol `"Buat Dokumen"` yang membuka modal informasi aksesibel bahwa Galeri Template (S02), Form Data Awal (S03), dan Document Studio (S04) diaktifkan pada Tahap 3–6 (tanpa membuat draft palsu).
+   - **4 Kartu Statistik Nyata yang Dapat Diklik**: *Surat Masuk*, *Surat Keluar*, *Draft*, dan *Arsip* dengan angka tabular (`.s5-tnum`) serta penanda aktif teks + border (tidak bergantung pada warna saja).
+   - **4 Tab Kategori Internal & Bilah Pencarian/Filter**: Tab *Semua*, *Surat Masuk*, *Surat Keluar*, dan *Arsip* (`role="tablist"`/`role="tab"`), input pencarian nomor/ID/judul/perihal/pihak terkait/nama guru/tag (**tanpa NIP**), filter arah/status/tahun, panel *Filter Lanjutan* lipat (rentang tanggal & instansi), serta *Reset Filter*.
+   - **Tabel Sticky-Header & Pagination**: 7 kolom (*Nomor / ID*, *Nama Dokumen*, *Jenis*, *Tanggal*, *Pihak Terkait*, *Status*, *Aksi*) dengan sorting klik pada header, status berikon + teks, ringkasan metadata baca-saja via modal ringan (bukan S06 penuh), serta pagination `10 / 20 / 50` baris.
+   - **Empty / Loading / Error States**: Skeleton loading terstruktur, empty state jujur saat kosong, empty state filter, serta banner storage error & load error dengan tombol coba ulang.
+
+### 2.2 Pembaruan Status Temuan (`PERS-*`) dan Butir Blueprint (`BP-*`)
+
+| ID | Status Sebelum | Status Setelah Tahap 2 | Keterangan Aktual |
+|---|---|---|---|
+| `BP-005` | Belum Diimplementasikan | **SESUAI BLUEPRINT** | Tepat 1 menu sidebar baru `Persuratan & Arsip` ditambahkan ke `src/App.tsx` bersama 4 tab internal S01. |
+| `BP-007` | Belum Diimplementasikan | **SESUAI BLUEPRINT** | Layar S01 selesai: 4 kartu statistik nyata, 4 tab kategori, pencarian/filter/sort, tabel sticky 7 kolom, pagination 10/20/50, dan state empty/loading/error jujur. |
+| `BP-015` | Belum Diimplementasikan | **SEBAGIAN** | Tab & filter *Surat Masuk* di S01 aktif membaca `DocumentRecord`; form pencatatan & alur disposisi masuk dijadwalkan pada tahap lanjutan. |
+| `BP-018` | Sebagian (Tahap 1) | **SEBAGIAN (Tahap 2 Ditambah)** | Menambahkan metadata `DocumentRecord` S01 dan `AppState.documents`; `DocumentTemplate`, `DocumentVersion`, dan `DocumentAttachment` menyusul pada Tahap 3–10. |
+| `PERS-001` | Kritis (Belum Ada) | **SEBAGIAN (Tahap 2 Selesai)** | Pintu masuk & daftar S01 aktif terhubung ke shell SIGNAL; S02–S07 dijadwalkan pada Tahap 3–10. |
+
+### 2.3 Daftar File yang Diubah / Ditambahkan pada Tahap 2
+
+| File | Jenis Perubahan | Ringkasan Peran |
+|---|---|---|
+| `src/domain/persuratan/types.ts` | Baru | Tipe metadata `DocumentRecord`, `DocumentDirection`, `DocumentStatus`, `DocumentKind`, filter & statistik S01 |
+| `src/domain/persuratan/selectors.ts` | Baru | Kalkulasi 4 kartu statistik, filter tab/pencarian (tanpa NIP), sorting, pagination, & format tanggal |
+| `src/domain/types.ts` | Diubah | Tambah field opsional `documents?: DocumentRecord[]` pada `AppState` |
+| `src/domain/seed.ts` | Diubah | Inisialisasi `documents: []` pada `createDemoState()` dan `createEmptyState()` tanpa data contoh palsu |
+| `src/storage/db.ts` | Diubah | Validasi opsional struktur `documents` & normalisasi idempoten `documents: []` pada `migrateAppStateSchema` |
+| `src/components/persuratan/CorrespondenceCenter.tsx` | Baru | Layar S01 lengkap (KPI cards, tab, search/filter, tabel sticky, pagination, modal Buat Dokumen & ringkasan baca-saja) |
+| `src/components/persuratan/CorrespondenceCenter.css` | Baru | Styling Jewel Luxury ter-scope `.s01-*` responsif untuk 1440×900 & 1280×720 |
+| `src/App.tsx` | Diubah | Tambah tepat 1 menu `Persuratan & Arsip`, render S01, dan state `storageError` + `retrySaveWorkspace` |
+| `tsconfig.node.json` | Diubah | Aktifkan `"jsx": "react-jsx"` agar test komponen di `tests/` lolos `tsc -b` |
+| `tests/phase1_integrity_and_assignments.test.ts` | Diubah (1 baris) | Sertakan properti `documents` pada salinan terbalik manual `reordered.payload` |
+| `tests/phase2_correspondence_center.test.ts` | Baru | 10 skenario uji S01 (migrasi, statistik, tab, search bebas NIP, filter/sort/pagination, state kosong/error/loading, round-trip backup SHA-256) |
+| `/HASIL_AUDIT_PERSURATAN.md` | Diubah (Prepend) | Penambahan laporan `PHASE-2` ini di atas `PHASE-1` |
+
+*Catatan Integritas Aset & Dependency:* Seluruh **14 berkas PDF** contoh di root (`SIGNAL_*.pdf`) diverifikasi memiliki checksum **SHA-256 100% identik** sebelum dan sesudah Tahap 2, serta tidak ada penambahan dependency baru di `package.json`.
+
+### 2.4 Hasil Verifikasi Tahap 2 & Batasan Pengujian
+
+| Pemeriksaan | Hasil | Detail |
+|---|---|---|
+| `npm run lint` (`tsc -b`) | **Exit `0`** | Lulus tanpa error TypeScript pada `tsconfig.app.json` & `tsconfig.node.json` |
+| `npm test` (`vitest run`) | **Exit `0`** | **11/11 file test lulus, 66/66 tests lulus** (37 eksisting + 19 Tahap 1 + 10 Tahap 2) |
+| `npm run build` (`tsc -b && vite build`) | **Exit `0`** | **1863 modul**, selesai dalam `7.05s`, menghasilkan `dist/` |
+
+**Batasan Pengujian & Koreksi Sinkronisasi Repository:**
+1. **Lingkungan Pengujian Node:** Pengujian `vitest` berjalan di `environment: 'node'` menggunakan verifikasi logika domain + SSR `react-dom/server` (`renderToStaticMarkup`); interaksi DOM/klik langsung serta rendering CSS di live headless browser (`1440×900` / `1280×720`) belum dijalankan via browser automation di container ini.
+2. **Catatan Koreksi Sinkronisasi (15 November 2026 pukul 22:56:27 WIB):** Pada laporan `PHASE-1`, tertulis catatan bahwa perubahan tersimpan di `/app/applet` tanpa `.git`. Karena direktori `.git` tidak tersedia di runtime `/app/applet`, status sinkronisasi antara runtime workspace saat ini dengan commit eksternal (termasuk referensi commit Tahap 1 `ebc4f97ff864ddba2aafd692378c7d3ccf18990b` di GitHub `adizalmumtaz30/SIGNAL-V3-2-Jewel-Luxury`) **tidak dapat diverifikasi dari container** dan memerlukan pemeriksaan/push Git dari host atau UI integrasi GitHub pengguna.
 
 ---
 

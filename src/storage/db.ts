@@ -7,6 +7,11 @@ import {
   migrateLegacyRoleTitlesToAssignments,
   normalizeTeacherAssignment,
 } from '../domain/teacherAssignments';
+import {
+  VALID_DOCUMENT_DIRECTIONS,
+  VALID_DOCUMENT_KINDS,
+  VALID_DOCUMENT_STATUSES,
+} from '../domain/persuratan/selectors';
 import { computeCanonicalSha256, computeSha256Hex, isSha256Hex } from './checksum';
 
 export const DB_NAME = 'signal-academic-studio';
@@ -175,6 +180,30 @@ export function validateAppStateStructure(candidate: unknown): asserts candidate
       }
     }
   }
+  if (candidate.documents !== undefined) {
+    if (!Array.isArray(candidate.documents)) {
+      throw new Error('Struktur daftar dokumen persuratan pada berkas cadangan tidak valid.');
+    }
+    for (const item of candidate.documents) {
+      if (
+        !isPlainObject(item) ||
+        typeof item.id !== 'string' ||
+        !item.id.trim() ||
+        typeof item.title !== 'string' ||
+        typeof item.subject !== 'string' ||
+        typeof item.documentDate !== 'string' ||
+        (item.documentNumber !== null && typeof item.documentNumber !== 'string') ||
+        typeof item.direction !== 'string' ||
+        !VALID_DOCUMENT_DIRECTIONS.has(item.direction) ||
+        typeof item.documentType !== 'string' ||
+        !VALID_DOCUMENT_KINDS.has(item.documentType as never) ||
+        typeof item.status !== 'string' ||
+        !VALID_DOCUMENT_STATUSES.has(item.status as never)
+      ) {
+        throw new Error('Entri metadata dokumen persuratan pada berkas cadangan tidak lengkap atau rusak.');
+      }
+    }
+  }
 }
 
 /**
@@ -195,6 +224,10 @@ export function migrateAppStateSchema(
   }
   if (!Array.isArray(cloned.holidays)) {
     cloned.holidays = [];
+    changed = true;
+  }
+  if (!Array.isArray(cloned.documents)) {
+    cloned.documents = [];
     changed = true;
   }
 
