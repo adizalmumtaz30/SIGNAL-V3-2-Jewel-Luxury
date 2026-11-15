@@ -1,4 +1,5 @@
 import type { DocumentRecord } from './persuratan/types';
+import type { DocumentTemplate, TemplatePreferences } from './persuratan/templates/types';
 
 export const DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as const;
 export type Day = (typeof DAYS)[number];
@@ -120,6 +121,8 @@ export interface ScheduleVersion {
   entries: ScheduleEntry[];
   fingerprint: string;
   validatorVersion: string;
+  academicYear?: string;
+  semester?: 'Ganjil' | 'Genap';
 }
 
 export interface AppSettings {
@@ -244,6 +247,8 @@ export interface AppState {
   holidays?: Holiday[];
   teacherAssignments?: TeacherAssignment[];
   documents?: DocumentRecord[];
+  customTemplates?: DocumentTemplate[];
+  templatePreferences?: TemplatePreferences;
 }
 
 export interface GenerateResult {

@@ -1,6 +1,7 @@
 import type { AppState, AttendanceRecord, Holiday, Requirement, SchoolClass, Subject, Teacher } from './types';
 import { buildTimeSlots, createDefaultPeriodDefinitions } from './time';
 import { generateSchedule } from './generator';
+import { buildScheduleFingerprint } from './validator';
 import { migrateLegacyRoleTitlesToAssignments } from './teacherAssignments';
 
 export function createDemoState(): AppState {
@@ -241,6 +242,12 @@ export function createDemoState(): AppState {
     holidays,
     teacherAssignments: [],
     documents: [],
+    customTemplates: [],
+    templatePreferences: {
+      favoriteTemplateIds: [],
+      recentTemplates: [],
+      selectedTemplateId: null,
+    },
   };
   baseState.teacherAssignments = migrateLegacyRoleTitlesToAssignments(baseState, '2026-08-01T08:00:00Z');
 
@@ -257,8 +264,10 @@ export function createDemoState(): AppState {
         label: 'Jadwal 2026/2027 · Ganjil · v1 (Resmi)',
         entryCount: genResult.candidate.entries.length,
         entries: genResult.candidate.entries,
-        fingerprint: 'demo-fp-01',
+        fingerprint: buildScheduleFingerprint(genResult.candidate.entries),
         validatorVersion: 'SIGNAL-validator/1.0.0',
+        academicYear: settings.academicYear,
+        semester: settings.semester,
       },
     ];
   }
@@ -283,5 +292,11 @@ export function createEmptyState(): AppState {
     holidays: [],
     teacherAssignments: [],
     documents: [],
+    customTemplates: [],
+    templatePreferences: {
+      favoriteTemplateIds: [],
+      recentTemplates: [],
+      selectedTemplateId: null,
+    },
   };
 }

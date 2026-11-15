@@ -53,6 +53,17 @@ export interface CorrespondenceCenterProps {
   storageError?: string | null;
   onRetryLoad?: () => void;
   onRetryStorage?: () => void;
+  onOpenTemplateGallery?: () => void;
+  controlledFilters?: CorrespondenceFilterState;
+  onControlledFiltersChange?: (next: CorrespondenceFilterState) => void;
+  controlledSortKey?: CorrespondenceSortKey;
+  onControlledSortKeyChange?: (next: CorrespondenceSortKey) => void;
+  controlledSortDir?: SortDirection;
+  onControlledSortDirChange?: (next: SortDirection) => void;
+  controlledPage?: number;
+  onControlledPageChange?: (next: number) => void;
+  controlledPageSize?: number;
+  onControlledPageSizeChange?: (next: number) => void;
 }
 
 const TABS: Array<{ id: CorrespondenceTab; label: string }> = [
@@ -94,15 +105,59 @@ export function CorrespondenceCenter({
   storageError = null,
   onRetryLoad,
   onRetryStorage,
+  onOpenTemplateGallery,
+  controlledFilters,
+  onControlledFiltersChange,
+  controlledSortKey,
+  onControlledSortKeyChange,
+  controlledSortDir,
+  onControlledSortDirChange,
+  controlledPage,
+  onControlledPageChange,
+  controlledPageSize,
+  onControlledPageSizeChange,
 }: CorrespondenceCenterProps) {
   const documents = useMemo(() => state.documents ?? [], [state.documents]);
 
-  const [filters, setFilters] = useState<CorrespondenceFilterState>(DEFAULT_CORRESPONDENCE_FILTERS);
-  const [sortKey, setSortKey] = useState<CorrespondenceSortKey>('documentDate');
-  const [sortDir, setSortDir] = useState<SortDirection>('desc');
-  const [page, setPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(10);
+  const [internalFilters, setInternalFilters] = useState<CorrespondenceFilterState>(DEFAULT_CORRESPONDENCE_FILTERS);
+  const [internalSortKey, setInternalSortKey] = useState<CorrespondenceSortKey>('documentDate');
+  const [internalSortDir, setInternalSortDir] = useState<SortDirection>('desc');
+  const [internalPage, setInternalPage] = useState<number>(1);
+  const [internalPageSize, setInternalPageSize] = useState<number>(10);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState<boolean>(false);
+
+  const filters = controlledFilters ?? internalFilters;
+  const setFilters = (updater: CorrespondenceFilterState | ((prev: CorrespondenceFilterState) => CorrespondenceFilterState)) => {
+    const next = typeof updater === 'function' ? updater(filters) : updater;
+    if (onControlledFiltersChange) onControlledFiltersChange(next);
+    else setInternalFilters(next);
+  };
+
+  const sortKey = controlledSortKey ?? internalSortKey;
+  const setSortKey = (next: CorrespondenceSortKey) => {
+    if (onControlledSortKeyChange) onControlledSortKeyChange(next);
+    else setInternalSortKey(next);
+  };
+
+  const sortDir = controlledSortDir ?? internalSortDir;
+  const setSortDir = (updater: SortDirection | ((prev: SortDirection) => SortDirection)) => {
+    const next = typeof updater === 'function' ? updater(sortDir) : updater;
+    if (onControlledSortDirChange) onControlledSortDirChange(next);
+    else setInternalSortDir(next);
+  };
+
+  const page = controlledPage ?? internalPage;
+  const setPage = (updater: number | ((prev: number) => number)) => {
+    const next = typeof updater === 'function' ? updater(page) : updater;
+    if (onControlledPageChange) onControlledPageChange(next);
+    else setInternalPage(next);
+  };
+
+  const pageSize = controlledPageSize ?? internalPageSize;
+  const setPageSize = (next: number) => {
+    if (onControlledPageSizeChange) onControlledPageSizeChange(next);
+    else setInternalPageSize(next);
+  };
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [inspectedDoc, setInspectedDoc] = useState<DocumentRecord | null>(null);
@@ -273,7 +328,13 @@ export function CorrespondenceCenter({
             ref={createBtnRef}
             type="button"
             className="s01-cta-btn"
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={() => {
+              if (onOpenTemplateGallery) {
+                onOpenTemplateGallery();
+              } else {
+                setIsCreateModalOpen(true);
+              }
+            }}
           >
             <FilePlus2 size={16} aria-hidden="true" />
             <span>Buat Dokumen</span>

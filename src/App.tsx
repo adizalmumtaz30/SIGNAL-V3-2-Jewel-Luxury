@@ -87,7 +87,7 @@ import {
 } from './storage/db';
 import { WorkloadDashboard } from './components/WorkloadDashboard';
 import { AttendanceScreen } from './components/AttendanceScreen';
-import { CorrespondenceCenter } from './components/persuratan/CorrespondenceCenter';
+import { PersuratanWorkspace } from './components/persuratan/PersuratanWorkspace';
 import { SettingsScreen } from './components/SettingsScreen';
 import { QuickValidationModal } from './components/QuickValidationModal';
 import { SchedulePdfExportModal } from './components/SchedulePdfExportModal';
@@ -669,6 +669,8 @@ export default function App() {
       entries: entries.map((entry) => ({ ...entry })),
       fingerprint: buildScheduleFingerprint(entries),
       validatorVersion: 'SIGNAL-validator/1.0.0',
+      academicYear: workspace.settings.academicYear,
+      semester: workspace.settings.semester,
     };
     updateWorkspace((current) => ({
       ...current,
@@ -1316,12 +1318,14 @@ export default function App() {
               />
             )}
 
-            {/* SCREEN S01: PUSAT PERSURATAN & ARSIP (TAHAP 2) */}
+            {/* SCREEN S01/S02: PUSAT PERSURATAN & ARSIP + GALERI TEMPLATE (TAHAP 2–3) */}
             {screen === 'persuratan' && (
-              <CorrespondenceCenter
+              <PersuratanWorkspace
                 state={workspace}
                 storageError={storageError}
                 onRetryStorage={retrySaveWorkspace}
+                onUpdateState={updateWorkspace}
+                onNotify={notify}
               />
             )}
 

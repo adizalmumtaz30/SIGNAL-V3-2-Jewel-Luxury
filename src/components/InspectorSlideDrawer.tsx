@@ -286,7 +286,7 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
                     }}
                   >
                     <span style={{ fontSize: '11px', fontWeight: 700, color: '#3B504A' }}>
-                      Beban Jam Mengajar
+                      Rencana Kebutuhan JP (Planning)
                     </span>
                     <strong
                       className="s5-tnum"
@@ -321,7 +321,7 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
                     />
                   </div>
                   <small style={{ fontSize: '10.5px', color: '#687E77', marginTop: '4px', display: 'block' }}>
-                    Mengajar di {stats.classCount} kelas rombel aktif
+                    Berdasarkan rencana Kebutuhan JP di {stats.classCount} rombel (bukan jadwal terbit)
                   </small>
                 </div>
               )}

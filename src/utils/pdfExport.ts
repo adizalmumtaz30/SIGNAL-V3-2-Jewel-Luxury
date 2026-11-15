@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import type { AppState, SchoolClass } from '../domain/types';
+import type { AppState, ScheduleEntry, SchoolClass } from '../domain/types';
 import {
   computeRangeAttendanceRecap,
   formatMonthShortYear,
@@ -1813,24 +1813,49 @@ export function exportAllClassesSinglePageA4PDF(
 export function exportScheduleTeacherPDF(
   state: AppState,
   teacherId: string,
-  options?: { paperSize?: PaperSize },
-): void {
+  options?: {
+    paperSize?: PaperSize;
+    entriesOverride?: ScheduleEntry[];
+    sourceMode?: 'PUBLISHED' | 'DRAFT';
+    versionInfo?: {
+      id: string;
+      version: number;
+      createdAt: string;
+      fingerprint: string;
+      academicYear?: string;
+      semester?: 'Ganjil' | 'Genap';
+    };
+    skipSave?: boolean;
+  },
+): jsPDF | undefined {
   const teacher = state.teachers.find((t) => t.id === teacherId) ?? state.teachers[0];
-  if (!teacher) return;
+  if (!teacher) return undefined;
 
   const paperSize = options?.paperSize ?? 'a4';
   const doc = createJsPDFDocument('portrait', paperSize);
-  const entries = (state.draft ?? state.activeSchedule ?? []).filter((e) => e.teacherId === teacher.id);
+  const rawEntries = options?.entriesOverride ?? state.draft ?? state.activeSchedule ?? [];
+  const entries = rawEntries.filter((e) => e.teacherId === teacher.id);
   const activeDays = state.settings.activeDays;
   const astro = jpToAstronomical(entries.length, state.settings.periodMinutes ?? 40);
 
   let currentY = renderOfficialKopSurat(doc, state, 10);
 
   const pageWidth = doc.internal.pageSize.getWidth();
+  const isDraftMode =
+    options?.sourceMode === 'DRAFT' ||
+    (options?.sourceMode === undefined && options?.entriesOverride === undefined && state.draft !== null);
+
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
   doc.setTextColor(...TEAL);
-  doc.text(`JADWAL MENGAJAR INDIVIDUAL GURU`, pageWidth / 2, currentY, { align: 'center' });
+  doc.text(
+    isDraftMode
+      ? `JADWAL MENGAJAR INDIVIDUAL GURU (PRATINJAU DRAFT)`
+      : `JADWAL MENGAJAR INDIVIDUAL GURU`,
+    pageWidth / 2,
+    currentY,
+    { align: 'center' },
+  );
 
   currentY += 4.5;
   doc.setFont('helvetica', 'bold');
@@ -1849,6 +1874,35 @@ export function exportScheduleTeacherPDF(
     currentY,
     { align: 'center' },
   );
+
+  if (isDraftMode) {
+    currentY += 4;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(143, 45, 36);
+    doc.text(
+      'PRATINJAU DRAFT - BELUM DITERBITKAN; BUKAN DOKUMEN RESMI ATAU DASAR SK',
+      pageWidth / 2,
+      currentY,
+      { align: 'center' },
+    );
+  } else if (options?.versionInfo) {
+    currentY += 4;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...TEAL);
+    const periodText =
+      options.versionInfo.academicYear && options.versionInfo.semester
+        ? `TA ${options.versionInfo.academicYear} ${options.versionInfo.semester}`
+        : 'Periode tidak tercatat pada versi lama';
+    const publishedStamp = options.versionInfo.createdAt.slice(0, 10);
+    doc.text(
+      `Sumber Resmi: Versi ${options.versionInfo.version} (${options.versionInfo.id}) · Terbit ${publishedStamp} · ${periodText} · FP ${options.versionInfo.fingerprint}`,
+      pageWidth / 2,
+      currentY,
+      { align: 'center' },
+    );
+  }
 
   currentY += 6;
 
@@ -1971,7 +2025,10 @@ export function exportScheduleTeacherPDF(
   addDocFooter(doc, state.settings.schoolName);
 
   const cleanName = teacher.name.replace(/[^a-zA-Z0-9]/g, '_');
-  doc.save(`SIGNAL_Jadwal_Guru_${cleanName}.pdf`);
+  if (!options?.skipSave) {
+    doc.save(`SIGNAL_Jadwal_Guru_${cleanName}.pdf`);
+  }
+  return doc;
 }
 
 export interface AttendanceRecapPdfOptions extends Partial<OfficialDocCustomTexts> {

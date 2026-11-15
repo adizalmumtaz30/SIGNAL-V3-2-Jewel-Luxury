@@ -175,6 +175,8 @@ describe('Tahap 1 Group A — Integritas Backup JSON (SIGNAL-LOCAL-BACKUP)', () 
     const reordered = {
       checksum: envelope.checksum,
       payload: {
+        templatePreferences: envelope.payload.templatePreferences,
+        customTemplates: envelope.payload.customTemplates,
         documents: envelope.payload.documents,
         teacherAssignments: envelope.payload.teacherAssignments,
         holidays: envelope.payload.holidays,

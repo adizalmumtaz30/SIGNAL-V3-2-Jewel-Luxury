@@ -12,6 +12,11 @@ import {
   VALID_DOCUMENT_KINDS,
   VALID_DOCUMENT_STATUSES,
 } from '../domain/persuratan/selectors';
+import {
+  VALID_TEMPLATE_CATEGORIES,
+  collectAllTemplates,
+  sanitizeTemplatePreferences,
+} from '../domain/persuratan/templates/selectors';
 import { computeCanonicalSha256, computeSha256Hex, isSha256Hex } from './checksum';
 
 export const DB_NAME = 'signal-academic-studio';
@@ -204,6 +209,41 @@ export function validateAppStateStructure(candidate: unknown): asserts candidate
       }
     }
   }
+  if (candidate.customTemplates !== undefined) {
+    if (!Array.isArray(candidate.customTemplates)) {
+      throw new Error('Struktur daftar template madrasah pada berkas cadangan tidak valid.');
+    }
+    for (const item of candidate.customTemplates) {
+      if (
+        !isPlainObject(item) ||
+        typeof item.id !== 'string' ||
+        !item.id.trim() ||
+        typeof item.name !== 'string' ||
+        !item.name.trim() ||
+        typeof item.category !== 'string' ||
+        !VALID_TEMPLATE_CATEGORIES.has(item.category as never) ||
+        typeof item.version !== 'string' ||
+        (item.source !== 'MADRASAH' && item.source !== 'USER')
+      ) {
+        throw new Error('Entri template madrasah pada berkas cadangan tidak lengkap atau rusak.');
+      }
+    }
+  }
+  if (candidate.templatePreferences !== undefined) {
+    if (!isPlainObject(candidate.templatePreferences)) {
+      throw new Error('Struktur preferensi template pada berkas cadangan tidak valid.');
+    }
+    const prefs = candidate.templatePreferences;
+    if (
+      (prefs.favoriteTemplateIds !== undefined && !Array.isArray(prefs.favoriteTemplateIds)) ||
+      (prefs.recentTemplates !== undefined && !Array.isArray(prefs.recentTemplates)) ||
+      (prefs.selectedTemplateId !== undefined &&
+        prefs.selectedTemplateId !== null &&
+        typeof prefs.selectedTemplateId !== 'string')
+    ) {
+      throw new Error('Data favorit/riwayat template pada berkas cadangan tidak valid.');
+    }
+  }
 }
 
 /**
@@ -229,6 +269,26 @@ export function migrateAppStateSchema(
   if (!Array.isArray(cloned.documents)) {
     cloned.documents = [];
     changed = true;
+  }
+  if (!Array.isArray(cloned.customTemplates)) {
+    cloned.customTemplates = [];
+    changed = true;
+  }
+
+  const availableTemplates = collectAllTemplates(cloned.customTemplates);
+  if (!isPlainObject(cloned.templatePreferences)) {
+    cloned.templatePreferences = {
+      favoriteTemplateIds: [],
+      recentTemplates: [],
+      selectedTemplateId: null,
+    };
+    changed = true;
+  } else {
+    const sanitizedPrefs = sanitizeTemplatePreferences(cloned.templatePreferences, availableTemplates);
+    if (JSON.stringify(sanitizedPrefs) !== JSON.stringify(cloned.templatePreferences)) {
+      cloned.templatePreferences = sanitizedPrefs;
+      changed = true;
+    }
   }
 
   const prevAssignments = Array.isArray(cloned.teacherAssignments) ? cloned.teacherAssignments : undefined;

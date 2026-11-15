@@ -3,20 +3,113 @@
 > Dokumen audit teknis. File ini diperbarui setiap kali audit dijalankan. Entri audit terbaru berada paling atas.
 
 ## Ringkasan Terakhir
-- **Status terbaru:** **PHASE-2 Selesai** (Pusat Persuratan & Arsip S01 + 1 Menu Sidebar `Persuratan & Arsip` + Fondasi Metadata `AppState.documents`)
-- **Tanggal dan jam selesai:** Minggu, 15 November 2026, pukul 22:56:27 WIB (`2026-11-15T22:56:27+07:00`)
-- **Perubahan temuan terkait (`PERS-*` / `BP-*`):** `BP-005` & `BP-007` **SESUAI BLUEPRINT** (menu tunggal & layar S01 selesai); `BP-015` **SEBAGIAN** (tab Surat Masuk aktif); `BP-018` & `PERS-001` **SEBAGIAN** (`DocumentRecord` S01 & shell S01 selesai; S02–S07 dijadwalkan pada Tahap 3–10).
-- **Hasil verifikasi akhir:** `npm run lint` (`tsc -b`) Exit `0` · `npm test` **11/11 file, 66/66 tests lulus** (37 lama + 19 Tahap 1 + 10 Tahap 2) · `npm run build` Exit `0` (`1863` modul, `7.05s`)
-- **Status verifikasi repository:** Tidak dapat diverifikasi dari `.git` lokal (direktori `.git` tidak tersedia di container `/app/applet`; verifikasi identitas dari file workspace)
+- **Status terbaru:** **PHASE-3 Selesai** (Galeri Template S02 dengan 30 template terstruktur & Pemisahan Sumber Resmi Beban Mengajar Guru berbasis `ScheduleVersion`)
+- **Tanggal dan jam selesai:** Senin, 16 November 2026, pukul 03:10:05 WIB (`2026-11-16T03:10:05+07:00`)
+- **Perubahan temuan terkait (`PERS-*` / `BP-*`):** `BP-008` **SESUAI BLUEPRINT (S02 selesai)**; `BP-017` **SESUAI SEBAGIAN / SUMBER SELESAI** (pemisahan sumber & verifikasi `ScheduleVersion` aktif di `WorkloadDashboard`, `InspectorSlideDrawer`, `scheduleSources.ts`, `publishDraft()`, `seed.ts`; alur SK S04/S05 menyusul Tahap 9); `BP-018` **SEBAGIAN (Tahap 3 Ditambah)**; `PERS-005` **SEBAGIAN TERKENDALI / SUMBER TERPISAH**; `PERS-001` **SEBAGIAN (Tahap 3 Selesai: S01 + S02)**.
+- **Hasil verifikasi akhir:** `npm run lint` (`tsc -b`) Exit `0` · `npm test` **13/13 file, 84/84 tests lulus** (66 sebelumnya + 9 S02 + 9 Sumber Beban Guru) · `npm run build` Exit `0` (`1869` modul, `6.62s`)
+- **Status verifikasi repository:** Tidak dapat diverifikasi dari `.git` lokal (direktori `.git` tidak tersedia di container `/app/applet`; commit dasar `9afa5fe429f1d573be9919e8b49d2455ba0209fd` tidak dapat diverifikasi langsung via `git` di container)
 - **Status sinkronisasi GitHub:** Perubahan hanya tersimpan di workspace AI Studio (`/app/applet`); **belum di-commit atau di-push** ke repository GitHub `adizalmumtaz30/SIGNAL-V3-2-Jewel-Luxury`
 
 ## Daftar Riwayat Audit
 
 | ID Audit | Mulai (WIB) | Selesai (WIB) | Status | Temuan Kritis | Tinggi | Sedang | Rendah | Info | Commit/Revision |
 |---|---|---|---|---:|---:|---:|---:|---:|---|
+| PHASE-3 | 2026-11-16 02:56:58 WIB | 2026-11-16 03:10:05 WIB | Selesai (Tahap 3) | 0 baru (`BP-008` S02 selesai) | `PERS-005`, `BP-017` sumber terpisah | `BP-018` sebagian, `PERS-001` S01+S02 | — | — | Tidak tersedia (tanpa `.git`) |
 | PHASE-2 | 2026-11-15 22:47:29 WIB | 2026-11-15 22:56:27 WIB | Selesai (Tahap 2) | 0 baru (`PERS-001` Tahap 2 S01 selesai) | `BP-005`, `BP-007` selesai | `BP-015`, `BP-018` sebagian | — | — | Tidak tersedia (tanpa `.git`) |
 | PHASE-1 | 2026-11-15 22:11:18 WIB | 2026-11-15 22:17:50 WIB | Selesai (Tahap 1) | 0 baru (`PERS-003` selesai) | `PERS-006` fondasi selesai | — | — | — | Tidak tersedia (tanpa `.git`) |
 | AUDIT #01 | 2026-11-15 21:51:28 WIB | 2026-11-15 21:52:56 WIB | Selesai | 2 | 5 | 3 | 1 | 1 | Tidak tersedia (tanpa `.git`) |
+
+---
+
+## IMPLEMENTASI TAHAP 3 — GALERI TEMPLATE S02 & SUMBER RESMI BEBAN GURU (SCHEDULEVERSION)
+
+- **ID Entri:** `PHASE-3`
+- **Status Pelaksanaan:** **SELESAI** (Bagian A: Galeri Template S02 dengan 30 template terstruktur di dalam menu tunggal `Persuratan & Arsip`; Bagian B: Pemisahan sumber beban mengajar guru berbasis `ScheduleVersion` resmi terverifikasi vs Pratinjau Draft vs Rencana Kebutuhan JP vs Catatan Administratif `TeacherAssignment`; S03–S07, editor DOCX/dokumen kosong, dan pembuatan SK otomatis tetap ditunda ke Tahap 4–10 sesuai batas tahap)
+- **Waktu mulai:** Senin, 16 November 2026, pukul 02:56:58 WIB (`2026-11-16T02:56:58+07:00`)
+- **Waktu selesai:** Senin, 16 November 2026, pukul 03:10:05 WIB (`2026-11-16T03:10:05+07:00`)
+- **Zona waktu:** Asia/Jakarta (WIB, UTC+07:00)
+- **Status verifikasi repository:** Tidak dapat diverifikasi dari `.git` lokal (direktori `.git` tidak ditemukan di `/app/applet`; identifikasi proyek berdasarkan file workspace `package.json`, `metadata.json`, dan `BLUEPRINT_UTAMA_SIGNAL_PERSURATAN_ARSIP_DOCUMENT_STUDIO.md`; commit dasar `9afa5fe429f1d573be9919e8b49d2455ba0209fd` tidak dapat dicek lewat `git` dalam sandbox ini).
+
+### 3.1 Ringkasan Perubahan Teknis
+
+#### A. Galeri Template S02 (`src/domain/persuratan/templates/`, `src/components/persuratan/`, `src/App.tsx`)
+1. **Model & Registri 30 Template Bawaan SIGNAL (`types.ts` & `registry.ts`)**:
+   - Mendefinisikan `DocumentTemplate`, `TemplateCategory`, `TemplateCollection`, `TemplatePreferences`, `TemplatePreviewBlock`, dan konstanta koleksi di `src/domain/persuratan/templates/types.ts`.
+   - Membangun `SYSTEM_DOCUMENT_TEMPLATES` (`Object.freeze`) tepat **30 template** (`SYS-TPL-01` s.d. `SYS-TPL-30`, urutan `1..30`) sesuai Blueprint §6 pada 6 kategori (*SK & Penugasan*, *Surat Dinas Resmi*, *Kesiswaan & Wali Kelas*, *Kurikulum & Ujian*, *Kepegawaian & Internal*, *Keuangan & Sarpras*).
+   - Seluruh template sistem menggunakan placeholder semantik (`{{NAMA_MADRASAH}}`, `{{NAMA_LENGKAP_PENERIMA}}`, `{{NOMOR_SURAT}}`, dll.) tanpa PII fiktif, `createdAt: null`, `updatedAt: null`, serta menyertakan catatan kewenangan/hukum kontekstual pada dokumen berisiko tinggi (seperti *Nota Dinas* `SYS-TPL-10`, *Surat Rekomendasi/Referensi* `SYS-TPL-15`, dan kelompok *SK* `SYS-TPL-03`–`05`).
+2. **Selektor Murni, Preferensi & Kloning Non-Mutatif (`selectors.ts`)**:
+   - Menyediakan `collectAllTemplates()`, `sanitizeTemplatePreferences()`, `toggleFavoriteTemplate()`, `recordRecentTemplateUsage()` (deduplikasi & batas **maksimal 10 ID** terakhir dipakai), `computeCategoryCounts()`, `computeCollectionCounts()`, `filterTemplates()`, dan `cloneTemplateToMadrasah()` yang **tidak pernah memutasi** template `SYSTEM` serta menyimpan salinan ke `MADRASAH` dengan `sourceTemplateId` dan `sourceTemplateVersion`.
+3. **Antarmuka Layar S02 & Navigasi Internal `S01 <-> S02` (`TemplateGallery.tsx`, `TemplateGallery.css`, `PersuratanWorkspace.tsx`, `CorrespondenceCenter.tsx`, `App.tsx`)**:
+   - Menjaga tepat **1 menu sidebar** (`Persuratan & Arsip`) tanpa menambah item sidebar baru. `PersuratanWorkspace` mengelola pergantian internal `S01 <-> S02` dengan mempertahankan state filter/pencarian/urutan/paginasi S01 tetap utuh saat berpindah layar.
+   - Layout desktop 3 kolom proporsional (`184px + 24px + 536px + 24px + 372px = 1140px` di viewport `1440×900`, bebas horizontal overflow pada `1280×720`), bilah pencarian + badge kategori & koleksi dinamis, pratinjau kertas surat A4 autentik dengan token `{{PLACEHOLDER}}`, modal *Duplikasi ke Template Madrasah* aksesibel, tombol `"Gunakan Template"` yang menyimpan `selectedTemplateId` beserta pemberitahuan jujur batas Tahap 4 S03 (tanpa menciptakan `DocumentRecord` palsu), tombol nonaktif jujur untuk *Dokumen Kosong* dan *Impor DOCX*, serta tanpa tombol mati `"Edit Template"`.
+4. **Ekstensi Skema & Migrasi Non-Destruktif (`src/domain/types.ts`, `src/domain/seed.ts`, `src/storage/db.ts`)**:
+   - Menambahkan `customTemplates?: DocumentTemplate[]` dan `templatePreferences?: TemplatePreferences` ke `AppState`, menginisialisasi kosong di `createDemoState()`/`createEmptyState()`, memvalidasi struktur pada `validateAppStateStructure()`, dan menormalkan secara idempoten di `migrateAppStateSchema()` sesudah verifikasi SHA-256 backup selesai.
+
+#### B. Sumber Resmi Beban Mengajar Guru Berbasis `ScheduleVersion` (`src/domain/scheduleSources.ts`, `WorkloadDashboard.tsx`, `InspectorSlideDrawer.tsx`, `pdfExport.ts`, `App.tsx`)
+1. **Pemisahan Tegas 4 Sumber Data Jadwal & Beban (`src/domain/scheduleSources.ts`)**:
+   - Memisahkan secara struktural dan UI: **(1) `ScheduleVersion` Terbit Resmi** dalam `state.history`, **(2) `draft`** (pratinjau kerja belum terbit), **(3) `requirements`** (rencana Kebutuhan JP), dan **(4) `teacherAssignments`** (catatan tugas tambahan administratif, bukan jam KBM).
+   - `verifyScheduleVersion()` memverifikasi ulang `buildScheduleFingerprint(version.entries)` dan jumlah entri; versi dengan checksum/entri tidak cocok ditandai rusak/dimodifikasi dan **ditolak** sebagai dasar resmi.
+   - `resolveWorkloadSource()` **menolak `activeSchedule` polos** tanpa pasangan `ScheduleVersion` yang sah di `state.history`.
+2. **Stempel Periode Historis (`src/App.tsx`, `src/domain/types.ts`, `src/domain/seed.ts`)**:
+   - Menambahkan `academicYear?: string` dan `semester?: 'Ganjil' | 'Genap'` ke `ScheduleVersion`.
+   - `publishDraft()` di `App.tsx` serta `VER-DEMO-01` di `seed.ts` (bersama fingerprint asli dari `buildScheduleFingerprint`) langsung menstempel periode ajaran saat diterbitkan. Untuk versi historis lama tanpa field periode, UI & PDF menampilkan `"Tidak tercatat pada versi lama"` tanpa memfabrikasi dari `state.settings` terkini.
+3. **Pembaruan UI & Ekspor PDF Terikat Sumber (`WorkloadDashboard.tsx`, `InspectorSlideDrawer.tsx`, `pdfExport.ts`)**:
+   - `WorkloadDashboard.tsx` menyediakan pemilih eksplisit 3 mode (*Jadwal Terbit (Resmi)*, *Pratinjau Draft*, *Kebutuhan JP (Rencana)*), dropdown pemilih `ScheduleVersion`, grid metadata audit integritas versi, banner peringatan/pemblokir saat versi tidak sah atau `activeSchedule` tidak sinkron, tabel khusus rencana saat mode *Kebutuhan JP*, serta catatan konteks administratif `teacherAssignments` yang terpisah dari JP KBM.
+   - `InspectorSlideDrawer.tsx` memberi label eksplisit `"Rencana Kebutuhan JP (Planning)"` agar tidak tertukar dengan jadwal terbit resmi.
+   - `exportScheduleTeacherPDF()` menerima `entriesOverride`, `sourceMode`, `versionInfo`, dan opsi `skipSave?: boolean` (untuk verifikasi stream PDF di test tanpa menulis disk); kop & metadata PDF mencetak stempel versi terbit + fingerprint resmi atau penanda ASCII `"PRATINJAU DRAFT - BELUM DITERBITKAN; BUKAN DOKUMEN RESMI ATAU DASAR SK"`.
+
+### 3.2 Pembaruan Status Temuan (`PERS-*`) dan Butir Blueprint (`BP-*`)
+
+| ID | Status Sebelum | Status Setelah Tahap 3 | Keterangan Aktual |
+|---|---|---|---|
+| `BP-008` | Belum Diimplementasikan | **SESUAI BLUEPRINT (S02 selesai)** | Layar S02 Galeri Template lengkap dengan 30 template `SYSTEM`, 6 kategori, 5 koleksi, pratinjau `{{PLACEHOLDER}}`, & kloning ke `MADRASAH`; S07 editor template tetap dijadwalkan pada Tahap 10 dan *Dokumen Kosong*/*Impor DOCX* tetap dinonaktifkan jujur menunggu Tahap 5–6. |
+| `BP-017` | Belum Diimplementasikan | **SESUAI SEBAGIAN / SUMBER SELESAI** | Pemisahan 4 sumber jadwal/beban & validasi `ScheduleVersion` resmi selesai di `scheduleSources.ts`, `WorkloadDashboard.tsx`, `InspectorSlideDrawer.tsx`, `pdfExport.ts`, `publishDraft()`, & `seed.ts`; integrasi alur penerbitan SK di S04/S05 menyusul pada Tahap 9. |
+| `BP-018` | Sebagian (Tahap 2) | **SEBAGIAN (Tahap 3 Ditambah)** | Menambahkan `DocumentTemplate`, `TemplatePreferences`, dan metadata periode historis pada `ScheduleVersion`; `DocumentVersion` & `DocumentAttachment` menyusul pada Tahap 8/10. |
+| `PERS-005` | Terbuka | **SEBAGIAN TERKENDALI / SUMBER TERPISAH** | Ambiguitas sumber beban guru vs draft vs rencana kebutuhan JP di UI & ekspor PDF guru sudah diselesaikan dan diuji; penguncian pembuatan SK otomatis ke `ScheduleVersion` terverifikasi mengikuti pada Tahap 9. |
+| `PERS-001` | Sebagian (Tahap 2 Selesai) | **SEBAGIAN (Tahap 3 Selesai: S01 + S02)** | Layar S01 dan S02 aktif terpadu di dalam menu `Persuratan & Arsip`; S03–S07 dijadwalkan pada Tahap 4–10. |
+
+### 3.3 Daftar File yang Diubah / Ditambahkan pada Tahap 3
+
+| File | Jenis Perubahan | Ringkasan Peran |
+|---|---|---|
+| `src/domain/persuratan/templates/types.ts` | Baru | Kontrak tipe S02 (`DocumentTemplate`, `TemplateCategory`, `TemplateCollection`, `TemplatePreferences`, blok pratinjau) |
+| `src/domain/persuratan/templates/registry.ts` | Baru | `SYSTEM_DOCUMENT_TEMPLATES` beku berisi tepat 30 template resmi (`SYS-TPL-01`–`30`), 6 kategori, placeholder tanpa PII |
+| `src/domain/persuratan/templates/selectors.ts` | Baru | Hitung kategori/koleksi, filter, favorit, riwayat terbaru (maks 10 unik), & kloning non-mutatif ke `MADRASAH` |
+| `src/domain/scheduleSources.ts` | Baru | Verifikasi integritas `ScheduleVersion`, resolusi 4 sumber beban guru, agregasi JP, & pemformat periode |
+| `src/domain/types.ts` | Diubah | Tambah `academicYear`/`semester` di `ScheduleVersion`, `customTemplates` & `templatePreferences` di `AppState` |
+| `src/domain/seed.ts` | Diubah | Stempel periode + fingerprint asli pada `VER-DEMO-01`; inisialisasi `customTemplates: []` & `templatePreferences` |
+| `src/storage/db.ts` | Diubah | Validasi opsional & migrasi idempoten `customTemplates` + `templatePreferences` |
+| `src/utils/pdfExport.ts` | Diubah | Dukungan `entriesOverride`, `sourceMode`, `versionInfo`, `skipSave`, & label sumber resmi/draft pada PDF Guru |
+| `src/components/InspectorSlideDrawer.tsx` | Diubah | Perjelas label bar ringkasan JP sebagai `Rencana Kebutuhan JP (Planning)` |
+| `src/components/WorkloadDashboard.tsx` | Diubah | Pemilih 3 mode sumber beban, pemilih `ScheduleVersion`, audit integritas, tabel rencana terpisah, & ekspor PDF terikat sumber |
+| `src/components/persuratan/TemplateGallery.tsx` | Baru | Layar S02 Galeri Template 3 kolom, pratinjau kertas surat, modal kloning, & batas jujur Tahap 4 |
+| `src/components/persuratan/TemplateGallery.css` | Baru | Tata letak `.s02-*` Jewel Luxury responsif `1440×900` (1140px) & `1280×720` tanpa overflow horizontal |
+| `src/components/persuratan/PersuratanWorkspace.tsx` | Baru | Pengelola navigasi internal `S01 <-> S02` dengan preservasi state filter/sort/paginasi S01 |
+| `src/components/persuratan/CorrespondenceCenter.tsx` | Diubah | Sambungkan CTA `"Buat Dokumen"` / `"Jelajahi Galeri Template"` langsung ke S02 melalui callback `onOpenTemplateGallery` |
+| `src/App.tsx` | Diubah | Render `PersuratanWorkspace` di menu `Persuratan & Arsip` & stempel `academicYear`/`semester` pada `publishDraft()` |
+| `tests/phase1_integrity_and_assignments.test.ts` | Diubah (2 baris) | Sertakan `templatePreferences` & `customTemplates` pada uji kanonik pengurutan kunci payload |
+| `tests/phase3_template_gallery.test.ts` | Baru | 9 skenario uji S02 (30 template, hitungan, filter, favorit, maks 10 terbaru, kloning, notice hukum, round-trip SHA-256, SSR) |
+| `tests/phase3_workload_sources.test.ts` | Baru | 9 skenario uji sumber beban guru (pemisahan 4 sumber, tolak `activeSchedule` polos & versi rusak, periode historis, PDF stream, SSR) |
+| `/HASIL_AUDIT_PERSURATAN.md` | Diubah (Prepend) | Penambahan laporan `PHASE-3` ini di atas `PHASE-2` tanpa mengubah laporan terdahulu |
+
+### 3.4 Audit Checksum PDF Root, Verifikasi Akhir & Batasan Pengujian
+
+| Pemeriksaan | Hasil | Detail |
+|---|---|---|
+| `npm run lint` (`tsc -b`) | **Exit `0`** | Lulus penuh tanpa error TypeScript di `tsconfig.app.json` maupun `tsconfig.node.json` |
+| `npm test` (`vitest run`) | **Exit `0`** | **13/13 file test lulus, 84/84 tests lulus** (66 eksisting + 9 `phase3_template_gallery.test.ts` + 9 `phase3_workload_sources.test.ts`) |
+| `npm run build` (`tsc -b && vite build`) | **Exit `0`** | **1869 modul**, selesai dalam `6.62s`, menghasilkan `dist/` |
+| Penambahan dependency `package.json` | **Tidak Ada (`0`)** | Tidak ada paket npm baru yang ditambahkan pada Tahap 3 |
+
+**Temuan Audit Checksum SHA-256 Berkas PDF Root (`SIGNAL_*.pdf`):**
+Selama audit Tahap 3, dilakukan pengukuran checksum `sha256sum SIGNAL_*.pdf` sebelum dan sesudah menjalankan `npm test` (`2026-11-15 19:42:33 UTC` vs sesudah test pada `2026-11-16 03:10 WIB`):
+1. **5 berkas PDF tetap 100% identik** (`SIGNAL_Jadwal_Kelas_VII_A.pdf`, `SIGNAL_Jadwal_Mingguan_Kelas_VII_A.pdf`, `SIGNAL_Jadwal_Sekolah_2026_2027.pdf`, `SIGNAL_Jadwal_Semua_Kelas_Satu_Halaman_2026_2027.pdf`, `SIGNAL_Rekap_Presensi_Guru_Oktober_2026.pdf`).
+2. **9 berkas PDF di root berubah checksum SHA-256 setiap kali `npm test` dijalankan** (`SIGNAL_Jadwal_Guru_Ahmad_Fauzi__S_Pd_.pdf`, `SIGNAL_Jadwal_Mingguan_Kelas_VII_A_A4.pdf`, `SIGNAL_Jadwal_Semua_Kelas_A4_2026_2027.pdf`, `SIGNAL_Jadwal_Semua_Kelas_F4_2026_2027.pdf`, `SIGNAL_Rekap_Presensi_Guru_A4_Januari_2026.pdf`, `SIGNAL_Rekap_Presensi_Guru_A4_Juli_September_2026_3_Bulan.pdf`, `SIGNAL_Rekap_Presensi_Guru_A4_Oktober_2026.pdf`, `SIGNAL_Rekap_Presensi_Guru_F4_Februari_2029.pdf`, `SIGNAL_Rekap_Presensi_Guru_F4_Juli_Desember_2026_6_Bulan.pdf`).
+3. **Akar penyebab:** Pengujian eksisting sebelumnya (`tests/workload_and_pdf.test.ts` dan `tests/attendance_recap.test.ts`) memanggil fungsi `exportSchedule*PDF` dan `exportAttendanceRecapPDF` di runtime Node tanpa mock `jsPDF.save()`, sehingga `jsPDF` menulis ulang kesembilan file PDF tersebut ke direktori kerja root dengan metadata `/CreationDate` dan `/ID` saat test berjalan (yang juga menjelaskan diskrepansi klaim SHA-256 PDF identik pada catatan `PHASE-2`). Seluruh pengujian baru Tahap 3 (`tests/phase3_workload_sources.test.ts`) menggunakan opsi `skipSave: true` sehingga **Tahap 3 tidak menulis/mengubah file PDF contoh apa pun di disk**.
+
+**Batasan Pengujian & Sinkronisasi:**
+1. **Lingkungan Pengujian Node/SSR:** `vitest` dijalankan di `environment: 'node'` (`react-dom/server` `renderToStaticMarkup`); interaksi DOM klik nyata maupun verifikasi visual CSS langsung di browser headless pada viewport `1440×900` dan `1280×720` belum dieksekusi di sandbox ini.
+2. **Ketidaktersediaan `.git` Lokal:** Container `/app/applet` tidak menyertakan direktori `.git`, sehingga verifikasi terhadap commit dasar `9afa5fe429f1d573be9919e8b49d2455ba0209fd` serta proses commit/push ke GitHub harus dilakukan oleh pengguna dari luar container.
 
 ---
 
