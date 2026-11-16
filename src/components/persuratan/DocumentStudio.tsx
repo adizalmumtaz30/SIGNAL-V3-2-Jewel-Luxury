@@ -26,15 +26,16 @@ import {
   Pilcrow,
   Redo2,
   RemoveFormatting,
+  RotateCcw,
   Rows,
   Save,
   Settings2,
-  Sparkles,
   Table2,
   Tag,
   Trash2,
   Underline as UnderlineIcon,
   Undo2,
+  X,
 } from 'lucide-react';
 import type { AppState } from '../../domain/types';
 import type {
@@ -62,6 +63,29 @@ import {
 import './DocumentStudio.css';
 
 type DrawerTab = 'detail' | 'snapshots' | 'placeholders' | 'page';
+type StudioZoomMode = 'fit' | 0.85 | 1 | 1.15;
+const MM_TO_PX = 96 / 25.4; // CSS physical pixel constant (3.7795275591)
+
+const MARGIN_PRESETS = [
+  {
+    id: 'dinas',
+    label: 'Standar Dinas',
+    desc: '20/20/20/25',
+    marginsMm: { top: 20, right: 20, bottom: 20, left: 25 },
+  },
+  {
+    id: 'hemat',
+    label: 'Hemat / Rapat',
+    desc: '15/15/15/20',
+    marginsMm: { top: 15, right: 15, bottom: 15, left: 20 },
+  },
+  {
+    id: 'sk',
+    label: 'Lebar SK',
+    desc: '25/20/25/30',
+    marginsMm: { top: 25, right: 20, bottom: 25, left: 30 },
+  },
+] as const;
 
 export interface DocumentStudioProps {
   state: AppState;
@@ -72,6 +96,7 @@ export interface DocumentStudioProps {
     nextState: AppState,
     savedDraft: DocumentIntakeDraft
   ) => Promise<void> | void;
+  onDeleteDraft?: () => Promise<void> | void;
   onBackToIntake: () => void;
   onBackToCenter: () => void;
   onDirtyChange?: (dirty: boolean) => void;
@@ -147,6 +172,7 @@ export function DocumentStudio({
   storageError = null,
   onRetryStorage,
   onPersistStudioState,
+  onDeleteDraft,
   onBackToIntake,
   onBackToCenter,
   onDirtyChange,
@@ -183,9 +209,30 @@ export function DocumentStudio({
   const [s03ConflictResolved, setS03ConflictResolved] = useState<boolean>(false);
   const [legacyMismatchAccepted, setLegacyMismatchAccepted] = useState<boolean>(false);
   const [estimatedPages, setEstimatedPages] = useState<number>(1);
+  const [zoomMode, setZoomMode] = useState<StudioZoomMode>('fit');
+  const [viewportWidthPx, setViewportWidthPx] = useState<number>(0);
+  const [paperSizePx, setPaperSizePx] = useState<{ width: number; height: number } | null>(null);
   const [, setSelectionTick] = useState<number>(0);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState<boolean>(false);
 
+  const viewportRef = useRef<HTMLDivElement | null>(null);
   const paperRef = useRef<HTMLDivElement | null>(null);
+  const deleteCancelBtnRef = useRef<HTMLButtonElement | null>(null);
+  const resetCancelBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (isDeleteConfirmOpen) {
+      deleteCancelBtnRef.current?.focus();
+    }
+  }, [isDeleteConfirmOpen]);
+
+  useEffect(() => {
+    if (isResetConfirmOpen) {
+      resetCancelBtnRef.current?.focus();
+    }
+  }, [isResetConfirmOpen]);
 
   const markDirty = (nextDirty: boolean) => {
     setIsDirty(nextDirty);
@@ -233,26 +280,43 @@ export function DocumentStudio({
     },
   });
 
-  // Observasi tinggi kertas fisik untuk indikasi jujur perkiraan jumlah halaman (tanpa klaim paginasi mutlak)
+  // Observasi ukuran viewport & tinggi kertas fisik untuk Fit-to-Width & perkiraan halaman jujur
   useEffect(() => {
-    const el = paperRef.current;
-    if (!el || typeof ResizeObserver === 'undefined') return;
+    const paperEl = paperRef.current;
+    const vpEl = viewportRef.current;
+    if (!paperEl || typeof ResizeObserver === 'undefined') return;
 
     const dims = getEffectivePaperDimensionsMm(pageSettings.paperSize, pageSettings.orientation);
-    const singlePagePx = Math.max(100, dims.heightMm * 3.7795275591);
+    const singlePagePx = Math.max(100, dims.heightMm * MM_TO_PX);
 
-    const computePages = () => {
-      const h = el.scrollHeight;
+    const measure = () => {
+      const h = paperEl.scrollHeight;
+      const w = paperEl.offsetWidth || dims.widthMm * MM_TO_PX;
       setEstimatedPages(Math.max(1, Math.ceil(h / singlePagePx)));
+      setPaperSizePx((prev) =>
+        prev && prev.width === w && prev.height === h ? prev : { width: w, height: h }
+      );
+      if (vpEl) {
+        const vw = vpEl.clientWidth;
+        setViewportWidthPx((prev) => (prev === vw ? prev : vw));
+      }
     };
 
-    computePages();
-    const ro = new ResizeObserver(() => computePages());
-    ro.observe(el);
+    measure();
+    const ro = new ResizeObserver(() => measure());
+    ro.observe(paperEl);
+    if (vpEl) ro.observe(vpEl);
     return () => ro.disconnect();
-  }, [pageSettings.paperSize, pageSettings.orientation, docJson]);
+  }, [pageSettings.paperSize, pageSettings.orientation, docJson, drawerOpen]);
 
   const textStats = useMemo(() => extractPlainTextAndTokens(docJson), [docJson]);
+  const { wordCount, charCount } = useMemo(() => {
+    const trimmed = textStats.plainText.trim();
+    return {
+      wordCount: trimmed ? trimmed.split(/\s+/).length : 0,
+      charCount: textStats.plainText.length,
+    };
+  }, [textStats.plainText]);
   const isDemoSnapshot = useMemo(
     () => (draft.sourceSnapshots ?? []).some((s) => s.isDemoData),
     [draft.sourceSnapshots]
@@ -262,6 +326,15 @@ export function DocumentStudio({
     () => getEffectivePaperDimensionsMm(pageSettings.paperSize, pageSettings.orientation),
     [pageSettings.paperSize, pageSettings.orientation]
   );
+
+  const paperNominalWidthPx = paperSizePx?.width ?? paperDims.widthMm * MM_TO_PX;
+  const availableViewportWidth = Math.max(320, viewportWidthPx - 44);
+  const autoFitScale =
+    viewportWidthPx > 0
+      ? Math.min(1, Math.max(0.54, Number((availableViewportWidth / paperNominalWidthPx).toFixed(3))))
+      : 1;
+  const effectiveScale = zoomMode === 'fit' ? autoFitScale : zoomMode;
+  const zoomPercentLabel = Math.round(effectiveScale * 100);
 
   const handleApplyPageSettings = (nextCandidate: DocumentStudioPageSettings) => {
     const check = validateStudioPageSettings(nextCandidate);
@@ -376,6 +449,35 @@ export function DocumentStudio({
     markDirty(true);
   };
 
+  const handleFocusPlaceholderToken = (tokenKey: string) => {
+    const needle = `{{${tokenKey}}}`;
+    if (!editor) {
+      onNotify?.(`Token ${needle} dapat disunting langsung pada naskah Document Studio.`, 'info');
+      return;
+    }
+
+    let matchRange: { from: number; to: number } | null = null;
+    editor.state.doc.descendants((node, pos) => {
+      if (matchRange) return false;
+      if (node.isText && typeof node.text === 'string') {
+        const idx = node.text.indexOf(needle);
+        if (idx !== -1) {
+          matchRange = { from: pos + idx, to: pos + idx + needle.length };
+          return false;
+        }
+      }
+      return true;
+    });
+
+    if (matchRange) {
+      const range = matchRange as { from: number; to: number };
+      editor.chain().focus().setTextSelection(range).scrollIntoView().run();
+      onNotify?.(`Placeholder ${needle} disorot pada naskah untuk segera diisi.`, 'info');
+    } else {
+      onNotify?.(`Placeholder ${needle} tidak ditemukan lagi pada posisi aktif.`, 'info');
+    }
+  };
+
   const preserveFocusMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
   };
@@ -400,37 +502,30 @@ export function DocumentStudio({
         }
       }}
     >
-      {/* Top Header */}
+      {/* Streamlined Atelier Header (no stacked breadcrumb, zero static pill sandwich) */}
       <header className="s04-header-card">
-        <div>
-          <nav className="s04-breadcrumb" aria-label="Breadcrumb Document Studio">
-            <span>Persuratan &amp; Arsip</span>
-            <span>›</span>
-            <span>Form Data Awal (S03)</span>
-            <span>›</span>
-            <strong>Document Studio (S04)</strong>
-          </nav>
-          <div className="s04-title-row">
-            <h1 className="s04-doc-title">{draft.title}</h1>
-            <span className="s04-status-badge">
-              <FileText size={13} aria-hidden="true" />
-              <span>
-                {draft.templateSnapshot.code} · {draft.templateSnapshot.name} (v{draft.templateSnapshot.version})
-              </span>
+        <div className="s04-header-main">
+          <div className="s04-meta-line s5-tnum">
+            <span className="s04-meta-code">{draft.templateSnapshot.code}</span>
+            <span aria-hidden="true">·</span>
+            <span>
+              {draft.templateSnapshot.name} (v{draft.templateSnapshot.version})
             </span>
+            <span aria-hidden="true">·</span>
+            <span>Draft Belum Bernomor</span>
+            {isDemoSnapshot && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="s04-meta-demo" title="Draft ini memuat snapshot dari mode dataset demo">
+                  Dataset Demo Aktif
+                </span>
+              </>
+            )}
           </div>
+          <h1 className="s04-doc-title">{draft.title}</h1>
         </div>
 
         <div className="s04-header-badges">
-          {isDemoSnapshot && (
-            <span className="s04-status-badge is-demo" title="Draft ini memuat snapshot dari mode dataset demo">
-              <Sparkles size={13} aria-hidden="true" />
-              <span>Dataset Demo Aktif</span>
-            </span>
-          )}
-          <span className="s04-status-badge">
-            <span>Draft S04 · Belum Bernomor</span>
-          </span>
           <span
             className={`s04-status-badge ${
               isDirty ? 'is-dirty' : lastSavedAt ? 'is-saved' : ''
@@ -449,7 +544,7 @@ export function DocumentStudio({
             ) : (
               <>
                 <Info size={13} aria-hidden="true" />
-                <span>Draft Baru dari S03</span>
+                <span>Draft Baru</span>
               </>
             )}
           </span>
@@ -800,43 +895,80 @@ export function DocumentStudio({
         </button>
       </div>
 
-      {/* Main Editor + Collapsible Inspector Grid */}
+      {/* Main Editor + Sticky Collapsible Inspector Grid */}
       <div className={`s04-workbench ${drawerOpen ? '' : 'is-drawer-collapsed'}`}>
-        <div className="s04-canvas-viewport">
+        <div ref={viewportRef} className="s04-canvas-viewport">
           <div className="s04-canvas-meta-bar s5-tnum">
             <span>
-              Kertas: <strong>{PAPER_DIMENSIONS_MM[pageSettings.paperSize].label}</strong> ·{' '}
+              <strong>{PAPER_DIMENSIONS_MM[pageSettings.paperSize].label}</strong> ·{' '}
               {pageSettings.orientation === 'portrait' ? 'Portrait' : 'Landscape'} · Margin{' '}
               {pageSettings.marginsMm.top}/{pageSettings.marginsMm.right}/
-              {pageSettings.marginsMm.bottom}/{pageSettings.marginsMm.left} mm
-            </span>
-            <span>
-              Perkiraan panjang: <strong>~{estimatedPages} halaman</strong> ·{' '}
+              {pageSettings.marginsMm.bottom}/{pageSettings.marginsMm.left} mm ·{' '}
+              <strong>~{estimatedPages} hal</strong> ·{' '}
+              <span>{wordCount} kata</span> · <span>{charCount} karakter</span> ·{' '}
               {textStats.unresolvedTokens.length > 0
-                ? `${textStats.unresolvedTokens.length} placeholder belum terisi`
-                : 'Semua token naskah terisi'}
+                ? `${textStats.unresolvedTokens.length} placeholder tersisa`
+                : 'Semua token terisi'}
             </span>
+
+            <div className="s04-zoom-group" role="group" aria-label="Skala tampilan kertas">
+              {(
+                [
+                  { id: 'fit' as const, label: `Fit (${zoomMode === 'fit' ? `${zoomPercentLabel}%` : 'Auto'})` },
+                  { id: 0.85 as const, label: '85%' },
+                  { id: 1 as const, label: '100%' },
+                  { id: 1.15 as const, label: '115%' },
+                ]
+              ).map((opt) => {
+                const isActive = zoomMode === opt.id;
+                return (
+                  <button
+                    key={String(opt.id)}
+                    type="button"
+                    className={`s04-zoom-btn ${isActive ? 'is-active' : ''}`}
+                    aria-pressed={isActive}
+                    onClick={() => setZoomMode(opt.id)}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div
-            ref={paperRef}
-            className="s04-paper-sheet"
-            style={{
-              width: `${paperDims.widthMm}mm`,
-              minHeight: `${paperDims.heightMm}mm`,
-              paddingTop: `${pageSettings.marginsMm.top}mm`,
-              paddingRight: `${pageSettings.marginsMm.right}mm`,
-              paddingBottom: `${pageSettings.marginsMm.bottom}mm`,
-              paddingLeft: `${pageSettings.marginsMm.left}mm`,
-            }}
+            className="s04-paper-stage-sizer"
+            style={
+              paperSizePx && effectiveScale !== 1
+                ? {
+                    width: `${Math.round(paperSizePx.width * effectiveScale)}px`,
+                    height: `${Math.round(paperSizePx.height * effectiveScale)}px`,
+                  }
+                : undefined
+            }
           >
-            {editor ? (
-              <EditorContent editor={editor} />
-            ) : (
-              <div className="s04-prosemirror" aria-label="Pratinjau naskah awal Document Studio S04">
-                {renderStaticPreviewNodes(docJson.content)}
-              </div>
-            )}
+            <div
+              ref={paperRef}
+              className="s04-paper-sheet"
+              style={{
+                width: `${paperDims.widthMm}mm`,
+                minHeight: `${paperDims.heightMm}mm`,
+                paddingTop: `${pageSettings.marginsMm.top}mm`,
+                paddingRight: `${pageSettings.marginsMm.right}mm`,
+                paddingBottom: `${pageSettings.marginsMm.bottom}mm`,
+                paddingLeft: `${pageSettings.marginsMm.left}mm`,
+                transform: effectiveScale !== 1 ? `scale(${effectiveScale})` : undefined,
+                transformOrigin: effectiveScale !== 1 ? 'top left' : undefined,
+              }}
+            >
+              {editor ? (
+                <EditorContent editor={editor} />
+              ) : (
+                <div className="s04-prosemirror" aria-label="Pratinjau naskah awal Document Studio S04">
+                  {renderStaticPreviewNodes(docJson.content)}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -888,48 +1020,62 @@ export function DocumentStudio({
 
             <div className="s04-drawer-body">
               {drawerTab === 'detail' && (
-                <dl className="s04-dl">
-                  <div className="s04-dl-item">
-                    <dt>ID Draft &amp; Dokumen</dt>
-                    <dd style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '11.5px' }}>
-                      {draft.id} · {draft.documentId}
-                    </dd>
-                  </div>
-                  <div className="s04-dl-item">
-                    <dt>Nomor Resmi</dt>
-                    <dd>Belum Bernomor (diterbitkan pada Finalisasi S05)</dd>
-                  </div>
-                  <div className="s04-dl-item">
-                    <dt>Template Asal (Snapshot Beku)</dt>
-                    <dd>
-                      {draft.templateSnapshot.code} — {draft.templateSnapshot.name} (v
-                      {draft.templateSnapshot.version})
-                    </dd>
-                  </div>
-                  <div className="s04-dl-item">
-                    <dt>Tanggal Dokumen</dt>
-                    <dd className="s5-tnum">{draft.documentDate}</dd>
-                  </div>
-                  {draft.scheduleVersionId && (
+                <div className="s04-detail-stack">
+                  <dl className="s04-dl">
                     <div className="s04-dl-item">
-                      <dt>ScheduleVersion Terikat</dt>
-                      <dd className="s5-tnum">
-                        {draft.scheduleVersionId}
-                        {draft.scheduleVersionFingerprint
-                          ? ` (${draft.scheduleVersionFingerprint})`
-                          : ''}
+                      <dt>ID Draft &amp; Dokumen</dt>
+                      <dd style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '11.5px' }}>
+                        {draft.id} · {draft.documentId}
                       </dd>
                     </div>
-                  )}
-                  <div className="s04-dl-item">
-                    <dt>Status Studio</dt>
-                    <dd>
-                      {hasSavedStudio
-                        ? 'Sedang Disunting (Draft S04 Tersimpan)'
-                        : 'Siap Disunting (Hasil Konversi Awal S03)'}
-                    </dd>
+                    <div className="s04-dl-item">
+                      <dt>Nomor Resmi</dt>
+                      <dd>Belum Bernomor (diterbitkan pada Finalisasi S05)</dd>
+                    </div>
+                    <div className="s04-dl-item">
+                      <dt>Template Asal (Snapshot Beku)</dt>
+                      <dd>
+                        {draft.templateSnapshot.code} — {draft.templateSnapshot.name} (v
+                        {draft.templateSnapshot.version})
+                      </dd>
+                    </div>
+                    <div className="s04-dl-item">
+                      <dt>Tanggal Dokumen</dt>
+                      <dd className="s5-tnum">{draft.documentDate}</dd>
+                    </div>
+                    {draft.scheduleVersionId && (
+                      <div className="s04-dl-item">
+                        <dt>ScheduleVersion Terikat</dt>
+                        <dd className="s5-tnum">
+                          {draft.scheduleVersionId}
+                          {draft.scheduleVersionFingerprint
+                            ? ` (${draft.scheduleVersionFingerprint})`
+                            : ''}
+                        </dd>
+                      </div>
+                    )}
+                    <div className="s04-dl-item">
+                      <dt>Status Studio</dt>
+                      <dd>
+                        {hasSavedStudio
+                          ? 'Sedang Disunting (Draft S04 Tersimpan)'
+                          : 'Siap Disunting (Hasil Konversi Awal S03)'}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  <div className="s04-drawer-reset-box">
+                    <button
+                      type="button"
+                      className="s02-btn-secondary"
+                      style={{ width: '100%' }}
+                      onClick={() => setIsResetConfirmOpen(true)}
+                    >
+                      <RotateCcw size={13} aria-hidden="true" />
+                      <span>Susun Ulang dari Snapshot S03</span>
+                    </button>
                   </div>
-                </dl>
+                </div>
               )}
 
               {drawerTab === 'snapshots' && (
@@ -970,15 +1116,19 @@ export function DocumentStudio({
                   ) : (
                     <>
                       <p style={{ margin: 0, color: '#4f6b63', fontSize: '12px' }}>
-                        Token berikut belum memiliki nilai isian di snapshot S03. Anda dapat
-                        mengeditnya langsung pada naskah, kecuali placeholder nomor resmi yang akan
-                        diisi saat Finalisasi S05.
+                        Klik token di bawah untuk menyorot lokasinya di naskah, kecuali placeholder nomor resmi yang akan diisi saat Finalisasi S05.
                       </p>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                         {textStats.unresolvedTokens.map((tok) => (
-                          <span key={tok} className="s04-token-chip">
+                          <button
+                            key={tok}
+                            type="button"
+                            className="s04-token-chip s04-token-btn"
+                            onClick={() => handleFocusPlaceholderToken(tok)}
+                            title={`Sorot placeholder {{${tok}}} di naskah`}
+                          >
                             {`{{${tok}}}`}
-                          </span>
+                          </button>
                         ))}
                       </div>
                     </>
@@ -1020,6 +1170,36 @@ export function DocumentStudio({
                       <option value="portrait">Portrait (Tegak)</option>
                       <option value="landscape">Landscape (Mendatar)</option>
                     </select>
+                  </div>
+
+                  <div className="s04-field">
+                    <span className="s04-preset-label">Preset Margin Naskah Dinas</span>
+                    <div className="s04-preset-grid" role="group" aria-label="Preset margin halaman">
+                      {MARGIN_PRESETS.map((preset) => {
+                        const isPresetActive =
+                          pageSettings.marginsMm.top === preset.marginsMm.top &&
+                          pageSettings.marginsMm.right === preset.marginsMm.right &&
+                          pageSettings.marginsMm.bottom === preset.marginsMm.bottom &&
+                          pageSettings.marginsMm.left === preset.marginsMm.left;
+                        return (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            className={`s04-preset-btn ${isPresetActive ? 'is-active' : ''}`}
+                            aria-pressed={isPresetActive}
+                            onClick={() =>
+                              handleApplyPageSettings({
+                                ...pageSettings,
+                                marginsMm: { ...preset.marginsMm },
+                              })
+                            }
+                          >
+                            <strong>{preset.label}</strong>
+                            <span className="s5-tnum">{preset.desc} mm</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   <div className="s04-form-grid">
@@ -1077,6 +1257,17 @@ export function DocumentStudio({
         </div>
 
         <div className="s04-footer-actions">
+          {onDeleteDraft && (
+            <button
+              type="button"
+              className="s04-btn-danger-outline"
+              disabled={isSaving || isDeleting}
+              onClick={() => setIsDeleteConfirmOpen(true)}
+            >
+              <Trash2 size={14} aria-hidden="true" />
+              <span>Hapus Draft</span>
+            </button>
+          )}
           <button
             type="button"
             className="s02-btn-secondary"
@@ -1103,6 +1294,153 @@ export function DocumentStudio({
           </button>
         </div>
       </footer>
+
+      {isDeleteConfirmOpen && onDeleteDraft && (
+        <div
+          className="s01-modal-scrim"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget && !isDeleting) setIsDeleteConfirmOpen(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' && !isDeleting) {
+              e.stopPropagation();
+              setIsDeleteConfirmOpen(false);
+            }
+          }}
+        >
+          <div
+            className="s01-modal-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="s04-delete-draft-title"
+          >
+            <div className="s01-modal-head">
+              <div className="s01-modal-title-wrap">
+                <div className="s01-modal-icon is-danger" aria-hidden="true">
+                  <Trash2 size={19} />
+                </div>
+                <div>
+                  <h2 id="s04-delete-draft-title">Hapus Draft Dokumen Ini?</h2>
+                  <p>Naskah Document Studio (S04) dan Data Awal (S03) terkait akan dihapus.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="s01-modal-close"
+                disabled={isDeleting}
+                onClick={() => setIsDeleteConfirmOpen(false)}
+                aria-label="Tutup konfirmasi hapus draft"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="s01-modal-body">
+              <p style={{ margin: 0 }}>
+                Draft <strong>{draft.title}</strong> (<code>{draft.documentId}</code>) akan dihapus permanen
+                dari penyimpanan lokal. Data Master dan jadwal resmi tetap utuh.
+              </p>
+            </div>
+            <div className="s01-modal-foot">
+              <button
+                ref={deleteCancelBtnRef}
+                type="button"
+                className="s02-btn-secondary"
+                disabled={isDeleting}
+                onClick={() => setIsDeleteConfirmOpen(false)}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                className="s01-btn-danger"
+                disabled={isDeleting}
+                onClick={() => {
+                  setIsDeleting(true);
+                  void Promise.resolve(onDeleteDraft()).finally(() => {
+                    setIsDeleting(false);
+                    setIsDeleteConfirmOpen(false);
+                  });
+                }}
+              >
+                <Trash2 size={14} aria-hidden="true" />
+                <span>{isDeleting ? 'Menghapus…' : 'Ya, Hapus Draft'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isResetConfirmOpen && (
+        <div
+          className="s01-modal-scrim"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setIsResetConfirmOpen(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.stopPropagation();
+              setIsResetConfirmOpen(false);
+            }
+          }}
+        >
+          <div
+            className="s01-modal-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="s04-reset-draft-title"
+          >
+            <div className="s01-modal-head">
+              <div className="s01-modal-title-wrap">
+                <div className="s01-modal-icon" aria-hidden="true">
+                  <RotateCcw size={19} />
+                </div>
+                <div>
+                  <h2 id="s04-reset-draft-title">Susun Ulang dari Snapshot S03?</h2>
+                  <p>Mengembalikan naskah ke hasil konversi awal dari snapshot S03.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="s01-modal-close"
+                onClick={() => setIsResetConfirmOpen(false)}
+                aria-label="Tutup konfirmasi susun ulang naskah"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="s01-modal-body">
+              <p style={{ margin: 0 }}>
+                Suntingan manual pada kanvas saat ini akan diganti dengan struktur awal template dari
+                snapshot S03 (<code>{draft.id}</code>). Snapshot sumber tetap beku dan Anda masih dapat
+                memeriksa hasilnya sebelum menekan <strong>Simpan Draft</strong>.
+              </p>
+            </div>
+            <div className="s01-modal-foot">
+              <button
+                ref={resetCancelBtnRef}
+                type="button"
+                className="s02-btn-secondary"
+                onClick={() => setIsResetConfirmOpen(false)}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                className="s02-btn-primary"
+                onClick={() => {
+                  setIsResetConfirmOpen(false);
+                  handleRebuildFromUpdatedS03();
+                }}
+              >
+                <RotateCcw size={14} aria-hidden="true" />
+                <span>Ya, Susun Ulang Naskah</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

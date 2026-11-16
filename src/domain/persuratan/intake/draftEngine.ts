@@ -556,3 +556,201 @@ export function saveStudioDraftToState(
     documentRecord: nextDoc,
   };
 }
+
+export interface DeleteDraftTarget {
+  draftId?: string | null;
+  documentId?: string | null;
+}
+
+export interface DeleteDraftResult {
+  state: AppState;
+  deletedDraftId: string | null;
+  deletedDocumentId: string | null;
+  deletedTitle: string;
+}
+
+/**
+ * Menghapus draft S03/S04 beserta DocumentRecord terkait secara aman.
+ * Menolak penghapusan apabila dokumen bukan berstatus DRAFT atau sudah memiliki nomor resmi.
+ */
+export function deleteDraftFromState(
+  state: AppState,
+  target: DeleteDraftTarget
+): DeleteDraftResult {
+  const rawDraftId = target.draftId?.trim() || null;
+  const rawDocId = target.documentId?.trim() || null;
+  if (!rawDraftId && !rawDocId) {
+    throw new Error('Identitas draft atau dokumen wajib diisi untuk penghapusan.');
+  }
+
+  const existingDrafts = Array.isArray(state.intakeDrafts) ? state.intakeDrafts : [];
+  const existingDocs = Array.isArray(state.documents) ? state.documents : [];
+
+  const matchedDraft = existingDrafts.find(
+    (d) => (rawDraftId && d.id === rawDraftId) || (rawDocId && d.documentId === rawDocId)
+  );
+  const resolvedDraftId = rawDraftId ?? matchedDraft?.id ?? null;
+  const resolvedDocId = rawDocId ?? matchedDraft?.documentId ?? null;
+
+  const matchedDoc = existingDocs.find(
+    (d) => (resolvedDocId && d.id === resolvedDocId) || (resolvedDraftId && d.intakeDraftId === resolvedDraftId)
+  );
+
+  if (!matchedDraft && !matchedDoc) {
+    throw new Error('Draft dokumen tidak ditemukan di penyimpanan lokal.');
+  }
+
+  if (matchedDoc && (matchedDoc.status !== 'DRAFT' || Boolean(matchedDoc.documentNumber))) {
+    throw new Error('Hanya draft berstatus DRAFT yang belum bernomor yang dapat dihapus.');
+  }
+
+  const targetDraftId = matchedDraft?.id ?? resolvedDraftId;
+  const targetDocId = matchedDoc?.id ?? resolvedDocId;
+
+  const nextIntakeDrafts = targetDraftId
+    ? existingDrafts.filter((d) => d.id !== targetDraftId)
+    : existingDrafts;
+  const nextDocuments = targetDocId
+    ? existingDocs.filter((d) => d.id !== targetDocId)
+    : existingDocs;
+
+  return {
+    state: {
+      ...state,
+      intakeDrafts: nextIntakeDrafts,
+      documents: nextDocuments,
+    },
+    deletedDraftId: matchedDraft?.id ?? null,
+    deletedDocumentId: matchedDoc?.id ?? null,
+    deletedTitle: matchedDoc?.title ?? matchedDraft?.title ?? 'Draft Dokumen',
+  };
+}
+
+export interface DuplicateDraftTarget {
+  draftId?: string | null;
+  documentId?: string | null;
+}
+
+export interface DuplicateDraftOptions {
+  timestamp?: string;
+  titleSuffix?: string;
+}
+
+export interface DuplicateDraftResult {
+  state: AppState;
+  draft: DocumentIntakeDraft;
+  documentRecord: DocumentRecord;
+  sourceTitle: string;
+}
+
+/**
+ * Menduplikasi draft S03 (beserta naskah Document Studio S04 jika ada) menjadi draft baru berstatus DRAFT
+ * dengan ID baru, tanpa nomor surat resmi, serta snapshot beku yang terisolasi dari sumbernya.
+ */
+export function duplicateDraftInState(
+  state: AppState,
+  target: DuplicateDraftTarget,
+  options?: DuplicateDraftOptions
+): DuplicateDraftResult {
+  const rawDraftId = target.draftId?.trim() || null;
+  const rawDocId = target.documentId?.trim() || null;
+  if (!rawDraftId && !rawDocId) {
+    throw new Error('Identitas draft atau dokumen wajib diisi untuk duplikasi.');
+  }
+
+  const existingDrafts = Array.isArray(state.intakeDrafts) ? state.intakeDrafts : [];
+  const existingDocs = Array.isArray(state.documents) ? state.documents : [];
+
+  const matchedDraft = existingDrafts.find(
+    (d) => (rawDraftId && d.id === rawDraftId) || (rawDocId && d.documentId === rawDocId)
+  );
+  if (!matchedDraft) {
+    throw new Error('Draft data awal S03 tidak ditemukan untuk diduplikasi.');
+  }
+
+  const matchedDoc = existingDocs.find(
+    (d) => d.id === matchedDraft.documentId || d.intakeDraftId === matchedDraft.id
+  );
+
+  const usedDraftIds = new Set(existingDrafts.map((d) => d.id));
+  const usedDocIds = new Set(existingDocs.map((d) => d.id));
+  let generated = generateStableIntakeIds();
+  while (usedDraftIds.has(generated.draftId) || usedDocIds.has(generated.documentId)) {
+    generated = generateStableIntakeIds();
+  }
+
+  const now = options?.timestamp ?? new Date().toISOString();
+  const suffix = (options?.titleSuffix ?? 'Salinan').trim() || 'Salinan';
+  const sourceTitle = matchedDoc?.title ?? matchedDraft.title;
+  const cleanBase =
+    sourceTitle.replace(new RegExp(`\\s+\\(${suffix}(?:\\s+\\d+)?\\)$`, 'i'), '').trim() ||
+    sourceTitle;
+
+  const existingTitles = new Set([
+    ...existingDrafts.map((d) => d.title),
+    ...existingDocs.map((d) => d.title),
+  ]);
+  let newTitle = `${cleanBase} (${suffix})`;
+  if (existingTitles.has(newTitle)) {
+    let counter = 2;
+    while (existingTitles.has(`${cleanBase} (${suffix} ${counter})`)) {
+      counter += 1;
+    }
+    newTitle = `${cleanBase} (${suffix} ${counter})`;
+  }
+
+  const clonedDraft: DocumentIntakeDraft = {
+    ...deepClone(matchedDraft),
+    id: generated.draftId,
+    documentId: generated.documentId,
+    title: newTitle,
+    s03EditedAfterStudioAt: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  if (clonedDraft.studio) {
+    clonedDraft.studio = {
+      ...clonedDraft.studio,
+      updatedAt: now,
+    };
+  }
+
+  const baseTags = [matchedDraft.templateSnapshot.code, 'Context-S03'];
+  if (clonedDraft.studio?.editorStatus === 'IN_PROGRESS') {
+    baseTags.push('Studio-S04');
+  }
+
+  const newDoc: DocumentRecord = {
+    id: generated.documentId,
+    direction: 'OUTGOING',
+    documentType: matchedDoc?.documentType ?? matchedDraft.templateSnapshot.documentKind,
+    documentNumber: null,
+    title: newTitle,
+    subject: matchedDraft.subject,
+    documentDate: matchedDraft.documentDate,
+    counterpartName: matchedDraft.counterpartName,
+    status: 'DRAFT',
+    relatedTeacherIds: [...matchedDraft.relatedTeacherIds],
+    tags: Array.from(new Set(baseTags)),
+    createdAt: now,
+    updatedAt: now,
+    archivedAt: null,
+    intakeDraftId: clonedDraft.id,
+    templateId: matchedDraft.templateId,
+    templateVersion: matchedDraft.templateVersion,
+    scheduleVersionId: matchedDraft.scheduleVersionId ?? null,
+  };
+
+  return {
+    state: {
+      ...state,
+      intakeDrafts: [clonedDraft, ...existingDrafts],
+      documents: [newDoc, ...existingDocs],
+    },
+    draft: clonedDraft,
+    documentRecord: newDoc,
+    sourceTitle,
+  };
+}
+

@@ -14,6 +14,12 @@ import { CorrespondenceCenter } from './CorrespondenceCenter';
 import { TemplateGallery } from './TemplateGallery';
 import { DocumentIntakeForm } from './DocumentIntakeForm';
 import { DocumentStudio } from './DocumentStudio';
+import {
+  deleteDraftFromState,
+  duplicateDraftInState,
+  type DeleteDraftTarget,
+  type DuplicateDraftTarget,
+} from '../../domain/persuratan/intake/draftEngine';
 import './TemplateGallery.css';
 
 export type PersuratanSubView = 'center' | 'templates' | 'intake' | 'studio';
@@ -210,10 +216,66 @@ export function PersuratanWorkspace({
     setDirtyFlag(false, 'studio');
   };
 
+  const handleDeleteDraft = async (
+    target: DeleteDraftTarget,
+    options?: { redirectToCenter?: boolean }
+  ) => {
+    try {
+      const deleted = deleteDraftFromState(state, target);
+      if (onPersistState) {
+        await onPersistState(deleted.state);
+      } else {
+        onUpdateState?.(() => deleted.state);
+      }
+      if (deleted.deletedDraftId && deleted.deletedDraftId === editingDraftId) {
+        setEditingDraftId(null);
+      }
+      setDirtySource(null);
+      onDirtyChange?.(false, null);
+      if (options?.redirectToCenter) {
+        setSubView('center');
+      }
+      onNotify?.(`Draft "${deleted.deletedTitle}" dihapus dari arsip lokal.`, 'info');
+    } catch (error) {
+      const msg =
+        error instanceof Error ? error.message : 'Gagal menghapus draft dokumen.';
+      onNotify?.(msg, 'error');
+    }
+  };
+
+  const handleDuplicateDraft = async (target: DuplicateDraftTarget) => {
+    try {
+      const duplicated = duplicateDraftInState(state, target);
+      if (onPersistState) {
+        await onPersistState(duplicated.state);
+      } else {
+        onUpdateState?.(() => duplicated.state);
+      }
+      setS01Page(1);
+      onNotify?.(
+        `Draft "${duplicated.sourceTitle}" berhasil diduplikasi sebagai "${duplicated.draft.title}".`,
+        'success'
+      );
+    } catch (error) {
+      const msg =
+        error instanceof Error ? error.message : 'Gagal menduplikasi draft dokumen.';
+      onNotify?.(msg, 'error');
+    }
+  };
+
+  const activeStepIndex =
+    subView === 'center'
+      ? 1
+      : subView === 'templates'
+      ? 2
+      : subView === 'intake'
+      ? 3
+      : 4;
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
-      <nav className="s02-subnav-bar" aria-label="Sub-layar Persuratan dan Arsip">
-        <div className="s02-subnav-tabs" role="tablist" aria-label="Navigasi internal Persuratan">
+    <div className="p5-persuratan-shell">
+      <nav className="s02-subnav-bar" aria-label="Navigasi Modul Persuratan dan Arsip">
+        <div className="s02-subnav-tabs" role="tablist" aria-label="Area kerja Persuratan">
           <button
             type="button"
             role="tab"
@@ -222,7 +284,7 @@ export function PersuratanWorkspace({
             onClick={() => requestSubViewChange('center')}
           >
             <Inbox size={15} aria-hidden="true" />
-            <span>Pusat Persuratan &amp; Arsip (S01)</span>
+            <span>Arsip &amp; Surat</span>
           </button>
           <button
             type="button"
@@ -232,7 +294,8 @@ export function PersuratanWorkspace({
             onClick={() => requestSubViewChange('templates')}
           >
             <FileStack size={15} aria-hidden="true" />
-            <span>Galeri Template (S02 · 30 Katalog)</span>
+            <span>Galeri Template</span>
+            <span className="s02-subnav-count s5-tnum">{allTemplates.length}</span>
           </button>
           {subView === 'intake' && (
             <button
@@ -243,7 +306,7 @@ export function PersuratanWorkspace({
               onClick={() => requestSubViewChange('intake')}
             >
               <FileEdit size={15} aria-hidden="true" />
-              <span>Form Data Awal (S03)</span>
+              <span>Isian Konteks</span>
             </button>
           )}
           {subView === 'studio' && (
@@ -255,13 +318,24 @@ export function PersuratanWorkspace({
               onClick={() => requestSubViewChange('studio')}
             >
               <FileText size={15} aria-hidden="true" />
-              <span>Document Studio (S04)</span>
+              <span>Editor Naskah</span>
             </button>
           )}
         </div>
-        <span className="s02-subnav-note">
-          Satu modul Persuratan &amp; Arsip · Posisi filter S01 tetap tersimpan saat berpindah tab
-        </span>
+
+        <ol className="p5-step-trail s5-tnum" aria-label="Alur pembuatan dokumen">
+          <li className={activeStepIndex > 2 ? 'is-done' : activeStepIndex === 2 ? 'is-current' : ''}>
+            <span>1. Pilih Template</span>
+          </li>
+          <li aria-hidden="true" className="p5-step-sep">/</li>
+          <li className={activeStepIndex > 3 ? 'is-done' : activeStepIndex === 3 ? 'is-current' : ''}>
+            <span>2. Isian Konteks</span>
+          </li>
+          <li aria-hidden="true" className="p5-step-sep">/</li>
+          <li className={activeStepIndex === 4 ? 'is-current' : ''}>
+            <span>3. Editor Naskah</span>
+          </li>
+        </ol>
       </nav>
 
       {subView === 'center' && (
@@ -272,6 +346,8 @@ export function PersuratanWorkspace({
           onOpenTemplateGallery={() => requestSubViewChange('templates')}
           onEditIntakeDraft={handleEditExistingIntakeDraft}
           onOpenStudio={handleOpenStudio}
+          onDuplicateDraft={(target) => handleDuplicateDraft(target)}
+          onDeleteDraft={(target) => handleDeleteDraft(target)}
           controlledFilters={s01Filters}
           onControlledFiltersChange={setS01Filters}
           controlledSortKey={s01SortKey}
@@ -305,6 +381,15 @@ export function PersuratanWorkspace({
           onRetryStorage={onRetryStorage}
           onSaveDraft={handleSaveIntakeDraft}
           onOpenStudio={handleOpenStudio}
+          onDeleteDraft={
+            activeDraft
+              ? () =>
+                  handleDeleteDraft(
+                    { draftId: activeDraft.id, documentId: activeDraft.documentId },
+                    { redirectToCenter: true }
+                  )
+              : undefined
+          }
           onBackToTemplates={() => requestSubViewChange('templates')}
           onOpenCenter={() => requestSubViewChange('center')}
           onDirtyChange={(dirty) => setDirtyFlag(dirty, 'intake')}
@@ -320,6 +405,12 @@ export function PersuratanWorkspace({
           storageError={storageError}
           onRetryStorage={onRetryStorage}
           onPersistStudioState={handlePersistStudioState}
+          onDeleteDraft={() =>
+            handleDeleteDraft(
+              { draftId: activeDraft.id, documentId: activeDraft.documentId },
+              { redirectToCenter: true }
+            )
+          }
           onBackToIntake={() => openIntakeForDraft(activeDraft)}
           onBackToCenter={() => requestSubViewChange('center')}
           onDirtyChange={(dirty) => setDirtyFlag(dirty, 'studio')}

@@ -4,9 +4,7 @@ import {
   CheckCircle2,
   Clock,
   Copy,
-  FilePlus2,
   FileText,
-  FileUp,
   Info,
   Lock,
   RotateCcw,
@@ -347,17 +345,17 @@ export function TemplateGallery({
       {/* Header */}
       <header className="s02-header">
         <div>
-          <div className="s5-page-kicker">GALERI TEMPLATE NASKAH DINAS · S02</div>
+          <div className="s5-page-kicker">Katalog Template Naskah Dinas</div>
           <h1 className="s5-page-title">Galeri Template Persuratan</h1>
           <p className="s5-page-subtitle">
-            Pilih template terstruktur dari 30 katalog bawaan SIGNAL atau kelola salinan khusus madrasah.
+            Pilih template terstruktur dari {allTemplates.length} katalog atau kelola salinan khusus madrasah.
           </p>
         </div>
         <div className="s02-header-actions">
           {onBackToCenter && (
             <button type="button" className="s02-back-btn" onClick={onBackToCenter}>
               <ArrowLeft size={15} aria-hidden="true" />
-              <span>Kembali ke Pusat Persuratan (S01)</span>
+              <span>Kembali ke Arsip &amp; Surat</span>
             </button>
           )}
         </div>
@@ -401,6 +399,16 @@ export function TemplateGallery({
               value={filters.searchQuery}
               onChange={(e) => setFilters((prev) => ({ ...prev, searchQuery: e.target.value }))}
             />
+            {filters.searchQuery && (
+              <button
+                type="button"
+                className="s02-clear-search"
+                aria-label="Kosongkan pencarian template"
+                onClick={() => setFilters((prev) => ({ ...prev, searchQuery: '' }))}
+              >
+                <X size={13} />
+              </button>
+            )}
           </div>
           {hasActiveFilters && (
             <button type="button" className="s02-icon-btn" onClick={resetFilters}>
@@ -469,39 +477,6 @@ export function TemplateGallery({
                 );
               })}
             </div>
-          </div>
-
-          <div className="s02-future-box" aria-label="Fitur tahap lanjutan">
-            <h2 className="s02-cat-heading" style={{ marginBottom: 0 }}>
-              Pembuatan Bebas (Tahap 5+)
-            </h2>
-            <button
-              type="button"
-              className="s02-future-btn"
-              disabled
-              title="Mulai dokumen kosong di Document Studio S04 akan diaktifkan setelah POC Editor Tahap 5."
-            >
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                <FilePlus2 size={13} aria-hidden="true" />
-                <span>Dokumen Kosong</span>
-              </span>
-              <span style={{ fontSize: '10px' }}>Tahap 5–6</span>
-            </button>
-            <button
-              type="button"
-              className="s02-future-btn"
-              disabled
-              title="Impor file .docx beserta batasan konversi akan diuji pada POC Editor Tahap 5."
-            >
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                <FileUp size={13} aria-hidden="true" />
-                <span>Impor DOCX</span>
-              </span>
-              <span style={{ fontSize: '10px' }}>POC Tahap 5</span>
-            </button>
-            <p style={{ margin: 0, fontSize: '11px', color: '#61746e', lineHeight: 1.45 }}>
-              Editor bebas S04 &amp; konversi DOCX diaktifkan setelah uji kompatibilitas pada Tahap 5.
-            </p>
           </div>
         </aside>
 
@@ -578,24 +553,13 @@ export function TemplateGallery({
                       </button>
                     </div>
 
-                    <p className="s02-card-desc">{tpl.description}</p>
-
-                    <div className="s02-card-specs">
-                      <div>
-                        <span className="s02-card-spec-label">Data Otomatis</span>
-                        <span>{tpl.autoDataSources.slice(0, 2).join(' · ')}</span>
-                      </div>
-                      <div>
-                        <span className="s02-card-spec-label">Input Diperlukan</span>
-                        <span>{tpl.requiredInputs.slice(0, 2).join(', ')}</span>
-                      </div>
-                    </div>
+                    <p className="s02-card-desc is-clamped">{tpl.description}</p>
 
                     <div className="s02-card-actions">
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                         <button
                           type="button"
-                          className="s02-icon-btn"
+                          className={`s02-icon-btn ${isSelected ? 'is-previewing' : ''}`}
                           onClick={() => handleSelectPreview(tpl)}
                         >
                           <span>{isSelected ? 'Sedang Dipratinjau' : 'Pratinjau Halaman'}</span>
@@ -609,8 +573,9 @@ export function TemplateGallery({
                           <span>{isMadrasah ? 'Duplikasi' : 'Kloning ke Madrasah'}</span>
                         </button>
                       </div>
-                      <span style={{ fontSize: '11px', color: '#5b716b' }}>
-                        {tpl.initialPageSettings.paperSize.toUpperCase()} · {tpl.initialPageSettings.orientation === 'portrait' ? 'Portrait' : 'Landscape'}
+                      <span className="s02-paper-spec-tag s5-tnum">
+                        {tpl.initialPageSettings.paperSize.toUpperCase()} ·{' '}
+                        {tpl.initialPageSettings.orientation === 'portrait' ? 'Portrait' : 'Landscape'}
                       </span>
                     </div>
                   </article>
@@ -620,7 +585,7 @@ export function TemplateGallery({
           )}
         </div>
 
-        {/* RIGHT COLUMN (372px): Live Authentic Document Preview Panel */}
+        {/* RIGHT COLUMN (392px): Live Authentic Document Preview Panel */}
         <aside className="s02-preview-col" aria-label="Panel Pratinjau Template">
           {previewTemplate ? (
             <>
@@ -637,7 +602,7 @@ export function TemplateGallery({
                     )}
                   </span>
                 </div>
-                <h2 style={{ margin: '4px 0 0', fontSize: '15px', color: '#0B2923', lineHeight: 1.35 }}>
+                <h2 style={{ margin: '4px 0 0', fontSize: '15.5px', color: '#0B2923', lineHeight: 1.35 }}>
                   {previewTemplate.name}
                 </h2>
                 <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#4B635D', lineHeight: 1.45 }}>
@@ -650,8 +615,34 @@ export function TemplateGallery({
                 )}
               </div>
 
-              {/* Paper Layout Preview */}
-              <div className="s02-paper-stage">
+              {/* Primary CTA elevated above the fold */}
+              <div className="s02-preview-cta-row">
+                <button
+                  type="button"
+                  className="s02-btn-primary"
+                  style={{ flex: 1 }}
+                  onClick={() => handleUseTemplate(previewTemplate)}
+                >
+                  <Sparkles size={15} aria-hidden="true" />
+                  <span>Gunakan Template</span>
+                </button>
+                <button
+                  type="button"
+                  className="s02-btn-secondary"
+                  title={
+                    previewTemplate.source === 'SYSTEM'
+                      ? 'Kloning ke Template Madrasah'
+                      : 'Buat Salinan Lanjutan'
+                  }
+                  onClick={(e) => openCloneModal(previewTemplate, e.currentTarget)}
+                >
+                  <Copy size={14} aria-hidden="true" />
+                  <span>{previewTemplate.source === 'SYSTEM' ? 'Kloning' : 'Salin'}</span>
+                </button>
+              </div>
+
+              {/* Compact Paper Layout Preview */}
+              <div className="s02-paper-stage is-scrollable">
                 <div className="s02-paper-sheet" aria-label="Simulasi tata letak halaman dokumen">
                   {previewTemplate.documentHeader.includeKopSurat && (
                     <div className="s02-paper-kop">
@@ -670,25 +661,6 @@ export function TemplateGallery({
                 </div>
               </div>
 
-              {/* Format & Fields Summary */}
-              <div style={{ fontSize: '11.5px', color: '#39524B', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <div>
-                  <strong style={{ color: '#0B2923' }}>Ukuran &amp; Margin Standar:</strong>{' '}
-                  {previewTemplate.initialPageSettings.paperSize === 'f4'
-                    ? 'F4 / Folio (210 × 330 mm)'
-                    : 'A4 (210 × 297 mm)'}{' '}
-                  · {previewTemplate.initialPageSettings.orientation}
-                </div>
-                <div>
-                  <strong style={{ color: '#0B2923' }}>Sumber Data Otomatis:</strong>{' '}
-                  {previewTemplate.autoDataSources.join('; ')}.
-                </div>
-                <div>
-                  <strong style={{ color: '#0B2923' }}>Input Operator di S03:</strong>{' '}
-                  {previewTemplate.requiredInputs.join('; ')}.
-                </div>
-              </div>
-
               {previewTemplate.legalNotice && (
                 <div className="s02-legal-note" role="note">
                   <strong style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', marginBottom: '2px' }}>
@@ -699,43 +671,50 @@ export function TemplateGallery({
                 </div>
               )}
 
-              <div className="s02-preview-actions">
-                <button
-                  type="button"
-                  className="s02-btn-primary"
-                  onClick={() => handleUseTemplate(previewTemplate)}
-                >
-                  <Sparkles size={15} aria-hidden="true" />
-                  <span>Gunakan Template</span>
-                </button>
-                <button
-                  type="button"
-                  className="s02-btn-secondary"
-                  onClick={(e) => openCloneModal(previewTemplate, e.currentTarget)}
-                >
-                  <Copy size={14} aria-hidden="true" />
-                  <span>
-                    {previewTemplate.source === 'SYSTEM'
-                      ? 'Kloning ke Template Madrasah'
-                      : 'Buat Salinan Lanjutan'}
-                  </span>
-                </button>
-                {previewTemplate.source !== 'SYSTEM' && (
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      fontSize: '11.25px',
-                      color: '#526B64',
-                      padding: '4px 2px',
-                    }}
-                  >
-                    <Clock size={12} aria-hidden="true" />
-                    <span>Editor Struktur Template (S07) diaktifkan pada Tahap 10.</span>
+              {/* Progressive Disclosure for Auto Sources & Required S03 Inputs */}
+              <details className="s02-specs-disclosure">
+                <summary className="s5-tnum">
+                  Rincian Data &amp; Format Kertas (
+                  {previewTemplate.initialPageSettings.paperSize === 'f4' ? 'F4' : 'A4'} ·{' '}
+                  {previewTemplate.initialPageSettings.orientation === 'portrait'
+                    ? 'Portrait'
+                    : 'Landscape'}
+                  )
+                </summary>
+                <div className="s02-specs-disclosure-body">
+                  <div>
+                    <strong style={{ color: '#0B2923' }}>Ukuran Kertas:</strong>{' '}
+                    {previewTemplate.initialPageSettings.paperSize === 'f4'
+                      ? 'F4 / Folio (210 × 330 mm)'
+                      : 'A4 (210 × 297 mm)'}{' '}
+                    · {previewTemplate.initialPageSettings.orientation}
                   </div>
-                )}
-              </div>
+                  <div>
+                    <strong style={{ color: '#0B2923' }}>Sumber Data Otomatis:</strong>{' '}
+                    {previewTemplate.autoDataSources.join('; ')}.
+                  </div>
+                  <div>
+                    <strong style={{ color: '#0B2923' }}>Input Operator di S03:</strong>{' '}
+                    {previewTemplate.requiredInputs.join('; ')}.
+                  </div>
+                </div>
+              </details>
+
+              {previewTemplate.source !== 'SYSTEM' && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '11.25px',
+                    color: '#526B64',
+                    padding: '2px',
+                  }}
+                >
+                  <Clock size={12} aria-hidden="true" />
+                  <span>Editor Struktur Template (S07) diaktifkan pada tahap berikutnya.</span>
+                </div>
+              )}
             </>
           ) : (
             <div className="s02-empty-box">

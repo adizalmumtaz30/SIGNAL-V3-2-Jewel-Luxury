@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Copy,
   Eye,
   FileEdit,
   FilePlus2,
@@ -14,11 +15,13 @@ import {
   Filter,
   Inbox,
   Info,
+  MoreHorizontal,
   RefreshCw,
   RotateCcw,
   Search,
   Send,
   SlidersHorizontal,
+  Trash2,
   X,
   XCircle,
 } from 'lucide-react';
@@ -28,9 +31,11 @@ import type {
   CorrespondenceSortKey,
   CorrespondenceTab,
   DocumentDirection,
+  DocumentIntakeDraft,
   DocumentRecord,
   DocumentStatus,
   SortDirection,
+  TipTapJSONNode,
 } from '../../domain/persuratan/types';
 import {
   DEFAULT_CORRESPONDENCE_FILTERS,
@@ -56,6 +61,14 @@ export interface CorrespondenceCenterProps {
   onOpenTemplateGallery?: () => void;
   onEditIntakeDraft?: (draftId: string) => void;
   onOpenStudio?: (draftId: string) => void;
+  onDuplicateDraft?: (target: {
+    draftId?: string | null;
+    documentId?: string | null;
+  }) => Promise<void> | void;
+  onDeleteDraft?: (target: {
+    draftId?: string | null;
+    documentId?: string | null;
+  }) => Promise<void> | void;
   controlledFilters?: CorrespondenceFilterState;
   onControlledFiltersChange?: (next: CorrespondenceFilterState) => void;
   controlledSortKey?: CorrespondenceSortKey;
@@ -100,6 +113,128 @@ function renderStatusIcon(status: DocumentStatus) {
   }
 }
 
+function renderDrawerPreviewNodes(nodes: TipTapJSONNode[]) {
+  return nodes.slice(0, 16).map((node, idx) => {
+    const align =
+      node.attrs?.textAlign && typeof node.attrs.textAlign === 'string'
+        ? (node.attrs.textAlign as 'left' | 'center' | 'right' | 'justify')
+        : undefined;
+    const text = (node.content ?? [])
+      .map((c) => (typeof c.text === 'string' ? c.text : ''))
+      .join('');
+
+    if (node.type === 'heading') {
+      return (
+        <div key={idx} className="s01-mini-heading" style={{ textAlign: align }}>
+          {text}
+        </div>
+      );
+    }
+    if (node.type === 'horizontalRule') {
+      return <hr key={idx} className="s01-mini-hr" />;
+    }
+    if (node.type === 'orderedList' || node.type === 'bulletList') {
+      const ListTag = node.type === 'orderedList' ? 'ol' : 'ul';
+      return (
+        <ListTag key={idx} className="s01-mini-list">
+          {(node.content ?? []).slice(0, 5).map((li, liIdx) => (
+            <li key={liIdx}>
+              {(li.content ?? [])
+                .flatMap((p) => p.content ?? [])
+                .map((t) => t.text ?? '')
+                .join('')}
+            </li>
+          ))}
+        </ListTag>
+      );
+    }
+    if (node.type === 'table') {
+      return (
+        <table key={idx} className="s01-mini-table">
+          <tbody>
+            {(node.content ?? []).slice(0, 5).map((row, rIdx) => (
+              <tr key={rIdx}>
+                {(row.content ?? []).map((cell, cIdx) => {
+                  const CellTag = cell.type === 'tableHeader' ? 'th' : 'td';
+                  const cellText = (cell.content ?? [])
+                    .flatMap((p) => p.content ?? [])
+                    .map((t) => t.text ?? '')
+                    .join(' ');
+                  return <CellTag key={cIdx}>{cellText}</CellTag>;
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
+    if (!text.trim()) return null;
+    return (
+      <p key={idx} className="s01-mini-p" style={{ textAlign: align }}>
+        {text}
+      </p>
+    );
+  });
+}
+
+function renderDrawerTemplateSnapshotPreview(intake: DocumentIntakeDraft) {
+  const header = intake.templateSnapshot?.documentHeader;
+  const blocks = intake.templateSnapshot?.previewBlocks ?? [];
+  return (
+    <div className="s01-drawer-paper-sheet" aria-label="Pratinjau ringkas struktur template S03">
+      {header?.includeKopSurat && (
+        <div className="s01-mini-kop">
+          <strong>KOP SURAT MADRASAH (SNAPSHOT S03)</strong>
+        </div>
+      )}
+      {header?.title && <div className="s01-mini-heading" style={{ textAlign: 'center' }}>{header.title}</div>}
+      {header?.numberPlaceholder && (
+        <p className="s01-mini-p" style={{ textAlign: 'center', color: '#526861' }}>
+          {header.numberPlaceholder}
+        </p>
+      )}
+      {blocks.slice(0, 4).map((blk, idx) => {
+        if (blk.type === 'heading') {
+          return (
+            <div key={idx} className="s01-mini-heading" style={{ textAlign: blk.align ?? 'left' }}>
+              {blk.text}
+            </div>
+          );
+        }
+        if (blk.type === 'paragraph') {
+          return (
+            <p key={idx} className="s01-mini-p">
+              {blk.text}
+            </p>
+          );
+        }
+        if (blk.type === 'meta_grid') {
+          return (
+            <div key={idx} className="s01-mini-meta-grid">
+              {blk.rows.slice(0, 4).map((r, rIdx) => (
+                <div key={rIdx} style={{ display: 'contents' }}>
+                  <span>{r.label}</span>
+                  <span>: {r.value}</span>
+                </div>
+              ))}
+            </div>
+          );
+        }
+        if (blk.type === 'list') {
+          return (
+            <ul key={idx} className="s01-mini-list">
+              {blk.items.slice(0, 3).map((item, iIdx) => (
+                <li key={iIdx}>{item}</li>
+              ))}
+            </ul>
+          );
+        }
+        return null;
+      })}
+    </div>
+  );
+}
+
 export function CorrespondenceCenter({
   state,
   isLoading = false,
@@ -110,6 +245,8 @@ export function CorrespondenceCenter({
   onOpenTemplateGallery,
   onEditIntakeDraft,
   onOpenStudio,
+  onDuplicateDraft,
+  onDeleteDraft,
   controlledFilters,
   onControlledFiltersChange,
   controlledSortKey,
@@ -169,11 +306,15 @@ export function CorrespondenceCenter({
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [inspectedDoc, setInspectedDoc] = useState<DocumentRecord | null>(null);
+  const [openMenuDocId, setOpenMenuDocId] = useState<string | null>(null);
+  const [pendingDeleteDoc, setPendingDeleteDoc] = useState<DocumentRecord | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   const createBtnRef = useRef<HTMLButtonElement | null>(null);
   const lastDetailBtnRef = useRef<HTMLElement | null>(null);
   const createModalCloseRef = useRef<HTMLButtonElement | null>(null);
-  const detailModalCloseRef = useRef<HTMLButtonElement | null>(null);
+  const detailDrawerCloseRef = useRef<HTMLButtonElement | null>(null);
+  const deleteCancelBtnRef = useRef<HTMLButtonElement | null>(null);
 
   const stats = useMemo(() => computeCorrespondenceStats(documents), [documents]);
   const availableYears = useMemo(() => collectAvailableYears(documents), [documents]);
@@ -287,12 +428,32 @@ export function CorrespondenceCenter({
 
   const openDetailModal = (doc: DocumentRecord, triggerEl: HTMLElement | null) => {
     lastDetailBtnRef.current = triggerEl;
+    setOpenMenuDocId(null);
     setInspectedDoc(doc);
   };
 
   const closeDetailModal = () => {
     setInspectedDoc(null);
     setTimeout(() => lastDetailBtnRef.current?.focus(), 0);
+  };
+
+  const handleConfirmDeleteDraft = async () => {
+    if (!pendingDeleteDoc || !onDeleteDraft) return;
+    setIsDeleting(true);
+    try {
+      await Promise.resolve(
+        onDeleteDraft({
+          draftId: pendingDeleteDoc.intakeDraftId ?? null,
+          documentId: pendingDeleteDoc.id,
+        })
+      );
+      if (inspectedDoc?.id === pendingDeleteDoc.id) {
+        setInspectedDoc(null);
+      }
+      setPendingDeleteDoc(null);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   useEffect(() => {
@@ -303,9 +464,47 @@ export function CorrespondenceCenter({
 
   useEffect(() => {
     if (inspectedDoc) {
-      detailModalCloseRef.current?.focus();
+      detailDrawerCloseRef.current?.focus();
     }
   }, [inspectedDoc]);
+
+  useEffect(() => {
+    if (pendingDeleteDoc) {
+      deleteCancelBtnRef.current?.focus();
+    }
+  }, [pendingDeleteDoc]);
+
+  useEffect(() => {
+    if (!openMenuDocId) return;
+    const handlePointerDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && !target.closest('[data-s01-dock-root="true"]')) {
+        setOpenMenuDocId(null);
+      }
+    };
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpenMenuDocId(null);
+      }
+    };
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [openMenuDocId]);
+
+  useEffect(() => {
+    if (!inspectedDoc) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !pendingDeleteDoc) {
+        closeDetailModal();
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [inspectedDoc, pendingDeleteDoc]);
 
   const tabCounts: Record<CorrespondenceTab, number> = {
     ALL: stats.total,
@@ -732,7 +931,7 @@ export function CorrespondenceCenter({
                 </tr>
               </thead>
               <tbody>
-                {pagination.rows.map((doc) => {
+                {pagination.rows.map((doc, rowIdx) => {
                   const relatedTeachers = getRelatedTeacherNames(doc.relatedTeacherIds, state.teachers);
                   const counterpartParts = [doc.counterpartName, ...relatedTeachers].filter(Boolean);
                   const tagText = doc.tags && doc.tags.length > 0 ? doc.tags.join(' · ') : '';
@@ -741,6 +940,8 @@ export function CorrespondenceCenter({
                     linkedIntake?.studio?.editorStatus === 'IN_PROGRESS' &&
                       linkedIntake?.studio?.content
                   );
+                  const openPopoverUpward =
+                    pagination.rows.length >= 3 && rowIdx >= pagination.rows.length - 2;
 
                   return (
                     <tr key={doc.id}>
@@ -788,41 +989,120 @@ export function CorrespondenceCenter({
                           <span>{DOCUMENT_STATUS_LABELS[doc.status]}</span>
                         </span>
                       </td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                          <button
-                            type="button"
-                            className="s01-row-detail-btn"
-                            onClick={(e) => openDetailModal(doc, e.currentTarget)}
-                          >
-                            <Eye size={13} aria-hidden="true" />
-                            <span>Detail</span>
-                          </button>
-                          {linkedIntake && onOpenStudio && (
-                            <button
-                              type="button"
-                              className="s01-row-detail-btn"
-                              style={{
-                                background: '#eef7f3',
-                                borderColor: '#98c4b4',
-                                color: '#0c4333',
-                                fontWeight: 600,
-                              }}
-                              onClick={() => onOpenStudio(linkedIntake.id)}
+                      <td className="s01-actions-cell">
+                        <div className="s01-action-dock-wrap" data-s01-dock-root="true">
+                          <div className="s5-action-dock" role="group" aria-label={`Aksi untuk ${doc.title}`}>
+                            {linkedIntake && onOpenStudio ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="s5-dock-btn primary"
+                                  onClick={() => {
+                                    setOpenMenuDocId(null);
+                                    onOpenStudio(linkedIntake.id);
+                                  }}
+                                >
+                                  <FileText size={13} aria-hidden="true" />
+                                  <span>{hasStudioContent ? 'Lanjutkan S04' : 'Buka S04'}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  className="s5-dock-btn"
+                                  onClick={(e) => openDetailModal(doc, e.currentTarget)}
+                                >
+                                  <Eye size={13} aria-hidden="true" />
+                                  <span>Detail</span>
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                className="s5-dock-btn primary"
+                                onClick={(e) => openDetailModal(doc, e.currentTarget)}
+                              >
+                                <Eye size={13} aria-hidden="true" />
+                                <span>Detail</span>
+                              </button>
+                            )}
+
+                            {((linkedIntake && (onEditIntakeDraft || onDuplicateDraft)) ||
+                              (doc.status === 'DRAFT' && !doc.documentNumber && onDeleteDraft)) && (
+                              <button
+                                type="button"
+                                className="s5-dock-btn kebab"
+                                aria-label={`Aksi lainnya untuk ${doc.title}`}
+                                aria-haspopup="menu"
+                                aria-expanded={openMenuDocId === doc.id}
+                                onClick={() =>
+                                  setOpenMenuDocId((prev) => (prev === doc.id ? null : doc.id))
+                                }
+                              >
+                                <MoreHorizontal size={14} aria-hidden="true" />
+                              </button>
+                            )}
+                          </div>
+
+                          {openMenuDocId === doc.id && (
+                            <div
+                              className={`s5-popover-menu ${openPopoverUpward ? 'is-upward' : ''}`}
+                              role="menu"
+                              aria-label={`Menu aksi ${doc.title}`}
                             >
-                              <FileText size={13} aria-hidden="true" />
-                              <span>{hasStudioContent ? 'Lanjutkan S04' : 'Buka S04'}</span>
-                            </button>
-                          )}
-                          {linkedIntake && onEditIntakeDraft && (
-                            <button
-                              type="button"
-                              className="s01-row-detail-btn"
-                              onClick={() => onEditIntakeDraft(linkedIntake.id)}
-                            >
-                              <FileEdit size={13} aria-hidden="true" />
-                              <span>Edit S03</span>
-                            </button>
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className="s5-menu-item"
+                                onClick={(e) => openDetailModal(doc, e.currentTarget)}
+                              >
+                                <Eye size={13} aria-hidden="true" />
+                                <span>Pratinjau &amp; Detail</span>
+                              </button>
+                              {linkedIntake && onEditIntakeDraft && (
+                                <button
+                                  type="button"
+                                  role="menuitem"
+                                  className="s5-menu-item"
+                                  onClick={() => {
+                                    setOpenMenuDocId(null);
+                                    onEditIntakeDraft(linkedIntake.id);
+                                  }}
+                                >
+                                  <FileEdit size={13} aria-hidden="true" />
+                                  <span>Edit S03</span>
+                                </button>
+                              )}
+                              {linkedIntake && onDuplicateDraft && (
+                                <button
+                                  type="button"
+                                  role="menuitem"
+                                  className="s5-menu-item"
+                                  onClick={() => {
+                                    setOpenMenuDocId(null);
+                                    void onDuplicateDraft({
+                                      draftId: linkedIntake.id,
+                                      documentId: doc.id,
+                                    });
+                                  }}
+                                >
+                                  <Copy size={13} aria-hidden="true" />
+                                  <span>Duplikasi Draft</span>
+                                </button>
+                              )}
+                              {doc.status === 'DRAFT' && !doc.documentNumber && onDeleteDraft && (
+                                <button
+                                  type="button"
+                                  role="menuitem"
+                                  className="s5-menu-item danger"
+                                  onClick={() => {
+                                    setOpenMenuDocId(null);
+                                    setPendingDeleteDoc(doc);
+                                  }}
+                                >
+                                  <Trash2 size={13} aria-hidden="true" />
+                                  <span>Hapus Draft</span>
+                                </button>
+                              )}
+                            </div>
                           )}
                         </div>
                       </td>
@@ -955,18 +1235,222 @@ export function CorrespondenceCenter({
         </div>
       )}
 
-      {/* Modal: Ringkasan Metadata Dokumen (Read-only Preview, Bukan S06 Penuh) */}
-      {inspectedDoc && (
+      {/* Slide-Over Inspector Drawer: Ringkasan Metadata & Pratinjau Mini Dokumen */}
+      {inspectedDoc && (() => {
+        const inspectedLinkedIntake = inspectedDoc.intakeDraftId
+          ? intakeDraftMap.get(inspectedDoc.intakeDraftId)
+          : undefined;
+        const inspectedHasStudio = Boolean(
+          inspectedLinkedIntake?.studio?.editorStatus === 'IN_PROGRESS' &&
+            inspectedLinkedIntake?.studio?.content
+        );
+        const inspectedCanDelete =
+          inspectedDoc.status === 'DRAFT' && !inspectedDoc.documentNumber && Boolean(onDeleteDraft);
+
+        return (
+          <>
+            <div
+              className="s5-drawer-overlay"
+              aria-hidden="true"
+              onClick={closeDetailModal}
+            />
+            <aside
+              className="s5-drawer-panel s01-inspector-drawer"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="s01-detail-drawer-title"
+            >
+              <div className="s5-drawer-header">
+                <div className="s01-modal-title-wrap">
+                  <div className="s01-modal-icon" aria-hidden="true">
+                    <FileText size={18} />
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div className="s01-drawer-kicker">
+                      INSPEKTOR DOKUMEN · {inspectedDoc.id}
+                    </div>
+                    <h2 id="s01-detail-drawer-title" className="s01-drawer-title">
+                      {inspectedDoc.title}
+                    </h2>
+                  </div>
+                </div>
+                <button
+                  ref={detailDrawerCloseRef}
+                  type="button"
+                  className="s01-modal-close"
+                  onClick={closeDetailModal}
+                  aria-label="Tutup panel detail dokumen"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="s5-drawer-body s01-drawer-body-stack">
+                <div className="s01-drawer-status-bar">
+                  <span className={`s01-status-label status-${inspectedDoc.status}`}>
+                    {renderStatusIcon(inspectedDoc.status)}
+                    <span>{DOCUMENT_STATUS_LABELS[inspectedDoc.status]}</span>
+                  </span>
+                  <span className={`s01-doc-number ${inspectedDoc.documentNumber ? '' : 'is-unnumbered'}`}>
+                    {inspectedDoc.documentNumber ?? 'Belum Bernomor'}
+                  </span>
+                </div>
+
+                {inspectedLinkedIntake && (
+                  <div className="s01-drawer-preview-box">
+                    <div className="s01-drawer-preview-label">
+                      {inspectedHasStudio
+                        ? 'Pratinjau Mini Naskah S04 (Baca-Saja)'
+                        : 'Pratinjau Mini Snapshot Template S03 (Baca-Saja)'}
+                    </div>
+                    <div className="s01-drawer-paper-stage">
+                      {inspectedHasStudio && inspectedLinkedIntake.studio?.content ? (
+                        <div className="s01-drawer-paper-sheet" aria-label="Pratinjau mini isi naskah S04">
+                          {renderDrawerPreviewNodes(inspectedLinkedIntake.studio.content.content)}
+                        </div>
+                      ) : (
+                        renderDrawerTemplateSnapshotPreview(inspectedLinkedIntake)
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <dl className="s01-meta-grid">
+                  <div className="s01-meta-item">
+                    <dt>ID Dokumen</dt>
+                    <dd style={{ fontFamily: 'var(--font-mono)' }}>{inspectedDoc.id}</dd>
+                  </div>
+                  <div className="s01-meta-item">
+                    <dt>Nomor Surat</dt>
+                    <dd>{inspectedDoc.documentNumber ?? 'Belum Bernomor'}</dd>
+                  </div>
+                  <div className="s01-meta-item" style={{ gridColumn: '1 / -1' }}>
+                    <dt>Perihal</dt>
+                    <dd>{inspectedDoc.subject || '—'}</dd>
+                  </div>
+                  <div className="s01-meta-item">
+                    <dt>Jenis Dokumen</dt>
+                    <dd>{DOCUMENT_KIND_LABELS[inspectedDoc.documentType]}</dd>
+                  </div>
+                  <div className="s01-meta-item">
+                    <dt>Arah Korespondensi</dt>
+                    <dd>{inspectedDoc.direction === 'INCOMING' ? 'Surat Masuk' : 'Surat Keluar'}</dd>
+                  </div>
+                  <div className="s01-meta-item">
+                    <dt>Tanggal Dokumen</dt>
+                    <dd className="s5-tnum">{formatIndonesianDate(inspectedDoc.documentDate)}</dd>
+                  </div>
+                  <div className="s01-meta-item">
+                    <dt>Tag Klasifikasi</dt>
+                    <dd>{inspectedDoc.tags && inspectedDoc.tags.length > 0 ? inspectedDoc.tags.join(', ') : '—'}</dd>
+                  </div>
+                  <div className="s01-meta-item" style={{ gridColumn: '1 / -1' }}>
+                    <dt>Pihak Terkait / Pendidik</dt>
+                    <dd>
+                      {[
+                        inspectedDoc.counterpartName,
+                        ...getRelatedTeacherNames(inspectedDoc.relatedTeacherIds, state.teachers),
+                      ]
+                        .filter(Boolean)
+                        .join(' · ') || '—'}
+                    </dd>
+                  </div>
+                </dl>
+
+                <div className="s01-notice-box">
+                  {inspectedDoc.intakeDraftId ? (
+                    <>
+                      Draft data awal S03 (<code>{inspectedDoc.intakeDraftId}</code>) tersimpan lokal beserta snapshot sumber. Lanjutkan penyuntingan isi di Document Studio (S04) sebelum finalisasi penomoran S05 dan arsip penuh S06.
+                    </>
+                  ) : (
+                    <>Detail arsip penuh, riwayat versi resmi, dan lampiran (S06) menyusul pada tahap berikutnya.</>
+                  )}
+                </div>
+              </div>
+
+              <div className="s5-drawer-footer s01-drawer-footer">
+                {inspectedCanDelete && (
+                  <button
+                    type="button"
+                    className="s01-btn-danger-outline"
+                    style={{ marginRight: 'auto' }}
+                    onClick={() => setPendingDeleteDoc(inspectedDoc)}
+                  >
+                    <Trash2 size={14} aria-hidden="true" />
+                    <span>Hapus Draft</span>
+                  </button>
+                )}
+                {inspectedLinkedIntake && onDuplicateDraft && (
+                  <button
+                    type="button"
+                    className="s01-btn-secondary"
+                    onClick={() => {
+                      const targetDraftId = inspectedLinkedIntake.id;
+                      const targetDocId = inspectedDoc.id;
+                      closeDetailModal();
+                      void onDuplicateDraft({
+                        draftId: targetDraftId,
+                        documentId: targetDocId,
+                      });
+                    }}
+                  >
+                    <Copy size={14} aria-hidden="true" />
+                    <span>Duplikasi Draft</span>
+                  </button>
+                )}
+                {inspectedLinkedIntake && onEditIntakeDraft && (
+                  <button
+                    type="button"
+                    className="s01-btn-secondary"
+                    onClick={() => {
+                      const targetId = inspectedLinkedIntake.id;
+                      closeDetailModal();
+                      onEditIntakeDraft(targetId);
+                    }}
+                  >
+                    <FileEdit size={14} aria-hidden="true" />
+                    <span>Edit Data Awal (S03)</span>
+                  </button>
+                )}
+                {inspectedLinkedIntake && onOpenStudio && (
+                  <button
+                    type="button"
+                    className="s01-cta-btn"
+                    onClick={() => {
+                      const targetId = inspectedLinkedIntake.id;
+                      closeDetailModal();
+                      onOpenStudio(targetId);
+                    }}
+                  >
+                    <FileText size={14} aria-hidden="true" />
+                    <span>
+                      {inspectedHasStudio
+                        ? 'Lanjutkan Document Studio (S04)'
+                        : 'Buka Document Studio (S04)'}
+                    </span>
+                  </button>
+                )}
+                <button type="button" className="s01-btn-secondary" onClick={closeDetailModal}>
+                  Tutup
+                </button>
+              </div>
+            </aside>
+          </>
+        );
+      })()}
+
+      {/* Accessible Modal: Konfirmasi Hapus Draft */}
+      {pendingDeleteDoc && (
         <div
           className="s01-modal-scrim"
           role="presentation"
           onMouseDown={(e) => {
-            if (e.target === e.currentTarget) closeDetailModal();
+            if (e.target === e.currentTarget && !isDeleting) setPendingDeleteDoc(null);
           }}
           onKeyDown={(e) => {
-            if (e.key === 'Escape') {
+            if (e.key === 'Escape' && !isDeleting) {
               e.stopPropagation();
-              closeDetailModal();
+              setPendingDeleteDoc(null);
             }
           }}
         >
@@ -974,123 +1458,53 @@ export function CorrespondenceCenter({
             className="s01-modal-panel"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="s01-detail-modal-title"
+            aria-labelledby="s01-delete-draft-title"
           >
             <div className="s01-modal-head">
               <div className="s01-modal-title-wrap">
-                <div className="s01-modal-icon" aria-hidden="true">
-                  <FileText size={20} />
+                <div className="s01-modal-icon is-danger" aria-hidden="true">
+                  <Trash2 size={19} />
                 </div>
                 <div>
-                  <h2 id="s01-detail-modal-title">Ringkasan Metadata Dokumen</h2>
-                  <p>Tampilan baca-saja untuk verifikasi metadata S01.</p>
+                  <h2 id="s01-delete-draft-title">Hapus Draft Dokumen?</h2>
+                  <p>Tindakan ini menghapus draft lokal yang belum diterbitkan.</p>
                 </div>
               </div>
               <button
-                ref={detailModalCloseRef}
                 type="button"
                 className="s01-modal-close"
-                onClick={closeDetailModal}
-                aria-label="Tutup ringkasan dokumen"
+                disabled={isDeleting}
+                onClick={() => setPendingDeleteDoc(null)}
+                aria-label="Tutup konfirmasi hapus draft"
               >
                 <X size={16} />
               </button>
             </div>
             <div className="s01-modal-body">
-              <dl className="s01-meta-grid">
-                <div className="s01-meta-item">
-                  <dt>ID Dokumen</dt>
-                  <dd style={{ fontFamily: 'var(--font-mono)' }}>{inspectedDoc.id}</dd>
-                </div>
-                <div className="s01-meta-item">
-                  <dt>Nomor Surat</dt>
-                  <dd>{inspectedDoc.documentNumber ?? 'Belum Bernomor'}</dd>
-                </div>
-                <div className="s01-meta-item" style={{ gridColumn: '1 / -1' }}>
-                  <dt>Nama Dokumen</dt>
-                  <dd>{inspectedDoc.title}</dd>
-                </div>
-                <div className="s01-meta-item" style={{ gridColumn: '1 / -1' }}>
-                  <dt>Perihal</dt>
-                  <dd>{inspectedDoc.subject || '—'}</dd>
-                </div>
-                <div className="s01-meta-item">
-                  <dt>Jenis Dokumen</dt>
-                  <dd>{DOCUMENT_KIND_LABELS[inspectedDoc.documentType]}</dd>
-                </div>
-                <div className="s01-meta-item">
-                  <dt>Arah Korespondensi</dt>
-                  <dd>{inspectedDoc.direction === 'INCOMING' ? 'Surat Masuk' : 'Surat Keluar'}</dd>
-                </div>
-                <div className="s01-meta-item">
-                  <dt>Tanggal Dokumen</dt>
-                  <dd className="s5-tnum">{formatIndonesianDate(inspectedDoc.documentDate)}</dd>
-                </div>
-                <div className="s01-meta-item">
-                  <dt>Status</dt>
-                  <dd>{DOCUMENT_STATUS_LABELS[inspectedDoc.status]}</dd>
-                </div>
-                <div className="s01-meta-item" style={{ gridColumn: '1 / -1' }}>
-                  <dt>Pihak Terkait / Pendidik</dt>
-                  <dd>
-                    {[
-                      inspectedDoc.counterpartName,
-                      ...getRelatedTeacherNames(inspectedDoc.relatedTeacherIds, state.teachers),
-                    ]
-                      .filter(Boolean)
-                      .join(' · ') || '—'}
-                  </dd>
-                </div>
-                <div className="s01-meta-item" style={{ gridColumn: '1 / -1' }}>
-                  <dt>Tag Klasifikasi</dt>
-                  <dd>{inspectedDoc.tags && inspectedDoc.tags.length > 0 ? inspectedDoc.tags.join(', ') : '—'}</dd>
-                </div>
-              </dl>
-              <div className="s01-notice-box">
-                {inspectedDoc.intakeDraftId ? (
-                  <>
-                    Draft data awal S03 (<code>{inspectedDoc.intakeDraftId}</code>) sudah tersimpan lokal beserta snapshot data sumber. Anda dapat menyunting naskah di Document Studio (S04), sementara finalisasi penomoran S05 dan arsip penuh S06 menyusul pada Tahap 8–10.
-                  </>
-                ) : (
-                  <>Layar Detail Dokumen, Riwayat Versi, dan Lampiran Arsip penuh (S06) akan tersedia pada Tahap 10.</>
-                )}
-              </div>
+              <p style={{ margin: 0 }}>
+                Draft <strong>{pendingDeleteDoc.title}</strong> (<code>{pendingDeleteDoc.id}</code>) beserta
+                isian Data Awal (S03) dan naskah Document Studio (S04) terkait akan dihapus permanen dari
+                penyimpanan lokal. Data Master dan jadwal resmi tidak terpengaruh.
+              </p>
             </div>
-            <div className="s01-modal-foot" style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-              {inspectedDoc.intakeDraftId && intakeDraftMap.has(inspectedDoc.intakeDraftId) && onOpenStudio && (
-                <button
-                  type="button"
-                  className="s01-cta-btn"
-                  onClick={() => {
-                    const targetId = inspectedDoc.intakeDraftId!;
-                    closeDetailModal();
-                    onOpenStudio(targetId);
-                  }}
-                >
-                  <FileText size={14} aria-hidden="true" />
-                  <span>
-                    {intakeDraftMap.get(inspectedDoc.intakeDraftId)?.studio?.editorStatus === 'IN_PROGRESS'
-                      ? 'Lanjutkan Document Studio (S04)'
-                      : 'Buka Document Studio (S04)'}
-                  </span>
-                </button>
-              )}
-              {inspectedDoc.intakeDraftId && intakeDraftMap.has(inspectedDoc.intakeDraftId) && onEditIntakeDraft && (
-                <button
-                  type="button"
-                  className="s01-btn-secondary"
-                  onClick={() => {
-                    const targetId = inspectedDoc.intakeDraftId!;
-                    closeDetailModal();
-                    onEditIntakeDraft(targetId);
-                  }}
-                >
-                  <FileEdit size={14} aria-hidden="true" />
-                  <span>Edit Data Awal (S03)</span>
-                </button>
-              )}
-              <button type="button" className="s01-btn-secondary" onClick={closeDetailModal}>
-                Tutup
+            <div className="s01-modal-foot">
+              <button
+                ref={deleteCancelBtnRef}
+                type="button"
+                className="s01-btn-secondary"
+                disabled={isDeleting}
+                onClick={() => setPendingDeleteDoc(null)}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                className="s01-btn-danger"
+                disabled={isDeleting}
+                onClick={() => void handleConfirmDeleteDraft()}
+              >
+                <Trash2 size={14} aria-hidden="true" />
+                <span>{isDeleting ? 'Menghapus…' : 'Ya, Hapus Draft'}</span>
               </button>
             </div>
           </div>

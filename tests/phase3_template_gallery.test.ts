@@ -283,15 +283,18 @@ describe('Tahap 3A — Galeri Template S02 & Katalog 30 Template', () => {
     expect(galleryHtml).toContain('Template Madrasah');
     expect(galleryHtml).toContain('Bawaan SIGNAL');
     expect(galleryHtml).toContain('Gunakan Template');
-    expect(galleryHtml).toContain('Dokumen Kosong');
-    expect(galleryHtml).toContain('Impor DOCX');
+    expect(galleryHtml).not.toContain('s02-future-btn');
+    expect(galleryHtml).not.toContain('Impor DOCX');
+    expect(galleryHtml).not.toContain('Pembuatan Bebas');
     expect(galleryHtml).not.toContain('Edit Template');
 
     const workspaceHtml = renderToStaticMarkup(
       createElement(PersuratanWorkspace, { state, initialView: 'templates' })
     );
-    expect(workspaceHtml).toContain('Pusat Persuratan &amp; Arsip (S01)');
-    expect(workspaceHtml).toContain('Galeri Template (S02 · 30 Katalog)');
+    expect(workspaceHtml).toContain('Arsip &amp; Surat');
+    expect(workspaceHtml).toContain('Galeri Template');
+    expect(workspaceHtml).not.toContain('(S01)');
+    expect(workspaceHtml).not.toContain('(S02 ·');
 
     // Pastikan createEmptyState documents tetap kosong ([])
     expect(state.documents).toEqual([]);

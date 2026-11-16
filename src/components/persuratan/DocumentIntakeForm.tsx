@@ -1,9 +1,8 @@
-import { useMemo, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import {
   AlertCircle,
   AlertTriangle,
   ArrowLeft,
-  Building2,
   Calendar,
   CheckCircle2,
   Database,
@@ -13,6 +12,7 @@ import {
   Save,
   Search,
   ShieldCheck,
+  Trash2,
   Users,
   X,
 } from 'lucide-react';
@@ -50,6 +50,7 @@ export interface DocumentIntakeFormProps {
     isUpdate: boolean
   ) => void;
   onOpenStudio?: (draftId: string) => void;
+  onDeleteDraft?: () => Promise<void> | void;
   onBackToTemplates: () => void;
   onOpenCenter: () => void;
   onDirtyChange?: (dirty: boolean) => void;
@@ -64,6 +65,7 @@ export function DocumentIntakeForm({
   onRetryStorage,
   onSaveDraft,
   onOpenStudio,
+  onDeleteDraft,
   onBackToTemplates,
   onOpenCenter,
   onDirtyChange,
@@ -99,8 +101,17 @@ export function DocumentIntakeForm({
         }
       : null
   );
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   const errorSummaryRef = useRef<HTMLDivElement | null>(null);
+  const deleteCancelBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (isDeleteConfirmOpen) {
+      deleteCancelBtnRef.current?.focus();
+    }
+  }, [isDeleteConfirmOpen]);
 
   const activeTeachers = useMemo(
     () => state.teachers.filter((t) => t.isActive),
@@ -838,65 +849,34 @@ export function DocumentIntakeForm({
   const isMadrasahTpl = template.source === 'MADRASAH' || template.source === 'USER';
 
   return (
-    <section className="s03-page" aria-label="Form Data Awal Dokumen S03">
-      {/* Header (48px target) */}
+    <section className="s03-page" aria-label="Isian Konteks Dokumen">
+      {/* Compact Atelier Header (replaces stacked breadcrumb + stepper bands) */}
       <header className="s03-header">
-        <div>
-          <nav className="s03-breadcrumb" aria-label="Jejak navigasi Persuratan">
-            <button type="button" className="s03-breadcrumb-btn" onClick={onOpenCenter}>
-              Persuratan &amp; Arsip
-            </button>
-            <span aria-hidden="true">/</span>
-            <button type="button" className="s03-breadcrumb-btn" onClick={onBackToTemplates}>
-              Galeri Template
-            </button>
-            <span aria-hidden="true">/</span>
-            <span>Form Data Awal (S03)</span>
-          </nav>
-
-          <div className="s03-title-row">
-            <h1 className="s03-title">{template.name}</h1>
+        <div className="s03-header-main">
+          <div className="s03-meta-line s5-tnum">
+            <span className="s03-meta-code">{template.code}</span>
+            <span aria-hidden="true">·</span>
+            <span>v{template.version}</span>
+            <span aria-hidden="true">·</span>
+            <span>{getCategoryLabel(template.category)}</span>
+            <span aria-hidden="true">·</span>
+            <span className={isMadrasahTpl ? 's03-meta-madrasah' : 's03-meta-system'}>
+              {isMadrasahTpl ? 'Template Madrasah' : 'Bawaan SIGNAL (Baca-Saja)'}
+            </span>
           </div>
+          <h1 className="s03-title">{template.name}</h1>
           <p className="s03-subtitle">
-            Lengkapi hanya data kontekstual yang belum diketahui sistem sebelum naskah masuk ke Document Studio.
+            Lengkapi data kontekstual yang diperlukan sebelum masuk ke Editor Naskah.
           </p>
         </div>
 
-        <div className="s03-template-badges">
-          <span className="s03-badge" style={{ fontFamily: 'var(--font-mono)' }}>
-            {template.code} · v{template.version}
-          </span>
-          <span className="s03-badge">{getCategoryLabel(template.category)}</span>
-          <span className={`s03-badge ${isMadrasahTpl ? '' : 'is-gold'}`}>
-            {isMadrasahTpl ? 'Template Madrasah' : 'Bawaan SIGNAL (Baca-Saja)'}
-          </span>
+        <div className="s03-header-actions">
+          <button type="button" className="s02-back-btn" onClick={onBackToTemplates}>
+            <ArrowLeft size={14} aria-hidden="true" />
+            <span>Ganti Template</span>
+          </button>
         </div>
       </header>
-
-      {/* Step Indicator (44px target) */}
-      <div className="s03-stepper" aria-label="Tahapan penyiapan dokumen">
-        <ol className="s03-step-list">
-          <li className="s03-step-item is-done">
-            <span className="s03-step-num">1</span>
-            <span>Pusat Persuratan (S01)</span>
-          </li>
-          <span aria-hidden="true" style={{ color: '#9ab0a8' }}>→</span>
-          <li className="s03-step-item is-done">
-            <span className="s03-step-num">2</span>
-            <span>Galeri Template (S02)</span>
-          </li>
-          <span aria-hidden="true" style={{ color: '#9ab0a8' }}>→</span>
-          <li className="s03-step-item is-active" aria-current="step">
-            <span className="s03-step-num">3</span>
-            <span>Form Data Awal (S03)</span>
-          </li>
-          <span aria-hidden="true" style={{ color: '#9ab0a8' }}>→</span>
-          <li className="s03-step-item is-future">
-            <span className="s03-step-num">4</span>
-            <span>Document Studio (S04 · Tahap 6)</span>
-          </li>
-        </ol>
-      </div>
 
       {/* Storage Error Alert */}
       {storageError && (
@@ -1081,20 +1061,70 @@ export function DocumentIntakeForm({
             )}
           </div>
 
-          {/* RIGHT: Panel Sumber Data (324px) */}
+          {/* RIGHT: Panel Sumber Data & Konteks (2 Compact Atelier Cards) */}
           <aside className="s03-panel-col" aria-label="Panel Sumber Data Sistem">
             <div className="s03-side-card">
-              <h2 className="s03-side-heading">
-                <Database size={14} aria-hidden="true" />
-                <span>Sumber Data Sistem</span>
-              </h2>
+              <div className="s03-side-head-row">
+                <h2 className="s03-side-heading">
+                  <Database size={14} aria-hidden="true" />
+                  <span>Sumber Data Sistem</span>
+                </h2>
+                {autoData.isDemoData && (
+                  <span className="s03-status-pill is-demo" role="note">
+                    <Info size={12} aria-hidden="true" />
+                    <span>Dataset Demo Aktif</span>
+                  </span>
+                )}
+              </div>
 
-              {autoData.isDemoData && (
-                <div className="s03-status-pill is-demo" role="note">
-                  <Info size={13} aria-hidden="true" />
-                  <span>Dataset Demo Aktif</span>
+              {/* Progress Kelengkapan Isian Wajib */}
+              <div className="s03-completeness-box">
+                <div className="s03-completeness-top s5-tnum">
+                  <span>
+                    <strong>
+                      {completenessStats.completedRequired}/{completenessStats.totalRequired}
+                    </strong>{' '}
+                    isian wajib lengkap
+                  </span>
+                  <span
+                    className={`s03-inline-status ${
+                      completenessStats.allRequiredValid ? 'is-ready' : 'is-pending'
+                    }`}
+                  >
+                    {completenessStats.allRequiredValid ? (
+                      <CheckCircle2 size={13} aria-hidden="true" />
+                    ) : (
+                      <Calendar size={13} aria-hidden="true" />
+                    )}
+                    <span>
+                      {completenessStats.allRequiredValid ? 'Siap Disimpan' : 'Lengkapi Isian'}
+                    </span>
+                  </span>
                 </div>
-              )}
+                <div
+                  className="s03-progress-track"
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={Math.max(1, completenessStats.totalRequired)}
+                  aria-valuenow={completenessStats.completedRequired}
+                  aria-label="Kelengkapan isian wajib form data awal"
+                >
+                  <div
+                    className="s03-progress-fill"
+                    style={{
+                      width: `${
+                        completenessStats.totalRequired === 0
+                          ? 100
+                          : Math.round(
+                              (completenessStats.completedRequired /
+                                completenessStats.totalRequired) *
+                                100
+                            )
+                      }%`,
+                    }}
+                  />
+                </div>
+              </div>
 
               <dl className="s03-dl">
                 <div className="s03-dl-item">
@@ -1139,19 +1169,24 @@ export function DocumentIntakeForm({
                 </div>
 
                 <div className="s03-dl-item">
-                  <dt>Status Sumber Otomatis</dt>
-                  <dd>
-                    <span className={`s03-status-pill ${autoData.kop.isComplete ? 'is-ok' : 'is-missing'}`}>
-                      {autoData.kop.isComplete ? (
-                        <ShieldCheck size={13} aria-hidden="true" />
-                      ) : (
-                        <AlertTriangle size={13} aria-hidden="true" />
-                      )}
-                      <span>
-                        {autoData.kop.isComplete
-                          ? 'Identitas & Penandatangan Siap'
-                          : 'Perlu Dilengkapi di Pengaturan'}
-                      </span>
+                  <dt>Kesiapan Pengaturan Kop</dt>
+                  <dd
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      color: autoData.kop.isComplete ? '#1b5e43' : '#8f2d24',
+                    }}
+                  >
+                    {autoData.kop.isComplete ? (
+                      <ShieldCheck size={14} aria-hidden="true" />
+                    ) : (
+                      <AlertTriangle size={14} aria-hidden="true" />
+                    )}
+                    <span>
+                      {autoData.kop.isComplete
+                        ? 'Identitas & Penandatangan Siap'
+                        : 'Perlu Dilengkapi di Pengaturan'}
                     </span>
                   </dd>
                 </div>
@@ -1161,7 +1196,7 @@ export function DocumentIntakeForm({
             <div className="s03-side-card">
               <h2 className="s03-side-heading">
                 <Users size={14} aria-hidden="true" />
-                <span>Ringkasan Peserta &amp; Konteks</span>
+                <span>Konteks &amp; Peserta Terpilih</span>
               </h2>
 
               <dl className="s03-dl">
@@ -1200,7 +1235,7 @@ export function DocumentIntakeForm({
                 </div>
 
                 <div className="s03-dl-item">
-                  <dt>Catatan Penugasan Aktif (Konteks)</dt>
+                  <dt>Catatan Penugasan Aktif</dt>
                   <dd className="s5-tnum" style={{ fontWeight: 500 }}>
                     {autoData.activeAssignmentsCount} catatan penugasan aktif di workspace
                   </dd>
@@ -1216,41 +1251,9 @@ export function DocumentIntakeForm({
                   </div>
                 )}
               </dl>
-            </div>
 
-            <div className="s03-side-card">
-              <h2 className="s03-side-heading">
-                <Building2 size={14} aria-hidden="true" />
-                <span>Status Kelengkapan S03</span>
-              </h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12.25px' }}>
-                <div className="s5-tnum">
-                  <strong>
-                    {completenessStats.completedRequired} dari {completenessStats.totalRequired}
-                  </strong>{' '}
-                  kelompok data wajib terpenuhi
-                </div>
-                <div>
-                  <span
-                    className={`s03-status-pill ${
-                      completenessStats.allRequiredValid ? 'is-ok' : 'is-demo'
-                    }`}
-                  >
-                    {completenessStats.allRequiredValid ? (
-                      <CheckCircle2 size={13} aria-hidden="true" />
-                    ) : (
-                      <Calendar size={13} aria-hidden="true" />
-                    )}
-                    <span>
-                      {completenessStats.allRequiredValid
-                        ? 'Siap Disimpan sebagai Draft'
-                        : 'Masih Ada Isian Wajib'}
-                    </span>
-                  </span>
-                </div>
-                <div style={{ fontSize: '11.5px', color: '#546b65', lineHeight: 1.45 }}>
-                  Saat disimpan, nilai sumber disalin menjadi snapshot tetap agar konsisten dengan arsip surat meski Data Master berubah di kemudian hari.
-                </div>
+              <div className="s03-snapshot-note">
+                Nilai sumber dibekukan menjadi snapshot saat disimpan agar isi surat tetap konsisten meski Data Master berubah.
               </div>
             </div>
           </aside>
@@ -1285,6 +1288,16 @@ export function DocumentIntakeForm({
           </div>
 
           <div className="s03-action-buttons">
+            {activeDraftId && onDeleteDraft && (
+              <button
+                type="button"
+                className="s03-btn-danger-outline"
+                onClick={() => setIsDeleteConfirmOpen(true)}
+              >
+                <Trash2 size={14} aria-hidden="true" />
+                <span>Hapus Draft</span>
+              </button>
+            )}
             <button
               type="button"
               className="s03-btn-secondary"
@@ -1310,6 +1323,82 @@ export function DocumentIntakeForm({
           </div>
         </div>
       </form>
+
+      {isDeleteConfirmOpen && onDeleteDraft && (
+        <div
+          className="s01-modal-scrim"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget && !isDeleting) setIsDeleteConfirmOpen(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' && !isDeleting) {
+              e.stopPropagation();
+              setIsDeleteConfirmOpen(false);
+            }
+          }}
+        >
+          <div
+            className="s01-modal-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="s03-delete-draft-title"
+          >
+            <div className="s01-modal-head">
+              <div className="s01-modal-title-wrap">
+                <div className="s01-modal-icon is-danger" aria-hidden="true">
+                  <Trash2 size={19} />
+                </div>
+                <div>
+                  <h2 id="s03-delete-draft-title">Hapus Draft Dokumen Ini?</h2>
+                  <p>Draft S03 dan naskah S04 terkait akan dihapus dari penyimpanan lokal.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="s01-modal-close"
+                disabled={isDeleting}
+                onClick={() => setIsDeleteConfirmOpen(false)}
+                aria-label="Tutup konfirmasi hapus draft"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="s01-modal-body">
+              <p style={{ margin: 0 }}>
+                Draft <strong>{existingDraft?.title ?? template.name}</strong> akan dihapus permanen dari
+                daftar persuratan lokal. Data Master dan jadwal resmi tetap utuh.
+              </p>
+            </div>
+            <div className="s01-modal-foot">
+              <button
+                ref={deleteCancelBtnRef}
+                type="button"
+                className="s03-btn-secondary"
+                disabled={isDeleting}
+                onClick={() => setIsDeleteConfirmOpen(false)}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                className="s01-btn-danger"
+                disabled={isDeleting}
+                onClick={() => {
+                  setIsDeleting(true);
+                  void Promise.resolve(onDeleteDraft()).finally(() => {
+                    setIsDeleting(false);
+                    setIsDeleteConfirmOpen(false);
+                  });
+                }}
+              >
+                <Trash2 size={14} aria-hidden="true" />
+                <span>{isDeleting ? 'Menghapus…' : 'Ya, Hapus Draft'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

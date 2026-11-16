@@ -505,7 +505,8 @@ describe('Tahap 5 — S04 Document Studio / Editor Dokumen Bergaya Word', () => 
     );
 
     expect(studioHtml).toContain('data-doc-editor="true"');
-    expect(studioHtml).toContain('Document Studio (S04)');
+    expect(studioHtml).toContain('Editor Naskah');
+    expect(studioHtml).toContain('Fit (');
     expect(studioHtml).toContain('Simpan Draft');
     expect(studioHtml).toContain('Kembali ke Data Awal');
     expect(studioHtml).toContain('Kembali ke Pusat Persuratan');
@@ -543,7 +544,7 @@ describe('Tahap 5 — S04 Document Studio / Editor Dokumen Bergaya Word', () => 
     expect(conflictStudioHtml).toContain('Pertahankan Naskah S04');
     expect(conflictStudioHtml).toContain('Buat Ulang dari Data S03 Baru');
 
-    // S01 menampilkan Lanjutkan S04 & Edit S03 tetap utuh
+    // S01 menampilkan Lanjutkan S04 & dock aksi kebab tetap utuh
     const s01Html = renderToStaticMarkup(
       createElement(CorrespondenceCenter, {
         state: savedS04.state,
@@ -553,7 +554,8 @@ describe('Tahap 5 — S04 Document Studio / Editor Dokumen Bergaya Word', () => 
     );
     expect(s01Html).toContain('Data awal S03 tersimpan');
     expect(s01Html).toContain('Lanjutkan S04');
-    expect(s01Html).toContain('Edit S03');
+    expect(s01Html).toContain('s5-action-dock');
+    expect(s01Html).toContain('Aksi lainnya untuk');
 
     // S03 menampilkan tombol Buka Document Studio (S04) pada draft tersimpan
     const s03Html = renderToStaticMarkup(

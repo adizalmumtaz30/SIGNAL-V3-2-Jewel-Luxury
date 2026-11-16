@@ -432,7 +432,7 @@ describe('Tahap 4 — Form Data Awal / Context Form (S03)', () => {
       })
     );
 
-    expect(intakeHtml).toContain('Form Data Awal (S03)');
+    expect(intakeHtml).toContain('Isian Konteks');
     expect(intakeHtml).toContain('Sumber Data Sistem');
     expect(intakeHtml).toContain('Simpan sebagai Draft');
     expect(intakeHtml).toContain('Kembali ke Template');
@@ -462,15 +462,19 @@ describe('Tahap 4 — Form Data Awal / Context Form (S03)', () => {
       createElement(CorrespondenceCenter, {
         state: saved.state,
         onEditIntakeDraft: () => {},
+        onOpenStudio: () => {},
       })
     );
     expect(s01Html).toContain('Data awal S03 tersimpan');
-    expect(s01Html).toContain('Edit S03');
+    expect(s01Html).toContain('s5-action-dock');
+    expect(s01Html).toContain('Aksi lainnya untuk');
+    expect(s01Html).toContain('Buka S04');
     expect(s01Html).toContain('Belum Bernomor');
 
     // Subnav PersuratanWorkspace & App shell tetap merender aman
-    expect(intakeHtml).toContain('Pusat Persuratan &amp; Arsip (S01)');
-    expect(intakeHtml).toContain('Form Data Awal (S03)');
+    expect(intakeHtml).toContain('Arsip &amp; Surat');
+    expect(intakeHtml).toContain('Isian Konteks');
+    expect(intakeHtml).toContain('Ganti Template');
     const appHtml = renderToStaticMarkup(createElement(App));
     expect(appHtml).toContain('SIGNAL');
   });
