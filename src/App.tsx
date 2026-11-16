@@ -232,6 +232,7 @@ export default function App() {
   const [settingsSaved, setSettingsSaved] = useState(false);
   const [settingsDirty, setSettingsDirty] = useState(false);
   const [persuratanDirty, setPersuratanDirty] = useState(false);
+  const [persuratanDirtySource, setPersuratanDirtySource] = useState<'intake' | 'studio' | null>(null);
   const [pendingNavScreen, setPendingNavScreen] = useState<ScreenId | null>(null);
   const settingsSaveRef = useRef<(() => void) | null>(null);
 
@@ -257,9 +258,16 @@ export default function App() {
   } | null>(null);
   const [storageError, setStorageError] = useState<string | null>(null);
 
-  // Global Ctrl + K / Cmd + K listener
+  // Global Ctrl + K / Cmd + K listener (bypassed when focus is inside S04 rich-text editor)
   useEffect(() => {
     const handleGlobalKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.isContentEditable || Boolean(target.closest('[data-doc-editor="true"]')))
+      ) {
+        return;
+      }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setIsCommandPaletteOpen((prev) => !prev);
@@ -328,6 +336,19 @@ export default function App() {
       const updated = updater(current);
       return markCustom ? { ...updated, dataMode: 'custom' } : updated;
     });
+  }, []);
+
+  const persistWorkspaceNow = useCallback(async (nextState: AppState) => {
+    try {
+      await saveAppState(nextState);
+      setStorageError(null);
+      setWorkspace(nextState);
+    } catch (error) {
+      const msg =
+        'Penyimpanan lokal browser (IndexedDB) gagal diakses. Segera ekspor backup sebelum menutup.';
+      setStorageError(msg);
+      throw error instanceof Error ? error : new Error(msg);
+    }
   }, []);
 
   const currentEntries = workspace?.draft ?? workspace?.activeSchedule ?? [];
@@ -1323,14 +1344,18 @@ export default function App() {
               />
             )}
 
-            {/* SCREEN S01–S03: PUSAT PERSURATAN & ARSIP + GALERI TEMPLATE + FORM DATA AWAL (TAHAP 2–4) */}
+            {/* SCREEN S01–S04: PUSAT PERSURATAN & ARSIP + GALERI TEMPLATE + FORM DATA AWAL + DOCUMENT STUDIO */}
             {screen === 'persuratan' && (
               <PersuratanWorkspace
                 state={workspace}
                 storageError={storageError}
                 onRetryStorage={retrySaveWorkspace}
                 onUpdateState={updateWorkspace}
-                onDirtyChange={setPersuratanDirty}
+                onPersistState={persistWorkspaceNow}
+                onDirtyChange={(dirty, source) => {
+                  setPersuratanDirty(dirty);
+                  setPersuratanDirtySource(dirty ? source ?? 'intake' : null);
+                }}
                 onNotify={notify}
               />
             )}
@@ -1712,7 +1737,9 @@ export default function App() {
           title="Perubahan Belum Disimpan"
           subtitle={
             screen === 'persuratan'
-              ? 'Form Data Awal (S03) memiliki isian yang belum disimpan sebagai draft.'
+              ? persuratanDirtySource === 'studio'
+                ? 'Document Studio (S04) memiliki suntingan naskah yang belum disimpan sebagai draft.'
+                : 'Form Data Awal (S03) memiliki isian yang belum disimpan sebagai draft.'
               : 'Pengaturan workspace memiliki suntingan yang belum diterapkan.'
           }
           icon={AlertTriangle}
@@ -1721,7 +1748,9 @@ export default function App() {
           <div style={{ padding: '18px 22px 22px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <p style={{ margin: 0, fontSize: '13.5px', lineHeight: 1.55, color: 'var(--s5-ink-secondary)' }}>
               {screen === 'persuratan'
-                ? `Anda hendak berpindah ke menu ${titleForScreen(pendingNavScreen)}. Kembali ke Form Data Awal untuk menyimpan draft, atau abaikan isian sementara tersebut.`
+                ? persuratanDirtySource === 'studio'
+                  ? `Anda hendak berpindah ke menu ${titleForScreen(pendingNavScreen)}. Kembali ke Document Studio (S04) untuk menyimpan naskah draft, atau abaikan perubahan tersebut.`
+                  : `Anda hendak berpindah ke menu ${titleForScreen(pendingNavScreen)}. Kembali ke Form Data Awal untuk menyimpan draft, atau abaikan isian sementara tersebut.`
                 : `Anda hendak berpindah ke menu ${titleForScreen(pendingNavScreen)}. Simpan perubahan pengaturan terlebih dahulu atau abaikan agar perubahan dikembalikan seperti semula.`}
             </p>
             <div className="modal-actions" style={{ justifyContent: 'flex-end', flexWrap: 'wrap', gap: '8px' }}>
@@ -1730,7 +1759,11 @@ export default function App() {
                 className="button button-quiet"
                 onClick={() => setPendingNavScreen(null)}
               >
-                {screen === 'persuratan' ? 'Lanjutkan Mengisi Form' : 'Tetap di Pengaturan'}
+                {screen === 'persuratan'
+                  ? persuratanDirtySource === 'studio'
+                    ? 'Kembali ke Editor S04'
+                    : 'Lanjutkan Mengisi Form'
+                  : 'Tetap di Pengaturan'}
               </button>
               <button
                 type="button"
@@ -1739,6 +1772,7 @@ export default function App() {
                   const target = pendingNavScreen;
                   setSettingsDirty(false);
                   setPersuratanDirty(false);
+                  setPersuratanDirtySource(null);
                   setPendingNavScreen(null);
                   applyNavigation(target);
                 }}

@@ -17,6 +17,7 @@ import {
   collectAllTemplates,
   sanitizeTemplatePreferences,
 } from '../domain/persuratan/templates/selectors';
+import { validateStudioState } from '../domain/persuratan/studio/contentValidation';
 import { computeCanonicalSha256, computeSha256Hex, isSha256Hex } from './checksum';
 
 export const DB_NAME = 'signal-academic-studio';
@@ -250,6 +251,14 @@ export function validateAppStateStructure(candidate: unknown): asserts candidate
         !Array.isArray(item.sourceSnapshots)
       ) {
         throw new Error('Entri draft intake S03 pada berkas cadangan tidak lengkap atau rusak.');
+      }
+      if (item.studio !== undefined) {
+        const studioCheck = validateStudioState(item.studio);
+        if (!studioCheck.valid) {
+          throw new Error(
+            studioCheck.error ?? 'Struktur naskah Document Studio S04 pada berkas cadangan rusak.'
+          );
+        }
       }
     }
   }

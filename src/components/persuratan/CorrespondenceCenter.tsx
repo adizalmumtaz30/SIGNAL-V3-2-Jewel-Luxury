@@ -55,6 +55,7 @@ export interface CorrespondenceCenterProps {
   onRetryStorage?: () => void;
   onOpenTemplateGallery?: () => void;
   onEditIntakeDraft?: (draftId: string) => void;
+  onOpenStudio?: (draftId: string) => void;
   controlledFilters?: CorrespondenceFilterState;
   onControlledFiltersChange?: (next: CorrespondenceFilterState) => void;
   controlledSortKey?: CorrespondenceSortKey;
@@ -108,6 +109,7 @@ export function CorrespondenceCenter({
   onRetryStorage,
   onOpenTemplateGallery,
   onEditIntakeDraft,
+  onOpenStudio,
   controlledFilters,
   onControlledFiltersChange,
   controlledSortKey,
@@ -735,6 +737,10 @@ export function CorrespondenceCenter({
                   const counterpartParts = [doc.counterpartName, ...relatedTeachers].filter(Boolean);
                   const tagText = doc.tags && doc.tags.length > 0 ? doc.tags.join(' · ') : '';
                   const linkedIntake = doc.intakeDraftId ? intakeDraftMap.get(doc.intakeDraftId) : undefined;
+                  const hasStudioContent = Boolean(
+                    linkedIntake?.studio?.editorStatus === 'IN_PROGRESS' &&
+                      linkedIntake?.studio?.content
+                  );
 
                   return (
                     <tr key={doc.id}>
@@ -755,7 +761,11 @@ export function CorrespondenceCenter({
                         {doc.subject && <div className="s01-subject-line">{doc.subject}</div>}
                         {linkedIntake && (
                           <div className="s01-meta-inline" style={{ color: '#145343', fontWeight: 600 }}>
-                            Data awal S03 tersimpan · Menunggu Document Studio (S04)
+                            {hasStudioContent
+                              ? `Data awal S03 tersimpan · Draft S04 sedang disunting${
+                                  linkedIntake.s03EditedAfterStudioAt ? ' (S03 diperbarui pasca-S04)' : ''
+                                }`
+                              : 'Data awal S03 tersimpan · Siap disunting di Document Studio (S04)'}
                           </div>
                         )}
                         {tagText && <div className="s01-meta-inline">{tagText}</div>}
@@ -788,6 +798,22 @@ export function CorrespondenceCenter({
                             <Eye size={13} aria-hidden="true" />
                             <span>Detail</span>
                           </button>
+                          {linkedIntake && onOpenStudio && (
+                            <button
+                              type="button"
+                              className="s01-row-detail-btn"
+                              style={{
+                                background: '#eef7f3',
+                                borderColor: '#98c4b4',
+                                color: '#0c4333',
+                                fontWeight: 600,
+                              }}
+                              onClick={() => onOpenStudio(linkedIntake.id)}
+                            >
+                              <FileText size={13} aria-hidden="true" />
+                              <span>{hasStudioContent ? 'Lanjutkan S04' : 'Buka S04'}</span>
+                            </button>
+                          )}
                           {linkedIntake && onEditIntakeDraft && (
                             <button
                               type="button"
@@ -1023,18 +1049,36 @@ export function CorrespondenceCenter({
               <div className="s01-notice-box">
                 {inspectedDoc.intakeDraftId ? (
                   <>
-                    Draft data awal S03 (<code>{inspectedDoc.intakeDraftId}</code>) sudah tersimpan lokal beserta snapshot data sumber. Layar editor penuh Document Studio (S04) dan Detail/Riwayat Versi penuh (S06) akan diaktifkan pada Tahap 6–10.
+                    Draft data awal S03 (<code>{inspectedDoc.intakeDraftId}</code>) sudah tersimpan lokal beserta snapshot data sumber. Anda dapat menyunting naskah di Document Studio (S04), sementara finalisasi penomoran S05 dan arsip penuh S06 menyusul pada Tahap 8–10.
                   </>
                 ) : (
                   <>Layar Detail Dokumen, Riwayat Versi, dan Lampiran Arsip penuh (S06) akan tersedia pada Tahap 10.</>
                 )}
               </div>
             </div>
-            <div className="s01-modal-foot" style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-              {inspectedDoc.intakeDraftId && intakeDraftMap.has(inspectedDoc.intakeDraftId) && onEditIntakeDraft && (
+            <div className="s01-modal-foot" style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              {inspectedDoc.intakeDraftId && intakeDraftMap.has(inspectedDoc.intakeDraftId) && onOpenStudio && (
                 <button
                   type="button"
                   className="s01-cta-btn"
+                  onClick={() => {
+                    const targetId = inspectedDoc.intakeDraftId!;
+                    closeDetailModal();
+                    onOpenStudio(targetId);
+                  }}
+                >
+                  <FileText size={14} aria-hidden="true" />
+                  <span>
+                    {intakeDraftMap.get(inspectedDoc.intakeDraftId)?.studio?.editorStatus === 'IN_PROGRESS'
+                      ? 'Lanjutkan Document Studio (S04)'
+                      : 'Buka Document Studio (S04)'}
+                  </span>
+                </button>
+              )}
+              {inspectedDoc.intakeDraftId && intakeDraftMap.has(inspectedDoc.intakeDraftId) && onEditIntakeDraft && (
+                <button
+                  type="button"
+                  className="s01-btn-secondary"
                   onClick={() => {
                     const targetId = inspectedDoc.intakeDraftId!;
                     closeDetailModal();

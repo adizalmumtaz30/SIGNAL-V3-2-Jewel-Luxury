@@ -49,6 +49,7 @@ export interface DocumentIntakeFormProps {
     savedDraft: DocumentIntakeDraft,
     isUpdate: boolean
   ) => void;
+  onOpenStudio?: (draftId: string) => void;
   onBackToTemplates: () => void;
   onOpenCenter: () => void;
   onDirtyChange?: (dirty: boolean) => void;
@@ -62,6 +63,7 @@ export function DocumentIntakeForm({
   storageError = null,
   onRetryStorage,
   onSaveDraft,
+  onOpenStudio,
   onBackToTemplates,
   onOpenCenter,
   onDirtyChange,
@@ -926,10 +928,27 @@ export function DocumentIntakeForm({
               </strong>
               <div>
                 ID Draft S03: <code>{savedBanner.draftId}</code> · Status dokumen:{' '}
-                <strong>Draft (Belum Bernomor)</strong> · Snapshot data sumber dibekukan agar tidak berubah otomatis saat Data Master diperbarui. Siap dilanjutkan ketika{' '}
-                <strong>Document Studio S04 diaktifkan pada Tahap 6</strong>.
+                <strong>Draft (Belum Bernomor)</strong> · Snapshot data sumber dibekukan agar tidak berubah otomatis saat Data Master diperbarui.{' '}
+                {onOpenStudio
+                  ? 'Siap dilanjutkan ke Document Studio (S04) untuk penyuntingan naskah.'
+                  : 'Siap dilanjutkan di Document Studio (S04).'}
               </div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
+                {onOpenStudio && (
+                  <button
+                    type="button"
+                    className="s03-mini-btn"
+                    style={{
+                      background: '#0f4c3a',
+                      color: '#ffffff',
+                      borderColor: '#0b3c2e',
+                    }}
+                    onClick={() => onOpenStudio(savedBanner.draftId)}
+                  >
+                    <FileText size={13} aria-hidden="true" />
+                    <span>Buka Document Studio (S04)</span>
+                  </button>
+                )}
                 <button type="button" className="s03-mini-btn" onClick={onOpenCenter}>
                   <FileText size={13} aria-hidden="true" />
                   <span>Lihat di Pusat Persuratan (S01)</span>
@@ -1274,6 +1293,16 @@ export function DocumentIntakeForm({
               <ArrowLeft size={15} aria-hidden="true" />
               <span>Kembali ke Template</span>
             </button>
+            {savedBanner && onOpenStudio && (
+              <button
+                type="button"
+                className="s03-btn-secondary"
+                onClick={() => onOpenStudio(savedBanner.draftId)}
+              >
+                <FileText size={15} aria-hidden="true" />
+                <span>Buka Document Studio (S04)</span>
+              </button>
+            )}
             <button type="submit" className="s03-btn-primary">
               <Save size={15} aria-hidden="true" />
               <span>Simpan sebagai Draft</span>

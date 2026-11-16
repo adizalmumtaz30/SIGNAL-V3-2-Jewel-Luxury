@@ -1,3 +1,21 @@
+import type { TemplatePreviewBlock } from './templates/types';
+import type { DocumentStudioState } from './studio/types';
+
+export type {
+  DocumentStudioEditorStatus,
+  DocumentStudioPageSettings,
+  DocumentStudioState,
+  LegacyTemplateResolution,
+  PlaceholderMappingReport,
+  StudioInitialContentResult,
+  StudioMarginsMm,
+  StudioOrientation,
+  StudioPaperSize,
+  TipTapJSONContent,
+  TipTapJSONMark,
+  TipTapJSONNode,
+} from './studio/types';
+
 export type DocumentDirection = 'INCOMING' | 'OUTGOING';
 
 export type DocumentStatus =
@@ -21,9 +39,8 @@ export type DocumentKind =
   | 'LAINNYA';
 
 /**
- * Metadata dokumen persuratan & arsip untuk S01 dan rujukan intake S03.
- * Konten rich-text penuh, DocumentVersion, dan Blob lampiran
- * sengaja belum disimpan di tahap ini (ditangani pada Tahap 6–10).
+ * Metadata dokumen persuratan & arsip untuk S01 dan rujukan intake S03/S04.
+ * DocumentVersion dan Blob lampiran ditangani pada Tahap 6–10.
  */
 export interface DocumentRecord {
   id: string;
@@ -40,7 +57,7 @@ export interface DocumentRecord {
   createdAt: string; // ISO 8601 timestamp
   updatedAt: string; // ISO 8601 timestamp
   archivedAt: string | null;
-  // Rujukan opsional hasil Context Form S03 (Tahap 4)
+  // Rujukan opsional hasil Context Form S03 (Tahap 4) & Document Studio S04 (Tahap 5)
   intakeDraftId?: string | null;
   templateId?: string | null;
   templateVersion?: string | null;
@@ -87,6 +104,7 @@ export interface TemplateSnapshot {
     title: string;
     numberPlaceholder: string;
   };
+  previewBlocks?: TemplatePreviewBlock[];
   capturedAt: string;
 }
 
@@ -107,6 +125,8 @@ export interface DocumentIntakeDraft {
   fieldProvenance: Record<string, FieldProvenance>;
   templateSnapshot: TemplateSnapshot;
   sourceSnapshots: SourceSnapshotEntry[];
+  studio?: DocumentStudioState;
+  s03EditedAfterStudioAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -3,17 +3,18 @@
 > Dokumen audit teknis. File ini diperbarui setiap kali audit dijalankan. Entri audit terbaru berada paling atas.
 
 ## Ringkasan Terakhir
-- **Status terbaru:** **PHASE-4 Selesai (S03 Form Data Awal / Context Form)** — Layar **S03 Form Data Awal** terintegrasi utuh di dalam menu tunggal **Persuratan & Arsip** (`S01 <-> S02 <-> S03`), mendukung skema form dinamis untuk seluruh 30 template `SYSTEM` dan salinan `MADRASAH`, validasi `SYS-TPL-01` & pengikatan `ScheduleVersion` resmi untuk `SYS-TPL-03`, pemisahan data `AUTO_SYSTEM` tanpa fabrikasi nilai kosong, snapshot immutable non-live-binding (`DocumentIntakeDraft`), guard perubahan belum tersimpan (internal S03 maupun sidebar `App.tsx`), serta round-trip SHA-256 `AppState.intakeDrafts`.
-- **Tanggal dan jam selesai Tahap 4:** Senin, 16 November 2026, pukul 17:18:00 WIB (`2026-11-16T17:18:00+07:00`)
-- **Baseline GitHub `main` yang terverifikasi sebelum Tahap 4:** [`ab3926d73ad034bc037edcdc244cd72ed67493b7`](https://github.com/adizalmumtaz30/SIGNAL-V3-2-Jewel-Luxury/commit/ab3926d73ad034bc037edcdc244cd72ed67493b7) (`test: add jsPDF save mocking in test setup`, `2026-11-15T21:49:36Z` / Senin, 16 November 2026 pukul 04:49:36 WIB — sekaligus menutup status commit untuk `PHASE-3-REMEDIATION` pasca `f9dd499...`).
-- **Hasil verifikasi akhir Tahap 4:** `npm run lint` (`tsc -b`) Exit `0` · `npm test` **15/15 file, 97/97 tests lulus** (`11.37s`) · `npm run build` Exit `0` (`1873` modul, `7.40s`) · `diff` SHA-256 14/14 PDF root sebelum vs sesudah tes **0 perbedaan**
-- **Status verifikasi & sinkronisasi Git:** Perubahan `PHASE-3-REMEDIATION` telah terverifikasi berada di GitHub `main` (`ab3926d...`). Perubahan **Tahap 4 (S03)** saat ini masih berada di workspace AI Studio (`/app/applet`) dan **belum di-commit / di-push ke GitHub** (direktori `.git` tidak tersedia di container sandbox).
+- **Status terbaru:** **PHASE-5 Selesai (S04 Document Studio / Editor Dokumen Bergaya Word)** — Layar **S04 Document Studio** terintegrasi utuh di dalam menu tunggal **Persuratan & Arsip** (`S01 <-> S02 <-> S03 <-> S04`), menggunakan editor rich-text WYSIWYG **TipTap v3** (`StarterKit` termasuk `Underline`, `TextAlign`, `Table`/`TableRow`/`TableHeader`/`TableCell`) di atas kanvas kertas A4/F4 berbatas margin `mm` (`Portrait` / `Landscape`) beserta indikator estimasi garis lipat halaman, konversi deterministik 30 template `SYSTEM` + kloning `MADRASAH` murni dari snapshot S03 beku (tanpa *live binding* dan tanpa kebocoran NIP), penanganan aman draft S03 pra-Tahap 5 tanpa `previewBlocks`, pelacakan konflik non-destruktif (`s03EditedAfterStudioAt`), sanitasi paste berbasis **DOMPurify + allowlist ketat**, validasi struktural JSON & margin/kertas, serta persistensi `DocumentIntakeDraft.studio` langsung ke IndexedDB dengan *dirty guard* penuh hingga ke menu sidebar `App.tsx` (termasuk pengecualian shortcut global `Ctrl+K` saat fokus di editor).
+- **Tanggal dan jam selesai Tahap 5:** Senin, 16 November 2026, pukul 18:19:05 WIB (`2026-11-16T18:19:05+07:00`)
+- **Baseline GitHub `main` yang terverifikasi sebelum Tahap 5:** [`a5e4dac1b420138bf9ad81e250fcbc535e5849f5`](https://github.com/adizalmumtaz30/SIGNAL-V3-2-Jewel-Luxury/commit/a5e4dac1b420138bf9ad81e250fcbc535e5849f5) (`feat(persuratan): implement intake drafts for S03`, `2026-11-16T10:24:55Z` / Senin, 16 November 2026 pukul 17:24:55 WIB — sekaligus menutup status commit untuk `PHASE-4`).
+- **Hasil verifikasi akhir Tahap 5:** `npm run lint` (`tsc -b`) Exit `0` · `npm test` **16/16 file, 106/106 tests lulus** (`12.46s`) · `npm run build` Exit `0` (`1946` modul, `8.38s`) · `diff` SHA-256 14/14 PDF root sebelum vs sesudah tes **0 perbedaan**
+- **Status verifikasi & sinkronisasi Git:** Perubahan `PHASE-4` telah terverifikasi berada di GitHub `main` (`a5e4dac...`). Perubahan **Tahap 5 (S04)** saat ini berada di workspace AI Studio (`/app/applet`) dan **belum di-commit / di-push ke GitHub** (direktori `.git` tidak tersedia di container sandbox).
 
 ## Daftar Riwayat Audit
 
 | ID Audit | Mulai (WIB) | Selesai (WIB) | Status | Temuan Kritis | Tinggi | Sedang | Rendah | Info | Commit/Revision |
 |---|---|---|---|---:|---:|---:|---:|---:|---|
-| PHASE-4 | 2026-11-16 14:40:00 WIB | 2026-11-16 17:18:00 WIB | Selesai (Tahap 4 — S03) | 0 baru (`BP-009` S03 selesai) | `BP-026`, `PERS-007` terkendali di S03 | `BP-018` ditambah, `PERS-001` S01–S03 | — | — | Workspace lokal (basis GitHub `ab3926d...`) |
+| PHASE-5 | 2026-11-16 18:10:07 WIB | 2026-11-16 18:19:05 WIB | Selesai (Tahap 5 — S04) | 0 baru (`BP-010` S04 selesai) | `BP-017`/`PERS-005`, `BP-026`/`PERS-007` terjaga di S04 | `BP-018` (`DocumentStudioState`), `PERS-001` S01–S04 | — | — | Workspace lokal (basis GitHub `a5e4dac...`) |
+| PHASE-4 | 2026-11-16 14:40:00 WIB | 2026-11-16 17:18:00 WIB | Selesai (Tahap 4 — S03, Ter-push) | 0 baru (`BP-009` S03 selesai) | `BP-026`, `PERS-007` terkendali di S03 | `BP-018` ditambah, `PERS-001` S01–S03 | — | — | GitHub `a5e4dac1b420138bf9ad81e250fcbc535e5849f5` |
 | PHASE-3-REMEDIATION | 2026-11-16 04:36:33 WIB | 2026-11-16 04:39:45 WIB | Selesai (Lulus Gate & Ter-push) | 0 baru | 2 ditutup (PDF guard + 9 PDF pulih) | — | — | 1 koreksi lap. Git | GitHub `ab3926d73ad034bc037edcdc244cd72ed67493b7` |
 | PHASE-3 | 2026-11-16 02:56:58 WIB | 2026-11-16 03:10:05 WIB | Selesai (Tahap 3) | 0 baru (`BP-008` S02 selesai) | `PERS-005`, `BP-017` sumber terpisah | `BP-018` sebagian, `PERS-001` S01+S02 | — | — | GitHub `f9dd49916ba9027b0524e6ba168344569baf45f8` |
 | PHASE-2 | 2026-11-15 22:47:29 WIB | 2026-11-15 22:56:27 WIB | Selesai (Tahap 2) | 0 baru (`PERS-001` Tahap 2 S01 selesai) | `BP-005`, `BP-007` selesai | `BP-015`, `BP-018` sebagian | — | — | `9afa5fe429f1d573be9919e8b49d2455ba0209fd` |
@@ -22,16 +23,95 @@
 
 ---
 
+## IMPLEMENTASI TAHAP 5 — DOCUMENT STUDIO / EDITOR DOKUMEN BERGAYA WORD (S04)
+
+- **ID Entri:** `PHASE-5`
+- **Status Pelaksanaan:** **SELESAI** (Layar **S04 Document Studio / Editor Dokumen Bergaya Word** terintegrasi penuh di dalam menu tunggal `Persuratan & Arsip`; finalisasi, penomoran surat otomatis, status terbit/arsip, pratinjau cetak/PDF/DOCX final S05, arsip penuh S06, pengelola template S07, dan attachment Blob biner tetap ditunda sesuai batas tahap ke Tahap 6–10)
+- **Waktu mulai terverifikasi:** Senin, 16 November 2026, pukul 18:10:07 WIB (`2026-11-16T18:10:07+07:00`)
+- **Waktu selesai terverifikasi:** Senin, 16 November 2026, pukul 18:19:05 WIB (`2026-11-16T18:19:05+07:00`)
+- **Zona waktu:** Asia/Jakarta (WIB, UTC+07:00)
+- **Identitas Proyek & Sinkronisasi Git:**
+  - **Repository sasaran:** `adizalmumtaz30/SIGNAL-V3-2-Jewel-Luxury` (`main`)
+  - **Baseline GitHub `main` yang diverifikasi sebelum Tahap 5:** [`a5e4dac1b420138bf9ad81e250fcbc535e5849f5`](https://github.com/adizalmumtaz30/SIGNAL-V3-2-Jewel-Luxury/commit/a5e4dac1b420138bf9ad81e250fcbc535e5849f5) (`2026-11-16T10:24:55Z` / Senin, 16 November 2026, 17:24:55 WIB)
+  - **Status workspace:** Perubahan Tahap 5 berada di workspace AI Studio (`/app/applet`) dan belum di-commit/di-push karena direktori `.git` tidak tersedia di container sandbox.
+
+### 5.1 Ringkasan Perubahan Teknis (S04 Document Studio)
+
+1. **Model Domain & Snapshot Naskah Terstruktur (`src/domain/persuratan/studio/types.ts`, `src/domain/persuratan/types.ts`, `src/domain/persuratan/intake/draftEngine.ts`)**:
+   - Memperluas `TemplateSnapshot` secara kompatibel dengan properti opsional `previewBlocks?: TemplatePreviewBlock[]` melalui `buildTemplateSnapshot()`, sehingga draft S03 baru selalu membawa blok pratinjau template beku.
+   - Menambahkan `DocumentStudioState` (`schemaVersion: 1`, `editorStatus: 'NOT_STARTED' | 'IN_PROGRESS'`, `content: TipTapJSONContent`, `pageSettings: DocumentStudioPageSettings`, `updatedAt`) secara opsional di `DocumentIntakeDraft.studio`, serta `s03EditedAfterStudioAt?: string | null` untuk mendeteksi pengeditan ulang S03 sesudah S04 dikerjakan tanpa menimpa naskah editor.
+   - Mendukung ukuran kertas `A4` (`210×297 mm`) dan `F4` (`215×330 mm`), orientasi `portrait` / `landscape`, dan rentang margin aman `5–50 mm`.
+
+2. **Generator Konten Awal Deterministik Anti-Live-Binding & Penanganan Draft Legacy (`src/domain/persuratan/studio/contentGenerator.ts`)**:
+   - Mengonversi seluruh **30 template bawaan (`SYS-TPL-01`–`30`)** dan template salinan `MADRASAH` menjadi dokumen JSON TipTap S04 yang valid murni dari snapshot S03 (`templateSnapshot` + `sourceSnapshots` + `values` + `autoData`), **tanpa menyentuh data Master/Settings/History live**.
+   - Menggunakan peta alias token eksplisit untuk seluruh **180 token unik** pada 30 template, melindungi privasi NIP (tidak pernah menyuntikkan NIP bila tidak berada di snapshot), memisahkan `SYS-TPL-30` toggle Kop (`Ya`/`Tidak`), memperluas tabel beban JP terverifikasi pada `SYS-TPL-03` langsung dari snapshot `ScheduleVersion`, dan menandai placeholder yang belum tersedia sebagai `{{TOKEN}} [Belum diisi]` beserta daftar & hitungannya.
+   - Penanganan draft S03 pra-Tahap 5 (yang belum memiliki `templateSnapshot.previewBlocks`): `resolveTemplateBlocksForDraft()` mencocokkan versi terhadap template aktif (`ACTIVE_MATCH`), mendeteksi ketidaksamaan versi (`VERSION_MISMATCH`) dengan dialog konfirmasi eksplisit di UI sebelum konversi ulang, atau memberi fallback jujur bila template sudah tidak ditemukan (`NOT_FOUND`).
+
+3. **Validasi Struktural, Keamanan Paste, & Integritas Backup/Restore (`src/domain/persuratan/studio/contentValidation.ts`, `src/storage/db.ts`)**:
+   - Menambahkan validator ketat pohon JSON TipTap (`validateTipTapContent`: daftar putih tipe node `doc`, `paragraph`, `heading`, `bulletList`, `orderedList`, `listItem`, `table*`, `text`, `hardBreak`, `horizontalRule`; daftar putih mark `bold`, `italic`, `underline`; blokir atribut berbahaya seperti `style`, `class`, `href`, `src`, `on*`, `__proto__`; batas kedalaman `24`, `4000` node, `250.000` karakter) serta validator margin & dimensi kertas (`validateStudioPageSettings`, `validateStudioState`).
+   - `sanitizePastedHtml()` membersihkan tempelan HTML dari Word/Google Docs/web memakai `DOMPurify.sanitize` (di browser) dan filter allowlist deterministik lintas runtime (mengupas `<script>`, `<iframe>`, `<style>`, handler `on*`, URL `javascript:`, dan style inline Word).
+   - `validateAppStateStructure()` memvalidasi `item.studio` dan `item.s03EditedAfterStudioAt` tanpa menaikkan `DB_VERSION = 3` maupun `CURRENT_APP_SCHEMA_VERSION = 2`; round-trip ekspor/impor `.json` (`SIGNAL-LOCAL-BACKUP`) & `.signal` tetap terverifikasi SHA-256 dan menolak manipulasi payload.
+
+4. **Antarmuka Document Studio S04 & Orkestrasi Alur `S01 <-> S02 <-> S03 <-> S04` (`DocumentStudio.tsx`, `DocumentStudio.css`, `DocumentIntakeForm.tsx`, `CorrespondenceCenter.tsx`, `PersuratanWorkspace.tsx`, `App.tsx`)**:
+   - Membangun editor WYSIWYG nyata berbasis **TipTap v3** (`immediatelyRender: false` agar aman untuk SSR Node) lengkap dengan toolbar fungsional (`Undo`/`Redo`, `Paragraf`/`H1`/`H2`, `Bold`/`Italic`/`Underline`, perataan teks Kiri/Tengah/Kanan/Rata, `Bullet List`/`Ordered List`, `Sisipkan Tabel 3×3` + aksi tambah/hapus baris & kolom serta hapus tabel, `Hapus Format`, dan toggle panel inspektor), kanvas kertas putih `mm` terskala responsif di atas meja kerja gelap mewah Jewel Luxury, serta indikator lipatan batas halaman berbasis `ResizeObserver`.
+   - Panel kanan 4 tab terstruktur & dapat dilipat (`Detail Dokumen`, `Sumber Snapshot`, `Placeholder`, `Pengaturan Halaman` kertas/orientasi/margin/reset dari snapshot dengan konfirmasi).
+   - **Batas Jujur Tahap 5**: tidak ada penerbitan nomor surat (`documentNumber: null`), status tetap `'DRAFT'` (`archivedAt: null`), tidak ada tombol finalisasi/penandatanganan/ekspor PDF/DOCX final S05, dan label sidebar tetap tunggal `"Persuratan & Arsip"`.
+   - **Persistensi & Perlindungan Kerja**: `Simpan Draft` menunggu `await onPersistState(nextState)` ke IndexedDB sebelum menghapus status `dirty`; berpindah sub-view di `PersuratanWorkspace` maupun berpindah menu sidebar di `App.tsx` dilindungi dialog konfirmasi perubahan belum disimpan; shortcut global `Ctrl+K` di `App.tsx` otomatis dilewati saat fokus kursor berada di dalam `[data-doc-editor="true"]` atau elemen `contenteditable`.
+
+### 5.2 Pembaruan Status Temuan (`PERS-*`) dan Butir Blueprint (`BP-*`)
+
+| ID | Status Sebelum | Status Setelah Tahap 5 | Keterangan Aktual |
+|---|---|---|---|
+| `BP-010` | Belum Diimplementasikan | **SESUAI BLUEPRINT (S04 selesai)** | Editor WYSIWYG bergaya Word (TipTap v3) di kanvas A4/F4 `mm`, toolbar format & tabel, generator 30 template + kloning non-live-binding, sanitasi paste, & persistensi IndexedDB selesai. |
+| `BP-018` | Sebagian (Tahap 4) | **SEBAGIAN (Tahap 5 Ditambah)** | Menambahkan `DocumentStudioState` (`content`, `pageSettings`, `editorStatus`, `updatedAt`), `TemplateSnapshot.previewBlocks`, & `s03EditedAfterStudioAt`; `DocumentVersion` & `DocumentAttachment` menyusul Tahap 6/10. |
+| `BP-017` / `PERS-005` | Terikat di S03 | **TERJAGA HINGGA S04** | `SYS-TPL-03` di S04 membangun tabel beban JP hanya dari snapshot `ScheduleVersion` resmi yang dibekukan di S03; penguncian finalisasi SK tetap dijadwalkan di S05. |
+| `BP-026` / `PERS-007` | Terkendali di S03 | **TERJAGA HINGGA S04** | S04 memaparkan Kop & penandatangan murni dari snapshot S03 beserta status kelengkapan identitas & badge `Dataset Demo Aktif` tanpa fabrikasi nilai. |
+| `PERS-001` | Sebagian (Tahap 4: S01–S03) | **SEBAGIAN (Tahap 5 Selesai: S01 + S02 + S03 + S04)** | Alur `S01 <-> S02 <-> S03 <-> S04` terpadu dalam 1 menu `Persuratan & Arsip`; S05–S07 dijadwalkan pada tahap berikutnya. |
+
+### 5.3 Daftar File yang Diubah / Ditambahkan pada Tahap 5
+
+| File | Jenis Perubahan | Ringkasan Peran |
+|---|---|---|
+| `package.json` & `package-lock.json` | Diubah | Tambah `@tiptap/react`, `@tiptap/pm`, `@tiptap/starter-kit`, `@tiptap/extension-text-align`, `@tiptap/extension-table`, `dompurify`, `@types/dompurify` |
+| `src/domain/persuratan/studio/types.ts` | Baru | Kontrak tipe `DocumentStudioState`, `DocumentStudioPageSettings`, dimensi A4/F4, placeholder, & resolusi draft legacy |
+| `src/domain/persuratan/studio/contentValidation.ts` | Baru | Validator whitelist JSON TipTap & margin/kertas, sanitasi paste HTML (DOMPurify + allowlist), & ekstraktor placeholder |
+| `src/domain/persuratan/studio/contentGenerator.ts` | Baru | Generator konten awal deterministik 30 template + kloning dari snapshot S03, alias 180 token, & resolusi blok legacy |
+| `src/domain/persuratan/types.ts` | Diubah | Tambah `previewBlocks` di `TemplateSnapshot`, `studio` & `s03EditedAfterStudioAt` di `DocumentIntakeDraft`, serta re-ekspor tipe Studio |
+| `src/domain/persuratan/intake/draftEngine.ts` | Diubah | Bekukan `previewBlocks` saat simpan S03, pertahankan naskah S04 saat S03 diedit ulang (tandai `s03EditedAfterStudioAt`), & tambah `saveStudioDraftToState()` |
+| `src/storage/db.ts` | Diubah | Validasi opsional `item.studio` via `validateStudioState()` dengan tetap menjaga `DB_VERSION = 3` dan `CURRENT_APP_SCHEMA_VERSION = 2` |
+| `src/components/persuratan/DocumentStudio.tsx` | Baru | Editor WYSIWYG TipTap v3 S04, toolbar, kanvas `mm` A4/F4 + `ResizeObserver`, banner konflik S03 / legacy mismatch, & drawer inspektor 4 tab |
+| `src/components/persuratan/DocumentStudio.css` | Baru | Tata letak meja kerja gelap `.s04-*`, kanvas kertas putih `mm`, tabel TipTap, & responsivitas toolbar/drawer |
+| `src/components/persuratan/DocumentIntakeForm.tsx` | Diubah | Tambah aksi `"Buka Document Studio (S04)"` pada banner pasca-simpan & sticky bar |
+| `src/components/persuratan/CorrespondenceCenter.tsx` | Diubah | Tambah tombol `"Lanjutkan S04"` / `"Buka S04"` pada daftar & modal detail sambil mempertahankan status jujur S03 |
+| `src/components/persuratan/PersuratanWorkspace.tsx` | Diubah | Tambah subview `'studio'`, guard dirty terpadu `intake | studio`, konfirmasi konflik edit S03 bila naskah S04 sudah ada, & propagasi persistensi |
+| `src/App.tsx` | Diubah | Pengecualian shortcut `Ctrl+K` di dalam `[data-doc-editor="true"]`, `persistWorkspaceNow` ber-`await` ke IndexedDB, & guard navigasi sidebar S04 |
+| `tests/phase5_document_studio.test.ts` | Baru | 9 skenario uji penerimaan Tahap 5 (30 template + klon, `SYS-TPL-01` anti-NIP, `SYS-TPL-03` `ScheduleVersion`, `SYS-TPL-30` Kop, draft legacy, idempotensi + konflik S03, validasi/sanitasi XSS & Word, SHA-256 round-trip + anti-tamper, & SSR S04/S01/S03/`App`) |
+| `HASIL_AUDIT_PERSURATAN.md` | Diubah (Prepend + Koreksi) | Tambah laporan `PHASE-5` & perbarui status commit `a5e4dac...` untuk `PHASE-4` |
+
+### 5.4 Verifikasi Akhir, Checksum 14 PDF Root, & Batasan Pengujian Tahap 5
+
+| Pemeriksaan | Hasil | Detail Aktual |
+|---|---|---|
+| `npm run lint` (`tsc -b`) | **Exit `0`** | Lulus penuh tanpa error TypeScript (`tsconfig.app.json` & `tsconfig.node.json`) |
+| `npm test` (`vitest run`) | **Exit `0`** | **16/16 file test lulus, 106/106 tests lulus** (`12.46s`; mencakup 9 kasus baru di `tests/phase5_document_studio.test.ts`) |
+| `npm run build` (`tsc -b && vite build`) | **Exit `0`** | **1946 modul**, selesai dalam `8.38s` menghasilkan `dist/` |
+| `diff -u` SHA-256 14 PDF root sebelum vs sesudah tes | **Exit `0` (0 diff)** | Seluruh 14 berkas `SIGNAL_*.pdf` tetap 100% identik pasca `npm test` |
+| Kenaikan `DB_VERSION` / `CURRENT_APP_SCHEMA_VERSION` | **Tidak Ada** | `DB_VERSION` tetap `3`, `CURRENT_APP_SCHEMA_VERSION` tetap `2` |
+| Uji visual interaktif browser (`1440×900` & `1280×720`) | **Belum dijalankan** | Suite test dijalankan pada environment Node/SSR (`renderToStaticMarkup`); pengetikan interaktif TipTap, paste Word live di browser, zoom/lipat halaman `ResizeObserver`, dan navigasi klik UI tetap perlu diverifikasi di browser pada host |
+
+---
+
 ## IMPLEMENTASI TAHAP 4 — FORM DATA AWAL / CONTEXT FORM (S03)
 
 - **ID Entri:** `PHASE-4`
-- **Status Pelaksanaan:** **SELESAI** (Layar **S03 Form Data Awal / Context Form** terintegrasi penuh di dalam menu tunggal `Persuratan & Arsip`; editor rich-text S04, finalisasi/penomoran S05, arsip S06, editor template S07, dan attachment Blob store biner tetap ditunda sesuai batas tahap ke Tahap 5–10)
+- **Status Pelaksanaan:** **SELESAI & TERVERIFIKASI TER-PUSH KE GITHUB `main`** (Layar **S03 Form Data Awal / Context Form** terintegrasi penuh di dalam menu tunggal `Persuratan & Arsip`; editor rich-text S04, finalisasi/penomoran S05, arsip S06, editor template S07, dan attachment Blob store biner tetap ditunda sesuai batas tahap ke Tahap 5–10)
 - **Waktu selesai terverifikasi:** Senin, 16 November 2026, pukul 17:18:00 WIB (`2026-11-16T17:18:00+07:00`)
 - **Zona waktu:** Asia/Jakarta (WIB, UTC+07:00)
 - **Identitas Proyek & Sinkronisasi Git:**
   - **Repository sasaran:** `adizalmumtaz30/SIGNAL-V3-2-Jewel-Luxury` (`main`)
   - **Baseline GitHub `main` yang diverifikasi sebelum Tahap 4:** `ab3926d73ad034bc037edcdc244cd72ed67493b7` (`2026-11-15T21:49:36Z`)
-  - **Status workspace:** Perubahan Tahap 4 berada di workspace AI Studio (`/app/applet`) dan belum di-commit/di-push karena direktori `.git` tidak tersedia di container sandbox.
+  - **Commit Tahap 4 yang terverifikasi di GitHub `main`:** [`a5e4dac1b420138bf9ad81e250fcbc535e5849f5`](https://github.com/adizalmumtaz30/SIGNAL-V3-2-Jewel-Luxury/commit/a5e4dac1b420138bf9ad81e250fcbc535e5849f5) (`feat(persuratan): implement intake drafts for S03`, `2026-11-16T10:24:55Z` / Senin, 16 November 2026, 17:24:55 WIB)
+  - **Status Git lokal sandbox:** Direktori `.git` tidak tersedia di container sandbox; koreksi status commit ini menutup catatan *"belum di-commit / di-push"* sebelumnya untuk `PHASE-4`.
 
 ### 4.1 Ringkasan Perubahan Teknis (S03 Form Data Awal / Context Form)
 

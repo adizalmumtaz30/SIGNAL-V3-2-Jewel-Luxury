@@ -2,11 +2,13 @@ import type { AppState } from '../../types';
 import type {
   DocumentIntakeDraft,
   DocumentRecord,
+  DocumentStudioState,
   FieldProvenance,
   SourceSnapshotEntry,
   TemplateSnapshot,
 } from '../types';
 import type { DocumentTemplate } from '../templates/types';
+import { validateStudioState } from '../studio/contentValidation';
 import { getIntakeSchemaForTemplate, resolveSystemAutoData, validateIntakeForm } from './schemaRegistry';
 import type { IntakeFormValues, SaveIntakeDraftResult } from './types';
 
@@ -280,6 +282,7 @@ export function buildTemplateSnapshot(template: DocumentTemplate, capturedAt: st
     sourceTemplateVersion: template.sourceTemplateVersion ?? null,
     initialPageSettings: template.initialPageSettings,
     documentHeader: template.documentHeader,
+    previewBlocks: template.previewBlocks,
     capturedAt,
   });
 }
@@ -304,7 +307,8 @@ export interface SaveIntakeDraftOptions {
 /**
  * Memvalidasi Form Data Awal S03 lalu menyimpan DocumentIntakeDraft (snapshot sumber & template)
  * serta DocumentRecord berstatus DRAFT ke AppState tanpa memutasi template asal atau Data Master.
- * Mendukung upsert idempoten berbasis draftId stabil agar edit ulang tidak membuat duplikat.
+ * Mendukung upsert idempoten berbasis draftId stabil agar edit ulang tidak membuat duplikat,
+ * sekaligus menjaga naskah S04 yang sudah ada agar tidak tertimpa diam-diam.
  */
 export function saveIntakeDraftToState(
   state: AppState,
@@ -373,6 +377,12 @@ export function saveIntakeDraftToState(
       )
     : undefined;
 
+  const preservedStudio = matchedDraft?.studio ? deepClone(matchedDraft.studio) : undefined;
+  const s03EditedAfterStudioAt =
+    preservedStudio?.editorStatus === 'IN_PROGRESS'
+      ? now
+      : matchedDraft?.s03EditedAfterStudioAt ?? null;
+
   const draft: DocumentIntakeDraft = {
     id: draftId,
     documentId,
@@ -390,6 +400,8 @@ export function saveIntakeDraftToState(
     fieldProvenance,
     templateSnapshot,
     sourceSnapshots,
+    ...(preservedStudio ? { studio: preservedStudio } : {}),
+    ...(s03EditedAfterStudioAt ? { s03EditedAfterStudioAt } : {}),
     createdAt: matchedDraft?.createdAt ?? now,
     updatedAt: now,
   };
@@ -442,5 +454,105 @@ export function saveIntakeDraftToState(
     isUpdate,
     template,
     sourceSnapshots,
+  };
+}
+
+export interface SaveStudioDraftOptions {
+  timestamp?: string;
+  clearS03ConflictFlag?: boolean;
+}
+
+export interface SaveStudioDraftResult {
+  state: AppState;
+  draft: DocumentIntakeDraft;
+  documentRecord: DocumentRecord;
+}
+
+/**
+ * Menyimpan naskah terstruktur Document Studio (S04) ke `DocumentIntakeDraft.studio` secara immutable,
+ * memvalidasi struktur TipTap JSON & margin halaman, menjaga status dokumen tetap DRAFT dan
+ * `documentNumber` tetap null hingga finalisasi S05.
+ */
+export function saveStudioDraftToState(
+  state: AppState,
+  draftId: string,
+  studioInput: DocumentStudioState,
+  options?: SaveStudioDraftOptions
+): SaveStudioDraftResult {
+  const now = options?.timestamp ?? studioInput.updatedAt ?? new Date().toISOString();
+  const normalizedStudio: DocumentStudioState = deepClone({
+    ...studioInput,
+    schemaVersion: 1,
+    updatedAt: now,
+  });
+
+  const studioCheck = validateStudioState(normalizedStudio);
+  if (!studioCheck.valid) {
+    throw new Error(studioCheck.error ?? 'Konten Document Studio S04 tidak valid.');
+  }
+
+  const existingDrafts = Array.isArray(state.intakeDrafts) ? state.intakeDrafts : [];
+  const existingDocs = Array.isArray(state.documents) ? state.documents : [];
+
+  const matchedDraft = existingDrafts.find((d) => d.id === draftId);
+  if (!matchedDraft) {
+    throw new Error('Draft data awal S03 tidak ditemukan untuk disimpan dari Document Studio (S04).');
+  }
+
+  const nextDraft: DocumentIntakeDraft = {
+    ...deepClone(matchedDraft),
+    studio: normalizedStudio,
+    ...(options?.clearS03ConflictFlag
+      ? { s03EditedAfterStudioAt: null }
+      : matchedDraft.s03EditedAfterStudioAt
+      ? { s03EditedAfterStudioAt: matchedDraft.s03EditedAfterStudioAt }
+      : {}),
+    updatedAt: now,
+  };
+
+  const matchedDoc = existingDocs.find((d) => d.id === matchedDraft.documentId);
+  const nextDoc: DocumentRecord = matchedDoc
+    ? {
+        ...deepClone(matchedDoc),
+        status: 'DRAFT',
+        documentNumber: null,
+        archivedAt: null,
+        tags: Array.from(new Set([...(matchedDoc.tags ?? []), 'Studio-S04'])),
+        updatedAt: now,
+      }
+    : {
+        id: matchedDraft.documentId,
+        direction: 'OUTGOING',
+        documentType: matchedDraft.templateSnapshot.documentKind,
+        documentNumber: null,
+        title: matchedDraft.title,
+        subject: matchedDraft.subject,
+        documentDate: matchedDraft.documentDate,
+        counterpartName: matchedDraft.counterpartName,
+        status: 'DRAFT',
+        relatedTeacherIds: [...matchedDraft.relatedTeacherIds],
+        tags: [matchedDraft.templateSnapshot.code, 'Context-S03', 'Studio-S04'],
+        createdAt: matchedDraft.createdAt,
+        updatedAt: now,
+        archivedAt: null,
+        intakeDraftId: matchedDraft.id,
+        templateId: matchedDraft.templateId,
+        templateVersion: matchedDraft.templateVersion,
+        scheduleVersionId: matchedDraft.scheduleVersionId ?? null,
+      };
+
+  const nextIntakeDrafts = existingDrafts.map((d) => (d.id === nextDraft.id ? nextDraft : d));
+  const nextDocuments = matchedDoc
+    ? existingDocs.map((d) => (d.id === nextDoc.id ? nextDoc : d))
+    : [nextDoc, ...existingDocs];
+
+  return {
+    state: {
+      ...state,
+      intakeDrafts: nextIntakeDrafts,
+      documents: nextDocuments,
+    },
+    draft: nextDraft,
+    documentRecord: nextDoc,
   };
 }
