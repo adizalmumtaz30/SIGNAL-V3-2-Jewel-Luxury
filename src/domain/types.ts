@@ -1,4 +1,4 @@
-import type { DocumentRecord } from './persuratan/types';
+import type { DocumentIntakeDraft, DocumentRecord } from './persuratan/types';
 import type { DocumentTemplate, TemplatePreferences } from './persuratan/templates/types';
 
 export const DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as const;
@@ -247,6 +247,7 @@ export interface AppState {
   holidays?: Holiday[];
   teacherAssignments?: TeacherAssignment[];
   documents?: DocumentRecord[];
+  intakeDrafts?: DocumentIntakeDraft[];
   customTemplates?: DocumentTemplate[];
   templatePreferences?: TemplatePreferences;
 }

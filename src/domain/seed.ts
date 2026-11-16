@@ -242,6 +242,7 @@ export function createDemoState(): AppState {
     holidays,
     teacherAssignments: [],
     documents: [],
+    intakeDrafts: [],
     customTemplates: [],
     templatePreferences: {
       favoriteTemplateIds: [],
@@ -292,6 +293,7 @@ export function createEmptyState(): AppState {
     holidays: [],
     teacherAssignments: [],
     documents: [],
+    intakeDrafts: [],
     customTemplates: [],
     templatePreferences: {
       favoriteTemplateIds: [],

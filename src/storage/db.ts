@@ -229,6 +229,30 @@ export function validateAppStateStructure(candidate: unknown): asserts candidate
       }
     }
   }
+  if (candidate.intakeDrafts !== undefined) {
+    if (!Array.isArray(candidate.intakeDrafts)) {
+      throw new Error('Struktur daftar draft intake S03 pada berkas cadangan tidak valid.');
+    }
+    for (const item of candidate.intakeDrafts) {
+      if (
+        !isPlainObject(item) ||
+        typeof item.id !== 'string' ||
+        !item.id.trim() ||
+        typeof item.documentId !== 'string' ||
+        !item.documentId.trim() ||
+        typeof item.templateId !== 'string' ||
+        !item.templateId.trim() ||
+        typeof item.templateVersion !== 'string' ||
+        typeof item.title !== 'string' ||
+        typeof item.documentDate !== 'string' ||
+        !isPlainObject(item.fieldValues) ||
+        !isPlainObject(item.templateSnapshot) ||
+        !Array.isArray(item.sourceSnapshots)
+      ) {
+        throw new Error('Entri draft intake S03 pada berkas cadangan tidak lengkap atau rusak.');
+      }
+    }
+  }
   if (candidate.templatePreferences !== undefined) {
     if (!isPlainObject(candidate.templatePreferences)) {
       throw new Error('Struktur preferensi template pada berkas cadangan tidak valid.');
@@ -268,6 +292,10 @@ export function migrateAppStateSchema(
   }
   if (!Array.isArray(cloned.documents)) {
     cloned.documents = [];
+    changed = true;
+  }
+  if (!Array.isArray(cloned.intakeDrafts)) {
+    cloned.intakeDrafts = [];
     changed = true;
   }
   if (!Array.isArray(cloned.customTemplates)) {

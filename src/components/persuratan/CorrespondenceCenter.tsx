@@ -54,6 +54,7 @@ export interface CorrespondenceCenterProps {
   onRetryLoad?: () => void;
   onRetryStorage?: () => void;
   onOpenTemplateGallery?: () => void;
+  onEditIntakeDraft?: (draftId: string) => void;
   controlledFilters?: CorrespondenceFilterState;
   onControlledFiltersChange?: (next: CorrespondenceFilterState) => void;
   controlledSortKey?: CorrespondenceSortKey;
@@ -106,6 +107,7 @@ export function CorrespondenceCenter({
   onRetryLoad,
   onRetryStorage,
   onOpenTemplateGallery,
+  onEditIntakeDraft,
   controlledFilters,
   onControlledFiltersChange,
   controlledSortKey,
@@ -118,6 +120,10 @@ export function CorrespondenceCenter({
   onControlledPageSizeChange,
 }: CorrespondenceCenterProps) {
   const documents = useMemo(() => state.documents ?? [], [state.documents]);
+  const intakeDraftMap = useMemo(
+    () => new Map((state.intakeDrafts ?? []).map((d) => [d.id, d])),
+    [state.intakeDrafts]
+  );
 
   const [internalFilters, setInternalFilters] = useState<CorrespondenceFilterState>(DEFAULT_CORRESPONDENCE_FILTERS);
   const [internalSortKey, setInternalSortKey] = useState<CorrespondenceSortKey>('documentDate');
@@ -647,7 +653,13 @@ export function CorrespondenceCenter({
             <button
               type="button"
               className="s01-cta-btn"
-              onClick={() => setIsCreateModalOpen(true)}
+              onClick={() => {
+                if (onOpenTemplateGallery) {
+                  onOpenTemplateGallery();
+                } else {
+                  setIsCreateModalOpen(true);
+                }
+              }}
             >
               <FilePlus2 size={16} aria-hidden="true" />
               <span>Buat Dokumen</span>
@@ -722,6 +734,7 @@ export function CorrespondenceCenter({
                   const relatedTeachers = getRelatedTeacherNames(doc.relatedTeacherIds, state.teachers);
                   const counterpartParts = [doc.counterpartName, ...relatedTeachers].filter(Boolean);
                   const tagText = doc.tags && doc.tags.length > 0 ? doc.tags.join(' · ') : '';
+                  const linkedIntake = doc.intakeDraftId ? intakeDraftMap.get(doc.intakeDraftId) : undefined;
 
                   return (
                     <tr key={doc.id}>
@@ -740,6 +753,11 @@ export function CorrespondenceCenter({
                           {doc.title}
                         </button>
                         {doc.subject && <div className="s01-subject-line">{doc.subject}</div>}
+                        {linkedIntake && (
+                          <div className="s01-meta-inline" style={{ color: '#145343', fontWeight: 600 }}>
+                            Data awal S03 tersimpan · Menunggu Document Studio (S04)
+                          </div>
+                        )}
                         {tagText && <div className="s01-meta-inline">{tagText}</div>}
                       </td>
                       <td>
@@ -761,14 +779,26 @@ export function CorrespondenceCenter({
                         </span>
                       </td>
                       <td>
-                        <button
-                          type="button"
-                          className="s01-row-detail-btn"
-                          onClick={(e) => openDetailModal(doc, e.currentTarget)}
-                        >
-                          <Eye size={13} aria-hidden="true" />
-                          <span>Detail</span>
-                        </button>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            className="s01-row-detail-btn"
+                            onClick={(e) => openDetailModal(doc, e.currentTarget)}
+                          >
+                            <Eye size={13} aria-hidden="true" />
+                            <span>Detail</span>
+                          </button>
+                          {linkedIntake && onEditIntakeDraft && (
+                            <button
+                              type="button"
+                              className="s01-row-detail-btn"
+                              onClick={() => onEditIntakeDraft(linkedIntake.id)}
+                            >
+                              <FileEdit size={13} aria-hidden="true" />
+                              <span>Edit S03</span>
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -991,10 +1021,30 @@ export function CorrespondenceCenter({
                 </div>
               </dl>
               <div className="s01-notice-box">
-                Layar Detail Dokumen, Riwayat Versi, dan Lampiran Arsip penuh (S06) akan tersedia pada Tahap 10.
+                {inspectedDoc.intakeDraftId ? (
+                  <>
+                    Draft data awal S03 (<code>{inspectedDoc.intakeDraftId}</code>) sudah tersimpan lokal beserta snapshot data sumber. Layar editor penuh Document Studio (S04) dan Detail/Riwayat Versi penuh (S06) akan diaktifkan pada Tahap 6–10.
+                  </>
+                ) : (
+                  <>Layar Detail Dokumen, Riwayat Versi, dan Lampiran Arsip penuh (S06) akan tersedia pada Tahap 10.</>
+                )}
               </div>
             </div>
-            <div className="s01-modal-foot">
+            <div className="s01-modal-foot" style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              {inspectedDoc.intakeDraftId && intakeDraftMap.has(inspectedDoc.intakeDraftId) && onEditIntakeDraft && (
+                <button
+                  type="button"
+                  className="s01-cta-btn"
+                  onClick={() => {
+                    const targetId = inspectedDoc.intakeDraftId!;
+                    closeDetailModal();
+                    onEditIntakeDraft(targetId);
+                  }}
+                >
+                  <FileEdit size={14} aria-hidden="true" />
+                  <span>Edit Data Awal (S03)</span>
+                </button>
+              )}
               <button type="button" className="s01-btn-secondary" onClick={closeDetailModal}>
                 Tutup
               </button>

@@ -231,6 +231,7 @@ export default function App() {
   const [expandedIssue, setExpandedIssue] = useState<string | null>(null);
   const [settingsSaved, setSettingsSaved] = useState(false);
   const [settingsDirty, setSettingsDirty] = useState(false);
+  const [persuratanDirty, setPersuratanDirty] = useState(false);
   const [pendingNavScreen, setPendingNavScreen] = useState<ScreenId | null>(null);
   const settingsSaveRef = useRef<(() => void) | null>(null);
 
@@ -353,6 +354,10 @@ export default function App() {
 
   const navigate = (next: ScreenId) => {
     if (screen === 'settings' && settingsDirty && next !== 'settings') {
+      setPendingNavScreen(next);
+      return;
+    }
+    if (screen === 'persuratan' && persuratanDirty && next !== 'persuratan') {
       setPendingNavScreen(next);
       return;
     }
@@ -1318,13 +1323,14 @@ export default function App() {
               />
             )}
 
-            {/* SCREEN S01/S02: PUSAT PERSURATAN & ARSIP + GALERI TEMPLATE (TAHAP 2–3) */}
+            {/* SCREEN S01–S03: PUSAT PERSURATAN & ARSIP + GALERI TEMPLATE + FORM DATA AWAL (TAHAP 2–4) */}
             {screen === 'persuratan' && (
               <PersuratanWorkspace
                 state={workspace}
                 storageError={storageError}
                 onRetryStorage={retrySaveWorkspace}
                 onUpdateState={updateWorkspace}
+                onDirtyChange={setPersuratanDirty}
                 onNotify={notify}
               />
             )}
@@ -1700,17 +1706,23 @@ export default function App() {
         onNotify={notify}
       />
 
-      {/* Unsaved Settings Changes Guard Modal */}
+      {/* Unsaved Settings / S03 Intake Changes Guard Modal */}
       {pendingNavScreen && (
         <Modal
           title="Perubahan Belum Disimpan"
-          subtitle="Pengaturan workspace memiliki suntingan yang belum diterapkan."
+          subtitle={
+            screen === 'persuratan'
+              ? 'Form Data Awal (S03) memiliki isian yang belum disimpan sebagai draft.'
+              : 'Pengaturan workspace memiliki suntingan yang belum diterapkan.'
+          }
           icon={AlertTriangle}
           onClose={() => setPendingNavScreen(null)}
         >
           <div style={{ padding: '18px 22px 22px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <p style={{ margin: 0, fontSize: '13.5px', lineHeight: 1.55, color: 'var(--s5-ink-secondary)' }}>
-              Anda hendak berpindah ke menu <strong>{titleForScreen(pendingNavScreen)}</strong>. Simpan perubahan pengaturan terlebih dahulu atau abaikan agar perubahan dikembalikan seperti semula.
+              {screen === 'persuratan'
+                ? `Anda hendak berpindah ke menu ${titleForScreen(pendingNavScreen)}. Kembali ke Form Data Awal untuk menyimpan draft, atau abaikan isian sementara tersebut.`
+                : `Anda hendak berpindah ke menu ${titleForScreen(pendingNavScreen)}. Simpan perubahan pengaturan terlebih dahulu atau abaikan agar perubahan dikembalikan seperti semula.`}
             </p>
             <div className="modal-actions" style={{ justifyContent: 'flex-end', flexWrap: 'wrap', gap: '8px' }}>
               <button
@@ -1718,7 +1730,7 @@ export default function App() {
                 className="button button-quiet"
                 onClick={() => setPendingNavScreen(null)}
               >
-                Tetap di Pengaturan
+                {screen === 'persuratan' ? 'Lanjutkan Mengisi Form' : 'Tetap di Pengaturan'}
               </button>
               <button
                 type="button"
@@ -1726,26 +1738,29 @@ export default function App() {
                 onClick={() => {
                   const target = pendingNavScreen;
                   setSettingsDirty(false);
+                  setPersuratanDirty(false);
                   setPendingNavScreen(null);
                   applyNavigation(target);
                 }}
               >
                 Abaikan Perubahan
               </button>
-              <button
-                type="button"
-                className="button button-primary"
-                onClick={() => {
-                  const target = pendingNavScreen;
-                  settingsSaveRef.current?.();
-                  setSettingsDirty(false);
-                  setPendingNavScreen(null);
-                  applyNavigation(target);
-                }}
-              >
-                <Save size={14} />
-                <span>Simpan &amp; Lanjutkan</span>
-              </button>
+              {screen === 'settings' && (
+                <button
+                  type="button"
+                  className="button button-primary"
+                  onClick={() => {
+                    const target = pendingNavScreen;
+                    settingsSaveRef.current?.();
+                    setSettingsDirty(false);
+                    setPendingNavScreen(null);
+                    applyNavigation(target);
+                  }}
+                >
+                  <Save size={14} />
+                  <span>Simpan &amp; Lanjutkan</span>
+                </button>
+              )}
             </div>
           </div>
         </Modal>

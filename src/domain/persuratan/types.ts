@@ -21,9 +21,9 @@ export type DocumentKind =
   | 'LAINNYA';
 
 /**
- * Metadata minimum dokumen persuratan & arsip untuk S01.
- * Konten rich-text, DocumentVersion, template body, dan Blob lampiran
- * sengaja belum disimpan di tahap ini (akan ditangani pada Tahap 3–10).
+ * Metadata dokumen persuratan & arsip untuk S01 dan rujukan intake S03.
+ * Konten rich-text penuh, DocumentVersion, dan Blob lampiran
+ * sengaja belum disimpan di tahap ini (ditangani pada Tahap 6–10).
  */
 export interface DocumentRecord {
   id: string;
@@ -40,6 +40,75 @@ export interface DocumentRecord {
   createdAt: string; // ISO 8601 timestamp
   updatedAt: string; // ISO 8601 timestamp
   archivedAt: string | null;
+  // Rujukan opsional hasil Context Form S03 (Tahap 4)
+  intakeDraftId?: string | null;
+  templateId?: string | null;
+  templateVersion?: string | null;
+  scheduleVersionId?: string | null;
+}
+
+export type DocumentIntakeStatus = 'INTAKE_COMPLETE' | 'READY_FOR_EDITOR';
+
+export type FieldProvenance = 'OPERATOR_INPUT' | 'AUTO_SYSTEM';
+
+export interface SourceSnapshotEntry {
+  sourceKey: string;
+  sourceLabel: string;
+  provenance: FieldProvenance;
+  sourceIdentity?: string | null;
+  capturedValue: unknown;
+  capturedAt: string;
+  isDemoData: boolean;
+  status: 'VERIFIED' | 'MISSING' | 'UNVERIFIED';
+}
+
+export interface TemplateSnapshot {
+  templateId: string;
+  code: string;
+  name: string;
+  category: string;
+  documentKind: DocumentKind;
+  version: string;
+  source: 'SYSTEM' | 'MADRASAH' | 'USER';
+  sourceTemplateId?: string | null;
+  sourceTemplateVersion?: string | null;
+  initialPageSettings: {
+    paperSize: 'a4' | 'f4';
+    orientation: 'portrait' | 'landscape';
+    marginsMm: {
+      top: number;
+      right: number;
+      bottom: number;
+      left: number;
+    };
+  };
+  documentHeader: {
+    includeKopSurat: boolean;
+    title: string;
+    numberPlaceholder: string;
+  };
+  capturedAt: string;
+}
+
+export interface DocumentIntakeDraft {
+  id: string;
+  documentId: string;
+  templateId: string;
+  templateVersion: string;
+  intakeStatus: DocumentIntakeStatus;
+  title: string;
+  subject: string;
+  documentDate: string; // 'YYYY-MM-DD'
+  counterpartName?: string;
+  relatedTeacherIds: string[];
+  scheduleVersionId?: string | null;
+  scheduleVersionFingerprint?: string | null;
+  fieldValues: Record<string, unknown>;
+  fieldProvenance: Record<string, FieldProvenance>;
+  templateSnapshot: TemplateSnapshot;
+  sourceSnapshots: SourceSnapshotEntry[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type CorrespondenceTab = 'ALL' | 'INCOMING' | 'OUTGOING' | 'ARCHIVED';

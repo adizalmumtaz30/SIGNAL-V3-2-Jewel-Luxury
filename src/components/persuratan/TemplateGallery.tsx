@@ -44,6 +44,7 @@ export interface TemplateGalleryProps {
   state: AppState;
   onUpdateState?: (updater: (prev: AppState) => AppState) => void;
   onBackToCenter?: () => void;
+  onUseTemplate?: (template: DocumentTemplate) => void;
   onNotify?: (message: string, type?: 'success' | 'info' | 'warning' | 'error') => void;
 }
 
@@ -152,6 +153,7 @@ export function TemplateGallery({
   state,
   onUpdateState,
   onBackToCenter,
+  onUseTemplate,
   onNotify,
 }: TemplateGalleryProps) {
   const allTemplates = useMemo(
@@ -238,10 +240,14 @@ export function TemplateGallery({
       selectedTemplateId: tpl.id,
     };
     commitPreferences(nextPrefs);
+    if (onUseTemplate) {
+      onUseTemplate(tpl);
+      return;
+    }
     setSelectedNotice(tpl);
     onNotify?.(
-      `Template "${tpl.name}" dipilih. Form Data Awal (S03) akan diaktifkan pada Tahap 4.`,
-      'success'
+      `Template "${tpl.name}" dipilih. Form Data Awal (S03) siap dibuka.`,
+      'info'
     );
   };
 

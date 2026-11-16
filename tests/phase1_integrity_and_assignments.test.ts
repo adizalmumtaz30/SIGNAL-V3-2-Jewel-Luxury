@@ -177,6 +177,7 @@ describe('Tahap 1 Group A — Integritas Backup JSON (SIGNAL-LOCAL-BACKUP)', () 
       payload: {
         templatePreferences: envelope.payload.templatePreferences,
         customTemplates: envelope.payload.customTemplates,
+        intakeDrafts: envelope.payload.intakeDrafts,
         documents: envelope.payload.documents,
         teacherAssignments: envelope.payload.teacherAssignments,
         holidays: envelope.payload.holidays,
