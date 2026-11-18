@@ -27,6 +27,7 @@ export const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
   RECEIVED: 'Diterima',
   IN_REVIEW: 'Dalam Tinjauan',
   FINAL: 'Final',
+  REVISED: 'Direvisi',
   ARCHIVED: 'Diarsipkan',
   CANCELLED: 'Dibatalkan',
 };
@@ -37,6 +38,7 @@ export const VALID_DOCUMENT_STATUSES = new Set<DocumentStatus>([
   'RECEIVED',
   'IN_REVIEW',
   'FINAL',
+  'REVISED',
   'ARCHIVED',
   'CANCELLED',
 ]);
@@ -200,8 +202,9 @@ const STATUS_SORT_ORDER: Record<DocumentStatus, number> = {
   RECEIVED: 2,
   IN_REVIEW: 3,
   FINAL: 4,
-  ARCHIVED: 5,
-  CANCELLED: 6,
+  REVISED: 5,
+  ARCHIVED: 6,
+  CANCELLED: 7,
 };
 
 export function sortCorrespondenceDocuments(

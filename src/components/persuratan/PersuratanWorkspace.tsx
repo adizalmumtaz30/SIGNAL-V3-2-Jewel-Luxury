@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, FileEdit, FileStack, FileText, Inbox } from 'lucide-react';
+import {
+  AlertTriangle,
+  Archive,
+  FileCheck2,
+  FileEdit,
+  FileStack,
+  FileText,
+  Inbox,
+  SlidersHorizontal,
+} from 'lucide-react';
 import type { AppState } from '../../domain/types';
 import type { DocumentIntakeDraft } from '../../domain/persuratan/types';
 import type { DocumentTemplate } from '../../domain/persuratan/templates/types';
@@ -8,12 +17,16 @@ import { DEFAULT_CORRESPONDENCE_FILTERS } from '../../domain/persuratan/selector
 import type {
   CorrespondenceFilterState,
   CorrespondenceSortKey,
+  PersuratanLaunchRequest,
   SortDirection,
 } from '../../domain/persuratan/types';
 import { CorrespondenceCenter } from './CorrespondenceCenter';
 import { TemplateGallery } from './TemplateGallery';
 import { DocumentIntakeForm } from './DocumentIntakeForm';
 import { DocumentStudio } from './DocumentStudio';
+import { DocumentPreviewFinalize } from './DocumentPreviewFinalize';
+import { DocumentArchiveDetail } from './DocumentArchiveDetail';
+import { TemplateManager } from './TemplateManager';
 import {
   deleteDraftFromState,
   duplicateDraftInState,
@@ -22,7 +35,14 @@ import {
 } from '../../domain/persuratan/intake/draftEngine';
 import './TemplateGallery.css';
 
-export type PersuratanSubView = 'center' | 'templates' | 'intake' | 'studio';
+export type PersuratanSubView =
+  | 'center'
+  | 'templates'
+  | 'intake'
+  | 'studio'
+  | 'preview'
+  | 'detail'
+  | 'template-manager';
 export type PersuratanDirtySource = 'intake' | 'studio' | null;
 
 export interface PersuratanWorkspaceProps {
@@ -30,11 +50,13 @@ export interface PersuratanWorkspaceProps {
   initialView?: PersuratanSubView;
   initialTemplateId?: string | null;
   initialDraftId?: string | null;
+  launchRequest?: PersuratanLaunchRequest | null;
   storageError?: string | null;
   onRetryStorage?: () => void;
   onUpdateState?: (updater: (prev: AppState) => AppState) => void;
   onPersistState?: (nextState: AppState) => Promise<void>;
   onDirtyChange?: (dirty: boolean, source?: PersuratanDirtySource) => void;
+  onNavigateToSettings?: () => void;
   onNotify?: (message: string, type?: 'success' | 'info' | 'warning' | 'error') => void;
 }
 
@@ -42,6 +64,11 @@ interface PendingTransition {
   targetView: PersuratanSubView;
   targetDraftId?: string | null;
   targetTemplateId?: string | null;
+  targetDocumentId?: string | null;
+  targetVersionId?: string | null;
+  targetPrefillValues?: Record<string, unknown> | null;
+  targetLinkedAssignmentId?: string | null;
+  targetTemplateSourceDocId?: string | null;
   bumpIntakeSession?: boolean;
   bumpStudioSession?: boolean;
 }
@@ -51,11 +78,13 @@ export function PersuratanWorkspace({
   initialView = 'center',
   initialTemplateId = null,
   initialDraftId = null,
+  launchRequest = null,
   storageError = null,
   onRetryStorage,
   onUpdateState,
   onPersistState,
   onDirtyChange,
+  onNavigateToSettings,
   onNotify,
 }: PersuratanWorkspaceProps) {
   const allTemplates = useMemo(
@@ -63,11 +92,32 @@ export function PersuratanWorkspace({
     [state.customTemplates]
   );
 
-  const [subView, setSubView] = useState<PersuratanSubView>(initialView);
-  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(
-    () => initialTemplateId ?? state.templatePreferences?.selectedTemplateId ?? null
+  const [subView, setSubView] = useState<PersuratanSubView>(
+    () => launchRequest?.view ?? initialView
   );
-  const [editingDraftId, setEditingDraftId] = useState<string | null>(initialDraftId);
+  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(
+    () =>
+      launchRequest?.templateId ??
+      initialTemplateId ??
+      state.templatePreferences?.selectedTemplateId ??
+      null
+  );
+  const [editingDraftId, setEditingDraftId] = useState<string | null>(
+    launchRequest?.draftId ?? initialDraftId
+  );
+  const [previewDocumentId, setPreviewDocumentId] = useState<string | null>(
+    launchRequest?.documentId ?? null
+  );
+  const [previewVersionId, setPreviewVersionId] = useState<string | null>(
+    launchRequest?.versionId ?? null
+  );
+  const [activePrefillValues, setActivePrefillValues] = useState<Record<string, unknown> | null>(
+    launchRequest?.prefillValues ?? null
+  );
+  const [activeLinkedAssignmentId, setActiveLinkedAssignmentId] = useState<string | null>(
+    launchRequest?.linkedAssignmentId ?? null
+  );
+  const [templateManagerSourceDocId, setTemplateManagerSourceDocId] = useState<string | null>(null);
   const [intakeSessionKey, setIntakeSessionKey] = useState<number>(1);
   const [studioSessionKey, setStudioSessionKey] = useState<number>(1);
   const [dirtySource, setDirtySource] = useState<PersuratanDirtySource>(null);
@@ -75,6 +125,7 @@ export function PersuratanWorkspace({
   const [pendingEditS03WarningDraft, setPendingEditS03WarningDraft] =
     useState<DocumentIntakeDraft | null>(null);
   const stayOnScreenBtnRef = useRef<HTMLButtonElement | null>(null);
+  const handledLaunchNonceRef = useRef<number | null>(launchRequest?.nonce ?? null);
 
   // Lift S01 filter/sort/pagination state so switching S01 <-> S02 <-> S03 <-> S04 keeps user context
   const [s01Filters, setS01Filters] = useState<CorrespondenceFilterState>(
@@ -120,6 +171,21 @@ export function PersuratanWorkspace({
     if (transition.targetDraftId !== undefined) {
       setEditingDraftId(transition.targetDraftId);
     }
+    if (transition.targetDocumentId !== undefined) {
+      setPreviewDocumentId(transition.targetDocumentId);
+    }
+    if (transition.targetVersionId !== undefined) {
+      setPreviewVersionId(transition.targetVersionId);
+    }
+    if (transition.targetPrefillValues !== undefined) {
+      setActivePrefillValues(transition.targetPrefillValues);
+    }
+    if (transition.targetLinkedAssignmentId !== undefined) {
+      setActiveLinkedAssignmentId(transition.targetLinkedAssignmentId);
+    }
+    if (transition.targetTemplateSourceDocId !== undefined) {
+      setTemplateManagerSourceDocId(transition.targetTemplateSourceDocId);
+    }
     if (transition.bumpIntakeSession) {
       setIntakeSessionKey((k) => k + 1);
     }
@@ -143,8 +209,29 @@ export function PersuratanWorkspace({
     executeTransition(transition);
   };
 
+  useEffect(() => {
+    if (!launchRequest) return;
+    if (handledLaunchNonceRef.current === launchRequest.nonce) return;
+    handledLaunchNonceRef.current = launchRequest.nonce;
+    executeTransition({
+      targetView: launchRequest.view,
+      targetTemplateId: launchRequest.templateId ?? null,
+      targetDraftId: launchRequest.draftId ?? null,
+      targetDocumentId: launchRequest.documentId ?? null,
+      targetVersionId: launchRequest.versionId ?? null,
+      targetPrefillValues: launchRequest.prefillValues ?? null,
+      targetLinkedAssignmentId: launchRequest.linkedAssignmentId ?? null,
+      bumpIntakeSession: launchRequest.view === 'intake',
+      bumpStudioSession: launchRequest.view === 'studio',
+    });
+  }, [launchRequest]);
+
   const requestSubViewChange = (target: PersuratanSubView) => {
-    requestTransition({ targetView: target });
+    requestTransition({
+      targetView: target,
+      targetPrefillValues: null,
+      targetLinkedAssignmentId: null,
+    });
   };
 
   const handleUseTemplateFromGallery = (tpl: DocumentTemplate) => {
@@ -152,6 +239,8 @@ export function PersuratanWorkspace({
       targetView: 'intake',
       targetTemplateId: tpl.id,
       targetDraftId: null,
+      targetPrefillValues: null,
+      targetLinkedAssignmentId: null,
       bumpIntakeSession: true,
     });
   };
@@ -190,6 +279,42 @@ export function PersuratanWorkspace({
       targetDraftId: found.id,
       bumpStudioSession: true,
     });
+  };
+
+  const handleOpenPreview = (target: {
+    documentId: string;
+    draftId?: string | null;
+    versionId?: string | null;
+  }) => {
+    requestTransition({
+      targetView: 'preview',
+      targetDocumentId: target.documentId,
+      targetDraftId: target.draftId ?? editingDraftId ?? null,
+      targetVersionId: target.versionId ?? null,
+    });
+  };
+
+  const handleOpenArchiveDetail = (documentId: string, versionId?: string | null) => {
+    requestTransition({
+      targetView: 'detail',
+      targetDocumentId: documentId,
+      targetVersionId: versionId ?? null,
+    });
+  };
+
+  const handleOpenTemplateManager = (sourceDocId?: string | null) => {
+    requestTransition({
+      targetView: 'template-manager',
+      targetTemplateSourceDocId: sourceDocId ?? null,
+    });
+  };
+
+  const persistStateUnified = async (nextState: AppState) => {
+    if (onPersistState) {
+      await onPersistState(nextState);
+    } else {
+      onUpdateState?.(() => nextState);
+    }
   };
 
   const handleSaveIntakeDraft = (
@@ -266,11 +391,15 @@ export function PersuratanWorkspace({
   const activeStepIndex =
     subView === 'center'
       ? 1
-      : subView === 'templates'
+      : subView === 'templates' || subView === 'template-manager'
       ? 2
       : subView === 'intake'
       ? 3
-      : 4;
+      : subView === 'studio'
+      ? 4
+      : subView === 'preview'
+      ? 5
+      : 6;
 
   return (
     <div className="p5-persuratan-shell">
@@ -297,6 +426,19 @@ export function PersuratanWorkspace({
             <span>Galeri Template</span>
             <span className="s02-subnav-count s5-tnum">{allTemplates.length}</span>
           </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={subView === 'template-manager'}
+            className={`s02-subnav-tab ${subView === 'template-manager' ? 'is-active' : ''}`}
+            onClick={() => handleOpenTemplateManager(null)}
+          >
+            <SlidersHorizontal size={15} aria-hidden="true" />
+            <span>Kelola Template</span>
+            {(state.customTemplates ?? []).length > 0 && (
+              <span className="s02-subnav-count s5-tnum">{(state.customTemplates ?? []).length}</span>
+            )}
+          </button>
           {subView === 'intake' && (
             <button
               type="button"
@@ -321,6 +463,30 @@ export function PersuratanWorkspace({
               <span>Editor Naskah</span>
             </button>
           )}
+          {subView === 'preview' && (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={true}
+              className="s02-subnav-tab is-active"
+              onClick={() => requestSubViewChange('preview')}
+            >
+              <FileCheck2 size={15} aria-hidden="true" />
+              <span>Pratinjau &amp; Sahkan</span>
+            </button>
+          )}
+          {subView === 'detail' && (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={true}
+              className="s02-subnav-tab is-active"
+              onClick={() => requestSubViewChange('detail')}
+            >
+              <Archive size={15} aria-hidden="true" />
+              <span>Detail Arsip (S06)</span>
+            </button>
+          )}
         </div>
 
         <ol className="p5-step-trail s5-tnum" aria-label="Alur pembuatan dokumen">
@@ -332,8 +498,16 @@ export function PersuratanWorkspace({
             <span>2. Isian Konteks</span>
           </li>
           <li aria-hidden="true" className="p5-step-sep">/</li>
-          <li className={activeStepIndex === 4 ? 'is-current' : ''}>
+          <li className={activeStepIndex > 4 ? 'is-done' : activeStepIndex === 4 ? 'is-current' : ''}>
             <span>3. Editor Naskah</span>
+          </li>
+          <li aria-hidden="true" className="p5-step-sep">/</li>
+          <li className={activeStepIndex > 5 ? 'is-done' : activeStepIndex === 5 ? 'is-current' : ''}>
+            <span>4. Pratinjau &amp; Sahkan</span>
+          </li>
+          <li aria-hidden="true" className="p5-step-sep">/</li>
+          <li className={activeStepIndex === 6 ? 'is-current' : ''}>
+            <span>5. Arsip</span>
           </li>
         </ol>
       </nav>
@@ -346,6 +520,8 @@ export function PersuratanWorkspace({
           onOpenTemplateGallery={() => requestSubViewChange('templates')}
           onEditIntakeDraft={handleEditExistingIntakeDraft}
           onOpenStudio={handleOpenStudio}
+          onOpenPreview={handleOpenPreview}
+          onOpenArchiveDetail={handleOpenArchiveDetail}
           onDuplicateDraft={(target) => handleDuplicateDraft(target)}
           onDeleteDraft={(target) => handleDeleteDraft(target)}
           controlledFilters={s01Filters}
@@ -367,6 +543,18 @@ export function PersuratanWorkspace({
           onUpdateState={onUpdateState}
           onBackToCenter={() => requestSubViewChange('center')}
           onUseTemplate={handleUseTemplateFromGallery}
+          onOpenTemplateManager={() => handleOpenTemplateManager(null)}
+          onNotify={onNotify}
+        />
+      )}
+
+      {subView === 'template-manager' && (
+        <TemplateManager
+          state={state}
+          initialSourceDocumentId={templateManagerSourceDocId}
+          onPersistState={persistStateUnified}
+          onBackToGallery={() => requestSubViewChange('templates')}
+          onUseTemplate={handleUseTemplateFromGallery}
           onNotify={onNotify}
         />
       )}
@@ -377,6 +565,8 @@ export function PersuratanWorkspace({
           state={state}
           template={activeIntakeTemplate}
           existingDraft={activeDraft}
+          prefillValues={activePrefillValues}
+          linkedAssignmentId={activeLinkedAssignmentId}
           storageError={storageError}
           onRetryStorage={onRetryStorage}
           onSaveDraft={handleSaveIntakeDraft}
@@ -413,9 +603,96 @@ export function PersuratanWorkspace({
           }
           onBackToIntake={() => openIntakeForDraft(activeDraft)}
           onBackToCenter={() => requestSubViewChange('center')}
+          onOpenPreview={() =>
+            handleOpenPreview({
+              documentId: activeDraft.documentId,
+              draftId: activeDraft.id,
+              versionId: null,
+            })
+          }
           onDirtyChange={(dirty) => setDirtyFlag(dirty, 'studio')}
           onNotify={onNotify}
         />
+      )}
+
+      {subView === 'preview' && (
+        <DocumentPreviewFinalize
+          state={state}
+          draft={activeDraft}
+          documentRecord={
+            (state.documents ?? []).find(
+              (d) => d.id === (previewDocumentId ?? activeDraft?.documentId)
+            ) ?? null
+          }
+          activeVersion={
+            previewVersionId
+              ? (state.documentVersions ?? []).find((v) => v.id === previewVersionId) ?? null
+              : null
+          }
+          onPersistState={async (nextState) => {
+            if (onPersistState) {
+              await onPersistState(nextState);
+            } else {
+              onUpdateState?.(() => nextState);
+            }
+          }}
+          onBackToStudio={(draftId) => handleOpenStudio(draftId)}
+          onBackToIntake={(draftId) => handleEditExistingIntakeDraft(draftId)}
+          onBackToCenter={() => requestSubViewChange('center')}
+          onOpenSettings={onNavigateToSettings}
+          onOpenRevisionInStudio={(revDraftId) => {
+            setEditingDraftId(revDraftId);
+            setPreviewVersionId(null);
+            setPreviewDocumentId(null);
+            setStudioSessionKey((k) => k + 1);
+            setSubView('studio');
+          }}
+          onSelectVersion={(verId) => {
+            const ver = (state.documentVersions ?? []).find((v) => v.id === verId);
+            if (ver) {
+              setPreviewVersionId(ver.id);
+              setPreviewDocumentId(ver.documentId);
+            }
+          }}
+          onNotify={onNotify}
+        />
+      )}
+
+      {subView === 'detail' && (previewDocumentId || activeDraft?.documentId) && (
+        <DocumentArchiveDetail
+          state={state}
+          documentId={previewDocumentId ?? activeDraft?.documentId ?? ''}
+          initialVersionId={previewVersionId}
+          onPersistState={persistStateUnified}
+          onBackToCenter={() => requestSubViewChange('center')}
+          onOpenStudio={(draftId) => handleOpenStudio(draftId)}
+          onOpenPreview={handleOpenPreview}
+          onOpenRevisionInStudio={(revDraftId) => {
+            setEditingDraftId(revDraftId);
+            setPreviewVersionId(null);
+            setPreviewDocumentId(null);
+            setStudioSessionKey((k) => k + 1);
+            setSubView('studio');
+          }}
+          onDeleteDraft={(target) => handleDeleteDraft(target, { redirectToCenter: true })}
+          onSaveAsTemplate={(docId) => handleOpenTemplateManager(docId)}
+          onNotify={onNotify}
+        />
+      )}
+
+      {subView === 'detail' && !previewDocumentId && !activeDraft?.documentId && (
+        <div className="s04-banner is-warning" role="region" aria-label="Dokumen arsip tidak dipilih">
+          <div>
+            Belum ada dokumen arsip yang dipilih. Kembali ke Pusat Persuratan untuk memilih dokumen.
+          </div>
+          <button
+            type="button"
+            className="s02-btn-primary"
+            onClick={() => requestSubViewChange('center')}
+          >
+            Kembali ke Pusat Persuratan
+          </button>
+        </div>
       )}
 
       {subView === 'studio' && !activeDraft && (

@@ -27,7 +27,8 @@ export function getTodayIsoDate(): string {
 export function createInitialIntakeFormValues(
   template: DocumentTemplate,
   state: AppState,
-  existingDraft?: DocumentIntakeDraft | null
+  existingDraft?: DocumentIntakeDraft | null,
+  prefillValues?: Record<string, unknown> | null
 ): IntakeFormValues {
   if (existingDraft) {
     return {
@@ -67,6 +68,19 @@ export function createInitialIntakeFormValues(
       initial[ctrl.key] = ctrl.autoSourceKey ?? 'auto';
     } else {
       initial[ctrl.key] = '';
+    }
+  }
+
+  if (prefillValues && typeof prefillValues === 'object') {
+    for (const [k, v] of Object.entries(prefillValues)) {
+      if (v === undefined) continue;
+      if (k === 'documentTitle' && typeof v === 'string') {
+        initial.documentTitle = v;
+      } else if (k === 'documentDate' && typeof v === 'string' && v.trim()) {
+        initial.documentDate = v;
+      } else if (k in initial) {
+        initial[k] = deepClone(v);
+      }
     }
   }
 
@@ -301,6 +315,7 @@ function generateStableIntakeIds(): { draftId: string; documentId: string } {
 export interface SaveIntakeDraftOptions {
   existingDraftId?: string | null;
   existingDocumentId?: string | null;
+  linkedAssignmentId?: string | null;
   timestamp?: string;
 }
 
@@ -335,11 +350,50 @@ export function saveIntakeDraftToState(
     matchedDraft?.documentId ?? options?.existingDocumentId ?? generated.documentId;
 
   const matchedDoc = existingDocs.find((d) => d.id === documentId);
+  if (
+    matchedDoc &&
+    (matchedDoc.status === 'FINAL' ||
+      matchedDoc.status === 'REVISED' ||
+      matchedDoc.status === 'ARCHIVED')
+  ) {
+    throw new Error(
+      'Dokumen yang telah disahkan (Final/Direvisi/Diarsipkan) bersifat read-only. Buat revisi baru untuk mengubah dokumen.'
+    );
+  }
   const isUpdate = Boolean(matchedDraft);
 
   const schema = getIntakeSchemaForTemplate(template);
   const meta = deriveDocumentMetadata(template, values, state);
   const sourceSnapshots = buildSourceSnapshots(template, values, state, now);
+  const resolvedLinkedAssignmentId =
+    options?.linkedAssignmentId ?? matchedDraft?.linkedAssignmentId ?? matchedDoc?.linkedAssignmentId ?? null;
+  if (resolvedLinkedAssignmentId) {
+    const linkedAssignment = (state.teacherAssignments ?? []).find(
+      (a) => a.id === resolvedLinkedAssignmentId
+    );
+    sourceSnapshots.push({
+      sourceKey: 'master.teacher_assignment.linked',
+      sourceLabel: 'Penugasan Guru Terkait',
+      provenance: 'OPERATOR_INPUT',
+      sourceIdentity: resolvedLinkedAssignmentId,
+      capturedValue: linkedAssignment
+        ? deepClone({
+            id: linkedAssignment.id,
+            teacherId: linkedAssignment.teacherId,
+            assignmentType: linkedAssignment.assignmentType,
+            title: linkedAssignment.title,
+            startDate: linkedAssignment.startDate,
+            endDate: linkedAssignment.endDate,
+            academicYear: linkedAssignment.academicYear ?? null,
+            semester: linkedAssignment.semester ?? null,
+            status: linkedAssignment.status,
+          })
+        : { id: resolvedLinkedAssignmentId },
+      capturedAt: now,
+      isDemoData: validation.resolvedAutoData.isDemoData,
+      status: linkedAssignment ? 'VERIFIED' : 'UNVERIFIED',
+    });
+  }
   const templateSnapshot = buildTemplateSnapshot(template, now);
 
   const cleanFieldValues: Record<string, unknown> = {};
@@ -402,6 +456,7 @@ export function saveIntakeDraftToState(
     sourceSnapshots,
     ...(preservedStudio ? { studio: preservedStudio } : {}),
     ...(s03EditedAfterStudioAt ? { s03EditedAfterStudioAt } : {}),
+    ...(resolvedLinkedAssignmentId ? { linkedAssignmentId: resolvedLinkedAssignmentId } : {}),
     createdAt: matchedDraft?.createdAt ?? now,
     updatedAt: now,
   };
@@ -431,6 +486,7 @@ export function saveIntakeDraftToState(
     templateId: template.id,
     templateVersion: template.version,
     scheduleVersionId: meta.scheduleVersionId,
+    ...(resolvedLinkedAssignmentId ? { linkedAssignmentId: resolvedLinkedAssignmentId } : {}),
   };
 
   const nextIntakeDrafts = matchedDraft
@@ -511,6 +567,16 @@ export function saveStudioDraftToState(
   };
 
   const matchedDoc = existingDocs.find((d) => d.id === matchedDraft.documentId);
+  if (
+    matchedDoc &&
+    (matchedDoc.status === 'FINAL' ||
+      matchedDoc.status === 'REVISED' ||
+      matchedDoc.status === 'ARCHIVED')
+  ) {
+    throw new Error(
+      'Dokumen berstatus FINAL atau ARCHIVED bersifat read-only. Gunakan Revisi Non-Destruktif untuk menyunting versi baru.'
+    );
+  }
   const nextDoc: DocumentRecord = matchedDoc
     ? {
         ...deepClone(matchedDoc),

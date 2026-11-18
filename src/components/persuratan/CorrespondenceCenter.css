@@ -596,6 +596,7 @@
 .s01-status-label.status-RECEIVED { color: #19584C; }
 .s01-status-label.status-IN_REVIEW { color: #785315; }
 .s01-status-label.status-FINAL { color: #1B5E43; }
+.s01-status-label.status-REVISED { color: #2D608F; }
 .s01-status-label.status-ARCHIVED { color: #4A5D57; }
 .s01-status-label.status-CANCELLED { color: #8F2D24; }
 

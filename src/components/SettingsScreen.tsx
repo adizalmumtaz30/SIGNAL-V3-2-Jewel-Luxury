@@ -34,6 +34,11 @@ import {
   toClock,
 } from '../domain/time';
 import { getDefaultMadrasahLogo, processLogoUpload } from '../utils/madrasahLogo';
+import {
+  DEFAULT_NUMBERING_PATTERN,
+  normalizeDocumentNumberingConfig,
+} from '../domain/persuratan/finalization/numberingEngine';
+import type { NumberingResetMode } from '../domain/persuratan/types';
 
 export interface SettingsScreenProps {
   state: AppState;
@@ -247,6 +252,19 @@ export function SettingsScreen({
     state.settings.curriculumLeaderTitle ?? 'Waka Bidang Kurikulum',
   );
 
+  const initialNumbering = normalizeDocumentNumberingConfig(
+    state.settings.documentNumbering,
+    state.settings,
+  );
+  const [numberingMadrasahCode, setNumberingMadrasahCode] = useState(
+    initialNumbering.madrasahCode,
+  );
+  const [numberingPattern, setNumberingPattern] = useState(initialNumbering.formatPattern);
+  const [numberingPadding, setNumberingPadding] = useState(initialNumbering.seqPadding);
+  const [numberingResetMode, setNumberingResetMode] = useState<NumberingResetMode>(
+    initialNumbering.resetMode,
+  );
+
   const [definitions, setDefinitions] = useState<PeriodDefinition[]>(() =>
     getDefaultDefsFromSettings(state.settings),
   );
@@ -279,6 +297,14 @@ export function SettingsScreen({
     setCurriculumLeaderName(nextSettings.curriculumLeaderName ?? 'Siti Aminah, S.Pd.I., M.Pd.');
     setCurriculumLeaderNip(nextSettings.curriculumLeaderNip ?? '19820315 200901 2 008');
     setCurriculumLeaderTitle(nextSettings.curriculumLeaderTitle ?? 'Waka Bidang Kurikulum');
+    const syncedNum = normalizeDocumentNumberingConfig(
+      nextSettings.documentNumbering,
+      nextSettings,
+    );
+    setNumberingMadrasahCode(syncedNum.madrasahCode);
+    setNumberingPattern(syncedNum.formatPattern);
+    setNumberingPadding(syncedNum.seqPadding);
+    setNumberingResetMode(syncedNum.resetMode);
     setDefinitions(getDefaultDefsFromSettings(nextSettings));
   };
 
@@ -723,6 +749,16 @@ export function SettingsScreen({
       teachingPeriodsPerDay: Math.max(1, kbmCount),
       periodDefinitions: definitions,
       geminiEnabled,
+      documentNumbering: normalizeDocumentNumberingConfig(
+        {
+          enabled: true,
+          madrasahCode: numberingMadrasahCode.trim() || 'MTs',
+          formatPattern: numberingPattern.trim() || DEFAULT_NUMBERING_PATTERN,
+          seqPadding: numberingPadding,
+          resetMode: numberingResetMode,
+        },
+        state.settings,
+      ),
     });
   };
 
@@ -770,6 +806,11 @@ export function SettingsScreen({
       return true;
     if (curriculumLeaderNip !== (s.curriculumLeaderNip ?? '19820315 200901 2 008')) return true;
     if (curriculumLeaderTitle !== (s.curriculumLeaderTitle ?? 'Waka Bidang Kurikulum')) return true;
+    const savedNum = normalizeDocumentNumberingConfig(s.documentNumbering, s);
+    if (numberingMadrasahCode !== savedNum.madrasahCode) return true;
+    if (numberingPattern !== savedNum.formatPattern) return true;
+    if (numberingPadding !== savedNum.seqPadding) return true;
+    if (numberingResetMode !== savedNum.resetMode) return true;
     return false;
   }, [
     schoolName,
@@ -796,6 +837,10 @@ export function SettingsScreen({
     curriculumLeaderName,
     curriculumLeaderNip,
     curriculumLeaderTitle,
+    numberingMadrasahCode,
+    numberingPattern,
+    numberingPadding,
+    numberingResetMode,
     state.settings,
   ]);
 
@@ -2094,6 +2139,69 @@ export function SettingsScreen({
                       placeholder="19820315 200901 2 008"
                     />
                   </div>
+                </div>
+              </div>
+            </section>
+
+            {/* 4. Aturan Penomoran Surat Otomatis Persuratan S05 */}
+            <section className="s5-lux-panel">
+              <div className="s5-calm-panel-head">
+                <div className="s5-panel-title-group">
+                  <div className="s5-panel-crest">
+                    <FileText size={16} />
+                  </div>
+                  <div>
+                    <h3 className="s5-calm-panel-title">Aturan Penomoran Surat Otomatis (S05)</h3>
+                    <p className="s5-calm-panel-desc">
+                      Format nomor urut resmi saat finalisasi dokumen persuratan &amp; SK.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="s5-form-grid">
+                <div className="s5-form-field">
+                  <label htmlFor="num-madrasah-code">Kode Singkatan Madrasah</label>
+                  <input
+                    id="num-madrasah-code"
+                    value={numberingMadrasahCode}
+                    onChange={(e) => setNumberingMadrasahCode(e.target.value)}
+                    placeholder="MTs.CN"
+                  />
+                </div>
+                <div className="s5-form-field">
+                  <label htmlFor="num-reset-mode">Periode Reset Urutan</label>
+                  <select
+                    id="num-reset-mode"
+                    value={numberingResetMode}
+                    onChange={(e) => setNumberingResetMode(e.target.value as NumberingResetMode)}
+                  >
+                    <option value="YEARLY">Reset per Tahun</option>
+                    <option value="MONTHLY">Reset per Bulan</option>
+                    <option value="CONTINUOUS">Berlanjut (Tanpa Reset)</option>
+                  </select>
+                </div>
+                <div className="s5-form-field">
+                  <label htmlFor="num-seq-padding">Digit Angka Urut</label>
+                  <select
+                    id="num-seq-padding"
+                    value={numberingPadding}
+                    onChange={(e) => setNumberingPadding(Number(e.target.value) || 3)}
+                  >
+                    <option value={2}>2 digit (01)</option>
+                    <option value={3}>3 digit (001)</option>
+                    <option value={4}>4 digit (0001)</option>
+                  </select>
+                </div>
+                <div className="s5-form-field s5-span-2">
+                  <label htmlFor="num-pattern">Pola Format Nomor</label>
+                  <input
+                    id="num-pattern"
+                    className="s5-tnum"
+                    value={numberingPattern}
+                    onChange={(e) => setNumberingPattern(e.target.value)}
+                    placeholder={DEFAULT_NUMBERING_PATTERN}
+                  />
                 </div>
               </div>
             </section>

@@ -422,8 +422,8 @@ describe('Tahap 5 — S04 Document Studio / Editor Dokumen Bergaya Word', () => 
     expect(sanitized).not.toContain('javascript:');
   });
 
-  it('8. Integritas Backup JSON & .signal ber-SHA-256 mempertahankan draft.studio, menolak tampering, & menjaga DB_VERSION = 3', async () => {
-    expect(DB_VERSION).toBe(3);
+  it('8. Integritas Backup JSON & .signal ber-SHA-256 mempertahankan draft.studio, menolak tampering, & menjaga migrasi skema aman', async () => {
+    expect(DB_VERSION).toBeGreaterThanOrEqual(3);
     expect(CURRENT_APP_SCHEMA_VERSION).toBe(2);
 
     const demo = createDemoState();

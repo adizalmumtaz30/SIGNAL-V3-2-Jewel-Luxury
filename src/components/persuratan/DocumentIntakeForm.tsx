@@ -42,6 +42,8 @@ export interface DocumentIntakeFormProps {
   state: AppState;
   template: DocumentTemplate;
   existingDraft?: DocumentIntakeDraft | null;
+  prefillValues?: Record<string, unknown> | null;
+  linkedAssignmentId?: string | null;
   storageError?: string | null;
   onRetryStorage?: () => void;
   onSaveDraft: (
@@ -61,6 +63,8 @@ export function DocumentIntakeForm({
   state,
   template,
   existingDraft = null,
+  prefillValues = null,
+  linkedAssignmentId = null,
   storageError = null,
   onRetryStorage,
   onSaveDraft,
@@ -75,7 +79,7 @@ export function DocumentIntakeForm({
   const autoData = useMemo(() => resolveSystemAutoData(state), [state]);
 
   const [values, setValues] = useState<IntakeFormValues>(() =>
-    createInitialIntakeFormValues(template, state, existingDraft)
+    createInitialIntakeFormValues(template, state, existingDraft, prefillValues)
   );
   const [teacherSearchByField, setTeacherSearchByField] = useState<Record<string, string>>({});
   const [submittedOnce, setSubmittedOnce] = useState<boolean>(false);
@@ -230,6 +234,7 @@ export function DocumentIntakeForm({
     const result = saveIntakeDraftToState(state, template, values, {
       existingDraftId: activeDraftId,
       existingDocumentId: activeDocumentId,
+      linkedAssignmentId: linkedAssignmentId ?? existingDraft?.linkedAssignmentId ?? null,
     });
 
     setActiveDraftId(result.draft.id);

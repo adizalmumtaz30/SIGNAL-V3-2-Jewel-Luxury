@@ -12,10 +12,17 @@ export interface StudioMarginsMm {
   left: number;
 }
 
+export type StudioPageNumberFormat = 'HALAMAN_DARI_TOTAL' | 'HALAMAN_SAJA';
+
 export interface DocumentStudioPageSettings {
   paperSize: StudioPaperSize;
   orientation: StudioOrientation;
   marginsMm: StudioMarginsMm;
+  headerText?: string;
+  footerText?: string;
+  showPageNumbers?: boolean;
+  pageNumberFormat?: StudioPageNumberFormat;
+  repeatTableHeader?: boolean;
 }
 
 export interface TipTapJSONMark {

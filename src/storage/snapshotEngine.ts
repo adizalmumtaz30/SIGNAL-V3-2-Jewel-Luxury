@@ -1,4 +1,9 @@
 import type { AppState } from '../domain/types';
+import type { BackupBlobManifestEntry } from '../domain/persuratan/types';
+import {
+  collectBackupBlobsForState,
+  type BinaryBlobStoreLike,
+} from '../domain/persuratan/attachments/attachmentStore';
 import {
   openSignalDB,
   SNAPSHOT_STORE_NAME,
@@ -46,6 +51,7 @@ export interface SignalArchiveContainer {
     schoolName: string;
     state: AppState;
     starredSnapshots: StateSnapshot[];
+    blobs?: BackupBlobManifestEntry[];
   };
 }
 
@@ -229,9 +235,16 @@ export async function pruneOldSnapshots(dbOverride?: SignalDbLike): Promise<void
 
 export async function buildSignalContainer(
   state: AppState,
-  snapshots: StateSnapshot[] = []
+  snapshots: StateSnapshot[] = [],
+  blobsOverride?: BackupBlobManifestEntry[],
+  dbOverride?: BinaryBlobStoreLike
 ): Promise<SignalArchiveContainer> {
   const migratedState = migrateAppStateSchema(cloneState(state)).state;
+  const collectedBlobs =
+    blobsOverride !== undefined
+      ? blobsOverride
+      : await collectBackupBlobsForState(migratedState, dbOverride);
+
   const payload: SignalArchiveContainer['data'] = {
     brand: 'SIGNAL-V5-SOVEREIGN-ATELIER',
     version: '5.0.0',
@@ -241,6 +254,7 @@ export async function buildSignalContainer(
     schoolName: migratedState.settings.headmasterTitle ? 'Madrasah' : 'Madrasah Tsanawiyah',
     state: migratedState,
     starredSnapshots: snapshots.filter((s) => s.isStarred).slice(0, 5),
+    ...(collectedBlobs.length > 0 ? { blobs: collectedBlobs } : {}),
   };
 
   const checksum = await computeCanonicalSha256(payload);
@@ -259,7 +273,12 @@ export async function buildSignalContainer(
  */
 export async function exportSignalFile(state: AppState, dbOverride?: SignalDbLike): Promise<void> {
   const snapshots = await getSnapshots(dbOverride);
-  const container = await buildSignalContainer(state, snapshots);
+  const container = await buildSignalContainer(
+    state,
+    snapshots,
+    undefined,
+    dbOverride as unknown as BinaryBlobStoreLike
+  );
 
   const blob = new Blob([JSON.stringify(container, null, 2)], {
     type: 'application/octet-stream',
@@ -341,6 +360,9 @@ export async function parseSignalContent(text: string): Promise<BackupParseResul
 
     validateAppStateStructure(parsedRaw.data.state);
     const { state: migrated } = migrateAppStateSchema(cloneState(parsedRaw.data.state as unknown as AppState));
+    const parsedBlobs = Array.isArray(parsedRaw.data.blobs)
+      ? (parsedRaw.data.blobs as BackupBlobManifestEntry[])
+      : undefined;
 
     return {
       state: migrated,
@@ -350,6 +372,7 @@ export async function parseSignalContent(text: string): Promise<BackupParseResul
       verification,
       warnings,
       ...(typeof checksum === 'string' ? { checksum } : {}),
+      ...(parsedBlobs ? { blobs: parsedBlobs } : {}),
     };
   }
 

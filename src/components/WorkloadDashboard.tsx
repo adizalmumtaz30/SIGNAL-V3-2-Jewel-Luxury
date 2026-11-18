@@ -39,6 +39,7 @@ export interface WorkloadDashboardProps {
   onNavigateToSchedule?: () => void;
   onNavigateToMaster?: () => void;
   onNavigateToRequirements?: () => void;
+  onLaunchTeachingSk?: (scheduleVersionId: string) => void;
 }
 
 export function WorkloadDashboard({
@@ -47,6 +48,7 @@ export function WorkloadDashboard({
   onNavigateToSchedule,
   onNavigateToMaster,
   onNavigateToRequirements,
+  onLaunchTeachingSk,
 }: WorkloadDashboardProps) {
   const [sourceMode, setSourceMode] = useState<WorkloadSourceMode>(initialSourceMode);
   const [selectedVersionId, setSelectedVersionId] = useState<string>('');
@@ -440,6 +442,36 @@ export function WorkloadDashboard({
           </div>
 
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {onLaunchTeachingSk && (
+              <button
+                type="button"
+                className="button button-sm button-primary"
+                disabled={
+                  sourceMode !== 'PUBLISHED' ||
+                  !sourceResolution.canUseAsOfficialSKBasis ||
+                  !sourceResolution.selectedVersion
+                }
+                title={
+                  sourceMode === 'PUBLISHED' &&
+                  sourceResolution.canUseAsOfficialSKBasis &&
+                  sourceResolution.selectedVersion
+                    ? `Buat SK Pembagian Tugas Mengajar dari ScheduleVersion v${sourceResolution.selectedVersion.version.version}`
+                    : 'SK Pembagian Tugas Mengajar wajib berasal dari Jadwal Terbit Resmi (ScheduleVersion) terverifikasi.'
+                }
+                onClick={() => {
+                  if (
+                    sourceMode === 'PUBLISHED' &&
+                    sourceResolution.canUseAsOfficialSKBasis &&
+                    sourceResolution.selectedVersion
+                  ) {
+                    onLaunchTeachingSk(sourceResolution.selectedVersion.version.id);
+                  }
+                }}
+              >
+                <FileCheck2 size={13} aria-hidden="true" />
+                <span>Buat SK Pembagian Tugas</span>
+              </button>
+            )}
             {sourceMode === 'REQUIREMENTS' && onNavigateToRequirements && (
               <button type="button" className="button button-sm button-secondary" onClick={onNavigateToRequirements}>
                 Kelola Kebutuhan JP <ArrowRight size={13} />

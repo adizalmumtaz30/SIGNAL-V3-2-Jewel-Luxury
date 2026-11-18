@@ -98,6 +98,12 @@ import { MadrasahTeacherAvatar, detectTeacherGender } from './components/Madrasa
 import { CommandPaletteModal } from './components/CommandPaletteModal';
 import { TimeMachineDrawer } from './components/TimeMachineDrawer';
 import { InspectorSlideDrawer, type InspectorTarget } from './components/InspectorSlideDrawer';
+import { TeacherAssignmentDrawer } from './components/TeacherAssignmentDrawer';
+import type { PersuratanLaunchRequest } from './domain/persuratan/types';
+import {
+  buildSkTeachingLaunchPayload,
+  getOfficialScheduleBasisStatus,
+} from './domain/persuratan/assignments/teacherIntegration';
 import { createSnapshot } from './storage/snapshotEngine';
 import { COMMON_TEACHER_POSITIONS } from './utils/madrasahLogo';
 import { compactSubjectName, compactTeacherName, getPrintableCellColor } from './utils/pdfExport';
@@ -252,23 +258,36 @@ export default function App() {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isTimeMachineOpen, setIsTimeMachineOpen] = useState(false);
   const [inspectorTarget, setInspectorTarget] = useState<InspectorTarget | null>(null);
+  const [teacherAssignmentTargetId, setTeacherAssignmentTargetId] = useState<string | null>(null);
+  const [persuratanLaunch, setPersuratanLaunch] = useState<PersuratanLaunchRequest | null>(null);
   const [pendingBackupRestore, setPendingBackupRestore] = useState<{
     fileName: string;
     result: BackupParseResult;
   } | null>(null);
   const [storageError, setStorageError] = useState<string | null>(null);
 
-  // Global Ctrl + K / Cmd + K listener (bypassed when focus is inside S04 rich-text editor)
+  // Global Command Palette listener: Ctrl/Cmd+Shift+P everywhere, Ctrl/Cmd+K outside inputs & Document Studio S04
   useEffect(() => {
     const handleGlobalKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      if (
-        target &&
-        (target.isContentEditable || Boolean(target.closest('[data-doc-editor="true"]')))
-      ) {
+      const isShiftP = (e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'p';
+      if (isShiftP) {
+        e.preventDefault();
+        setIsCommandPaletteOpen((prev) => !prev);
         return;
       }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+
+      const tag = target?.tagName;
+      const isTextControl =
+        tag === 'INPUT' ||
+        tag === 'TEXTAREA' ||
+        tag === 'SELECT' ||
+        Boolean(target?.isContentEditable) ||
+        Boolean(target?.closest('[data-doc-editor="true"]'));
+
+      if (isTextControl) return;
+
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setIsCommandPaletteOpen((prev) => !prev);
       }
@@ -384,6 +403,40 @@ export default function App() {
     }
     applyNavigation(next);
   };
+
+  const launchPersuratan = useCallback(
+    (request: PersuratanLaunchRequest) => {
+      setPersuratanLaunch(request);
+      if (screen !== 'persuratan') {
+        if (screen === 'settings' && settingsDirty) {
+          setPendingNavScreen('persuratan');
+          return;
+        }
+        applyNavigation('persuratan');
+      }
+    },
+    [screen, settingsDirty, applyNavigation]
+  );
+
+  const handleLaunchTeachingSk = useCallback(
+    (scheduleVersionId?: string | null) => {
+      if (!workspace) return;
+      try {
+        const req = buildSkTeachingLaunchPayload(workspace, {
+          scheduleVersionId: scheduleVersionId ?? null,
+        });
+        launchPersuratan(req);
+      } catch (err) {
+        notify(
+          err instanceof Error
+            ? err.message
+            : 'SK Mengajar hanya dapat dibuat dari ScheduleVersion terbit terverifikasi.',
+          'warning'
+        );
+      }
+    },
+    [workspace, launchPersuratan, notify]
+  );
 
   const handlePeriodConfig = (changes: Partial<AppState['settings']>) => {
     updateWorkspace((current) => {
@@ -1065,13 +1118,20 @@ export default function App() {
     if (!pendingBackupRestore) return;
     const { fileName, result } = pendingBackupRestore;
     try {
-      const restored = await restoreWorkspaceSafely({ ...result.state, dataMode: 'custom' });
+      const restored = await restoreWorkspaceSafely(
+        { ...result.state, dataMode: 'custom' },
+        result.blobs
+      );
       setWorkspace(restored);
       setPendingBackupRestore(null);
+      const blobNote =
+        result.blobs && result.blobs.length > 0
+          ? ` (${result.blobs.length} berkas PDF/lampiran dipulihkan)`
+          : '';
       notify(
         result.verification === 'legacy_unverified'
-          ? `Backup lama "${fileName}" dipulihkan tanpa verifikasi checksum SHA-256.`
-          : `Backup "${fileName}" berhasil diverifikasi SHA-256 dan dipulihkan.`,
+          ? `Backup lama "${fileName}" dipulihkan tanpa verifikasi checksum SHA-256${blobNote}.`
+          : `Backup "${fileName}" berhasil diverifikasi SHA-256 dan dipulihkan${blobNote}.`,
         result.verification === 'legacy_unverified' ? 'warning' : 'success'
       );
     } catch (error) {
@@ -1223,7 +1283,7 @@ export default function App() {
               onClick={() => setIsCommandPaletteOpen(true)}
               type="button"
               aria-label="Pusat Kendali Cepat"
-              data-s5-tooltip="Cari cepat guru, kelas, & menu (Ctrl+K)"
+              data-s5-tooltip="Cari cepat guru, kelas, dokumen & menu (Ctrl+K / Ctrl+Shift+P)"
             >
               <Search size={14} color="#124037" />
               <span>Cari cepat…</span>
@@ -1299,6 +1359,8 @@ export default function App() {
                   setSelectedClass(classId);
                   navigate('schedule');
                 }}
+                onLaunchPersuratan={launchPersuratan}
+                onLaunchTeachingSk={() => handleLaunchTeachingSk(null)}
               />
             )}
 
@@ -1318,6 +1380,7 @@ export default function App() {
                 onExportCSV={exportScheduleCSV}
                 onOpenPdfModal={() => setPdfExportOpen(true)}
                 onOpenValidationModal={() => setQuickValidationOpen(true)}
+                onLaunchTeachingSk={handleLaunchTeachingSk}
                 onNavigate={navigate}
                 report={report!}
                 lastMove={lastMoveHistory}
@@ -1332,6 +1395,7 @@ export default function App() {
                 onNavigateToSchedule={() => navigate('schedule')}
                 onNavigateToMaster={() => navigate('master')}
                 onNavigateToRequirements={() => navigate('requirements')}
+                onLaunchTeachingSk={(verId) => handleLaunchTeachingSk(verId)}
               />
             )}
 
@@ -1344,10 +1408,11 @@ export default function App() {
               />
             )}
 
-            {/* SCREEN S01–S04: PUSAT PERSURATAN & ARSIP + GALERI TEMPLATE + FORM DATA AWAL + DOCUMENT STUDIO */}
+            {/* SCREEN S01–S05: PUSAT PERSURATAN & ARSIP + GALERI TEMPLATE + FORM DATA AWAL + DOCUMENT STUDIO + FINALISASI */}
             {screen === 'persuratan' && (
               <PersuratanWorkspace
                 state={workspace}
+                launchRequest={persuratanLaunch}
                 storageError={storageError}
                 onRetryStorage={retrySaveWorkspace}
                 onUpdateState={updateWorkspace}
@@ -1356,6 +1421,7 @@ export default function App() {
                   setPersuratanDirty(dirty);
                   setPersuratanDirtySource(dirty ? source ?? 'intake' : null);
                 }}
+                onNavigateToSettings={() => navigate('settings')}
                 onNotify={notify}
               />
             )}
@@ -1393,6 +1459,7 @@ export default function App() {
                 onEditClass={(c) => setEntityModalTarget({ kind: 'class', isNew: false, item: c })}
                 onEditTeacher={(t) => setEntityModalTarget({ kind: 'teacher', isNew: false, item: t })}
                 onInspectTeacher={(t) => setInspectorTarget({ type: 'teacher', data: t })}
+                onOpenTeacherAssignments={(t) => setTeacherAssignmentTargetId(t.id)}
                 onEditSubject={(s) => setEntityModalTarget({ kind: 'subject', isNew: false, item: s })}
                 onOpenAddModal={(kind) => setEntityModalTarget({ kind, isNew: true })}
                 onNavigate={navigate}
@@ -1687,6 +1754,8 @@ export default function App() {
         onNavigate={(targetScreen) => {
           navigate(targetScreen);
         }}
+        onLaunchPersuratan={launchPersuratan}
+        onLaunchTeachingSk={() => handleLaunchTeachingSk(null)}
         onSelectTeacher={(tch) => {
           setInspectorTarget({ type: 'teacher', data: tch });
         }}
@@ -1728,6 +1797,21 @@ export default function App() {
           handleSaveSubject(updatedSubject, false);
           setInspectorTarget(null);
         }}
+        onNotify={notify}
+      />
+
+      {/* Tahap 9: Teacher Assignments & Linked Correspondence Drawer */}
+      <TeacherAssignmentDrawer
+        isOpen={Boolean(teacherAssignmentTargetId)}
+        teacher={
+          teacherAssignmentTargetId
+            ? workspace.teachers.find((t) => t.id === teacherAssignmentTargetId) ?? null
+            : null
+        }
+        state={workspace}
+        onClose={() => setTeacherAssignmentTargetId(null)}
+        onUpdateState={(updater) => updateWorkspace(updater, true)}
+        onLaunchPersuratan={launchPersuratan}
         onNotify={notify}
       />
 
@@ -2087,7 +2171,7 @@ function TablePagination({
  * SECTION B: BERANDA RINGKAS (OPERATOR CENTER)
  * SAKALA V2 Modern / SIGNAL Warm Ivory & Mocha Architectural Aesthetic
  */
-function OperatorOverviewScreen({
+export function OperatorOverviewScreen({
   state,
   report,
   masterIssues,
@@ -2100,6 +2184,8 @@ function OperatorOverviewScreen({
   onOpenPdfModal,
   onOpenValidationModal,
   onSelectClass,
+  onLaunchPersuratan,
+  onLaunchTeachingSk,
 }: {
   state: AppState;
   report: ReturnType<typeof validateSchedule>;
@@ -2113,6 +2199,8 @@ function OperatorOverviewScreen({
   onOpenPdfModal: () => void;
   onOpenValidationModal: () => void;
   onSelectClass?: (classId: string) => void;
+  onLaunchPersuratan?: (request: PersuratanLaunchRequest) => void;
+  onLaunchTeachingSk?: () => void;
 }) {
   const activeClasses = state.classes.filter((c) => c.isActive);
   const activeTeachers = state.teachers.filter((t) => t.isActive);
@@ -2136,6 +2224,26 @@ function OperatorOverviewScreen({
     (a) => a.date === todayIso && a.status === 'HADIR',
   ).length;
   const todayRecordedCount = (state.attendance ?? []).filter((a) => a.date === todayIso).length;
+
+  // Real Persuratan & Arsip summary metrics (zero fabricated numbers)
+  const documents = state.documents ?? [];
+  const draftDocsCount = documents.filter((d) => d.status === 'DRAFT' || d.status === 'IN_REVIEW').length;
+  const finalDocsCount = documents.filter((d) => d.status === 'FINAL' || d.status === 'REVISED').length;
+  const archivedDocsCount = documents.filter((d) => d.status === 'ARCHIVED').length;
+  const customTemplatesCount = (state.customTemplates ?? []).filter((t) => t.status !== 'ARCHIVED').length;
+  const attachmentsCount = (state.documentAttachments ?? []).length;
+  const skBasis = getOfficialScheduleBasisStatus(state);
+  const recentDocuments = [...documents]
+    .sort((a, b) => (b.updatedAt || b.documentDate || '').localeCompare(a.updatedAt || a.documentDate || ''))
+    .slice(0, 3);
+
+  const openPersuratanView = (request: PersuratanLaunchRequest) => {
+    if (onLaunchPersuratan) {
+      onLaunchPersuratan(request);
+    } else {
+      onNavigate('persuratan');
+    }
+  };
 
   const openClassEditor = (classId: string) => {
     if (onSelectClass) onSelectClass(classId);
@@ -2452,6 +2560,216 @@ function OperatorOverviewScreen({
           </div>
         </div>
       </div>
+
+      {/* 4. PANEL RINGKASAN BERANDA: TINDAKAN ADMINISTRASI & PERSURATAN */}
+      <section
+        className="panel s5-admin-persuratan-panel"
+        aria-label="Ringkasan Persuratan dan Arsip Madrasah"
+      >
+        <div className="s5-admin-persuratan-head">
+          <div>
+            <div className="s5-panel-kicker">ADMINISTRASI &amp; PERSURATAN MADRASAH</div>
+            <div className="panel-title">Ringkasan Persuratan &amp; Arsip</div>
+          </div>
+          <div className="s5-admin-persuratan-actions">
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={SlidersHorizontal}
+              onClick={() => openPersuratanView({ view: 'template-manager', nonce: Date.now() })}
+            >
+              Kelola Template
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={Archive}
+              onClick={() => openPersuratanView({ view: 'center', nonce: Date.now() })}
+            >
+              Pusat Persuratan &amp; Arsip
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              icon={Plus}
+              onClick={() => openPersuratanView({ view: 'templates', nonce: Date.now() })}
+            >
+              Buat Surat Baru
+            </Button>
+          </div>
+        </div>
+
+        <div className="s5-admin-persuratan-metrics">
+          <button
+            type="button"
+            className="s5-admin-metric-card"
+            onClick={() => openPersuratanView({ view: 'center', nonce: Date.now() })}
+          >
+            <span className="s5-admin-metric-label">Draft Aktif</span>
+            <span className="s5-admin-metric-value s5-tnum">{draftDocsCount}</span>
+            <span className="s5-admin-metric-sub">
+              {draftDocsCount > 0 ? 'Siap dilanjutkan di Document Studio' : 'Belum ada draft berjalan'}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            className="s5-admin-metric-card"
+            onClick={() => openPersuratanView({ view: 'center', nonce: Date.now() })}
+          >
+            <span className="s5-admin-metric-label">Dokumen Final</span>
+            <span className="s5-admin-metric-value s5-tnum">{finalDocsCount}</span>
+            <span className="s5-admin-metric-sub">
+              {finalDocsCount > 0 ? 'Bernomor resmi & snapshot terkunci' : 'Belum ada dokumen disahkan'}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            className="s5-admin-metric-card"
+            onClick={() => openPersuratanView({ view: 'center', nonce: Date.now() })}
+          >
+            <span className="s5-admin-metric-label">Arsip &amp; Lampiran</span>
+            <span className="s5-admin-metric-value s5-tnum">{archivedDocsCount}</span>
+            <span className="s5-admin-metric-sub s5-tnum">
+              {attachmentsCount} lampiran terverifikasi tersimpan
+            </span>
+          </button>
+
+          <button
+            type="button"
+            className="s5-admin-metric-card"
+            onClick={() => openPersuratanView({ view: 'template-manager', nonce: Date.now() })}
+          >
+            <span className="s5-admin-metric-label">Template Madrasah</span>
+            <span className="s5-admin-metric-value s5-tnum">{customTemplatesCount}</span>
+            <span className="s5-admin-metric-sub">
+              + 30 template resmi bawaan SIGNAL
+            </span>
+          </button>
+        </div>
+
+        {/* Status Kesiapan SK Pembagian Tugas Mengajar (Berdasarkan ScheduleVersion Resmi) */}
+        <div className={`s5-admin-sk-strip ${skBasis.allowed ? '' : 'is-locked'}`}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+            {skBasis.allowed ? (
+              <Award size={18} color="#124037" aria-hidden="true" style={{ flexShrink: 0 }} />
+            ) : (
+              <LockKeyhole size={18} color="#8E7035" aria-hidden="true" style={{ flexShrink: 0 }} />
+            )}
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: '#0B2923' }}>
+                SK Pembagian Tugas Mengajar (SYS-TPL-03)
+              </div>
+              <div style={{ fontSize: '12px', color: '#4B635D' }}>
+                {skBasis.allowed
+                  ? `Sumber resmi aktif: ${skBasis.selectedVersion?.version.label ?? skBasis.selectedVersion?.version.id} · ${skBasis.validVersionsCount} versi jadwal terverifikasi.`
+                  : skBasis.blockedReason ?? 'Terbitkan dan verifikasi jadwal terlebih dahulu agar SK Mengajar bersumber dari data resmi.'}
+              </div>
+            </div>
+          </div>
+          {skBasis.allowed ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={FileCheck2}
+              onClick={() => {
+                if (onLaunchTeachingSk) {
+                  onLaunchTeachingSk();
+                } else {
+                  openPersuratanView({ view: 'templates', nonce: Date.now() });
+                }
+              }}
+            >
+              Buat SK Mengajar
+            </Button>
+          ) : (
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={CalendarDays}
+              onClick={() => onNavigate('schedule')}
+            >
+              Terbitkan Jadwal
+            </Button>
+          )}
+        </div>
+
+        {/* Daftar Dokumen Terbaru (Real Data Only) */}
+        {recentDocuments.length > 0 ? (
+          <div className="s5-admin-recent-list">
+            {recentDocuments.map((doc) => {
+              const isDraft = doc.status === 'DRAFT' && Boolean(doc.intakeDraftId);
+              return (
+                <button
+                  key={doc.id}
+                  type="button"
+                  className="s5-admin-recent-row"
+                  onClick={() => {
+                    if (isDraft && doc.intakeDraftId) {
+                      openPersuratanView({
+                        view: 'studio',
+                        draftId: doc.intakeDraftId,
+                        documentId: doc.id,
+                        templateId: doc.templateId ?? null,
+                        nonce: Date.now(),
+                      });
+                    } else {
+                      openPersuratanView({
+                        view: 'detail',
+                        documentId: doc.id,
+                        versionId: doc.currentVersionId ?? null,
+                        nonce: Date.now(),
+                      });
+                    }
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontSize: '12.5px',
+                        fontWeight: 700,
+                        color: '#0B2923',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {doc.title}
+                    </div>
+                    <div
+                      className="s5-tnum"
+                      style={{
+                        fontSize: '11.5px',
+                        color: '#4B635D',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {doc.documentNumber ?? 'Draft Belum Bernomor'} · {doc.status}
+                    </div>
+                  </div>
+                  <ArrowRight size={14} color="#4B635D" aria-hidden="true" style={{ flexShrink: 0 }} />
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div
+            style={{
+              fontSize: '12.5px',
+              color: '#4B635D',
+              padding: '8px 12px',
+              borderRadius: '10px',
+              background: '#F9FBF9',
+              border: '0.75px dashed #CDD9D3',
+            }}
+          >
+            Belum ada dokumen persuratan tersimpan pada workspace ini. Klik <strong>Buat Surat Baru</strong> untuk memilih dari 30 template resmi madrasah.
+          </div>
+        )}
+      </section>
     </div>
   );
 }
@@ -2473,6 +2791,7 @@ function ScheduleScreen({
   onExportCSV,
   onOpenPdfModal,
   onOpenValidationModal,
+  onLaunchTeachingSk,
   onNavigate,
   report,
   lastMove,
@@ -2491,6 +2810,7 @@ function ScheduleScreen({
   onExportCSV: () => void;
   onOpenPdfModal: () => void;
   onOpenValidationModal: () => void;
+  onLaunchTeachingSk?: (scheduleVersionId?: string | null) => void;
   onNavigate: (screen: ScreenId) => void;
   report: ReturnType<typeof validateSchedule>;
   lastMove: { entries: ScheduleEntry[]; description: string } | null;
@@ -2769,6 +3089,24 @@ function ScheduleScreen({
                 </div>
               )}
             </div>
+            {onLaunchTeachingSk && (() => {
+              const skBasis = getOfficialScheduleBasisStatus(state);
+              return (
+                <Button
+                  variant="secondary"
+                  icon={FileCheck2}
+                  disabled={!skBasis.allowed}
+                  onClick={() => onLaunchTeachingSk(skBasis.selectedVersion?.version.id ?? null)}
+                  title={
+                    skBasis.allowed && skBasis.selectedVersion
+                      ? `Buat SK Pembagian Tugas Mengajar dari ScheduleVersion v${skBasis.selectedVersion.version.version}`
+                      : skBasis.blockedReason ?? 'Terbitkan jadwal resmi terlebih dahulu sebelum membuat SK.'
+                  }
+                >
+                  Buat SK Mengajar
+                </Button>
+              );
+            })()}
             <Button icon={WandSparkles} onClick={onGenerate} disabled={isGenerating}>
               {isGenerating ? 'Menyusun…' : 'Generate Jadwal'}
             </Button>
@@ -4102,6 +4440,7 @@ function MasterScreen({
   onEditTeacher,
   onEditSubject,
   onInspectTeacher,
+  onOpenTeacherAssignments,
   onOpenAddModal,
   onNavigate,
 }: {
@@ -4124,6 +4463,7 @@ function MasterScreen({
   onEditTeacher: (t: Teacher) => void;
   onEditSubject: (s: Subject) => void;
   onInspectTeacher?: (t: Teacher) => void;
+  onOpenTeacherAssignments?: (t: Teacher) => void;
   onOpenAddModal?: (kind: 'class' | 'teacher' | 'subject') => void;
   onNavigate?: (screen: ScreenId) => void;
 }) {
@@ -4153,19 +4493,23 @@ function MasterScreen({
     return () => window.removeEventListener('click', handleDocClick);
   }, []);
 
-  // Keyboard shortcut listener: ⌘K to search, N to add
+  // Keyboard shortcut listener: '/' to focus local table search (keeps Ctrl+K free for Command Palette), 'N' to add
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const activeEl = document.activeElement;
-      const isInput = activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA' || activeEl?.tagName === 'SELECT';
+      const activeEl = document.activeElement as HTMLElement | null;
+      const isInput =
+        activeEl?.tagName === 'INPUT' ||
+        activeEl?.tagName === 'TEXTAREA' ||
+        activeEl?.tagName === 'SELECT' ||
+        Boolean(activeEl?.isContentEditable);
 
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      if (!isInput && !e.ctrlKey && !e.metaKey && !e.altKey && e.key === '/') {
         e.preventDefault();
         searchInputRef.current?.focus();
         return;
       }
 
-      if (!isInput && (e.key === 'n' || e.key === 'N')) {
+      if (!isInput && !e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'n' || e.key === 'N')) {
         e.preventDefault();
         if (onOpenAddModal) {
           onOpenAddModal(activeTab === 'classes' ? 'class' : activeTab === 'teachers' ? 'teacher' : 'subject');
@@ -4594,8 +4938,8 @@ function MasterScreen({
                     <X size={14} />
                   </button>
                 )}
-                <span className="search-shortcut-hint" title="Tekan ⌘K atau Ctrl+K untuk mencari">
-                  ⌘K
+                <span className="search-shortcut-hint" title="Tekan / untuk mencari di Data Master">
+                  /
                 </span>
               </div>
             </div>
@@ -5104,6 +5448,19 @@ function MasterScreen({
 
                           {openKebabId === t.id && (
                             <div className="s5-popover-menu" onClick={(e) => e.stopPropagation()}>
+                              {onOpenTeacherAssignments && (
+                                <button
+                                  type="button"
+                                  className="s5-menu-item"
+                                  onClick={() => {
+                                    setOpenKebabId(null);
+                                    onOpenTeacherAssignments(t);
+                                  }}
+                                >
+                                  <Award size={13} />
+                                  <span>Penugasan &amp; Dokumen</span>
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 className="s5-menu-item"

@@ -1,4 +1,10 @@
-import type { DocumentIntakeDraft, DocumentRecord } from './persuratan/types';
+import type {
+  DocumentAttachmentMeta,
+  DocumentIntakeDraft,
+  DocumentNumberingConfig,
+  DocumentRecord,
+  DocumentVersion,
+} from './persuratan/types';
 import type { DocumentTemplate, TemplatePreferences } from './persuratan/templates/types';
 
 export const DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as const;
@@ -156,6 +162,7 @@ export interface AppSettings {
   curriculumLeaderName?: string; // Nama Waka Kurikulum / Koordinator
   curriculumLeaderNip?: string; // NIP Waka Kurikulum
   curriculumLeaderTitle?: string; // Jabatan Koordinator (default: "Waka Bidang Kurikulum")
+  documentNumbering?: DocumentNumberingConfig; // Aturan penomoran surat resmi otomatis (Tahap 8)
 }
 
 export type AttendanceStatus = 'HADIR' | 'IZIN' | 'SAKIT' | 'ALPA' | 'DINAS_LUAR';
@@ -247,6 +254,8 @@ export interface AppState {
   holidays?: Holiday[];
   teacherAssignments?: TeacherAssignment[];
   documents?: DocumentRecord[];
+  documentVersions?: DocumentVersion[];
+  documentAttachments?: DocumentAttachmentMeta[];
   intakeDrafts?: DocumentIntakeDraft[];
   customTemplates?: DocumentTemplate[];
   templatePreferences?: TemplatePreferences;

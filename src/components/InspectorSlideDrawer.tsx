@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   User,
@@ -65,6 +65,20 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
       setTeacherIsActive(t.isActive);
     }
   }, [target]);
+
+  const panelRef = useRef<HTMLDivElement>(null);
+  const prevFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      prevFocusRef.current =
+        typeof document !== 'undefined' ? (document.activeElement as HTMLElement | null) : null;
+      setTimeout(() => panelRef.current?.focus(), 30);
+    } else if (prevFocusRef.current && typeof prevFocusRef.current.focus === 'function') {
+      prevFocusRef.current.focus();
+      prevFocusRef.current = null;
+    }
+  }, [isOpen]);
 
   // Handle escape key
   useEffect(() => {
@@ -135,8 +149,16 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
   const stats = teacherLoadStats();
 
   return (
-    <div className="s5-drawer-overlay" onClick={onClose}>
-      <div className="s5-drawer-panel" onClick={(e) => e.stopPropagation()}>
+    <div className="s5-drawer-overlay" role="presentation" onClick={onClose}>
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        className="s5-drawer-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="s5-inspector-drawer-title"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Drawer Header */}
         <div className="s5-drawer-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -157,7 +179,7 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
               {target.type === 'subject' && <BookOpen size={16} />}
             </div>
             <div>
-              <strong style={{ fontSize: '14px', color: '#0B2923', display: 'block' }}>
+              <strong id="s5-inspector-drawer-title" style={{ fontSize: '14px', color: '#0B2923', display: 'block' }}>
                 {target.type === 'teacher' && 'Inspektur Pendidik'}
                 {target.type === 'class' && 'Inspektur Rombel'}
                 {target.type === 'subject' && 'Inspektur Mapel'}

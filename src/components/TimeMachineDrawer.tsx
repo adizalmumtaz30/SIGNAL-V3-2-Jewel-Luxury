@@ -25,6 +25,7 @@ import {
   getStorageEstimate,
 } from '../storage/snapshotEngine';
 import type { BackupParseResult } from '../storage/db';
+import { validateAndRestoreBackupBlobs } from '../domain/persuratan/attachments/attachmentStore';
 
 interface TimeMachineDrawerProps {
   isOpen: boolean;
@@ -50,6 +51,8 @@ export const TimeMachineDrawer: React.FC<TimeMachineDrawerProps> = ({
   const [pendingImport, setPendingImport] = useState<{ fileName: string; parsed: BackupParseResult } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const prevFocusRef = useRef<HTMLElement | null>(null);
 
   const loadData = async () => {
     try {
@@ -67,7 +70,13 @@ export const TimeMachineDrawer: React.FC<TimeMachineDrawerProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      prevFocusRef.current =
+        typeof document !== 'undefined' ? (document.activeElement as HTMLElement | null) : null;
       loadData();
+      setTimeout(() => closeBtnRef.current?.focus(), 30);
+    } else if (prevFocusRef.current && typeof prevFocusRef.current.focus === 'function') {
+      prevFocusRef.current.focus();
+      prevFocusRef.current = null;
     }
   }, [isOpen]);
 
@@ -168,12 +177,19 @@ export const TimeMachineDrawer: React.FC<TimeMachineDrawerProps> = ({
     const { fileName, parsed } = pendingImport;
     try {
       await createSnapshot(currentState, `Pra-Impor Berkas: ${fileName}`, 'pre_rollback', true);
+      if (parsed.blobs && parsed.blobs.length > 0) {
+        await validateAndRestoreBackupBlobs(parsed.blobs);
+      }
       onStateRestored(parsed.state);
       setPendingImport(null);
+      const blobNote =
+        parsed.blobs && parsed.blobs.length > 0
+          ? ` (${parsed.blobs.length} berkas PDF/lampiran ikut dipulihkan)`
+          : '';
       onNotify(
         parsed.verification === 'legacy_unverified'
-          ? `Berkas lama "${fileName}" dipulihkan (tanpa verifikasi SHA-256).`
-          : `Berhasil memulihkan madrasah dari berkas terverifikasi "${fileName}"!`,
+          ? `Berkas lama "${fileName}" dipulihkan (tanpa verifikasi SHA-256)${blobNote}.`
+          : `Berhasil memulihkan madrasah dari berkas terverifikasi "${fileName}"${blobNote}!`,
         parsed.verification === 'legacy_unverified' ? 'warning' : 'success'
       );
       onClose();
@@ -204,16 +220,20 @@ export const TimeMachineDrawer: React.FC<TimeMachineDrawerProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="s5-drawer-overlay" onClick={onClose}>
+    <div className="s5-drawer-overlay" role="presentation" onClick={onClose}>
       <div
         className="s5-drawer-panel"
-        style={{ width: '480px' }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="s5-time-machine-title"
+        style={{ width: '480px', maxWidth: '100vw' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="s5-drawer-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div
+              aria-hidden="true"
               style={{
                 width: '32px',
                 height: '32px',
@@ -228,20 +248,22 @@ export const TimeMachineDrawer: React.FC<TimeMachineDrawerProps> = ({
               <Clock size={16} />
             </div>
             <div>
-              <strong style={{ fontSize: '14.5px', color: '#0B2923', display: 'block' }}>
+              <strong id="s5-time-machine-title" style={{ fontSize: '14.5px', color: '#0B2923', display: 'block' }}>
                 Time Machine Vault
               </strong>
-              <small style={{ fontSize: '11px', color: '#687E77' }}>
+              <small style={{ fontSize: '11px', color: '#4B635D' }}>
                 Titik Pemulihan &amp; Ketahanan Data
               </small>
             </div>
           </div>
           <button
+            ref={closeBtnRef}
+            type="button"
             onClick={onClose}
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#687E77',
+              color: '#4B635D',
               cursor: 'pointer',
               padding: '6px',
               borderRadius: '6px',

@@ -3,16 +3,22 @@
 > Dokumen audit teknis. File ini diperbarui setiap kali audit dijalankan. Entri audit terbaru berada paling atas.
 
 ## Ringkasan Terakhir
-- **Status terbaru:** **PHASE-5 Selesai (S04 Document Studio / Editor Dokumen Bergaya Word)** — Layar **S04 Document Studio** terintegrasi utuh di dalam menu tunggal **Persuratan & Arsip** (`S01 <-> S02 <-> S03 <-> S04`), menggunakan editor rich-text WYSIWYG **TipTap v3** (`StarterKit` termasuk `Underline`, `TextAlign`, `Table`/`TableRow`/`TableHeader`/`TableCell`) di atas kanvas kertas A4/F4 berbatas margin `mm` (`Portrait` / `Landscape`) beserta indikator estimasi garis lipat halaman, konversi deterministik 30 template `SYSTEM` + kloning `MADRASAH` murni dari snapshot S03 beku (tanpa *live binding* dan tanpa kebocoran NIP), penanganan aman draft S03 pra-Tahap 5 tanpa `previewBlocks`, pelacakan konflik non-destruktif (`s03EditedAfterStudioAt`), sanitasi paste berbasis **DOMPurify + allowlist ketat**, validasi struktural JSON & margin/kertas, serta persistensi `DocumentIntakeDraft.studio` langsung ke IndexedDB dengan *dirty guard* penuh hingga ke menu sidebar `App.tsx` (termasuk pengecualian shortcut global `Ctrl+K` saat fokus di editor).
-- **Tanggal dan jam selesai Tahap 5:** Senin, 16 November 2026, pukul 18:19:05 WIB (`2026-11-16T18:19:05+07:00`)
-- **Baseline GitHub `main` yang terverifikasi sebelum Tahap 5:** [`a5e4dac1b420138bf9ad81e250fcbc535e5849f5`](https://github.com/adizalmumtaz30/SIGNAL-V3-2-Jewel-Luxury/commit/a5e4dac1b420138bf9ad81e250fcbc535e5849f5) (`feat(persuratan): implement intake drafts for S03`, `2026-11-16T10:24:55Z` / Senin, 16 November 2026 pukul 17:24:55 WIB — sekaligus menutup status commit untuk `PHASE-4`).
-- **Hasil verifikasi akhir Tahap 5:** `npm run lint` (`tsc -b`) Exit `0` · `npm test` **16/16 file, 106/106 tests lulus** (`12.46s`) · `npm run build` Exit `0` (`1946` modul, `8.38s`) · `diff` SHA-256 14/14 PDF root sebelum vs sesudah tes **0 perbedaan**
-- **Status verifikasi & sinkronisasi Git:** Perubahan `PHASE-4` telah terverifikasi berada di GitHub `main` (`a5e4dac...`). Perubahan **Tahap 5 (S04)** saat ini berada di workspace AI Studio (`/app/applet`) dan **belum di-commit / di-push ke GitHub** (direktori `.git` tidak tersedia di container sandbox).
+- **Status terbaru:** **PHASE-11 Selesai — SELURUH TAHAP 6–11 PERSURATAN & ARSIP DIGITAL SELESAI & LULUS REGRESI AKHIR** — Seluruh alur kerja terpadu `S01 Pusat Persuratan → S02 Galeri Template → S03 Form Data Awal → S04 Document Studio → S05 Pratinjau & Finalisasi → S06 Detail & Arsip` serta `S07 Template Manager`, integrasi Penugasan Guru & `ScheduleVersion` resmi, Attachment Blob Store, dan Backup/Restore IDB v4 telah terhubung penuh dalam **satu menu sidebar `Persuratan & Arsip`**, dilengkapi **Command Palette terintegrasi** (`Ctrl+K` / `Ctrl+Shift+P` dengan indeks aksi Persuratan, dokumen nyata, template aktif, serta pembersihan eksposur NIP guru), **Panel Ringkasan Beranda: Ringkasan Persuratan & Arsip** berbasis data nyata (0 data palsu) + status kesiapan SK Mengajar jujur, penguatan aksesibilitas ARIA (`role="dialog"`, `aria-modal="true"`, `role="combobox"`, `role="listbox"`, `role="option"`, `aria-live="polite"`, *focus management* buka/tutup modal & drawer), peningkatan kontras teks sekunder, `:focus-visible`, `prefers-reduced-motion`, dan penyelarasan tata letak responsif (`1440×900`, `1280×720`, tablet `≤1120px`, dan layar kecil `≤680px/640px`).
+- **Tanggal dan jam selesai Tahap 11:** Rabu, 18 November 2026, pukul 19:02:44 WIB (`2026-11-18T19:02:44+07:00`)
+- **Baseline GitHub `main` yang terverifikasi:** `6e59655fba905c8e3af99b54bb1f8dde157b869e` / [`a5e4dac1b420138bf9ad81e250fcbc535e5849f5`](https://github.com/adizalmumtaz30/SIGNAL-V3-2-Jewel-Luxury/commit/a5e4dac1b420138bf9ad81e250fcbc535e5849f5)
+- **Hasil verifikasi akhir Tahap 11:** `npm run lint` (`tsc -b`) Exit `0` · `npm test` **24/24 file, 140/140 tests lulus** (`20.82s`) · `npm run build` Exit `0` (`1966` modul, `14.22s`) · `diff` SHA-256 14/14 PDF root sebelum vs sesudah seluruh rangkaian tes **0 perbedaan (`PDF_DIFF_OK`)**
+- **Status verifikasi & sinkronisasi Git:** Perubahan Tahap 6–11 berada di workspace lokal (`/app/applet`) dan **belum di-commit / di-push ke GitHub** karena direktori `.git` tidak tersedia di container sandbox. Pengujian UI dilakukan melalui *unit*, integrasi, dan SSR `renderToStaticMarkup` Vitest (tanpa klaim pengujian browser Chromium headless karena biner browser tidak tersedia di sandbox).
 
 ## Daftar Riwayat Audit
 
 | ID Audit | Mulai (WIB) | Selesai (WIB) | Status | Temuan Kritis | Tinggi | Sedang | Rendah | Info | Commit/Revision |
 |---|---|---|---|---:|---:|---:|---:|---:|---|
+| PHASE-11 | 2026-11-18 18:53:00 WIB | 2026-11-18 19:02:44 WIB | Selesai (Tahap 11 — Command Palette, Beranda, Aksesibilitas, Responsif & Regresi Akhir) | 0 baru | Nol eksposur NIP di Command Palette + ARIA/focus modal & drawer | Panel Beranda data nyata + guard SK Mengajar + responsif `1440/1280/tablet/mobile` | Kontras teks `#4B635D` + `:focus-visible` + `prefers-reduced-motion` | 24/24 suite (140/140 tes) & 14/14 PDF lama identik | Workspace lokal (tanpa `.git`) |
+| PHASE-10 | 2026-11-18 18:34:00 WIB | 2026-11-18 18:52:42 WIB | Selesai (Tahap 10 — S06 Arsip, S07 Template Manager, Attachment Blob Store & IDB v4) | 0 baru | Magic bytes & blokir HTML/SVG/JS aktif + kunci hapus dokumen resmi | IDB v4 terkontrol + Blob SHA-256 backup/restore + PII sanitizer | — | Kompatibilitas backup lama & 30 template SYSTEM utuh | Workspace lokal (tanpa `.git`) |
+| PHASE-9 | 2026-11-17 18:17:00 WIB | 2026-11-18 18:33:36 WIB | Selesai (Tahap 9 — Integrasi Penugasan Guru & ScheduleVersion) | 0 baru | `BP-017`/`PERS-005` gate keras SK + anti-NIP terjaga | `TeacherAssignment` <-> `DocumentRecord` + provenance `capturedAt` | — | Perubahan Data Master tidak menimpa S04 | Workspace lokal (tanpa `.git`) |
+| PHASE-8 | 2026-11-17 18:00:00 WIB | 2026-11-17 18:16:10 WIB | Selesai (Tahap 8 — S05 Preview, Finalisasi & Revisi) | 0 baru (`BP-011` S05 selesai) | `BP-017`/`PERS-005` terkunci saat finalisasi SK | `BP-018` (`DocumentVersion`), `PERS-001` S01–S05 | — | Penomoran atomic & rollback PDF teruji | Workspace lokal (tanpa `.git`) |
+| PHASE-7 | 2026-11-17 17:52:00 WIB | 2026-11-17 17:59:43 WIB | Selesai (Tahap 7 — Kompleks & Diff S04) | 0 baru | Keamanan `src` & *magic bytes* gambar terjaga | `BP-010` lanjutan + Diff non-destruktif | — | Keterbatasan estimasi CSS didokumentasikan jujur | Workspace lokal (tanpa `.git`) |
+| PHASE-6 | 2026-11-17 17:38:00 WIB | 2026-11-17 17:51:45 WIB | Selesai (Tahap 6 — Polish S04) | 0 baru | `PERS-005`/`BP-017` terjaga | `BP-010` ditingkatkan (Outline + Autosave) | — | — | Workspace lokal (tanpa `.git`) |
 | PHASE-5 | 2026-11-16 18:10:07 WIB | 2026-11-16 18:19:05 WIB | Selesai (Tahap 5 — S04) | 0 baru (`BP-010` S04 selesai) | `BP-017`/`PERS-005`, `BP-026`/`PERS-007` terjaga di S04 | `BP-018` (`DocumentStudioState`), `PERS-001` S01–S04 | — | — | Workspace lokal (basis GitHub `a5e4dac...`) |
 | PHASE-4 | 2026-11-16 14:40:00 WIB | 2026-11-16 17:18:00 WIB | Selesai (Tahap 4 — S03, Ter-push) | 0 baru (`BP-009` S03 selesai) | `BP-026`, `PERS-007` terkendali di S03 | `BP-018` ditambah, `PERS-001` S01–S03 | — | — | GitHub `a5e4dac1b420138bf9ad81e250fcbc535e5849f5` |
 | PHASE-3-REMEDIATION | 2026-11-16 04:36:33 WIB | 2026-11-16 04:39:45 WIB | Selesai (Lulus Gate & Ter-push) | 0 baru | 2 ditutup (PDF guard + 9 PDF pulih) | — | — | 1 koreksi lap. Git | GitHub `ab3926d73ad034bc037edcdc244cd72ed67493b7` |
@@ -20,6 +26,200 @@
 | PHASE-2 | 2026-11-15 22:47:29 WIB | 2026-11-15 22:56:27 WIB | Selesai (Tahap 2) | 0 baru (`PERS-001` Tahap 2 S01 selesai) | `BP-005`, `BP-007` selesai | `BP-015`, `BP-018` sebagian | — | — | `9afa5fe429f1d573be9919e8b49d2455ba0209fd` |
 | PHASE-1 | 2026-11-15 22:11:18 WIB | 2026-11-15 22:17:50 WIB | Selesai (Tahap 1) | 0 baru (`PERS-003` selesai) | `PERS-006` fondasi selesai | — | — | — | Tidak tersedia (tanpa `.git`) |
 | AUDIT #01 | 2026-11-15 21:51:28 WIB | 2026-11-15 21:52:56 WIB | Selesai | 2 | 5 | 3 | 1 | 1 | Tidak tersedia (tanpa `.git`) |
+
+---
+
+## IMPLEMENTASI TAHAP 11 — PENYELESAIAN, AKSESIBILITAS, POLISH UI/UX & REGRESI AKHIR
+
+- **ID Entri:** `PHASE-11`
+- **Status Pelaksanaan:** **SELESAI** (Integrasi penuh Command Palette & Panel Ringkasan Beranda Persuratan, penguatan aksesibilitas ARIA & manajemen fokus modal/drawer, kontras warna & `:focus-visible`, penyelarasan tata letak responsif `1440×900` / `1280×720` / tablet / layar kecil, serta regresi penuh seluruh modul akademik, persuratan S01–S07, backup/restore Blob, dan 14 PDF lama).
+- **Waktu selesai terverifikasi:** Rabu, 18 November 2026, pukul 19:02:44 WIB (`2026-11-18T19:02:44+07:00`)
+
+### 1. Daftar File yang Diubah / Ditambahkan pada Tahap 11
+- **`src/components/CommandPaletteModal.tsx`** *(diperbarui)*:
+  - Menambahkan aksi cepat Persuratan & Arsip terintegrasi: `Buka Pusat Persuratan & Arsip (S01)`, `Buat Surat Baru — Galeri Template (S02)`, `Kelola Template Madrasah (S07)`, dan `Buat SK Pembagian Tugas Mengajar (SYS-TPL-03)` dengan pengecekan `getOfficialScheduleBasisStatus(state)`.
+  - Mengindeks dokumen nyata `state.documents` (draft membuka S04 Studio, final/arsip membuka S06 Detail) dan template aktif (`status !== 'ARCHIVED'`) untuk peluncuran cepat ke S03 Form Data Awal.
+  - **Higiene privasi:** Menghapus tampilan `teacher.nip` pada subjudul hasil pencarian guru di Command Palette.
+  - **Aksesibilitas & manajemen fokus:** Menambahkan `role="dialog"`, `aria-modal="true"`, `aria-label`, `role="combobox"`, `aria-controls`, `aria-activedescendant`, `role="listbox"`, `role="option"`, `aria-selected`, `aria-live="polite"`, serta pemulihan fokus ke elemen pemicu saat modal ditutup.
+- **`src/App.tsx`** *(diperbarui secara terarah)*:
+  - Menghubungkan `onLaunchPersuratan` dan `onLaunchTeachingSk` ke `CommandPaletteModal` dan `OperatorOverviewScreen`.
+  - Mengekspor `OperatorOverviewScreen` dan menambahkan **Panel Ringkasan Beranda (`Ringkasan Persuratan & Arsip`)** di bawah grid operasional utama:
+    - Menampilkan 4 metrik riil dari workspace (`Draft Aktif`, `Dokumen Final`, `Arsip & Lampiran`, `Template Madrasah`) menggunakan angka tabular `.s5-tnum` tanpa data palsu.
+    - Menampilkan strip status kesiapan **SK Pembagian Tugas Mengajar (`SYS-TPL-03`)** secara jujur berdasarkan `getOfficialScheduleBasisStatus(state)` (mengunci tombol jika belum ada `ScheduleVersion` resmi terverifikasi dan mengarahkan ke penerbitan jadwal).
+    - Menampilkan hingga 3 dokumen terbaru nyata (klik langsung menuju S04 Studio untuk draft atau S06 Detail untuk final/arsip), atau catatan jujur bila belum ada dokumen.
+  - Mempertahankan tepat **satu** item navigasi sidebar untuk Persuratan (`id: 'persuratan'`, label `Persuratan & Arsip`).
+- **`src/components/TimeMachineDrawer.tsx` & `src/components/InspectorSlideDrawer.tsx`** *(diperbarui)*:
+  - Menambahkan `role="dialog"`, `aria-modal="true"`, `aria-labelledby`, fokus otomatis saat terbuka, dan pengembalian fokus ke elemen sebelumnya saat ditutup; meningkatkan kontras teks sekunder (`#687E77` → `#4B635D`).
+- **`src/styles/signal-v5-tokens.css`, `src/components/persuratan/DocumentPreviewFinalize.css`, `src/components/persuratan/TemplateManager.css`, `src/components/persuratan/DocumentArchiveDetail.css`** *(diperbarui)*:
+  - Menambahkan gaya Jewel Luxury Section 22 untuk panel ringkasan Beranda Persuratan & Arsip.
+  - Menyelaraskan media query responsif untuk `1440×900`, `1280×720`, tablet (`≤1120px` / `≤1024px`), dan layar kecil (`≤680px` / `≤640px`), menambahkan cincin fokus `:focus-visible`, serta dukungan `@media (prefers-reduced-motion: reduce)`.
+- **`tests/phase11_tahap11_polish_and_regression.test.ts`** *(baru)*:
+  - 4 skenario uji regresi menyeluruh: Command Palette (indeks aksi/dokumen/template, ARIA lengkap, zero NIP leakage), Panel Beranda `OperatorOverviewScreen` (0 data palsu, transisi status SK Mengajar terkunci vs aktif), regresi end-to-end penuh `S01–S07` + Arsip/Pulih + Revisi Non-Destruktif + Backup/Restore JSON & `.signal` ber-Blob SHA-256, serta kontrak aksesibilitas drawer, aturan 1 menu sidebar, dan utilitas PDF lama.
+
+### 2. Hasil Verifikasi Aktual Tahap 11
+- `npm run lint` (`tsc -b`): **Exit 0** (0 galat TypeScript di seluruh aplikasi dan 24 file test).
+- `npm test` (`vitest run`): **24/24 test files lulus, 140/140 tests lulus** dalam `20.82s`.
+- `npm run build` (`tsc -b && vite build`): **Exit 0**, `1966 modules transformed`, selesai dalam `14.22s`.
+- Verifikasi regresi 14 file PDF lama (`SIGNAL_*.pdf` di root): **`diff -u` SHA-256 = 0 perbedaan (`PDF_DIFF_OK`)**.
+
+### 3. Keterbatasan yang Didokumentasikan Secara Jujur
+- **Pengujian Browser Interaktif:** Container sandbox tidak memiliki biner Chromium/Playwright headless sehingga verifikasi responsif (`1440×900`, `1280×720`, tablet, mobile) dilakukan melalui audit CSS media query, kontrak ARIA/fokus, dan render SSR `renderToStaticMarkup` pada Vitest. Uji klik visual langsung pada browser produksi tetap direkomendasikan saat UAT madrasah.
+- **Estimasi Halaman S04 vs PDF Final S05:** Indikator batas halaman di editor S04 adalah estimasi visual berbasis tinggi konten CSS, sedangkan pemagaran halaman resmi multi-halaman (A4/F4 portrait/landscape) dilakukan oleh generator PDF `jsPDF` + `jspdf-autotable` saat finalisasi S05.
+- **Sinkronisasi Git:** Direktori `.git` tidak tersedia di container sandbox `/app/applet`, sehingga commit & push ke repository GitHub (`adizalmumtaz30/SIGNAL-V3-2-Jewel-Luxury`, branch `main`) perlu dijalankan dari lingkungan yang memiliki repositori Git & kredensial remote.
+
+---
+
+## IMPLEMENTASI TAHAP 10 — S06 DETAIL & ARSIP, S07 TEMPLATE MANAGER, ATTACHMENT BLOB STORE & IDB V4 BACKUP
+
+- **ID Entri:** `PHASE-10`
+- **Status Pelaksanaan:** **SELESAI** (Pusat Detail Dokumen & Arsip S06, Pengelola Template Madrasah S07 dengan sanitasi PII otomatis, Attachment Blob Store bervalidasi *magic bytes* + anti-HTML/SVG/JS aktif, migrasi terkontrol IndexedDB `DB_VERSION = 4`, serta Backup/Restore manifest + Blob biner ber-SHA-256).
+- **Waktu selesai terverifikasi:** Rabu, 18 November 2026, pukul 18:52:42 WIB (`2026-11-18T18:52:42+07:00`)
+
+### 10.1 Perubahan File Tahap 10
+
+| File | Jenis | Ringkasan |
+|---|---|---|
+| `src/domain/persuratan/attachments/attachmentStore.ts` | Baru | Validasi ketat lampiran (ekstensi, MIME, batas 10 MB, *magic bytes* PDF/PNG/JPEG/WEBP/DOCX, blokir `.html`/`.htm`/`.svg`/`.js` & deteksi payload skrip aktif), pratinjau raster aman (`isSafeRasterPreviewMime`), penyimpanan Blob IDB `document_attachments` + cermin memori, codec Base64 murni tanpa `Buffer`, serta `collectBackupBlobsForState()` & `validateAndRestoreBackupBlobs()` (verifikasi SHA-256 & *magic bytes* sebelum commit) |
+| `src/domain/persuratan/archive/archiveEngine.ts` | Baru | `canDeleteDocumentRecord()` (kunci permanen untuk dokumen berstatus non-DRAFT, bernomor, atau memiliki `DocumentVersion`), `archiveDocumentInState()`, `restoreArchivedDocumentInState()`, `attachFileToDocumentInState()`, dan `removeAttachmentFromDocumentInState()` (memblokir penghapusan lampiran terkunci pada dokumen FINAL/ARCHIVED) |
+| `src/domain/persuratan/templates/piiSanitizer.ts` | Baru | Sanitasi otomatis data personal saat mengekstrak template dari dokumen: membersihkan nomor surat, NIP/NPK 18 digit, nama Kepala Madrasah/Waka/Guru, email, nomor telepon Indonesia, serta tanggal spesifik menjadi placeholder `{{...}}` |
+| `src/domain/persuratan/templates/templateManagerEngine.ts` | Baru | `validateTemplateStructure()` (kurung kurawal placeholder, duplikasi kunci field, peringatan PII), CRUD & toggle aktif/nonaktif template khusus madrasah (menolak mutasi 30 template `SYSTEM` dan menjaga `templateSnapshot` dokumen lama tetap utuh), serta `createTemplateFromDocumentInState()` |
+| `src/domain/persuratan/finalization/finalPdfStore.ts` | Diubah | Menghubungkan `defaultFinalPdfStorageAdapter` ke `saveBinaryBlob`/`getBinaryBlob` agar PDF final tersimpan di store `document_attachments` IDB dan ikut terlindungi dalam backup/restore |
+| `src/storage/db.ts`, `src/storage/snapshotEngine.ts`, `src/App.tsx`, `src/components/TimeMachineDrawer.tsx` | Diubah | Migrasi terkontrol `DB_VERSION = 4` (menambah `document_versions`, `document_templates`, `document_attachments` secara idempoten tanpa `deleteDatabase()`), penyertaan `manifest` & `blobs` ter-SHA-256 pada backup `.json` & `.signal` (kompatibel penuh dengan backup lama v1/v2 tanpa blobs), dan pemulihan Blob aman pada `restoreWorkspaceSafely` & `TimeMachineDrawer` |
+| `src/components/persuratan/DocumentArchiveDetail.tsx` & `.css` | Baru | Layar S06 lengkap: Pratinjau Naskah Resmi baca-saja, Metadata & Sumber Data, Lampiran (unggah, pratinjau raster aman, unduh, hapus draft), Riwayat Versi, Unduh PDF Final (dengan rekonstruksi deterministik dari snapshot bila cache kosong), Arsipkan/Pulihkan, Buat Revisi Non-Destruktif, Jadikan Template Madrasah, & Rail Proteksi Penghapusan |
+| `src/components/persuratan/TemplateManager.tsx` & `.css` | Baru | Layar S07 lengkap: filter Semua/Madrasah/Bawaan/Nonaktif, editor field wajib/opsional, panel validasi struktur langsung, Buat/Edit/Kloning/Aktifkan-Nonaktifkan/Hapus template madrasah, proteksi baca-saja 30 template bawaan, serta fitur Ekstrak dari Dokumen dengan laporan redaksi PII |
+| `src/components/persuratan/PersuratanWorkspace.tsx`, `CorrespondenceCenter.tsx`, `TemplateGallery.tsx` | Diubah | Integrasi tab `Kelola Template` & `Detail Arsip (S06)` pada subnav, tombol S06 pada menu baris & inspektor S01, tombol S07 pada S02, serta penyembunyian template `ARCHIVED` dari katalog S02 |
+| `tests/phase10_tahap10_archive_templates_blobs.test.ts` & `tests/phase5_document_studio.test.ts` | Baru / Diubah | 6 rangkaian pengujian Tahap 10 (migrasi IDB v4, keamanan Attachment Blob Store, S06 archive/restore/lock, S07 CRUD/proteksi SYSTEM/PII sanitizer, round-trip Backup/Restore Blob + anti-tampering + legacy v1, dan SSR S06/S07/Workspace) |
+
+### 10.2 Verifikasi Tahap 10 & Keterbatasan Jujur
+
+| Pemeriksaan | Hasil | Catatan Aktual |
+|---|---|---|
+| `npm run lint` (`tsc -b`) | **Exit `0`** | Bersih tanpa error tipe TypeScript |
+| `npm test` (`vitest run`) | **Exit `0`** | **23/23 file lulus, 136/136 tests lulus** (`20.04s`) |
+| `npm run build` | **Exit `0`** | **1966 modul**, `14.96s` |
+| Checksum 14 PDF root (`SIGNAL_*.pdf`) | **0 perbedaan** | Semua 14 file identik sebelum vs sesudah tes |
+| Uji visual interaktif browser | **Belum dijalankan** | Verifikasi antarmuka Tahap 10 memakai Vitest Node/SSR (`renderToStaticMarkup`); container sandbox belum memiliki Chromium headless |
+
+---
+
+## IMPLEMENTASI TAHAP 9 — INTEGRASI PENUGASAN GURU, SCHEDULEVERSION RESMI & PROVENANCE SNAPSHOT
+
+- **ID Entri:** `PHASE-9`
+- **Status Pelaksanaan:** **SELESAI** (Integrasi menyeluruh `TeacherAssignment`, Data Master Guru/Kelas/Mapel, dan `ScheduleVersion` resmi terverifikasi dengan modul `Persuratan & Arsip`, lengkap dengan gate keamanan SK Mengajar, pelacakan *provenance* snapshot + waktu pengambilan `capturedAt`, serta jaminan tidak menimpa naskah manual S04 saat Data Master diubah).
+- **Waktu selesai terverifikasi:** Rabu, 18 November 2026, pukul 18:33:36 WIB (`2026-11-18T18:33:36+07:00`)
+
+### 9.1 Perubahan File Tahap 9
+
+| File | Jenis | Ringkasan |
+|---|---|---|
+| `src/domain/persuratan/assignments/teacherIntegration.ts` | Baru | `getOfficialScheduleBasisStatus()` & `buildSkTeachingLaunchPayload()` (menolak draft, `activeSchedule` polos, maupun `ScheduleVersion` rusak), `getTeacherOperationalProfile()`, `upsertTeacherAssignmentInState()`, `updateTeacherAssignmentStatusInState()`, `buildTeacherDocumentLaunchPayload()` (anti-NIP & prefill TMT/tanggal penetapan), serta `syncTeacherAssignmentsOnFinalize()` |
+| `src/domain/persuratan/types.ts` | Diubah | Tambah `linkedAssignmentId` pada `DocumentRecord`/`DocumentIntakeDraft` serta kontrak `PersuratanLaunchRequest` |
+| `src/domain/persuratan/intake/draftEngine.ts` | Diubah | Dukungan `prefillValues`, `linkedAssignmentId`, serta perekaman snapshot `'master.teacher_assignment.linked'` lengkap dengan `capturedAt` |
+| `src/domain/persuratan/finalization/finalizeEngine.ts` | Diubah | Integrasi `syncTeacherAssignmentsOnFinalize()` saat transaksi finalisasi S05 dan pelestarian `linkedAssignmentId` pada pembuatan revisi |
+| `src/components/TeacherAssignmentDrawer.tsx` | Baru | Panel *slide-over* Penugasan & Dokumen Guru (menampilkan beban JP `ScheduleVersion` terverifikasi, CRUD `TeacherAssignment`, peluncuran surat terkait guru, & daftar dokumen terkait tanpa kebocoran NIP) |
+| `src/components/persuratan/DocumentIntakeForm.tsx`, `PersuratanWorkspace.tsx`, `DocumentStudio.tsx`, `DocumentPreviewFinalize.tsx` | Diubah | Routing kontekstual `launchRequest`, inisialisasi langsung `subView`/`activeTemplateId`, tampilan `Diambil: {capturedAt}` di S04, serta kartu `Sumber Data & Snapshot` di S05 |
+| `src/components/WorkloadDashboard.tsx` & `src/App.tsx` | Diubah | Tombol `Buat SK Pembagian Tugas` (aktif khusus mode `PUBLISHED` terverifikasi) di Beban Mengajar & Jadwal, aksi `Penugasan & Dokumen` pada menu guru di Data Master, dan mounting `<TeacherAssignmentDrawer>` |
+| `tests/phase9_tahap9_teacher_assignments.test.ts` | Baru | 4 pengujian terstruktur (gate SK vs draft/polos/korup, CRUD `TeacherAssignment` & anti-timpa naskah S04, sinkronisasi `documentId` + `TA-SK-*` pasca-finalisasi, dan render SSR semua antarmuka Tahap 9) |
+
+### 9.2 Verifikasi Tahap 9 & Keterbatasan Jujur
+
+| Pemeriksaan | Hasil | Catatan Aktual |
+|---|---|---|
+| `npm run lint` (`tsc -b`) | **Exit `0`** | Bersih tanpa error tipe TypeScript |
+| `npm test` (`vitest run`) | **Exit `0`** | **22/22 file lulus, 130/130 tests lulus** (`19.01s`) |
+| `npm run build` | **Exit `0`** | **1958 modul**, `13.83s` |
+| Checksum 14 PDF root (`SIGNAL_*.pdf`) | **0 perbedaan** | Semua 14 file identik sebelum vs sesudah tes |
+| Uji visual interaktif browser | **Belum dijalankan** | Verifikasi antarmuka Tahap 9 memakai Vitest Node/SSR (`renderToStaticMarkup`); container sandbox belum memiliki Chromium headless |
+
+---
+
+## IMPLEMENTASI TAHAP 8 — S05 PREVIEW, PENOMORAN, FINALISASI PDF & REVISI NON-DESTRUKTIF
+
+- **ID Entri:** `PHASE-8`
+- **Status Pelaksanaan:** **SELESAI** (Layar **S05 Pratinjau & Pengesahan** terintegrasi penuh pada alur `Persuratan & Arsip`, checklist kelengkapan administrasi keras, mesin penomoran surat otomatis anti-duplikat, transaksi finalisasi atomic + PDF `%PDF-` final, kunci read-only versi `FINAL`, dan revisi non-destruktif berantai versi).
+- **Waktu selesai terverifikasi:** Selasa, 17 November 2026, pukul 18:16:10 WIB (`2026-11-17T18:16:10+07:00`)
+
+### 8.1 Perubahan File Tahap 8
+
+| File | Jenis | Ringkasan |
+|---|---|---|
+| `src/domain/persuratan/finalization/numberingEngine.ts` | Baru | `DEFAULT_KIND_CODES`, `DEFAULT_NUMBERING_PATTERN`, generator `computeNextSequentialNumber` (`YEARLY`/`MONTHLY`/`CONTINUOUS`), `isDocumentNumberDuplicate`, & validator `validateOfficialDocumentNumber` |
+| `src/domain/persuratan/finalization/checklist.ts` | Baru | `evaluateFinalizationChecklist` memeriksa token belum diisi selain `{{NOMOR_SURAT}}`, tanggal kalender valid, Kop & pejabat penandatangan (`signatoryName`), verifikasi `ScheduleVersion` resmi via `verifyScheduleVersion()` untuk SK (`SYS-TPL-03`), serta konfirmasi eksplisit bila `dataMode === 'demo'` |
+| `src/domain/persuratan/finalization/finalPdfStore.ts` | Baru | Utilitas SHA-256 (`computeUint8ArraySha256`), verifikator header `%PDF-` (`isPdfBytesSignatureValid`), `defaultFinalPdfStorageAdapter`, dan `triggerPdfBytesDownload` (unduh hanya saat klik eksplisit) |
+| `src/domain/persuratan/finalization/pdfRenderer.ts` | Baru | `substituteOfficialDocumentNumberInContent` & `renderOfficialDocumentPdf` menggunakan `jsPDF` + `jspdf-autotable` (`showHead: 'everyPage'`, header/footer berjalan, nomor halaman, support A4/F4 Portrait/Landscape) tanpa memanggil `jsPDF.save()` |
+| `src/domain/persuratan/finalization/finalizeEngine.ts` | Baru | Transaksi *atomic* `finalizeDocumentTransaction` (snapshot JSON + PDF SHA-256, rollback aman bila adapter PDF gagal), `createRevisionDraftInState`, & `getDocumentVersionChain` |
+| `src/domain/persuratan/types.ts` & `src/domain/types.ts` | Diubah | Kontrak `DocumentVersion`, `DocumentNumberingConfig`, `FinalizationChecklistReport`, dan koleksi `documentVersions` / `numberingConfig` pada `AppState` |
+| `src/storage/db.ts` | Diubah | Validasi opsional `documentVersions` dan `numberingConfig` di `validateAppStateStructure()` dengan pelestarian penuh data & backup lama |
+| `src/components/persuratan/DocumentPreviewFinalize.tsx` & `.css` | Baru | Antarmuka S05 Pratinjau & Pengesahan (preview setia S04, panel checklist administrasi, mode penomoran otomatis/manual, konfirmasi finalisasi, download PDF final, serta pembuatan revisi non-destruktif) |
+| `src/components/persuratan/DocumentStudio.tsx`, `CorrespondenceCenter.tsx`, `PersuratanWorkspace.tsx` | Diubah | Integrasi subview `'preview'` (S05), proteksi edit/hapus pada dokumen `FINAL`, serta alur menuju S05 dan revisi `v2+` |
+| `tests/phase8_tahap8_preview_finalize.test.ts` | Baru | 5 pengujian terstruktur (penomoran & anti-duplikat, checklist blocker termasuk `ScheduleVersion` SK & Kop/penandatangan kosong, transaksi atomic & rollback kegagalan PDF storage, lock `FINAL` & revisi non-destruktif, serta SSR S05 + `PersuratanWorkspace`) |
+
+### 8.2 Verifikasi Tahap 8 & Keterbatasan Jujur
+
+| Pemeriksaan | Hasil | Catatan Aktual |
+|---|---|---|
+| `npm run lint` (`tsc -b`) | **Exit `0`** | Bersih tanpa error tipe TypeScript |
+| `npm test` (`vitest run`) | **Exit `0`** | **21/21 file lulus, 126/126 tests lulus** (`15.46s`) |
+| `npm run build` | **Exit `0`** | **1956 modul**, `9.12s` |
+| Checksum 14 PDF root (`SIGNAL_*.pdf`) | **0 perbedaan** | Semua 14 file identik sebelum vs sesudah tes |
+| Uji visual interaktif browser | **Belum dijalankan** | Verifikasi DOM/state Tahap 8 memakai Vitest Node/SSR + renderer PDF biner `%PDF-`; container sandbox belum memiliki browser interaktif headless |
+
+---
+
+## IMPLEMENTASI TAHAP 7 — S04 TABEL KOMPLEKS, MULTI-HALAMAN, & DIFF SUMBER DATA
+
+- **ID Entri:** `PHASE-7`
+- **Status Pelaksanaan:** **SELESAI** (Tabel kompleks `mergeCells`/`splitCell`/`toggleHeaderRow`/kolom *resizable*/`verticalAlign`/`rowHeightMm`, *Page Break*, `docImage` PNG/JPEG/WEBP tervalidasi *magic bytes*, *header*/*footer*/nomor halaman/`repeatHeader`, perbandingan & adopsi selektif Data Master non-destruktif, serta pengujian SK 115 baris pada A4/F4 Portrait/Landscape).
+- **Waktu selesai terverifikasi:** Selasa, 17 November 2026, pukul 17:59:43 WIB (`2026-11-17T17:59:43+07:00`)
+
+### 7.1 Perubahan File Tahap 7
+
+| File | Jenis | Ringkasan |
+|---|---|---|
+| `src/domain/persuratan/studio/types.ts` | Diubah | Tambah `StudioPageNumberFormat`, `headerText`, `footerText`, `showPageNumbers`, `pageNumberFormat`, dan `repeatTableHeader` pada `DocumentStudioPageSettings` |
+| `src/domain/persuratan/studio/contentValidation.ts` | Diubah | Kapasitas aman dokumen kompleks (`STUDIO_MAX_NODES = 10_000`, `500_000` karakter), allowlist `pageBreak` & `docImage`, validasi *magic bytes* `detectRasterImageMimeFromBytes` (PNG/JPEG/WEBP) & `isSafeInlineImageDataUrl`, batasi `src` khusus node `docImage`, validasi `verticalAlign`/`rowHeightMm`/`repeatHeader` |
+| `src/domain/persuratan/studio/extensions.ts` | Baru | Ekstensi TipTap `PageBreakNode`, `DocImageNode`, `ExtendedTable`, `ExtendedTableRow`, `ExtendedTableCell`, & `ExtendedTableHeader` |
+| `src/domain/persuratan/studio/sourceDiff.ts` | Baru | Komparator `compareDraftSnapshotsWithLiveState()` & adopter selektif non-destruktif `adoptSelectedSourceUpdatesToDraft()` |
+| `src/components/persuratan/DocumentStudio.tsx` & `.css` | Diubah | Integrasi ekstensi tabel kompleks & gambar aman, modal Sisipkan Logo/Gambar, modal Perbandingan Data Master, *header*/*footer* kanvas, dan catatan jujur keterbatasan estimasi CSS vs pagination PDF S05 |
+| `tests/phase7_tahap7_complex_docs.test.ts` | Baru | 4 pengujian terstruktur (115-baris SK pada A4/F4 Portrait/Landscape, validasi *magic bytes* & penolakan SVG/URL eksternal/XSS `src`, diff & adopsi snapshot tanpa menimpa naskah, & render SSR) |
+
+### 7.2 Verifikasi Tahap 7 & Keterbatasan Jujur
+
+| Pemeriksaan | Hasil | Catatan Aktual |
+|---|---|---|
+| `npm run lint` (`tsc -b`) | **Exit `0`** | Bersih tanpa error tipe |
+| `npm test` (`vitest run`) | **Exit `0`** | **20/20 file lulus, 121/121 tests lulus** (`14.43s`) |
+| `npm run build` | **Exit `0`** | **1949 modul**, `8.69s` |
+| Checksum 14 PDF root (`SIGNAL_*.pdf`) | **0 perbedaan** | Semua 14 file identik sebelum vs sesudah tes |
+| Keterbatasan pagination kanvas | **Didokumentasikan jujur** | Kanvas editor CSS hanya menampilkan estimasi jumlah halaman & penanda *Page Break*; pagination eksak dan pengulangan header tabel (`showHead: 'everyPage'`) dijalankan oleh mesin PDF S05 pada Tahap 8 |
+
+---
+
+## IMPLEMENTASI TAHAP 6 — PENYEMPURNAAN S04 EDITOR DASAR
+
+- **ID Entri:** `PHASE-6`
+- **Status Pelaksanaan:** **SELESAI** (Panel outline H1–H3, toolbar H3 & pembatas horizontal, *autosave* ber-epoch aman + indikator status simpan, pemulihan fokus modal, tata letak responsif 3 kolom, dan manajemen pintasan keyboard bebas bentrok).
+- **Waktu selesai terverifikasi:** Selasa, 17 November 2026, pukul 17:51:45 WIB (`2026-11-17T17:51:45+07:00`)
+
+### 6.1 Perubahan File Tahap 6
+
+| File | Jenis | Ringkasan |
+|---|---|---|
+| `src/domain/persuratan/studio/outline.ts` | Baru | Ekstraktor `extractDocumentOutline` (H1–H3 & hitungan paragraf tubuh/tabel/daftar) serta formatter `getStudioSaveStatusLabel` |
+| `src/components/persuratan/DocumentStudio.tsx` | Diubah | Panel kiri `Struktur Naskah` dengan klik-lompat & indikator aktif, tombol `H3` + `HorizontalRule`, *debounced autosave* (`1400ms`) dengan `editEpochRef` race-guard + toggle `Autosave Aktif/Manual`, status simpan jujur, pemulihan fokus modal, serta label tab drawer konsisten |
+| `src/components/persuratan/DocumentStudio.css` | Diubah | Grid workbench 3 kolom (`224px \| minmax(0,1fr) \| 320px`), gaya `.s04-outline-panel`, `.s04-autosave-toggle`, badge `.is-saving`/`.is-error`, & media query responsif `<=1320px` / `<=1180px` |
+| `src/App.tsx` | Diubah | `Ctrl/Cmd+Shift+P` untuk Command Palette di seluruh layar; `Ctrl/Cmd+K` dilewati pada input/textarea/select/contenteditable/`[data-doc-editor="true"]`; pencarian lokal Data Master pindah ke `/` |
+| `tests/phase6_tahap6_studio_polish.test.ts` | Baru | Uji ekstraksi outline, formatter seluruh status penyimpanan, serta simpan & buka ulang (`resume`) naskah S04 F4 Portrait via SSR |
+
+### 6.2 Verifikasi Tahap 6 & Keterbatasan Jujur
+
+| Pemeriksaan | Hasil | Catatan Aktual |
+|---|---|---|
+| `npm run lint` (`tsc -b`) | **Exit `0`** | Bersih tanpa error tipe |
+| `npm test` (`vitest run`) | **Exit `0`** | **19/19 file lulus, 117/117 tests lulus** (`14.46s`) |
+| `npm run build` | **Exit `0`** | **1947 modul**, `9.34s` |
+| Checksum 14 PDF root (`SIGNAL_*.pdf`) | **0 perbedaan** | Semua 14 file identik sebelum vs sesudah tes |
+| Uji visual interaktif browser | **Belum dijalankan** | Verifikasi DOM/state Tahap 6 memakai Vitest Node/SSR; interaksi klik/ketik langsung di browser diverifikasi di pengujian interaktif / host |
 
 ---
 

@@ -1,0 +1,1122 @@
+import { useMemo, useRef, useState } from 'react';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
+  Download,
+  FileCheck2,
+  FileText,
+  History,
+  LockKeyhole,
+  RotateCcw,
+  ShieldAlert,
+  ShieldCheck,
+  X,
+  XCircle,
+} from 'lucide-react';
+import type { AppState } from '../../domain/types';
+import type {
+  DocumentIntakeDraft,
+  DocumentRecord,
+  DocumentVersion,
+} from '../../domain/persuratan/types';
+import type {
+  DocumentStudioPageSettings,
+  TipTapJSONContent,
+  TipTapJSONNode,
+} from '../../domain/persuratan/studio/types';
+import { buildInitialStudioContentFromDraft } from '../../domain/persuratan/studio/contentGenerator';
+import { collectAllTemplates } from '../../domain/persuratan/templates/selectors';
+import { evaluateFinalizationChecklist } from '../../domain/persuratan/finalization/checklist';
+import {
+  computeNextSequentialNumber,
+  validateOfficialDocumentNumber,
+} from '../../domain/persuratan/finalization/numberingEngine';
+import {
+  createRevisionDraftInState,
+  finalizeDocumentTransaction,
+  getDocumentVersionChain,
+} from '../../domain/persuratan/finalization/finalizeEngine';
+import {
+  defaultFinalPdfStorageAdapter,
+  triggerPdfBytesDownload,
+} from '../../domain/persuratan/finalization/finalPdfStore';
+import {
+  renderOfficialDocumentPdf,
+  substituteOfficialDocumentNumberInContent,
+} from '../../domain/persuratan/finalization/pdfRenderer';
+import { DOCUMENT_KIND_LABELS, DOCUMENT_STATUS_LABELS, formatIndonesianDate } from '../../domain/persuratan/selectors';
+import './DocumentPreviewFinalize.css';
+
+export interface DocumentPreviewFinalizeProps {
+  state: AppState;
+  draft?: DocumentIntakeDraft | null;
+  documentRecord?: DocumentRecord | null;
+  activeVersion?: DocumentVersion | null;
+  onPersistState: (nextState: AppState) => Promise<void>;
+  onBackToStudio?: (draftId: string) => void;
+  onBackToIntake?: (draftId: string) => void;
+  onBackToCenter: () => void;
+  onOpenSettings?: () => void;
+  onOpenRevisionInStudio?: (revisionDraftId: string) => void;
+  onSelectVersion?: (versionId: string) => void;
+  onNotify?: (message: string, kind?: 'success' | 'info' | 'warning' | 'error') => void;
+}
+
+function renderInlineSegments(nodes: TipTapJSONNode[] | undefined) {
+  if (!nodes || nodes.length === 0) return null;
+  return nodes.map((child, idx) => {
+    if (child.type === 'hardBreak') return <br key={idx} />;
+    if (child.type !== 'text') return null;
+    const text = child.text ?? '';
+    const marks = new Set((child.marks ?? []).map((m) => m.type));
+    let el: React.ReactNode = text;
+    if (marks.has('underline')) el = <u>{el}</u>;
+    if (marks.has('italic')) el = <em>{el}</em>;
+    if (marks.has('bold')) el = <strong>{el}</strong>;
+    return <span key={idx}>{el}</span>;
+  });
+}
+
+function renderPaperNodes(nodes: TipTapJSONNode[]) {
+  return nodes.map((node, idx) => {
+    const align =
+      node.attrs?.textAlign && typeof node.attrs.textAlign === 'string'
+        ? (node.attrs.textAlign as 'left' | 'center' | 'right' | 'justify')
+        : undefined;
+
+    if (node.type === 'pageBreak') {
+      return (
+        <div
+          key={idx}
+          className="s04-page-break"
+          data-page-break="true"
+          style={{ margin: '14px 0' }}
+        >
+          <span>Pemisah Halaman Manual (Page Break)</span>
+        </div>
+      );
+    }
+    if (node.type === 'horizontalRule') {
+      return <hr key={idx} style={{ border: 0, borderTop: '1px solid #9ab0a9', margin: '10px 0' }} />;
+    }
+    if (node.type === 'docImage') {
+      const src = typeof node.attrs?.src === 'string' ? node.attrs.src : '';
+      if (!src) return null;
+      const widthMm =
+        typeof node.attrs?.widthMm === 'number' && Number.isFinite(node.attrs.widthMm)
+          ? node.attrs.widthMm
+          : 26;
+      const imgAlign =
+        node.attrs?.align === 'left' || node.attrs?.align === 'right'
+          ? node.attrs.align
+          : 'center';
+      return (
+        <div key={idx} style={{ textAlign: imgAlign, margin: '8px 0' }}>
+          <img
+            src={src}
+            alt={typeof node.attrs?.alt === 'string' ? node.attrs.alt : 'Logo Madrasah'}
+            style={{ width: `${widthMm}mm`, maxWidth: '100%', height: 'auto' }}
+          />
+        </div>
+      );
+    }
+    if (node.type === 'heading') {
+      const Tag = node.attrs?.level === 1 ? 'h1' : node.attrs?.level === 3 ? 'h3' : 'h2';
+      return (
+        <Tag
+          key={idx}
+          style={{
+            textAlign: align,
+            margin: '8px 0 6px',
+            fontSize: Tag === 'h1' ? '13.5pt' : Tag === 'h2' ? '12pt' : '11pt',
+          }}
+        >
+          {renderInlineSegments(node.content)}
+        </Tag>
+      );
+    }
+    if (node.type === 'bulletList' || node.type === 'orderedList') {
+      const ListTag = node.type === 'orderedList' ? 'ol' : 'ul';
+      return (
+        <ListTag key={idx} style={{ margin: '4px 0 8px 20px', padding: 0 }}>
+          {(node.content ?? []).map((li, liIdx) => (
+            <li key={liIdx} style={{ marginBottom: '2px' }}>
+              {(li.content ?? []).map((p, pIdx) => (
+                <span key={pIdx}>{renderInlineSegments(p.content)}</span>
+              ))}
+            </li>
+          ))}
+        </ListTag>
+      );
+    }
+    if (node.type === 'table') {
+      return (
+        <table
+          key={idx}
+          style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            margin: '10px 0',
+            fontSize: '10pt',
+          }}
+        >
+          <tbody>
+            {(node.content ?? []).map((row, rIdx) => {
+              const rowMinHeight =
+                typeof row.attrs?.rowHeightMm === 'number'
+                  ? `${row.attrs.rowHeightMm}mm`
+                  : undefined;
+              return (
+                <tr key={rIdx} style={{ height: rowMinHeight }}>
+                  {(row.content ?? []).map((cell, cIdx) => {
+                    const CellTag = cell.type === 'tableHeader' ? 'th' : 'td';
+                    const colSpan =
+                      typeof cell.attrs?.colspan === 'number' && cell.attrs.colspan > 1
+                        ? cell.attrs.colspan
+                        : undefined;
+                    const rowSpan =
+                      typeof cell.attrs?.rowspan === 'number' && cell.attrs.rowspan > 1
+                        ? cell.attrs.rowspan
+                        : undefined;
+                    const vAlign =
+                      cell.attrs?.verticalAlign === 'middle' ||
+                      cell.attrs?.verticalAlign === 'bottom'
+                        ? cell.attrs.verticalAlign
+                        : 'top';
+                    return (
+                      <CellTag
+                        key={cIdx}
+                        colSpan={colSpan}
+                        rowSpan={rowSpan}
+                        style={{
+                          border: '1px solid #9bb0a9',
+                          padding: '5px 7px',
+                          verticalAlign: vAlign,
+                          background: CellTag === 'th' ? '#eef5f2' : '#ffffff',
+                          textAlign:
+                            (cell.content?.[0]?.attrs?.textAlign as
+                              | 'left'
+                              | 'center'
+                              | 'right'
+                              | undefined) ?? 'left',
+                        }}
+                      >
+                        {(cell.content ?? []).map((p, pIdx) => (
+                          <div key={pIdx}>{renderInlineSegments(p.content)}</div>
+                        ))}
+                      </CellTag>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      );
+    }
+
+    return (
+      <p key={idx} style={{ textAlign: align, margin: '0 0 6px' }}>
+        {renderInlineSegments(node.content)}
+      </p>
+    );
+  });
+}
+
+export function DocumentPreviewFinalize({
+  state,
+  draft = null,
+  documentRecord = null,
+  activeVersion = null,
+  onPersistState,
+  onBackToStudio,
+  onBackToIntake,
+  onBackToCenter,
+  onOpenSettings,
+  onOpenRevisionInStudio,
+  onSelectVersion,
+  onNotify,
+}: DocumentPreviewFinalizeProps) {
+  const allTemplates = useMemo(
+    () => collectAllTemplates(state.customTemplates ?? []),
+    [state.customTemplates]
+  );
+
+  const resolvedDoc: DocumentRecord | null = useMemo(() => {
+    if (documentRecord) return documentRecord;
+    if (activeVersion) {
+      return (state.documents ?? []).find((d) => d.id === activeVersion.documentId) ?? null;
+    }
+    if (draft) {
+      return (state.documents ?? []).find((d) => d.id === draft.documentId) ?? null;
+    }
+    return null;
+  }, [documentRecord, activeVersion, draft, state.documents]);
+
+  const resolvedVersion: DocumentVersion | null = useMemo(() => {
+    if (activeVersion) return activeVersion;
+    if (resolvedDoc?.currentVersionId) {
+      return (
+        (state.documentVersions ?? []).find((v) => v.id === resolvedDoc.currentVersionId) ?? null
+      );
+    }
+    return null;
+  }, [activeVersion, resolvedDoc, state.documentVersions]);
+
+  const isLockedFinal = Boolean(
+    resolvedVersion ||
+      resolvedDoc?.status === 'FINAL' ||
+      resolvedDoc?.status === 'ARCHIVED' ||
+      resolvedDoc?.status === 'REVISED'
+  );
+
+  const effectiveDraft: DocumentIntakeDraft | null = useMemo(() => {
+    if (draft) return draft;
+    if (resolvedDoc?.intakeDraftId) {
+      return (state.intakeDrafts ?? []).find((d) => d.id === resolvedDoc.intakeDraftId) ?? null;
+    }
+    return null;
+  }, [draft, resolvedDoc, state.intakeDrafts]);
+
+  const initialBuild = useMemo(() => {
+    if (!effectiveDraft) return null;
+    if (effectiveDraft.studio?.content) {
+      return {
+        content: effectiveDraft.studio.content,
+        pageSettings: effectiveDraft.studio.pageSettings,
+      };
+    }
+    const generated = buildInitialStudioContentFromDraft(effectiveDraft, {
+      activeTemplates: allTemplates,
+    });
+    return {
+      content: generated.content,
+      pageSettings: generated.pageSettings,
+    };
+  }, [effectiveDraft, allTemplates]);
+
+  const baseContent: TipTapJSONContent | null = useMemo(() => {
+    if (resolvedVersion) return resolvedVersion.snapshotContent;
+    return initialBuild?.content ?? null;
+  }, [resolvedVersion, initialBuild]);
+
+  const pageSettings: DocumentStudioPageSettings = useMemo(() => {
+    if (resolvedVersion) return resolvedVersion.snapshotPageSettings;
+    if (initialBuild?.pageSettings) return initialBuild.pageSettings;
+    return {
+      paperSize: 'a4',
+      orientation: 'portrait',
+      marginsMm: { top: 20, right: 20, bottom: 20, left: 25 },
+      showPageNumbers: true,
+      pageNumberFormat: 'HALAMAN_DARI_TOTAL',
+      repeatTableHeader: true,
+    };
+  }, [resolvedVersion, initialBuild]);
+
+  const suggestedAutoNumber = useMemo(() => {
+    const kind =
+      resolvedVersion?.documentKind ??
+      resolvedDoc?.documentType ??
+      effectiveDraft?.templateSnapshot.documentKind ??
+      'SURAT_KELUAR';
+    const docDate =
+      resolvedVersion?.documentDate ??
+      resolvedDoc?.documentDate ??
+      effectiveDraft?.documentDate ??
+      new Date().toISOString().slice(0, 10);
+    return computeNextSequentialNumber({
+      state,
+      kind,
+      documentDate: docDate,
+      excludeDocumentId: resolvedDoc?.id ?? effectiveDraft?.documentId ?? null,
+    });
+  }, [state, resolvedVersion, resolvedDoc, effectiveDraft]);
+
+  const [numberingMode, setNumberingMode] = useState<'AUTO' | 'MANUAL'>(
+    resolvedVersion?.numberingMode ?? 'AUTO'
+  );
+  const [manualNumber, setManualNumber] = useState<string>(
+    resolvedVersion?.documentNumber ?? suggestedAutoNumber.suggestedNumber
+  );
+  const [demoAcknowledged, setDemoAcknowledged] = useState<boolean>(
+    Boolean(resolvedVersion?.demoAcknowledged)
+  );
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [isRevisionModalOpen, setIsRevisionModalOpen] = useState(false);
+  const [revisionReason, setRevisionReason] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const confirmFinalizeBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  const activeDocumentNumber = isLockedFinal
+    ? resolvedVersion?.documentNumber ?? resolvedDoc?.documentNumber ?? ''
+    : numberingMode === 'AUTO'
+    ? suggestedAutoNumber.suggestedNumber
+    : manualNumber.trim();
+
+  const numberValidation = useMemo(() => {
+    if (isLockedFinal) {
+      return { valid: true, normalized: activeDocumentNumber };
+    }
+    return validateOfficialDocumentNumber(
+      activeDocumentNumber,
+      state,
+      resolvedDoc?.id ?? effectiveDraft?.documentId ?? null
+    );
+  }, [isLockedFinal, activeDocumentNumber, state, resolvedDoc, effectiveDraft]);
+
+  const checklist = useMemo(() => {
+    if (!effectiveDraft || !baseContent) return null;
+    return evaluateFinalizationChecklist({
+      draft: effectiveDraft,
+      content: baseContent,
+      state,
+      documentRecord: resolvedDoc,
+    });
+  }, [effectiveDraft, baseContent, state, resolvedDoc]);
+
+  const previewContent: TipTapJSONContent | null = useMemo(() => {
+    if (!baseContent) return null;
+    if (activeDocumentNumber) {
+      return substituteOfficialDocumentNumberInContent(baseContent, activeDocumentNumber);
+    }
+    return baseContent;
+  }, [baseContent, activeDocumentNumber]);
+
+  const versionChain = useMemo(() => {
+    const id = resolvedDoc?.id ?? effectiveDraft?.documentId;
+    if (!id) return null;
+    return getDocumentVersionChain(state, id);
+  }, [state, resolvedDoc, effectiveDraft]);
+
+  const snapIdentity = useMemo(() => {
+    const snaps = resolvedVersion?.sourceSnapshots ?? effectiveDraft?.sourceSnapshots ?? [];
+    const entry = snaps.find((s) => s.sourceKey === 'settings.madrasah_identity_signatory');
+    const raw =
+      entry?.capturedValue && typeof entry.capturedValue === 'object'
+        ? (entry.capturedValue as Record<string, unknown>)
+        : {};
+    return {
+      ministry: String(raw.ministry ?? state.settings.ministry ?? 'KEMENTERIAN AGAMA REPUBLIK INDONESIA'),
+      schoolName: String(raw.schoolName ?? state.settings.schoolName ?? 'Madrasah Tsanawiyah'),
+      address: String(raw.address ?? state.settings.address ?? ''),
+      city: String(raw.city ?? state.settings.city ?? ''),
+      includeKop:
+        (resolvedVersion?.templateSnapshot ?? effectiveDraft?.templateSnapshot)?.documentHeader
+          ?.includeKopSurat !== false,
+    };
+  }, [resolvedVersion, effectiveDraft, state.settings]);
+
+  const canExecuteFinalization = Boolean(
+    !isLockedFinal &&
+      effectiveDraft &&
+      baseContent &&
+      checklist?.canFinalize &&
+      (!checklist.requiresDemoAck || demoAcknowledged) &&
+      numberValidation.valid
+  );
+
+  const handleConfirmFinalize = async () => {
+    if (!effectiveDraft || !baseContent || !canExecuteFinalization) return;
+    setIsSubmitting(true);
+    setActionError(null);
+    try {
+      const result = await finalizeDocumentTransaction({
+        state,
+        draft: effectiveDraft,
+        content: baseContent,
+        pageSettings,
+        documentNumber: numberValidation.normalized,
+        numberingMode,
+        demoAcknowledged,
+      });
+      await onPersistState(result.state);
+      setIsConfirmModalOpen(false);
+      onNotify?.(
+        `Dokumen "${result.documentRecord.title}" resmi disahkan dengan Nomor ${result.documentVersion.documentNumber}.`,
+        'success'
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Gagal menyelesaikan finalisasi dokumen.';
+      setActionError(msg);
+      onNotify?.(msg, 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDownloadFinalPdf = async () => {
+    if (!resolvedVersion || !effectiveDraft || !baseContent) return;
+    setIsSubmitting(true);
+    setActionError(null);
+    try {
+      const existing = await defaultFinalPdfStorageAdapter.getFinalPdf(
+        resolvedVersion.pdfStorageKey
+      );
+      if (existing) {
+        triggerPdfBytesDownload(
+          existing.bytes,
+          `${resolvedVersion.documentNumber.replace(/[^A-Za-z0-9._-]+/g, '_')}.pdf`
+        );
+        onNotify?.('Mengunduh berkas PDF final terverifikasi SHA-256.', 'success');
+        return;
+      }
+      // Deterministik render ulang dari snapshot immutable bila sesi browser baru
+      const rendered = await renderOfficialDocumentPdf({
+        draft: effectiveDraft,
+        content: resolvedVersion.snapshotContent,
+        pageSettings: resolvedVersion.snapshotPageSettings,
+        state,
+        officialNumber: resolvedVersion.documentNumber,
+      });
+      await defaultFinalPdfStorageAdapter.saveFinalPdf({
+        storageKey: resolvedVersion.pdfStorageKey,
+        versionId: resolvedVersion.id,
+        documentId: resolvedVersion.documentId,
+        documentNumber: resolvedVersion.documentNumber,
+        sha256: rendered.sha256,
+        sizeBytes: rendered.pdfBytes.byteLength,
+        mimeType: 'application/pdf',
+        createdAt: resolvedVersion.finalizedAt,
+        bytes: rendered.pdfBytes,
+      });
+      triggerPdfBytesDownload(
+        rendered.pdfBytes,
+        `${resolvedVersion.documentNumber.replace(/[^A-Za-z0-9._-]+/g, '_')}.pdf`
+      );
+      onNotify?.('PDF final direkonstruksi dari snapshot resmi dan siap diunduh.', 'success');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Gagal menyiapkan unduhan PDF final.';
+      setActionError(msg);
+      onNotify?.(msg, 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCreateRevision = async () => {
+    if (!resolvedDoc) return;
+    setIsSubmitting(true);
+    setActionError(null);
+    try {
+      const created = createRevisionDraftInState(state, {
+        sourceDocumentId: resolvedDoc.id,
+        sourceVersionId: resolvedVersion?.id ?? null,
+        revisionReason,
+      });
+      await onPersistState(created.state);
+      setIsRevisionModalOpen(false);
+      setRevisionReason('');
+      onNotify?.(
+        `Versi revisi v${created.revisionDocument.versionNumber} dibuat sebagai Draft baru. Dokumen final lama tetap aman read-only.`,
+        'success'
+      );
+      onOpenRevisionInStudio?.(created.revisionDraft.id);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Gagal membuat revisi non-destruktif.';
+      setActionError(msg);
+      onNotify?.(msg, 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!previewContent) {
+    return (
+      <div className="s05-card" role="region" aria-label="Pratinjau Dokumen Tidak Tersedia">
+        <p style={{ margin: 0, color: '#475e58' }}>
+          Naskah dokumen tidak ditemukan untuk ditampilkan pada Pratinjau S05.
+        </p>
+        <div>
+          <button type="button" className="s02-btn-secondary" onClick={onBackToCenter}>
+            Kembali ke Pusat Persuratan
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const docTitle = resolvedVersion?.title ?? resolvedDoc?.title ?? effectiveDraft?.title ?? 'Dokumen';
+  const docKind =
+    resolvedVersion?.documentKind ??
+    resolvedDoc?.documentType ??
+    effectiveDraft?.templateSnapshot.documentKind ??
+    'SURAT_KELUAR';
+  const docDate =
+    resolvedVersion?.documentDate ??
+    resolvedDoc?.documentDate ??
+    effectiveDraft?.documentDate ??
+    '';
+  const currentStatus = resolvedDoc?.status ?? (resolvedVersion ? 'FINAL' : 'DRAFT');
+
+  return (
+    <section className="s05-shell" aria-label="S05 Pratinjau dan Finalisasi Dokumen Resmi">
+      <header className="s05-topbar">
+        <div className="s05-topbar-meta">
+          <div className="s05-kicker">
+            S05 PRATINJAU &amp; PENGESAHAN · {DOCUMENT_KIND_LABELS[docKind]}
+          </div>
+          <div className="s05-title-row">
+            <h1>{docTitle}</h1>
+            <span
+              className={`s05-status-tag ${
+                currentStatus === 'FINAL'
+                  ? 'is-final'
+                  : currentStatus === 'ARCHIVED'
+                  ? 'is-archived'
+                  : 'is-draft'
+              }`}
+            >
+              {isLockedFinal ? <LockKeyhole size={13} aria-hidden="true" /> : <FileText size={13} aria-hidden="true" />}
+              <span>{DOCUMENT_STATUS_LABELS[currentStatus]}</span>
+            </span>
+          </div>
+          <div style={{ fontSize: '12.5px', color: '#4a625c' }} className="s5-tnum">
+            Tanggal Surat: {formatIndonesianDate(docDate)} · Nomor:{' '}
+            <strong>{activeDocumentNumber || 'Belum Diterbitkan'}</strong>
+            {resolvedVersion && (
+              <>
+                {' '}
+                · PDF {resolvedVersion.pdfPageCount} hal · SHA-256:{' '}
+                <code>{resolvedVersion.pdfChecksum.slice(0, 12)}…</code>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="s05-topbar-actions">
+          <button type="button" className="s02-btn-secondary" onClick={onBackToCenter}>
+            <ArrowLeft size={14} aria-hidden="true" />
+            <span>Kembali ke S01</span>
+          </button>
+
+          {!isLockedFinal && effectiveDraft && onBackToStudio && (
+            <button
+              type="button"
+              className="s02-btn-secondary"
+              onClick={() => onBackToStudio(effectiveDraft.id)}
+            >
+              <span>Sunting Lagi di S04</span>
+            </button>
+          )}
+
+          {isLockedFinal && resolvedVersion && (
+            <>
+              <button
+                type="button"
+                className="s02-btn-secondary"
+                disabled={isSubmitting}
+                onClick={() => setIsRevisionModalOpen(true)}
+              >
+                <RotateCcw size={14} aria-hidden="true" />
+                <span>Buat Revisi Baru</span>
+              </button>
+              <button
+                type="button"
+                className="s02-btn-primary"
+                disabled={isSubmitting}
+                onClick={() => void handleDownloadFinalPdf()}
+              >
+                <Download size={14} aria-hidden="true" />
+                <span>Unduh PDF Final</span>
+              </button>
+            </>
+          )}
+
+          {!isLockedFinal && (
+            <button
+              type="button"
+              className="s02-btn-primary"
+              disabled={!canExecuteFinalization || isSubmitting}
+              onClick={() => setIsConfirmModalOpen(true)}
+            >
+              <FileCheck2 size={14} aria-hidden="true" />
+              <span>Finalisasi Dokumen</span>
+            </button>
+          )}
+        </div>
+      </header>
+
+      {actionError && (
+        <div className="s04-banner is-error" role="alert">
+          <div>{actionError}</div>
+        </div>
+      )}
+
+      <div className="s05-workbench">
+        {/* Left/Center: Faithful Read-Only Paper Preview */}
+        <div className="s05-paper-stage">
+          <div className="s05-paper-caption s5-tnum">
+            <span>
+              Pratinjau Read-Only ({pageSettings.paperSize.toUpperCase()}{' '}
+              {pageSettings.orientation === 'portrait' ? 'Portrait' : 'Landscape'} · Margin{' '}
+              {pageSettings.marginsMm.top}/{pageSettings.marginsMm.right}/
+              {pageSettings.marginsMm.bottom}/{pageSettings.marginsMm.left} mm)
+            </span>
+            <span>
+              {isLockedFinal
+                ? 'Dokumen Final Read-Only · Snapshot Terkunci'
+                : 'Simulasi Tampilan S05 sebelum Cetak PDF Resmi'}
+            </span>
+          </div>
+
+          <article
+            className={`s05-paper-sheet ${
+              pageSettings.orientation === 'landscape' ? 'is-landscape' : ''
+            }`}
+            aria-label="Kanvas pratinjau dokumen read-only S05"
+            style={{
+              padding: `${pageSettings.marginsMm.top}mm ${pageSettings.marginsMm.right}mm ${pageSettings.marginsMm.bottom}mm ${pageSettings.marginsMm.left}mm`,
+            }}
+          >
+            {pageSettings.headerText && (
+              <div
+                style={{
+                  fontSize: '8.5pt',
+                  color: '#526861',
+                  borderBottom: '1px solid #d5e0db',
+                  paddingBottom: '4px',
+                  marginBottom: '10px',
+                }}
+              >
+                {pageSettings.headerText}
+              </div>
+            )}
+
+            {snapIdentity.includeKop && (
+              <div className="s05-kop-block">
+                <div className="s05-kop-ministry">{snapIdentity.ministry}</div>
+                <div className="s05-kop-school">{snapIdentity.schoolName.toUpperCase()}</div>
+                {(snapIdentity.address || snapIdentity.city) && (
+                  <div className="s05-kop-meta">
+                    {[snapIdentity.address, snapIdentity.city].filter(Boolean).join(', ')}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div>{renderPaperNodes(previewContent.content)}</div>
+
+            {(pageSettings.footerText || pageSettings.showPageNumbers) && (
+              <div
+                className="s5-tnum"
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginTop: '14px',
+                  paddingTop: '6px',
+                  borderTop: '1px solid #d5e0db',
+                  fontSize: '8.5pt',
+                  color: '#526861',
+                }}
+              >
+                <span>{pageSettings.footerText ?? ''}</span>
+                {pageSettings.showPageNumbers && (
+                  <span>
+                    {resolvedVersion
+                      ? `${resolvedVersion.pdfPageCount} halaman PDF terverifikasi`
+                      : 'Nomor halaman eksak dicetak saat PDF final diterbitkan'}
+                  </span>
+                )}
+              </div>
+            )}
+          </article>
+        </div>
+
+        {/* Right Rail: Checklist, Numbering, Finalize & Version History */}
+        <aside className="s05-rail" aria-label="Panel pemeriksaan dan pengesahan S05">
+          {/* Card 1: Numbering */}
+          <div className="s05-card">
+            <div className="s05-card-head">
+              <h2>
+                <ShieldCheck size={16} aria-hidden="true" />
+                <span>{isLockedFinal ? 'Nomor Surat Resmi (Terkunci)' : 'Terbitkan Nomor Surat'}</span>
+              </h2>
+            </div>
+
+            {!isLockedFinal && (
+              <div className="s05-numbering-mode" role="group" aria-label="Mode penomoran surat">
+                <button
+                  type="button"
+                  className={`s05-mode-btn ${numberingMode === 'AUTO' ? 'is-active' : ''}`}
+                  onClick={() => setNumberingMode('AUTO')}
+                >
+                  Otomatis Aturan
+                </button>
+                <button
+                  type="button"
+                  className={`s05-mode-btn ${numberingMode === 'MANUAL' ? 'is-active' : ''}`}
+                  onClick={() => setNumberingMode('MANUAL')}
+                >
+                  Nomor Manual
+                </button>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label
+                htmlFor="s05-doc-number-input"
+                style={{ fontSize: '12px', fontWeight: 700, color: '#27463e' }}
+              >
+                Nomor Surat Resmi
+              </label>
+              <input
+                id="s05-doc-number-input"
+                type="text"
+                className="s05-number-input s5-tnum"
+                value={activeDocumentNumber}
+                disabled={isLockedFinal || numberingMode === 'AUTO'}
+                onChange={(e) => setManualNumber(e.target.value)}
+                placeholder="Contoh: 001/SK/MTs.CN/XI/2026"
+              />
+              {!isLockedFinal && (
+                <small style={{ fontSize: '11.5px', color: numberValidation.valid ? '#1d5d44' : '#8f2d24' }}>
+                  {numberValidation.valid
+                    ? `Nomor urut #${suggestedAutoNumber.nextSequence} (periode ${suggestedAutoNumber.periodKey}) siap diterbitkan dan belum dipakai dokumen lain.`
+                    : numberValidation.error}
+                </small>
+              )}
+            </div>
+          </div>
+
+          {/* Card 2: Administrative Completeness Checklist */}
+          {!isLockedFinal && checklist && (
+            <div className="s05-card">
+              <div className="s05-card-head">
+                <h2>
+                  {checklist.canFinalize ? (
+                    <CheckCircle2 size={16} color="#1b5e43" aria-hidden="true" />
+                  ) : (
+                    <ShieldAlert size={16} color="#8f2d24" aria-hidden="true" />
+                  )}
+                  <span>Checklist Administrasi</span>
+                </h2>
+                <span className="s5-tnum" style={{ fontSize: '12px', fontWeight: 700, color: checklist.canFinalize ? '#1b5e43' : '#8f2d24' }}>
+                  {checklist.blockersCount === 0
+                    ? 'Siap Sah'
+                    : `${checklist.blockersCount} Kendala Wajib`}
+                </span>
+              </div>
+
+              <ul className="s05-checklist">
+                {checklist.items.map((item) => (
+                  <li key={item.id} className={`s05-check-item is-${item.severity}`}>
+                    <div className={`s05-check-icon is-${item.severity}`} aria-hidden="true">
+                      {item.passed ? (
+                        <CheckCircle2 size={15} />
+                      ) : item.severity === 'blocker' ? (
+                        <XCircle size={15} />
+                      ) : (
+                        <AlertTriangle size={15} />
+                      )}
+                    </div>
+                    <div className="s05-check-copy">
+                      <strong>{item.label}</strong>
+                      <span>{item.detail}</span>
+                      {!item.passed && item.fixTarget === 's04' && effectiveDraft && onBackToStudio && (
+                        <button
+                          type="button"
+                          className="s05-jump-btn"
+                          onClick={() => onBackToStudio(effectiveDraft.id)}
+                        >
+                          Perbaiki di S04 &rarr;
+                        </button>
+                      )}
+                      {!item.passed && item.fixTarget === 's03' && effectiveDraft && onBackToIntake && (
+                        <button
+                          type="button"
+                          className="s05-jump-btn"
+                          onClick={() => onBackToIntake(effectiveDraft.id)}
+                        >
+                          Perbaiki di S03 &rarr;
+                        </button>
+                      )}
+                      {!item.passed && item.fixTarget === 'settings' && onOpenSettings && (
+                        <button type="button" className="s05-jump-btn" onClick={onOpenSettings}>
+                          Lengkapi di Pengaturan &rarr;
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+
+              {checklist.requiresDemoAck && (
+                <label className="s05-demo-ack">
+                  <input
+                    type="checkbox"
+                    checked={demoAcknowledged}
+                    onChange={(e) => setDemoAcknowledged(e.target.checked)}
+                  />
+                  <span>
+                    Saya memahami dokumen ini memakai <strong>dataset simulasi demo</strong> dan ingin
+                    tetap mengesahkannya untuk uji alur.
+                  </span>
+                </label>
+              )}
+            </div>
+          )}
+
+          {/* Source Snapshots & Capture Timestamps */}
+          {((resolvedVersion?.sourceSnapshots ?? effectiveDraft?.sourceSnapshots)?.length ?? 0) > 0 && (
+            <div className="s05-card">
+              <div className="s05-card-head">
+                <h2>
+                  <ShieldCheck size={16} aria-hidden="true" />
+                  <span>Sumber Data &amp; Snapshot</span>
+                </h2>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                {(resolvedVersion?.sourceSnapshots ?? effectiveDraft?.sourceSnapshots ?? []).map(
+                  (snap, idx) => (
+                    <div
+                      key={`${snap.sourceKey}-${idx}`}
+                      style={{
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        background: '#f7faf8',
+                        border: '1px solid #d9e5df',
+                        fontSize: '11.5px',
+                        display: 'grid',
+                        gap: '2px',
+                      }}
+                    >
+                      <strong style={{ color: '#0b2923' }}>{snap.sourceLabel}</strong>
+                      <span style={{ color: '#4c655d' }}>
+                        {snap.provenance} · {snap.status}
+                        {snap.sourceIdentity ? ` · ${snap.sourceIdentity}` : ''}
+                      </span>
+                      <span className="s5-tnum" style={{ color: '#5c756d', fontSize: '11px' }}>
+                        Diambil: {snap.capturedAt ? snap.capturedAt.replace('T', ' ').slice(0, 19) : '—'}
+                      </span>
+                    </div>
+                  )
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Card 3: Version History */}
+          {versionChain && (versionChain.versions.length > 0 || versionChain.documents.length > 1) && (
+            <div className="s05-card">
+              <div className="s05-card-head">
+                <h2>
+                  <History size={16} aria-hidden="true" />
+                  <span>Riwayat Versi Dokumen</span>
+                </h2>
+              </div>
+              <div className="s05-version-list">
+                {versionChain.versions.map((ver) => {
+                  const isCurrent = resolvedVersion?.id === ver.id;
+                  return (
+                    <div
+                      key={ver.id}
+                      className={`s05-version-item ${isCurrent ? 'is-current' : ''}`}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                        <strong className="s5-tnum">
+                          v{ver.versionNumber} · {ver.documentNumber}
+                        </strong>
+                        <span style={{ color: '#1b5e43', fontWeight: 700 }}>{ver.status}</span>
+                      </div>
+                      <span style={{ color: '#4c635d' }}>
+                        Disahkan: {ver.finalizedAt.slice(0, 10)} · {ver.pdfPageCount} hal
+                      </span>
+                      {ver.revisionReason && (
+                        <span style={{ color: '#6b4d16' }}>Revisi: {ver.revisionReason}</span>
+                      )}
+                      {!isCurrent && onSelectVersion && (
+                        <button
+                          type="button"
+                          className="s05-jump-btn"
+                          onClick={() => onSelectVersion(ver.id)}
+                        >
+                          Lihat Versi Ini
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </aside>
+      </div>
+
+      {/* Modal 1: Confirmation before Finalizing */}
+      {isConfirmModalOpen && (
+        <div
+          className="s01-modal-scrim"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget && !isSubmitting) setIsConfirmModalOpen(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' && !isSubmitting) {
+              e.stopPropagation();
+              setIsConfirmModalOpen(false);
+            }
+          }}
+        >
+          <div
+            className="s01-modal-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="s05-finalize-confirm-title"
+          >
+            <div className="s01-modal-head">
+              <div className="s01-modal-title-wrap">
+                <div className="s01-modal-icon" aria-hidden="true">
+                  <LockKeyhole size={19} />
+                </div>
+                <div>
+                  <h2 id="s05-finalize-confirm-title">Konfirmasi Finalisasi &amp; Pengesahan Resmi</h2>
+                  <p>Setelah disahkan, dokumen terkunci read-only dan berkas PDF final disimpan.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="s01-modal-close"
+                disabled={isSubmitting}
+                onClick={() => setIsConfirmModalOpen(false)}
+                aria-label="Tutup konfirmasi finalisasi"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="s01-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <p style={{ margin: 0 }}>
+                Anda akan mengesahkan dokumen <strong>{docTitle}</strong> dengan Nomor Resmi:
+              </p>
+              <div
+                className="s5-tnum"
+                style={{
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  background: '#f2f8f5',
+                  border: '1px solid #bfd3ca',
+                  fontFamily: 'var(--font-mono, monospace)',
+                  fontWeight: 700,
+                  color: '#0b2923',
+                }}
+              >
+                {numberValidation.normalized}
+              </div>
+              <p style={{ margin: 0, fontSize: '12.5px', color: '#49615b' }}>
+                Snapshot naskah, snapshot Data Master/Jadwal, dan berkas PDF final terverifikasi SHA-256
+                akan dibekukan sebagai versi resmi v{resolvedDoc?.versionNumber ?? 1}. Perubahan di masa
+                mendatang hanya dapat dilakukan melalui fitur Buat Revisi Non-Destruktif.
+              </p>
+            </div>
+            <div className="s01-modal-foot">
+              <button
+                type="button"
+                className="s02-btn-secondary"
+                disabled={isSubmitting}
+                onClick={() => setIsConfirmModalOpen(false)}
+              >
+                Batal
+              </button>
+              <button
+                ref={confirmFinalizeBtnRef}
+                type="button"
+                className="s02-btn-primary"
+                disabled={isSubmitting}
+                onClick={() => void handleConfirmFinalize()}
+              >
+                <FileCheck2 size={14} aria-hidden="true" />
+                <span>{isSubmitting ? 'Mengesahkan & Membuat PDF…' : 'Sahkan & Simpan Final'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal 2: Create Non-Destructive Revision */}
+      {isRevisionModalOpen && (
+        <div
+          className="s01-modal-scrim"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget && !isSubmitting) setIsRevisionModalOpen(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' && !isSubmitting) {
+              e.stopPropagation();
+              setIsRevisionModalOpen(false);
+            }
+          }}
+        >
+          <div
+            className="s01-modal-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="s05-revision-modal-title"
+          >
+            <div className="s01-modal-head">
+              <div className="s01-modal-title-wrap">
+                <div className="s01-modal-icon" aria-hidden="true">
+                  <RotateCcw size={19} />
+                </div>
+                <div>
+                  <h2 id="s05-revision-modal-title">Buat Revisi Non-Destruktif</h2>
+                  <p>Dokumen final lama tetap aman dan tidak berubah; versi revisi dibuat sebagai Draft baru.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="s01-modal-close"
+                disabled={isSubmitting}
+                onClick={() => setIsRevisionModalOpen(false)}
+                aria-label="Tutup dialog revisi"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="s01-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label htmlFor="s05-revision-reason" style={{ fontSize: '12.5px', fontWeight: 700 }}>
+                Alasan Pembuatan Revisi (wajib diisi)
+              </label>
+              <textarea
+                id="s05-revision-reason"
+                rows={3}
+                value={revisionReason}
+                onChange={(e) => setRevisionReason(e.target.value)}
+                placeholder="Contoh: Penyesuaian beban mengajar guru semester genap / koreksi lampiran"
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  padding: '9px 11px',
+                  borderRadius: '8px',
+                  border: '1px solid #c6d5ce',
+                  fontFamily: 'inherit',
+                  fontSize: '13px',
+                }}
+              />
+            </div>
+            <div className="s01-modal-foot">
+              <button
+                type="button"
+                className="s02-btn-secondary"
+                disabled={isSubmitting}
+                onClick={() => setIsRevisionModalOpen(false)}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                className="s02-btn-primary"
+                disabled={isSubmitting || revisionReason.trim().length < 4}
+                onClick={() => void handleCreateRevision()}
+              >
+                <RotateCcw size={14} aria-hidden="true" />
+                <span>{isSubmitting ? 'Membuat Draft Revisi…' : 'Buat Draft Revisi Baru'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}

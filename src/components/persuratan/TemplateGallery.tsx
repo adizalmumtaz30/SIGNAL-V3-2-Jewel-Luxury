@@ -2,13 +2,13 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import {
   ArrowLeft,
   CheckCircle2,
-  Clock,
   Copy,
   FileText,
   Info,
   Lock,
   RotateCcw,
   Search,
+  SlidersHorizontal,
   Sparkles,
   Star,
   X,
@@ -43,6 +43,7 @@ export interface TemplateGalleryProps {
   onUpdateState?: (updater: (prev: AppState) => AppState) => void;
   onBackToCenter?: () => void;
   onUseTemplate?: (template: DocumentTemplate) => void;
+  onOpenTemplateManager?: () => void;
   onNotify?: (message: string, type?: 'success' | 'info' | 'warning' | 'error') => void;
 }
 
@@ -152,10 +153,14 @@ export function TemplateGallery({
   onUpdateState,
   onBackToCenter,
   onUseTemplate,
+  onOpenTemplateManager,
   onNotify,
 }: TemplateGalleryProps) {
   const allTemplates = useMemo(
-    () => collectAllTemplates(state.customTemplates ?? []),
+    () =>
+      collectAllTemplates(state.customTemplates ?? []).filter(
+        (tpl) => tpl.status !== 'ARCHIVED'
+      ),
     [state.customTemplates]
   );
 
@@ -351,7 +356,13 @@ export function TemplateGallery({
             Pilih template terstruktur dari {allTemplates.length} katalog atau kelola salinan khusus madrasah.
           </p>
         </div>
-        <div className="s02-header-actions">
+        <div className="s02-header-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {onOpenTemplateManager && (
+            <button type="button" className="s02-btn-secondary" onClick={onOpenTemplateManager}>
+              <SlidersHorizontal size={15} aria-hidden="true" />
+              <span>Kelola Template (S07)</span>
+            </button>
+          )}
           {onBackToCenter && (
             <button type="button" className="s02-back-btn" onClick={onBackToCenter}>
               <ArrowLeft size={15} aria-hidden="true" />
@@ -700,20 +711,16 @@ export function TemplateGallery({
                 </div>
               </details>
 
-              {previewTemplate.source !== 'SYSTEM' && (
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    fontSize: '11.25px',
-                    color: '#526B64',
-                    padding: '2px',
-                  }}
+              {previewTemplate.source !== 'SYSTEM' && onOpenTemplateManager && (
+                <button
+                  type="button"
+                  className="s02-btn-secondary"
+                  style={{ width: '100%', justifyContent: 'center' }}
+                  onClick={onOpenTemplateManager}
                 >
-                  <Clock size={12} aria-hidden="true" />
-                  <span>Editor Struktur Template (S07) diaktifkan pada tahap berikutnya.</span>
-                </div>
+                  <SlidersHorizontal size={13} aria-hidden="true" />
+                  <span>Sunting Struktur di Template Manager (S07)</span>
+                </button>
               )}
             </>
           ) : (

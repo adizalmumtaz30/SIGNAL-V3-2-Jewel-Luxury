@@ -13,9 +13,10 @@ import {
 
 export const STUDIO_SCHEMA_VERSION = 1 as const;
 export const STUDIO_MAX_TREE_DEPTH = 24;
-export const STUDIO_MAX_NODES = 4000;
+export const STUDIO_MAX_NODES = 10_000;
 export const STUDIO_MAX_TEXT_NODE_LENGTH = 50_000;
-export const STUDIO_MAX_TOTAL_TEXT_LENGTH = 250_000;
+export const STUDIO_MAX_TOTAL_TEXT_LENGTH = 500_000;
+export const STUDIO_MAX_IMAGE_DATA_URL_LENGTH = 700_000;
 
 export const ALLOWED_STUDIO_NODE_TYPES = new Set<string>([
   'doc',
@@ -31,10 +32,66 @@ export const ALLOWED_STUDIO_NODE_TYPES = new Set<string>([
   'text',
   'hardBreak',
   'horizontalRule',
+  'pageBreak',
+  'docImage',
 ]);
 
 export const ALLOWED_STUDIO_MARKS = new Set<string>(['bold', 'italic', 'underline']);
 export const ALLOWED_TEXT_ALIGNS = new Set<string>(['left', 'center', 'right', 'justify']);
+export const ALLOWED_VERTICAL_ALIGNS = new Set<string>(['top', 'middle', 'bottom']);
+export const ALLOWED_IMAGE_ALIGNS = new Set<string>(['left', 'center', 'right']);
+
+const SAFE_IMAGE_DATA_URL_REGEX =
+  /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/i;
+
+export function isSafeInlineImageDataUrl(src: unknown): src is string {
+  if (typeof src !== 'string') return false;
+  const trimmed = src.trim();
+  if (trimmed.length === 0 || trimmed.length > STUDIO_MAX_IMAGE_DATA_URL_LENGTH) {
+    return false;
+  }
+  return SAFE_IMAGE_DATA_URL_REGEX.test(trimmed);
+}
+
+/**
+ * Validasi magic bytes file gambar raster aman (PNG, JPEG, WEBP) untuk penyisipan di S04.
+ */
+export function detectRasterImageMimeFromBytes(
+  bytes: Uint8Array
+): 'image/png' | 'image/jpeg' | 'image/webp' | null {
+  if (!bytes || bytes.length < 12) return null;
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  if (
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47 &&
+    bytes[4] === 0x0d &&
+    bytes[5] === 0x0a &&
+    bytes[6] === 0x1a &&
+    bytes[7] === 0x0a
+  ) {
+    return 'image/png';
+  }
+  // JPEG: FF D8 FF
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return 'image/jpeg';
+  }
+  // WEBP: RIFF....WEBP
+  if (
+    bytes[0] === 0x52 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x46 &&
+    bytes[8] === 0x57 &&
+    bytes[9] === 0x45 &&
+    bytes[10] === 0x42 &&
+    bytes[11] === 0x50
+  ) {
+    return 'image/webp';
+  }
+  return null;
+}
 
 const FORBIDDEN_ATTR_KEYS = new Set<string>([
   '__proto__',
@@ -121,13 +178,49 @@ export function validateStudioPageSettings(candidate: unknown): {
     };
   }
 
+  const normalized: DocumentStudioPageSettings = {
+    paperSize,
+    orientation,
+    marginsMm: cleanMargins,
+  };
+
+  if (candidate.headerText !== undefined) {
+    if (typeof candidate.headerText !== 'string' || candidate.headerText.length > 160) {
+      return { valid: false, error: 'Teks header halaman maksimal 160 karakter.' };
+    }
+    normalized.headerText = candidate.headerText;
+  }
+  if (candidate.footerText !== undefined) {
+    if (typeof candidate.footerText !== 'string' || candidate.footerText.length > 160) {
+      return { valid: false, error: 'Teks footer halaman maksimal 160 karakter.' };
+    }
+    normalized.footerText = candidate.footerText;
+  }
+  if (candidate.showPageNumbers !== undefined) {
+    if (typeof candidate.showPageNumbers !== 'boolean') {
+      return { valid: false, error: 'Opsi nomor halaman harus boolean.' };
+    }
+    normalized.showPageNumbers = candidate.showPageNumbers;
+  }
+  if (candidate.pageNumberFormat !== undefined) {
+    if (
+      candidate.pageNumberFormat !== 'HALAMAN_DARI_TOTAL' &&
+      candidate.pageNumberFormat !== 'HALAMAN_SAJA'
+    ) {
+      return { valid: false, error: 'Format nomor halaman tidak didukung.' };
+    }
+    normalized.pageNumberFormat = candidate.pageNumberFormat;
+  }
+  if (candidate.repeatTableHeader !== undefined) {
+    if (typeof candidate.repeatTableHeader !== 'boolean') {
+      return { valid: false, error: 'Opsi ulangi header tabel harus boolean.' };
+    }
+    normalized.repeatTableHeader = candidate.repeatTableHeader;
+  }
+
   return {
     valid: true,
-    normalized: {
-      paperSize,
-      orientation,
-      marginsMm: cleanMargins,
-    },
+    normalized,
   };
 }
 
@@ -138,6 +231,9 @@ function validateNodeAttrs(nodeType: string, attrs: unknown): string | null {
   }
 
   for (const key of Object.keys(attrs)) {
+    if (key === 'src' && nodeType === 'docImage') {
+      continue;
+    }
     if (FORBIDDEN_ATTR_KEYS.has(key) || key.toLowerCase().startsWith('on')) {
       return `Atribut terlarang "${key}" terdeteksi pada node "${nodeType}".`;
     }
@@ -158,6 +254,51 @@ function validateNodeAttrs(nodeType: string, attrs: unknown): string | null {
   if (nodeType === 'orderedList' && attrs.start !== undefined && attrs.start !== null) {
     if (typeof attrs.start !== 'number' || !Number.isInteger(attrs.start) || attrs.start < 1) {
       return 'Atribut start pada orderedList harus bilangan bulat positif.';
+    }
+  }
+
+  if (nodeType === 'docImage') {
+    if (!isSafeInlineImageDataUrl(attrs.src)) {
+      return 'Gambar dokumen hanya mengizinkan data URL PNG/JPEG/WEBP berukuran aman.';
+    }
+    if (attrs.widthMm !== undefined && attrs.widthMm !== null) {
+      if (
+        typeof attrs.widthMm !== 'number' ||
+        !Number.isFinite(attrs.widthMm) ||
+        attrs.widthMm < 10 ||
+        attrs.widthMm > 180
+      ) {
+        return 'Lebar gambar dokumen harus berada di rentang 10–180 mm.';
+      }
+    }
+    if (attrs.align !== undefined && attrs.align !== null) {
+      if (typeof attrs.align !== 'string' || !ALLOWED_IMAGE_ALIGNS.has(attrs.align)) {
+        return 'Perataan gambar hanya mendukung left, center, atau right.';
+      }
+    }
+    if (attrs.alt !== undefined && attrs.alt !== null) {
+      if (typeof attrs.alt !== 'string' || attrs.alt.length > 200) {
+        return 'Teks alternatif gambar maksimal 200 karakter.';
+      }
+    }
+  }
+
+  if (nodeType === 'table') {
+    if (attrs.repeatHeader !== undefined && typeof attrs.repeatHeader !== 'boolean') {
+      return 'Atribut repeatHeader tabel harus boolean.';
+    }
+  }
+
+  if (nodeType === 'tableRow') {
+    if (attrs.rowHeightMm !== undefined && attrs.rowHeightMm !== null) {
+      if (
+        typeof attrs.rowHeightMm !== 'number' ||
+        !Number.isFinite(attrs.rowHeightMm) ||
+        attrs.rowHeightMm < 5 ||
+        attrs.rowHeightMm > 80
+      ) {
+        return 'Tinggi baris tabel harus berada di rentang 5–80 mm.';
+      }
     }
   }
 
@@ -188,6 +329,11 @@ function validateNodeAttrs(nodeType: string, attrs: unknown): string | null {
         attrs.colwidth.some((w) => w !== null && (typeof w !== 'number' || !Number.isFinite(w) || w <= 0))
       ) {
         return 'Atribut colwidth sel tabel tidak valid.';
+      }
+    }
+    if (attrs.verticalAlign !== undefined && attrs.verticalAlign !== null) {
+      if (typeof attrs.verticalAlign !== 'string' || !ALLOWED_VERTICAL_ALIGNS.has(attrs.verticalAlign)) {
+        return `Perataan vertikal sel "${String(attrs.verticalAlign)}" tidak diizinkan.`;
       }
     }
   }

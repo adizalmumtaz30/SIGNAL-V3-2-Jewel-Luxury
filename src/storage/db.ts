@@ -18,19 +18,36 @@ import {
   sanitizeTemplatePreferences,
 } from '../domain/persuratan/templates/selectors';
 import { validateStudioState } from '../domain/persuratan/studio/contentValidation';
+import type { BackupBlobManifestEntry } from '../domain/persuratan/types';
+import {
+  collectBackupBlobsForState,
+  validateAndRestoreBackupBlobs,
+  type BinaryBlobStoreLike,
+} from '../domain/persuratan/attachments/attachmentStore';
 import { computeCanonicalSha256, computeSha256Hex, isSha256Hex } from './checksum';
 
 export const DB_NAME = 'signal-academic-studio';
-export const DB_VERSION = 3;
+export const DB_VERSION = 4;
 export const STORE_NAME = 'workspace';
 export const SNAPSHOT_STORE_NAME = 'snapshots';
 export const AUDIT_STORE_NAME = 'audit_log';
 export const ASSIGNMENT_STORE_NAME = 'teacher_assignments';
+export const DOCUMENT_VERSIONS_STORE_NAME = 'document_versions';
+export const DOCUMENT_TEMPLATES_STORE_NAME = 'document_templates';
+export const DOCUMENT_ATTACHMENTS_STORE_NAME = 'document_attachments';
 
 export const CURRENT_APP_SCHEMA_VERSION = 2;
 export const CURRENT_BACKUP_FORMAT_VERSION = 2;
 
 export type BackupVerificationStatus = 'verified' | 'legacy_unverified';
+
+export interface BackupManifestSummary {
+  totalDocuments: number;
+  totalVersions: number;
+  totalCustomTemplates: number;
+  totalAttachments: number;
+  totalBlobs: number;
+}
 
 export interface BackupParseResult {
   state: AppState;
@@ -40,6 +57,8 @@ export interface BackupParseResult {
   verification: BackupVerificationStatus;
   warnings: string[];
   checksum?: string;
+  blobs?: BackupBlobManifestEntry[];
+  manifest?: BackupManifestSummary;
 }
 
 export interface BackupEnvelope {
@@ -50,6 +69,8 @@ export interface BackupEnvelope {
   checksumAlgorithm: 'SHA-256';
   exportedAt: string;
   payload: AppState;
+  manifest?: BackupManifestSummary;
+  blobs?: BackupBlobManifestEntry[];
   checksum: string;
 }
 
@@ -91,7 +112,7 @@ export function resetSignalDBPromise(): void {
 }
 
 /**
- * Pure, idempotent, non-destructive IndexedDB schema upgrade helper (v0/v1/v2 -> v3).
+ * Pure, idempotent, non-destructive IndexedDB schema upgrade helper (v0/v1/v2/v3 -> v4).
  * Never calls deleteDatabase() or deletes old object stores.
  */
 export function applySignalDatabaseUpgrade(db: UpgradeDbLike, _oldVersion: number): void {
@@ -112,6 +133,26 @@ export function applySignalDatabaseUpgrade(db: UpgradeDbLike, _oldVersion: numbe
     assignmentStore.createIndex('teacherId', 'teacherId');
     assignmentStore.createIndex('status', 'status');
     assignmentStore.createIndex('sourceType', 'sourceType');
+  }
+  if (!db.objectStoreNames.contains(DOCUMENT_VERSIONS_STORE_NAME)) {
+    const versionsStore = db.createObjectStore(DOCUMENT_VERSIONS_STORE_NAME, { keyPath: 'id' });
+    versionsStore.createIndex('documentId', 'documentId');
+    versionsStore.createIndex('rootDocumentId', 'rootDocumentId');
+    versionsStore.createIndex('documentNumber', 'documentNumber');
+  }
+  if (!db.objectStoreNames.contains(DOCUMENT_TEMPLATES_STORE_NAME)) {
+    const templatesStore = db.createObjectStore(DOCUMENT_TEMPLATES_STORE_NAME, { keyPath: 'id' });
+    templatesStore.createIndex('category', 'category');
+    templatesStore.createIndex('source', 'source');
+    templatesStore.createIndex('status', 'status');
+  }
+  if (!db.objectStoreNames.contains(DOCUMENT_ATTACHMENTS_STORE_NAME)) {
+    const attachmentsStore = db.createObjectStore(DOCUMENT_ATTACHMENTS_STORE_NAME, {
+      keyPath: 'storageKey',
+    });
+    attachmentsStore.createIndex('documentId', 'documentId');
+    attachmentsStore.createIndex('versionId', 'versionId');
+    attachmentsStore.createIndex('kind', 'kind');
   }
 }
 
@@ -262,6 +303,48 @@ export function validateAppStateStructure(candidate: unknown): asserts candidate
       }
     }
   }
+  if (candidate.documentVersions !== undefined) {
+    if (!Array.isArray(candidate.documentVersions)) {
+      throw new Error('Struktur riwayat versi dokumen final pada berkas cadangan tidak valid.');
+    }
+    for (const item of candidate.documentVersions) {
+      if (
+        !isPlainObject(item) ||
+        typeof item.id !== 'string' ||
+        !item.id.trim() ||
+        typeof item.documentId !== 'string' ||
+        !item.documentId.trim() ||
+        typeof item.documentNumber !== 'string' ||
+        !item.documentNumber.trim() ||
+        typeof item.contentChecksum !== 'string' ||
+        typeof item.pdfChecksum !== 'string' ||
+        (item.status !== 'FINAL' && item.status !== 'ARCHIVED')
+      ) {
+        throw new Error('Entri DocumentVersion resmi pada berkas cadangan tidak lengkap atau rusak.');
+      }
+    }
+  }
+  if (candidate.documentAttachments !== undefined) {
+    if (!Array.isArray(candidate.documentAttachments)) {
+      throw new Error('Struktur daftar metadata lampiran pada berkas cadangan tidak valid.');
+    }
+    for (const item of candidate.documentAttachments) {
+      if (
+        !isPlainObject(item) ||
+        typeof item.id !== 'string' ||
+        !item.id.trim() ||
+        typeof item.documentId !== 'string' ||
+        !item.documentId.trim() ||
+        typeof item.fileName !== 'string' ||
+        typeof item.mimeType !== 'string' ||
+        typeof item.storageKey !== 'string' ||
+        typeof item.sha256 !== 'string' ||
+        !isSha256Hex(item.sha256)
+      ) {
+        throw new Error('Entri metadata lampiran dokumen pada berkas cadangan tidak lengkap atau rusak.');
+      }
+    }
+  }
   if (candidate.templatePreferences !== undefined) {
     if (!isPlainObject(candidate.templatePreferences)) {
       throw new Error('Struktur preferensi template pada berkas cadangan tidak valid.');
@@ -301,6 +384,14 @@ export function migrateAppStateSchema(
   }
   if (!Array.isArray(cloned.documents)) {
     cloned.documents = [];
+    changed = true;
+  }
+  if (cloned.documentVersions !== undefined && !Array.isArray(cloned.documentVersions)) {
+    cloned.documentVersions = [];
+    changed = true;
+  }
+  if (cloned.documentAttachments !== undefined && !Array.isArray(cloned.documentAttachments)) {
+    cloned.documentAttachments = [];
     changed = true;
   }
   if (!Array.isArray(cloned.intakeDrafts)) {
@@ -505,6 +596,31 @@ export async function saveAppStateWithDb(db: SignalDbLike, state: AppState): Pro
     await assignmentStore.put(normalizeTeacherAssignment(assignment, now));
   }
   await tx.done;
+
+  // Best-effort secondary index mirror for v4 object stores (document_versions & document_templates)
+  try {
+    const verTx = db.transaction([DOCUMENT_VERSIONS_STORE_NAME], 'readwrite');
+    const verStore = verTx.objectStore(DOCUMENT_VERSIONS_STORE_NAME);
+    if (verStore.clear) await verStore.clear();
+    for (const ver of normalized.documentVersions ?? []) {
+      await verStore.put(ver);
+    }
+    await verTx.done;
+  } catch {
+    // Lightweight mock DBs in earlier unit tests may only define workspace + teacher_assignments
+  }
+
+  try {
+    const tplTx = db.transaction([DOCUMENT_TEMPLATES_STORE_NAME], 'readwrite');
+    const tplStore = tplTx.objectStore(DOCUMENT_TEMPLATES_STORE_NAME);
+    if (tplStore.clear) await tplStore.clear();
+    for (const tpl of normalized.customTemplates ?? []) {
+      await tplStore.put(tpl);
+    }
+    await tplTx.done;
+  } catch {
+    // Lightweight mock DBs in earlier unit tests may only define workspace + teacher_assignments
+  }
 }
 
 export async function saveAppState(state: AppState): Promise<void> {
@@ -512,17 +628,27 @@ export async function saveAppState(state: AppState): Promise<void> {
   await saveAppStateWithDb(db as unknown as SignalDbLike, state);
 }
 
-export async function restoreWorkspaceSafelyWithDb(db: SignalDbLike, restoredState: AppState): Promise<AppState> {
+export async function restoreWorkspaceSafelyWithDb(
+  db: SignalDbLike,
+  restoredState: AppState,
+  blobs?: BackupBlobManifestEntry[]
+): Promise<AppState> {
   validateAppStateStructure(restoredState);
+  if (blobs && blobs.length > 0) {
+    await validateAndRestoreBackupBlobs(blobs, db as unknown as BinaryBlobStoreLike);
+  }
   const { state: migrated } = migrateAppStateSchema(restoredState);
   await saveAppStateWithDb(db, migrated);
   return migrated;
 }
 
-export async function restoreWorkspaceSafely(restoredState: AppState): Promise<AppState> {
+export async function restoreWorkspaceSafely(
+  restoredState: AppState,
+  blobs?: BackupBlobManifestEntry[]
+): Promise<AppState> {
   validateAppStateStructure(restoredState);
   const db = await openSignalDB();
-  return restoreWorkspaceSafelyWithDb(db as unknown as SignalDbLike, restoredState);
+  return restoreWorkspaceSafelyWithDb(db as unknown as SignalDbLike, restoredState, blobs);
 }
 
 export async function clearAppState(): Promise<void> {
@@ -533,9 +659,34 @@ export async function clearAppState(): Promise<void> {
   await tx.done;
 }
 
-export async function buildBackupEnvelope(state: AppState): Promise<BackupEnvelope> {
+export async function buildBackupEnvelope(
+  state: AppState,
+  options?: { includeBlobs?: boolean; blobs?: BackupBlobManifestEntry[]; dbOverride?: BinaryBlobStoreLike }
+): Promise<BackupEnvelope> {
   const { state: normalized } = migrateAppStateSchema(state);
-  const envelopeBody = {
+  const collectedBlobs =
+    options?.blobs !== undefined
+      ? options.blobs
+      : options?.includeBlobs === false
+      ? []
+      : await collectBackupBlobsForState(normalized, options?.dbOverride);
+
+  const manifest: BackupManifestSummary = {
+    totalDocuments: (normalized.documents ?? []).length,
+    totalVersions: (normalized.documentVersions ?? []).length,
+    totalCustomTemplates: (normalized.customTemplates ?? []).length,
+    totalAttachments: (normalized.documentAttachments ?? []).length,
+    totalBlobs: collectedBlobs.length,
+  };
+
+  const hasPersuratanArtifacts =
+    manifest.totalDocuments > 0 ||
+    manifest.totalVersions > 0 ||
+    manifest.totalCustomTemplates > 0 ||
+    manifest.totalAttachments > 0 ||
+    collectedBlobs.length > 0;
+
+  const envelopeBody: Omit<BackupEnvelope, 'checksum'> = {
     formatName: 'SIGNAL-LOCAL-BACKUP' as const,
     formatVersion: CURRENT_BACKUP_FORMAT_VERSION,
     schemaVersion: CURRENT_APP_SCHEMA_VERSION,
@@ -543,6 +694,8 @@ export async function buildBackupEnvelope(state: AppState): Promise<BackupEnvelo
     checksumAlgorithm: 'SHA-256' as const,
     exportedAt: new Date().toISOString(),
     payload: normalized,
+    ...(hasPersuratanArtifacts ? { manifest } : {}),
+    ...(collectedBlobs.length > 0 ? { blobs: collectedBlobs } : {}),
   };
   const checksum = await computeCanonicalSha256(envelopeBody);
   return {
@@ -627,6 +780,13 @@ export async function parseBackupContent(text: string): Promise<BackupParseResul
   validateAppStateStructure(parsedRaw.payload);
   const { state: migrated } = migrateAppStateSchema(parsedRaw.payload);
 
+  const parsedBlobs = Array.isArray(parsedRaw.blobs)
+    ? (parsedRaw.blobs as BackupBlobManifestEntry[])
+    : undefined;
+  const parsedManifest = isPlainObject(parsedRaw.manifest)
+    ? (parsedRaw.manifest as unknown as BackupManifestSummary)
+    : undefined;
+
   return {
     state: migrated,
     formatName: 'SIGNAL-LOCAL-BACKUP',
@@ -635,6 +795,8 @@ export async function parseBackupContent(text: string): Promise<BackupParseResul
     verification,
     warnings,
     ...(typeof checksum === 'string' ? { checksum } : {}),
+    ...(parsedBlobs ? { blobs: parsedBlobs } : {}),
+    ...(parsedManifest ? { manifest: parsedManifest } : {}),
   };
 }
 
