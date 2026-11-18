@@ -641,7 +641,7 @@ describe('Tahap 10 — S06 Archive Detail, S07 Template Manager, Attachment Blob
         onSaveAsTemplate: () => {},
       })
     );
-    expect(s06Html).toContain('S06 · DETAIL DOKUMEN &amp; ARSIP DIGITAL');
+    expect(s06Html).toContain('DETAIL DOKUMEN &amp; ARSIP DIGITAL');
     expect(s06Html).toContain('Unduh PDF Final');
     expect(s06Html).toContain('Arsipkan');
     expect(s06Html).toContain('Buat Revisi');
@@ -669,7 +669,7 @@ describe('Tahap 10 — S06 Archive Detail, S07 Template Manager, Attachment Blob
         },
       })
     );
-    expect(wsDetailHtml).toContain('Detail Arsip (S06)');
+    expect(wsDetailHtml).toContain('Detail &amp; Arsip');
     expect(wsDetailHtml).toContain('Kelola Template');
 
     const wsTplMgrHtml = renderToStaticMarkup(

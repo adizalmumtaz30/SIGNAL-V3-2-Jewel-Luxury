@@ -166,6 +166,128 @@
   border-color: var(--s5-emerald-primary, #124037);
 }
 
+/* Gelombang 1: Top-5 Quick-Launch Strip */
+.s02-popular-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid #d2ddd7;
+}
+
+.s02-popular-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.s02-popular-title {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0b2923;
+}
+
+.s02-popular-sub {
+  font-size: 12px;
+  color: #4b635d;
+}
+
+.s02-popular-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.s02-popular-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 11px 13px;
+  border-radius: 10px;
+  border: 1px solid #d5e0db;
+  background: #f9fbfa;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 150ms ease, background-color 150ms ease, transform 150ms ease;
+}
+
+.s02-popular-card:hover {
+  border-color: #124037;
+  background: #eff6f2;
+  transform: translateY(-1px);
+}
+
+.s02-popular-card:focus-visible,
+.s02-card-use-btn:focus-visible {
+  outline: 2px solid #c5a059;
+  outline-offset: 2px;
+}
+
+.s02-popular-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.s02-popular-name {
+  font-size: 12.75px;
+  font-weight: 700;
+  color: #0b2923;
+  line-height: 1.25;
+}
+
+.s02-popular-arrow {
+  color: #124037;
+  flex-shrink: 0;
+}
+
+.s02-popular-hint {
+  font-size: 11.5px;
+  color: #4b635d;
+  line-height: 1.3;
+}
+
+.s02-card-use-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 11px;
+  border-radius: 7px;
+  border: 1px solid #124037;
+  background: #124037;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.s02-card-use-btn:hover {
+  background: #19584c;
+  border-color: #19584c;
+}
+
+@media (max-width: 1120px) {
+  .s02-popular-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .s02-popular-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 /* Search & Collection Bar */
 .s02-controls-card {
   display: flex;

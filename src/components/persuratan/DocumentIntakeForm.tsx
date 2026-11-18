@@ -3,9 +3,14 @@ import {
   AlertCircle,
   AlertTriangle,
   ArrowLeft,
+  ArrowRight,
   Calendar,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Database,
+  Eye,
+  FileCheck2,
   FileText,
   Info,
   Paperclip,
@@ -19,6 +24,7 @@ import {
 import type { AppState } from '../../domain/types';
 import type { DocumentIntakeDraft } from '../../domain/persuratan/types';
 import type { DocumentTemplate } from '../../domain/persuratan/templates/types';
+import type { TipTapJSONNode } from '../../domain/persuratan/studio/types';
 import { getCategoryLabel } from '../../domain/persuratan/templates/registry';
 import { formatVersionDateTime } from '../../domain/scheduleSources';
 import {
@@ -31,11 +37,14 @@ import {
   createInitialIntakeFormValues,
   saveIntakeDraftToState,
 } from '../../domain/persuratan/intake/draftEngine';
+import { buildInitialStudioContentFromDraft } from '../../domain/persuratan/studio/contentGenerator';
+import { collectAllTemplates } from '../../domain/persuratan/templates/selectors';
 import type {
   IntakeControlDefinition,
   IntakeFormValues,
   IntakeValidationError,
 } from '../../domain/persuratan/intake/types';
+import { FinalizationSlideDrawer } from './FinalizationSlideDrawer';
 import './DocumentIntakeForm.css';
 
 export interface DocumentIntakeFormProps {
@@ -51,12 +60,94 @@ export interface DocumentIntakeFormProps {
     savedDraft: DocumentIntakeDraft,
     isUpdate: boolean
   ) => void;
+  onPersistState?: (nextState: AppState) => Promise<void>;
+  onFinalizedToArchive?: (documentId: string, versionId: string) => void;
+  onOpenPreview?: (target: {
+    documentId: string;
+    draftId?: string | null;
+    versionId?: string | null;
+  }) => void;
   onOpenStudio?: (draftId: string) => void;
   onDeleteDraft?: () => Promise<void> | void;
   onBackToTemplates: () => void;
   onOpenCenter: () => void;
   onDirtyChange?: (dirty: boolean) => void;
   onNotify?: (message: string, type?: 'success' | 'info' | 'warning' | 'error') => void;
+}
+
+function renderMiniPreviewNodes(nodes: TipTapJSONNode[]) {
+  return nodes.slice(0, 28).map((node, idx) => {
+    const align =
+      node.attrs?.textAlign && typeof node.attrs.textAlign === 'string'
+        ? (node.attrs.textAlign as 'left' | 'center' | 'right' | 'justify')
+        : undefined;
+    const text = (node.content ?? [])
+      .map((c) => (typeof c.text === 'string' ? c.text : ''))
+      .join('');
+
+    if (node.type === 'horizontalRule') {
+      return <hr key={idx} style={{ border: 0, borderTop: '1px solid #9bb0a9', margin: '4px 0' }} />;
+    }
+    if (node.type === 'heading') {
+      const Tag = node.attrs?.level === 1 ? 'h1' : node.attrs?.level === 3 ? 'h3' : 'h2';
+      return (
+        <Tag key={idx} style={{ textAlign: align }}>
+          {text}
+        </Tag>
+      );
+    }
+    if (node.type === 'bulletList' || node.type === 'orderedList') {
+      const ListTag = node.type === 'orderedList' ? 'ol' : 'ul';
+      return (
+        <ListTag key={idx} style={{ margin: '2px 0 4px 14px', padding: 0 }}>
+          {(node.content ?? []).slice(0, 6).map((li, liIdx) => (
+            <li key={liIdx}>
+              {(li.content ?? [])
+                .flatMap((p) => p.content ?? [])
+                .map((t) => t.text ?? '')
+                .join('')}
+            </li>
+          ))}
+        </ListTag>
+      );
+    }
+    if (node.type === 'table') {
+      const rows = node.content ?? [];
+      return (
+        <table key={idx}>
+          <tbody>
+            {rows.slice(0, 6).map((row, rIdx) => (
+              <tr key={rIdx}>
+                {(row.content ?? []).map((cell, cIdx) => {
+                  const CellTag = cell.type === 'tableHeader' ? 'th' : 'td';
+                  const cellText = (cell.content ?? [])
+                    .flatMap((p) => p.content ?? [])
+                    .map((t) => t.text ?? '')
+                    .join(' ');
+                  return <CellTag key={cIdx}>{cellText}</CellTag>;
+                })}
+              </tr>
+            ))}
+            {rows.length > 6 && (
+              <tr>
+                <td
+                  colSpan={Math.max(1, rows[0]?.content?.length ?? 1)}
+                  style={{ textAlign: 'center', fontStyle: 'italic', color: '#526861' }}
+                >
+                  … +{rows.length - 6} baris lainnya
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      );
+    }
+    return (
+      <p key={idx} style={{ textAlign: align }}>
+        {text || '\u00A0'}
+      </p>
+    );
+  });
 }
 
 export function DocumentIntakeForm({
@@ -68,6 +159,9 @@ export function DocumentIntakeForm({
   storageError = null,
   onRetryStorage,
   onSaveDraft,
+  onPersistState,
+  onFinalizedToArchive,
+  onOpenPreview,
   onOpenStudio,
   onDeleteDraft,
   onBackToTemplates,
@@ -77,6 +171,10 @@ export function DocumentIntakeForm({
 }: DocumentIntakeFormProps) {
   const schema = useMemo(() => getIntakeSchemaForTemplate(template), [template]);
   const autoData = useMemo(() => resolveSystemAutoData(state), [state]);
+  const allTemplates = useMemo(
+    () => collectAllTemplates(state.customTemplates ?? []),
+    [state.customTemplates]
+  );
 
   const [values, setValues] = useState<IntakeFormValues>(() =>
     createInitialIntakeFormValues(template, state, existingDraft, prefillValues)
@@ -107,6 +205,12 @@ export function DocumentIntakeForm({
   );
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState<boolean>(false);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [sideTab, setSideTab] = useState<'preview' | 'sources'>('preview');
+  const [showOptionalFields, setShowOptionalFields] = useState<boolean>(false);
+  const [expressFinalizeSession, setExpressFinalizeSession] = useState<{
+    state: AppState;
+    draft: DocumentIntakeDraft;
+  } | null>(null);
 
   const errorSummaryRef = useRef<HTMLDivElement | null>(null);
   const deleteCancelBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -214,8 +318,68 @@ export function DocumentIntakeForm({
     return autoData.verifiedScheduleVersions.find((v) => v.id === verId) ?? null;
   }, [autoData.verifiedScheduleVersions, values.schedule_version_id]);
 
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
+  // Split dynamic controls into Primary (essential) vs Optional (collapsible)
+  const { primaryControls, optionalControls } = useMemo(() => {
+    const primary: IntakeControlDefinition[] = [];
+    const optional: IntakeControlDefinition[] = [];
+    for (const ctrl of schema.controls) {
+      if (
+        ctrl.required ||
+        ctrl.controlType === 'auto_system' ||
+        ctrl.controlType === 'schedule_version'
+      ) {
+        primary.push(ctrl);
+      } else {
+        optional.push(ctrl);
+      }
+    }
+    return { primaryControls: primary, optionalControls: optional };
+  }, [schema.controls]);
+
+  const optionalHasErrorOrValue = useMemo(
+    () =>
+      optionalControls.some((c) => {
+        if (fieldErrors[c.key]) return true;
+        const v = values[c.key];
+        if (Array.isArray(v)) return v.length > 0;
+        return typeof v === 'string' && v.trim().length > 0;
+      }),
+    [optionalControls, fieldErrors, values]
+  );
+
+  // Live Miniature Official Letter Preview (pure, side-effect-free computation from current form values)
+  const liveMiniaturePreview = useMemo(() => {
+    try {
+      const simulated = saveIntakeDraftToState(state, template, values, {
+        existingDraftId: activeDraftId,
+        existingDocumentId: activeDocumentId,
+        linkedAssignmentId: linkedAssignmentId ?? existingDraft?.linkedAssignmentId ?? null,
+      });
+      const built = buildInitialStudioContentFromDraft(simulated.draft, {
+        activeTemplates: allTemplates,
+      });
+      return {
+        draft: simulated.draft,
+        content: built.content,
+        pageSettings: built.pageSettings,
+      };
+    } catch {
+      return null;
+    }
+  }, [
+    state,
+    template,
+    values,
+    activeDraftId,
+    activeDocumentId,
+    linkedAssignmentId,
+    existingDraft?.linkedAssignmentId,
+    allTemplates,
+  ]);
+
+  const supportsExpressFinalize = Boolean(onPersistState && onFinalizedToArchive);
+
+  const commitIntakeDraft = (mode: 'save_only' | 'open_studio' | 'express_finalize') => {
     setSubmittedOnce(true);
 
     const check = validateIntakeForm(template, values, state);
@@ -223,8 +387,11 @@ export function DocumentIntakeForm({
     setFieldErrors(check.fieldErrors);
 
     if (!check.valid) {
+      if (optionalControls.some((c) => Boolean(check.fieldErrors[c.key]))) {
+        setShowOptionalFields(true);
+      }
       onNotify?.(
-        `Periksa ${check.errors.length} isian yang wajib diperbaiki sebelum menyimpan draft.`,
+        `Periksa ${check.errors.length} isian yang wajib diperbaiki sebelum melanjutkan.`,
         'warning'
       );
       setTimeout(() => errorSummaryRef.current?.focus(), 0);
@@ -248,12 +415,36 @@ export function DocumentIntakeForm({
       isUpdate: result.isUpdate,
     });
     onSaveDraft(result.state, result.draft, result.isUpdate);
+
+    if (mode === 'express_finalize' && supportsExpressFinalize) {
+      setExpressFinalizeSession({
+        state: result.state,
+        draft: result.draft,
+      });
+      return;
+    }
+
     onNotify?.(
       result.isUpdate
-        ? `Draft data awal (${result.documentRecord.id}) berhasil diperbarui secara lokal.`
-        : `Draft intake berhasil disimpan secara lokal (${result.documentRecord.id}).`,
+        ? `Data surat (${result.documentRecord.id}) berhasil diperbarui.`
+        : `Draft surat berhasil disimpan secara lokal (${result.documentRecord.id}).`,
       'success'
     );
+
+    if (mode === 'open_studio' && onOpenStudio) {
+      onOpenStudio(result.draft.id);
+    }
+  };
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    if (supportsExpressFinalize) {
+      commitIntakeDraft('express_finalize');
+    } else if (onOpenStudio) {
+      commitIntakeDraft('open_studio');
+    } else {
+      commitIntakeDraft('save_only');
+    }
   };
 
   const focusField = (fieldId: string) => {
@@ -908,15 +1099,11 @@ export function DocumentIntakeForm({
             <CheckCircle2 size={18} style={{ color: '#124037', flexShrink: 0, marginTop: '2px' }} aria-hidden="true" />
             <div>
               <strong>
-                Draft intake berhasil disimpan secara lokal dengan ID dokumen{' '}
+                Data surat berhasil disimpan secara lokal dengan ID dokumen{' '}
                 <code>{savedBanner.documentId}</code>
               </strong>
               <div>
-                ID Draft S03: <code>{savedBanner.draftId}</code> · Status dokumen:{' '}
-                <strong>Draft (Belum Bernomor)</strong> · Snapshot data sumber dibekukan agar tidak berubah otomatis saat Data Master diperbarui.{' '}
-                {onOpenStudio
-                  ? 'Siap dilanjutkan ke Document Studio (S04) untuk penyuntingan naskah.'
-                  : 'Siap dilanjutkan di Document Studio (S04).'}
+                Status dokumen: <strong>Draft (Belum Bernomor)</strong> · Snapshot data sumber dibekukan agar tidak berubah otomatis saat Data Master diperbarui.
               </div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
                 {onOpenStudio && (
@@ -931,16 +1118,16 @@ export function DocumentIntakeForm({
                     onClick={() => onOpenStudio(savedBanner.draftId)}
                   >
                     <FileText size={13} aria-hidden="true" />
-                    <span>Buka Document Studio (S04)</span>
+                    <span>Buka Editor Naskah</span>
                   </button>
                 )}
                 <button type="button" className="s03-mini-btn" onClick={onOpenCenter}>
                   <FileText size={13} aria-hidden="true" />
-                  <span>Lihat di Pusat Persuratan (S01)</span>
+                  <span>Lihat di Pusat Persuratan</span>
                 </button>
                 <button type="button" className="s03-mini-btn" onClick={onBackToTemplates}>
                   <ArrowLeft size={13} aria-hidden="true" />
-                  <span>Kembali ke Galeri Template (S02)</span>
+                  <span>Kembali ke Galeri Template</span>
                 </button>
               </div>
             </div>
@@ -1012,7 +1199,7 @@ export function DocumentIntakeForm({
               {/* Metadata Dasar Dokumen (S01 linkage) */}
               <div className="s03-field">
                 <label htmlFor={getControlDomId('documentTitle')} className="s03-label">
-                  <span>Judul Dokumen di Arsip S01</span>
+                  <span>Judul Dokumen di Arsip</span>
                   <span className="s03-opt-tag">Opsional (Auto)</span>
                 </label>
                 <input
@@ -1051,24 +1238,120 @@ export function DocumentIntakeForm({
                 )}
               </div>
 
-              {/* Dynamic Template-Specific Controls */}
-              {schema.controls.map((ctrl) => renderControl(ctrl))}
+              {/* Primary Required & System Controls */}
+              {primaryControls.map((ctrl) => renderControl(ctrl))}
             </div>
+
+            {/* Collapsible Optional Fields Disclosure */}
+            {optionalControls.length > 0 && (
+              <div className="s03-optional-disclosure">
+                <button
+                  type="button"
+                  className="s03-optional-toggle"
+                  aria-expanded={showOptionalFields || optionalHasErrorOrValue}
+                  onClick={() => setShowOptionalFields((prev) => !prev)}
+                >
+                  <span>
+                    Detail Tambahan (Opsional — {optionalControls.length} isian)
+                  </span>
+                  {showOptionalFields || optionalHasErrorOrValue ? (
+                    <ChevronUp size={15} aria-hidden="true" />
+                  ) : (
+                    <ChevronDown size={15} aria-hidden="true" />
+                  )}
+                </button>
+
+                {(showOptionalFields || optionalHasErrorOrValue) && (
+                  <div className="s03-fields-grid">
+                    {optionalControls.map((ctrl) => renderControl(ctrl))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {schema.supportsAttachmentNotice && (
               <div className="s03-attachment-box" role="note">
                 <Paperclip size={16} style={{ flexShrink: 0, marginTop: '2px' }} aria-hidden="true" />
                 <div>
-                  <strong>Lampiran Undangan / Berkas Pendukung (PDF/JPG/PNG — Belum Aktif di Tahap 4):</strong>{' '}
-                  {schema.attachmentNoticeText}
+                  <strong>Lampiran Berkas Pendukung:</strong> {schema.attachmentNoticeText}
                 </div>
               </div>
             )}
           </div>
 
-          {/* RIGHT: Panel Sumber Data & Konteks (2 Compact Atelier Cards) */}
-          <aside className="s03-panel-col" aria-label="Panel Sumber Data Sistem">
-            <div className="s03-side-card">
+          {/* RIGHT: Tabbed Live Miniature Official Letter Preview & Sumber Data */}
+          <aside className="s03-panel-col" aria-label="Panel Pratinjau Live dan Sumber Data">
+            <div className="s03-panel-tabs" role="tablist" aria-label="Tampilan panel kanan">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={sideTab === 'preview'}
+                className={`s03-panel-tab ${sideTab === 'preview' ? 'is-active' : ''}`}
+                onClick={() => setSideTab('preview')}
+              >
+                <Eye size={14} aria-hidden="true" />
+                <span>Pratinjau Surat Live</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={sideTab === 'sources'}
+                className={`s03-panel-tab ${sideTab === 'sources' ? 'is-active' : ''}`}
+                onClick={() => setSideTab('sources')}
+              >
+                <Database size={14} aria-hidden="true" />
+                <span>Sumber Data</span>
+              </button>
+            </div>
+
+            {sideTab === 'preview' && (
+              <div className="s03-live-preview-card" role="region" aria-label="Pratinjau miniatur surat resmi">
+                <div className="s03-live-preview-head s5-tnum">
+                  <span>
+                    {template.initialPageSettings.paperSize.toUpperCase()} ·{' '}
+                    {template.initialPageSettings.orientation === 'portrait' ? 'Portrait' : 'Landscape'}
+                  </span>
+                  <span
+                    className={`s03-inline-status ${
+                      completenessStats.allRequiredValid ? 'is-ready' : 'is-pending'
+                    }`}
+                  >
+                    {completenessStats.completedRequired}/{completenessStats.totalRequired} wajib
+                  </span>
+                </div>
+
+                <article className="s03-live-paper" aria-label="Pratinjau isi surat langsung">
+                  {template.documentHeader?.includeKopSurat !== false &&
+                    !(schema.baseTemplateId === 'SYS-TPL-30' && values.tampilkan_kop === 'Tidak') && (
+                      <div className="s03-live-kop">
+                        <div className="s03-live-kop-ministry">
+                          {autoData.kop.ministry || 'KEMENTERIAN AGAMA REPUBLIK INDONESIA'}
+                        </div>
+                        <div className="s03-live-kop-school">
+                          {(autoData.kop.schoolName || 'MADRASAH TSANAWIYAH').toUpperCase()}
+                        </div>
+                        {(autoData.kop.address || autoData.kop.city) && (
+                          <div className="s03-live-kop-meta">
+                            {[autoData.kop.address, autoData.kop.city].filter(Boolean).join(', ')}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  {liveMiniaturePreview ? (
+                    <div>{renderMiniPreviewNodes(liveMiniaturePreview.content.content)}</div>
+                  ) : (
+                    <p style={{ color: '#526861' }}>
+                      Isi formulir di sebelah kiri untuk melihat pratinjau langsung naskah surat.
+                    </p>
+                  )}
+                </article>
+              </div>
+            )}
+
+            <div
+              className="s03-side-card"
+              style={sideTab === 'preview' ? { display: 'none' } : undefined}
+            >
               <div className="s03-side-head-row">
                 <h2 className="s03-side-heading">
                   <Database size={14} aria-hidden="true" />
@@ -1198,7 +1481,10 @@ export function DocumentIntakeForm({
               </dl>
             </div>
 
-            <div className="s03-side-card">
+            <div
+              className="s03-side-card"
+              style={sideTab === 'preview' ? { display: 'none' } : undefined}
+            >
               <h2 className="s03-side-heading">
                 <Users size={14} aria-hidden="true" />
                 <span>Konteks &amp; Peserta Terpilih</span>
@@ -1248,7 +1534,7 @@ export function DocumentIntakeForm({
 
                 {selectedScheduleVersion && (
                   <div className="s03-dl-item">
-                    <dt>ScheduleVersion Terpilih</dt>
+                    <dt>Jadwal Resmi Terpilih</dt>
                     <dd style={{ fontSize: '12px' }}>
                       v{selectedScheduleVersion.versionNumber} · {selectedScheduleVersion.academicYearText} (
                       {selectedScheduleVersion.semesterText})
@@ -1284,11 +1570,11 @@ export function DocumentIntakeForm({
                   ? 'Perubahan belum disimpan'
                   : savedBanner
                   ? 'Draft tersimpan lokal'
-                  : 'Pengisian Data Awal'}
+                  : 'Pengisian Data Surat'}
               </span>
             </span>
             <span>
-              Nomor surat resmi &amp; finalisasi PDF tidak dilakukan di S03 (menunggu S04/S05).
+              Nomor surat resmi diberikan saat pengesahan dokumen.
             </span>
           </div>
 
@@ -1311,23 +1597,97 @@ export function DocumentIntakeForm({
               <ArrowLeft size={15} aria-hidden="true" />
               <span>Kembali ke Template</span>
             </button>
-            {savedBanner && onOpenStudio && (
+            {onOpenStudio && (
               <button
                 type="button"
                 className="s03-btn-secondary"
-                onClick={() => onOpenStudio(savedBanner.draftId)}
+                onClick={() => commitIntakeDraft('save_only')}
+              >
+                <Save size={15} aria-hidden="true" />
+                <span>Simpan Draft Saja</span>
+              </button>
+            )}
+            {supportsExpressFinalize && onOpenStudio && (
+              <button
+                type="button"
+                className="s03-btn-secondary"
+                onClick={() => commitIntakeDraft('open_studio')}
               >
                 <FileText size={15} aria-hidden="true" />
-                <span>Buka Document Studio (S04)</span>
+                <span>Sunting Naskah Bebas &rarr;</span>
               </button>
             )}
             <button type="submit" className="s03-btn-primary">
-              <Save size={15} aria-hidden="true" />
-              <span>Simpan sebagai Draft</span>
+              {supportsExpressFinalize ? (
+                <>
+                  <FileCheck2 size={15} aria-hidden="true" />
+                  <span>Sahkan Langsung &rarr;</span>
+                </>
+              ) : onOpenStudio ? (
+                <>
+                  <span>Simpan &amp; Lanjut ke Naskah</span>
+                  <ArrowRight size={15} aria-hidden="true" />
+                </>
+              ) : (
+                <>
+                  <Save size={15} aria-hidden="true" />
+                  <span>Simpan sebagai Draft</span>
+                </>
+              )}
             </button>
           </div>
         </div>
       </form>
+
+      {/* Express 1-Step Finalization Slide-Over Drawer (4-Click Express Path!) */}
+      {expressFinalizeSession && onPersistState && onFinalizedToArchive && (
+        <FinalizationSlideDrawer
+          open={true}
+          state={
+            // Gunakan state terbaru jika sudah diperbarui lewat quick-fill identitas
+            (state.intakeDrafts ?? []).some((d) => d.id === expressFinalizeSession.draft.id)
+              ? state
+              : expressFinalizeSession.state
+          }
+          draft={expressFinalizeSession.draft}
+          content={
+            expressFinalizeSession.draft.studio?.content ??
+            buildInitialStudioContentFromDraft(expressFinalizeSession.draft, {
+              activeTemplates: allTemplates,
+            }).content
+          }
+          pageSettings={
+            expressFinalizeSession.draft.studio?.pageSettings ??
+            template.initialPageSettings
+          }
+          onClose={() => setExpressFinalizeSession(null)}
+          onPersistState={onPersistState}
+          onFinalized={(docId, verId) => {
+            setExpressFinalizeSession(null);
+            onFinalizedToArchive(docId, verId);
+          }}
+          onJumpToStudio={
+            onOpenStudio
+              ? () => {
+                  const draftId = expressFinalizeSession.draft.id;
+                  setExpressFinalizeSession(null);
+                  onOpenStudio(draftId);
+                }
+              : undefined
+          }
+          onOpenFullPreview={
+            onOpenPreview
+              ? () => {
+                  const docId = expressFinalizeSession.draft.documentId;
+                  const draftId = expressFinalizeSession.draft.id;
+                  setExpressFinalizeSession(null);
+                  onOpenPreview({ documentId: docId, draftId, versionId: null });
+                }
+              : undefined
+          }
+          onNotify={onNotify}
+        />
+      )}
 
       {isDeleteConfirmOpen && onDeleteDraft && (
         <div

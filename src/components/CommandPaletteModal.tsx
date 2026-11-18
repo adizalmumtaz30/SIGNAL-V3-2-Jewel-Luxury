@@ -111,7 +111,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
       {
         id: 'persuratan-center',
         category: 'Aksi Cepat',
-        title: 'Buka Pusat Persuratan & Arsip (S01)',
+        title: 'Buka Pusat Persuratan & Arsip',
         subtitle: `${(state.documents ?? []).length} dokumen tercatat · Surat masuk, keluar, draft & arsip`,
         searchTokens: 'surat arsip persuratan dokumen s01',
         icon: <Archive size={16} color="#124037" aria-hidden="true" />,
@@ -120,7 +120,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
       {
         id: 'persuratan-new',
         category: 'Aksi Cepat',
-        title: 'Buat Surat Baru — Galeri Template (S02)',
+        title: 'Buat Surat Baru — Pilih Template',
         subtitle: `Pilih dari ${activeTemplates.length} template aktif terstruktur`,
         searchTokens: 'buat surat baru dokumen template galeri s02',
         icon: <FilePlus2 size={16} color="#124037" aria-hidden="true" />,
@@ -129,8 +129,8 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
       {
         id: 'persuratan-template-manager',
         category: 'Aksi Cepat',
-        title: 'Kelola Template Madrasah (S07)',
-        subtitle: `${(state.customTemplates ?? []).length} template khusus madrasah · sanitasi PII otomatis`,
+        title: 'Kelola Template Madrasah',
+        subtitle: `${(state.customTemplates ?? []).length} template khusus madrasah · sanitasi data pribadi otomatis`,
         searchTokens: 'kelola template manager madrasah s07 kloning',
         icon: <SlidersHorizontal size={16} color="#124037" aria-hidden="true" />,
         action: () => launchOrNav({ view: 'template-manager', nonce: Date.now() }),
@@ -138,11 +138,11 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
       {
         id: 'persuratan-sk-mengajar',
         category: 'Aksi Cepat',
-        title: 'Buat SK Pembagian Tugas Mengajar (SYS-TPL-03)',
+        title: 'Buat SK Pembagian Tugas Mengajar',
         subtitle: skBasis.allowed
           ? `Siap diterbitkan dari jadwal resmi ${skBasis.selectedVersion?.version.label ?? skBasis.selectedVersion?.version.id ?? ''}`
-          : 'Memerlukan ScheduleVersion terbit & terverifikasi (bukan draft)',
-        searchTokens: 'sk mengajar pembagian tugas jadwal resmi penugasan guru',
+          : 'Memerlukan jadwal resmi yang telah diterbitkan & terverifikasi',
+        searchTokens: 'sk mengajar pembagian tugas jadwal resmi penugasan guru sys-tpl-03',
         icon: <Award size={16} color={skBasis.allowed ? '#124037' : '#8E7035'} aria-hidden="true" />,
         action: () => {
           onClose();

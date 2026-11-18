@@ -137,19 +137,19 @@
   color: #4f110c;
 }
 
-/* Main 2-Column Grid inside unified 1280px shell */
+/* Main 2-Column Grid inside unified 1280px shell: Form + Live Miniature Preview */
 .s03-layout-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 332px;
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) 410px;
+  gap: 22px;
   align-items: start;
   min-width: 0;
 }
 
 @media (max-width: 1379px) {
   .s03-layout-grid {
-    grid-template-columns: minmax(0, 1fr) 296px;
-    gap: 20px;
+    grid-template-columns: minmax(0, 1fr) 368px;
+    gap: 18px;
   }
 }
 
@@ -484,12 +484,179 @@
   gap: 9px;
 }
 
-/* Right Panel: Sumber Data */
+/* Right Panel: Live Preview & Sumber Data (Sticky on wide desktop) */
 .s03-panel-col {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   min-width: 0;
+  position: sticky;
+  top: 76px;
+}
+
+@media (max-width: 1099px) {
+  .s03-panel-col {
+    position: static;
+  }
+}
+
+.s03-panel-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 4px;
+  border-radius: 12px;
+  background: #edf3f0;
+  border: 1px solid #d1ddd7;
+  gap: 4px;
+}
+
+.s03-panel-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--s5-ink-tertiary, #526861);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+
+.s03-panel-tab.is-active {
+  background: #ffffff;
+  color: var(--s5-emerald-obsidian, #0b2923);
+  box-shadow: 0 2px 6px rgba(11, 41, 35, 0.08);
+}
+
+.s03-live-preview-card {
+  border-radius: 14px;
+  background: #e9eeeb;
+  background-image: radial-gradient(rgba(18, 64, 55, 0.08) 0.75px, transparent 0.75px);
+  background-size: 14px 14px;
+  border: 1px solid #cdd9d3;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.s03-live-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--s5-ink-secondary, #2f443e);
+}
+
+.s03-live-paper {
+  background: #ffffff;
+  border: 1px solid #cfd8d3;
+  border-radius: 4px;
+  box-shadow: 0 8px 22px -4px rgba(11, 41, 35, 0.14), 0 1px 4px rgba(11, 41, 35, 0.06);
+  padding: 18px 18px 20px;
+  color: #16181a;
+  font-family: 'Times New Roman', Georgia, Cambria, serif;
+  font-size: 9.25px;
+  line-height: 1.42;
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+.s03-live-kop {
+  text-align: center;
+  border-bottom: 2px double #1a2421;
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+}
+
+.s03-live-kop-ministry {
+  font-size: 7.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.s03-live-kop-school {
+  font-size: 10.5px;
+  font-weight: 700;
+  margin-top: 1px;
+}
+
+.s03-live-kop-meta {
+  font-size: 7.5px;
+  color: #465752;
+  margin-top: 1px;
+}
+
+.s03-live-paper h1 {
+  font-size: 10.5px;
+  margin: 4px 0;
+}
+
+.s03-live-paper h2,
+.s03-live-paper h3 {
+  font-size: 9.5px;
+  margin: 4px 0;
+}
+
+.s03-live-paper p {
+  margin: 0 0 4px;
+}
+
+.s03-live-paper table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 5px 0;
+  font-size: 8px;
+}
+
+.s03-live-paper th,
+.s03-live-paper td {
+  border: 1px solid #8fa39d;
+  padding: 2px 4px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.s03-live-paper th {
+  background: #f1f6f4;
+  font-weight: 700;
+}
+
+/* Collapsible Optional Fields Disclosure */
+.s03-optional-disclosure {
+  border-top: 1px dashed #d5e1db;
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.s03-optional-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid #d2ded8;
+  background: #f8fbf9;
+  color: var(--s5-emerald-primary, #124037);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+
+.s03-optional-toggle:hover {
+  background: #edf4f1;
+  border-color: #b7ccc3;
 }
 
 .s03-side-card {

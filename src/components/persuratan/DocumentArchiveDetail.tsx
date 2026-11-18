@@ -273,7 +273,7 @@ export function DocumentArchiveDetail({
 
   const handleDownloadFinalPdf = async () => {
     if (!activeVersion) {
-      onNotify?.('PDF final hanya tersedia untuk dokumen yang sudah disahkan pada S05.', 'warning');
+      onNotify?.('PDF final hanya tersedia untuk dokumen yang sudah disahkan.', 'warning');
       return;
     }
     setIsBusy(true);
@@ -459,7 +459,7 @@ export function DocumentArchiveDetail({
       {/* Top Action Bar */}
       <header className="s06-topbar">
         <div className="s06-topbar-left">
-          <span className="s06-kicker">S06 · DETAIL DOKUMEN &amp; ARSIP DIGITAL</span>
+          <span className="s06-kicker">DETAIL DOKUMEN &amp; ARSIP DIGITAL</span>
           <div className="s06-title-row">
             <h1>{doc.title}</h1>
             <span className={`s01-status-label status-${doc.status}`}>
@@ -492,7 +492,7 @@ export function DocumentArchiveDetail({
               onClick={() => onOpenStudio(linkedDraft.id)}
             >
               <FileEdit size={14} aria-hidden="true" />
-              <span>Lanjutkan S04</span>
+              <span>Lanjutkan Naskah</span>
             </button>
           )}
 

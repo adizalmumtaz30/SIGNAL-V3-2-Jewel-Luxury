@@ -15,40 +15,74 @@
   color: var(--s5-ink-primary, #0f201c);
 }
 
+.s04-studio-root.is-focus-mode {
+  max-width: 1440px;
+}
+
 .s04-header-card {
   background: var(--s5-surface-card, #ffffff);
   border: var(--s5-border-medium, 1px solid #d2ddd7);
-  border-radius: 14px;
-  padding: 14px 18px;
+  border-radius: 12px;
+  padding: 10px 14px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 10px 14px;
   box-shadow: var(--s5-shadow-resting, 0 2px 8px rgba(11, 41, 35, 0.04));
+}
+
+.s04-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1 1 360px;
+}
+
+.s04-back-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid #d0dcd6;
+  background: #f7faf8;
+  color: var(--s5-emerald-primary, #124037);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.s04-back-pill:hover {
+  background: #eaf2ee;
+  border-color: #b4cbc1;
 }
 
 .s04-header-main {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   min-width: 0;
-  flex: 1 1 380px;
+  flex: 1 1 240px;
 }
 
 .s04-meta-line {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
-  font-size: 12px;
+  gap: 6px;
+  font-size: 11.5px;
   font-weight: 600;
   color: var(--s5-ink-tertiary, #526861);
 }
 
 .s04-meta-code {
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--s5-emerald-primary, #124037);
 }
@@ -61,25 +95,55 @@
 .s04-doc-title {
   margin: 0;
   font-family: var(--font-serif);
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--s5-emerald-obsidian, #0b2923);
-  line-height: 1.28;
+  line-height: 1.25;
   letter-spacing: -0.015em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .s04-header-badges {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 7px;
+}
+
+.s04-focus-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid #cbd9d3;
+  background: #ffffff;
+  color: var(--s5-ink-secondary, #2f443e);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.s04-focus-btn:hover {
+  background: #edf4f0;
+  color: var(--s5-emerald-obsidian, #0b2923);
+}
+
+.s04-focus-btn.is-active {
+  background: #0b2923;
+  border-color: #c5a059;
+  color: #ffffff;
 }
 
 .s04-status-badge {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 5px 11px;
+  padding: 5px 10px;
   border-radius: 6px;
   font-size: 11.5px;
   font-weight: 600;
@@ -117,8 +181,8 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  height: 28px;
-  padding: 0 10px;
+  height: 30px;
+  padding: 0 9px;
   border-radius: 6px;
   border: 1px solid #cbd9d3;
   background: #ffffff;
@@ -174,21 +238,58 @@
 }
 
 /* Sticky Toolbar aligned cleanly below 60px .sakala-topbar */
+.s04-toolbar-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: sticky;
+  top: 68px;
+  z-index: 30;
+}
+
+.s04-studio-root.is-focus-mode .s04-toolbar-stack {
+  top: 64px;
+}
+
 .s04-toolbar-wrap {
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(12px);
   border: var(--s5-border-medium, 1px solid #d2ddd7);
   border-radius: 10px;
-  padding: 8px 12px;
+  padding: 7px 11px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  position: sticky;
-  top: 68px;
-  z-index: 30;
   box-shadow: var(--s5-shadow-card, 0 4px 16px rgba(11, 41, 35, 0.08));
+}
+
+/* Contextual Table Sub-Bar: only shown when cursor is inside a table */
+.s04-contextual-table-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: 10px;
+  background: #f2f8f5;
+  border: 1px solid #bdd6cb;
+  border-left: 3px solid #124037;
+  box-shadow: 0 3px 10px rgba(11, 41, 35, 0.06);
+}
+
+.s04-contextual-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #124037;
+  padding-right: 6px;
+  border-right: 1px solid #cde0d7;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .s04-toolbar-groups {

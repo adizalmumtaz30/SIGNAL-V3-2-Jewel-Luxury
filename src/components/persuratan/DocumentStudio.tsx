@@ -18,6 +18,7 @@ import {
   Columns,
   Combine,
   Database,
+  FileCheck2,
   FileText,
   GitCompare,
   Heading1,
@@ -28,6 +29,8 @@ import {
   Italic,
   List,
   ListOrdered,
+  Maximize2,
+  Minimize2,
   Minus,
   PanelLeftClose,
   PanelLeftOpen,
@@ -94,6 +97,7 @@ import {
   type StudioPageNumberFormat,
 } from '../../domain/persuratan/studio/types';
 import { getDefaultMadrasahLogo } from '../../utils/madrasahLogo';
+import { FinalizationSlideDrawer } from './FinalizationSlideDrawer';
 import './DocumentStudio.css';
 
 type DrawerTab = 'detail' | 'snapshots' | 'placeholders' | 'page';
@@ -131,6 +135,10 @@ export interface DocumentStudioProps {
     nextState: AppState,
     savedDraft: DocumentIntakeDraft
   ) => Promise<void> | void;
+  onPersistState?: (nextState: AppState) => Promise<void>;
+  onFinalizedToArchive?: (documentId: string, versionId: string) => void;
+  isFocusMode?: boolean;
+  onToggleFocusMode?: (nextFocus: boolean) => void;
   onDeleteDraft?: () => Promise<void> | void;
   onBackToIntake: () => void;
   onBackToCenter: () => void;
@@ -274,6 +282,10 @@ export function DocumentStudio({
   storageError = null,
   onRetryStorage,
   onPersistStudioState,
+  onPersistState,
+  onFinalizedToArchive,
+  isFocusMode: controlledFocusMode,
+  onToggleFocusMode,
   onDeleteDraft,
   onBackToIntake,
   onBackToCenter,
@@ -311,9 +323,11 @@ export function DocumentStudio({
   const [saveMode, setSaveMode] = useState<StudioSaveIndicatorMode>(() =>
     draft.studio?.updatedAt ? 'saved_manual' : 'new'
   );
-  const [outlineOpen, setOutlineOpen] = useState<boolean>(true);
+  const [outlineOpen, setOutlineOpen] = useState<boolean>(false);
   const [drawerOpen, setDrawerOpen] = useState<boolean>(true);
   const [drawerTab, setDrawerTab] = useState<DrawerTab>('detail');
+  const [localFocusMode, setLocalFocusMode] = useState<boolean>(false);
+  const [isFinalizeDrawerOpen, setIsFinalizeDrawerOpen] = useState<boolean>(false);
   const [s03ConflictResolved, setS03ConflictResolved] = useState<boolean>(false);
   const [legacyMismatchAccepted, setLegacyMismatchAccepted] = useState<boolean>(false);
   const [estimatedPages, setEstimatedPages] = useState<number>(1);
@@ -332,6 +346,19 @@ export function DocumentStudio({
   const [imageError, setImageError] = useState<string | null>(null);
   const [isDiffModalOpen, setIsDiffModalOpen] = useState<boolean>(false);
   const [selectedDiffKeys, setSelectedDiffKeys] = useState<string[]>([]);
+
+  const isFocusMode = controlledFocusMode ?? localFocusMode;
+  const toggleFocusMode = (nextValue?: boolean) => {
+    const resolved = nextValue !== undefined ? nextValue : !isFocusMode;
+    setLocalFocusMode(resolved);
+    onToggleFocusMode?.(resolved);
+    if (resolved) {
+      setOutlineOpen(false);
+      setDrawerOpen(false);
+    } else {
+      setDrawerOpen(true);
+    }
+  };
 
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const paperRef = useRef<HTMLDivElement | null>(null);
@@ -850,57 +877,75 @@ export function DocumentStudio({
       ? 'is-saved'
       : '';
 
+  const handleOpenExpressFinalize = async () => {
+    if (isDirty) {
+      await handleSaveStudio({ isAutosave: false });
+    }
+    if (onPersistState && onFinalizedToArchive) {
+      setIsFinalizeDrawerOpen(true);
+      return;
+    }
+    onOpenPreview?.();
+  };
+
   return (
     <section
-      className="s04-studio-root"
+      className={`s04-studio-root ${isFocusMode ? 'is-focus-mode' : ''}`}
       data-doc-editor="true"
-      aria-label="Document Studio S04"
+      aria-label="Editor Naskah Dokumen"
       onKeyDown={(e) => {
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
           e.preventDefault();
           void handleSaveStudio({ isAutosave: false });
+        } else if (
+          e.key === 'Escape' &&
+          isFocusMode &&
+          !isDeleteConfirmOpen &&
+          !isResetConfirmOpen &&
+          !isImageModalOpen &&
+          !isDiffModalOpen &&
+          !isFinalizeDrawerOpen
+        ) {
+          toggleFocusMode(false);
         }
       }}
     >
-      {/* Streamlined Atelier Header */}
+      {/* Compact Unified Studio Top Header */}
       <header className="s04-header-card">
-        <div className="s04-header-main">
-          <div className="s04-meta-line s5-tnum">
-            <span className="s04-meta-code">{draft.templateSnapshot.code}</span>
-            <span aria-hidden="true">·</span>
-            <span>
-              {draft.templateSnapshot.name} (v{draft.templateSnapshot.version})
-            </span>
-            <span aria-hidden="true">·</span>
-            <span>Draft Belum Bernomor</span>
-            {isDemoSnapshot && (
-              <>
-                <span aria-hidden="true">·</span>
-                <span className="s04-meta-demo" title="Draft ini memuat snapshot dari mode dataset demo">
-                  Dataset Demo Aktif
-                </span>
-              </>
-            )}
+        <div className="s04-header-left">
+          <button
+            type="button"
+            className="s04-back-pill"
+            onClick={onBackToCenter}
+            title="Kembali ke Pusat Persuratan & Arsip"
+          >
+            <ArrowLeft size={14} aria-hidden="true" />
+            <span>Arsip</span>
+          </button>
+
+          <div className="s04-header-main">
+            <h1 className="s04-doc-title" title={draft.title}>
+              {draft.title}
+            </h1>
+            <div className="s04-meta-line s5-tnum">
+              <span className="s04-meta-code">{draft.templateSnapshot.code}</span>
+              <span aria-hidden="true">·</span>
+              <span>{draft.templateSnapshot.name}</span>
+              <span aria-hidden="true">·</span>
+              <span>Draft Belum Bernomor</span>
+              {isDemoSnapshot && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span className="s04-meta-demo" title="Draft ini memuat snapshot dari mode dataset demo">
+                    Dataset Demo
+                  </span>
+                </>
+              )}
+            </div>
           </div>
-          <h1 className="s04-doc-title">{draft.title}</h1>
         </div>
 
         <div className="s04-header-badges">
-          <button
-            type="button"
-            className={`s04-autosave-toggle ${autosaveEnabled ? 'is-on' : ''}`}
-            aria-pressed={autosaveEnabled}
-            onClick={() => setAutosaveEnabled((prev) => !prev)}
-            title={
-              autosaveEnabled
-                ? 'Autosave aktif (1,4 detik setelah jeda mengetik). Klik untuk jeda.'
-                : 'Autosave dijeda. Klik untuk mengaktifkan simpan otomatis.'
-            }
-          >
-            <Clock size={12} aria-hidden="true" />
-            <span>{autosaveEnabled ? 'Autosave Aktif' : 'Autosave Manual'}</span>
-          </button>
-
           <span
             className={`s04-status-badge s5-tnum ${statusBadgeClass}`}
             role="status"
@@ -917,6 +962,53 @@ export function DocumentStudio({
             )}
             <span>{statusBadgeText}</span>
           </span>
+
+          <button
+            type="button"
+            className={`s04-autosave-toggle ${autosaveEnabled ? 'is-on' : ''}`}
+            aria-pressed={autosaveEnabled}
+            onClick={() => setAutosaveEnabled((prev) => !prev)}
+            title={
+              autosaveEnabled
+                ? 'Simpan otomatis aktif (1,4 detik). Klik untuk jeda.'
+                : 'Simpan otomatis dijeda. Klik untuk mengaktifkan.'
+            }
+          >
+            <Clock size={12} aria-hidden="true" />
+            <span>{autosaveEnabled ? 'Autosave' : 'Manual'}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`s04-focus-btn ${isFocusMode ? 'is-active' : ''}`}
+            aria-pressed={isFocusMode}
+            onClick={() => toggleFocusMode()}
+            title={
+              isFocusMode
+                ? 'Keluar dari Mode Fokus (Escape)'
+                : 'Mode Fokus: perluas area kertas dokumen dan sembunyikan panel samping'
+            }
+          >
+            {isFocusMode ? (
+              <Minimize2 size={13} aria-hidden="true" />
+            ) : (
+              <Maximize2 size={13} aria-hidden="true" />
+            )}
+            <span>{isFocusMode ? 'Keluar Fokus' : 'Mode Fokus'}</span>
+          </button>
+
+          {(onPersistState && onFinalizedToArchive) || onOpenPreview ? (
+            <button
+              type="button"
+              className="s02-btn-primary"
+              style={{ height: '32px', padding: '0 13px', fontSize: '12.25px' }}
+              disabled={isSaving}
+              onClick={() => void handleOpenExpressFinalize()}
+            >
+              <FileCheck2 size={14} aria-hidden="true" />
+              <span>Sahkan &amp; Terbitkan</span>
+            </button>
+          ) : null}
         </div>
       </header>
 
@@ -990,428 +1082,437 @@ export function DocumentStudio({
         </div>
       )}
 
-      {/* Horizontal WYSIWYG Formatting Toolbar */}
-      <div className="s04-toolbar-wrap" role="toolbar" aria-label="Toolbar pemformatan naskah Document Studio">
-        <div className="s04-toolbar-groups">
-          <div className="s04-tool-group">
-            <button
-              type="button"
-              className="s04-tool-btn"
-              aria-label="Urungkan (Undo)"
-              title="Urungkan perubahan (Ctrl+Z)"
-              disabled={!editor?.can().undo()}
-              onMouseDown={preserveFocusMouseDown}
-              onClick={() => editor?.chain().focus().undo().run()}
-            >
-              <Undo2 size={14} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              className="s04-tool-btn"
-              aria-label="Ulangi (Redo)"
-              title="Ulangi perubahan (Ctrl+Y / Ctrl+Shift+Z)"
-              disabled={!editor?.can().redo()}
-              onMouseDown={preserveFocusMouseDown}
-              onClick={() => editor?.chain().focus().redo().run()}
-            >
-              <Redo2 size={14} aria-hidden="true" />
-            </button>
+      {/* Sticky Formatting Toolbar + Contextual Table Sub-Bar */}
+      <div className="s04-toolbar-stack">
+        <div className="s04-toolbar-wrap" role="toolbar" aria-label="Toolbar pemformatan naskah dokumen">
+          <div className="s04-toolbar-groups">
+            <div className="s04-tool-group">
+              <button
+                type="button"
+                className="s04-tool-btn"
+                aria-label="Urungkan (Undo)"
+                title="Urungkan perubahan (Ctrl+Z)"
+                disabled={!editor?.can().undo()}
+                onMouseDown={preserveFocusMouseDown}
+                onClick={() => editor?.chain().focus().undo().run()}
+              >
+                <Undo2 size={14} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className="s04-tool-btn"
+                aria-label="Ulangi (Redo)"
+                title="Ulangi perubahan (Ctrl+Y / Ctrl+Shift+Z)"
+                disabled={!editor?.can().redo()}
+                onMouseDown={preserveFocusMouseDown}
+                onClick={() => editor?.chain().focus().redo().run()}
+              >
+                <Redo2 size={14} aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="s04-tool-group">
+              <button
+                type="button"
+                className="s04-tool-btn"
+                aria-label="Paragraf Normal"
+                aria-pressed={editor?.isActive('paragraph') ?? false}
+                title="Paragraf Normal (Ctrl+Alt+0)"
+                onMouseDown={preserveFocusMouseDown}
+                onClick={() => editor?.chain().focus().setParagraph().run()}
+              >
+                <Pilcrow size={14} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className="s04-tool-btn"
+                aria-label="Judul Besar H1"
+                aria-pressed={editor?.isActive('heading', { level: 1 }) ?? false}
+                title="Judul Utama H1"
+                onMouseDown={preserveFocusMouseDown}
+                onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
+              >
+                <Heading1 size={14} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className="s04-tool-btn"
+                aria-label="Subjudul H2"
+                aria-pressed={editor?.isActive('heading', { level: 2 }) ?? false}
+                title="Subjudul H2"
+                onMouseDown={preserveFocusMouseDown}
+                onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
+              >
+                <Heading2 size={14} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className="s04-tool-btn"
+                aria-label="Sub-bagian H3"
+                aria-pressed={editor?.isActive('heading', { level: 3 }) ?? false}
+                title="Sub-bagian H3"
+                onMouseDown={preserveFocusMouseDown}
+                onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}
+              >
+                <Heading3 size={14} aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="s04-tool-group">
+              <button
+                type="button"
+                className="s04-tool-btn"
+                aria-label="Tebal (Bold)"
+                aria-pressed={editor?.isActive('bold') ?? false}
+                title="Tebal (Ctrl+B)"
+                onMouseDown={preserveFocusMouseDown}
+                onClick={() => editor?.chain().focus().toggleBold().run()}
+              >
+                <Bold size={14} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className="s04-tool-btn"
+                aria-label="Miring (Italic)"
+                aria-pressed={editor?.isActive('italic') ?? false}
+                title="Miring (Ctrl+I)"
+                onMouseDown={preserveFocusMouseDown}
+                onClick={() => editor?.chain().focus().toggleItalic().run()}
+              >
+                <Italic size={14} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className="s04-tool-btn"
+                aria-label="Garis Bawah (Underline)"
+                aria-pressed={editor?.isActive('underline') ?? false}
+                title="Garis Bawah (Ctrl+U)"
+                onMouseDown={preserveFocusMouseDown}
+                onClick={() => editor?.chain().focus().toggleUnderline().run()}
+              >
+                <UnderlineIcon size={14} aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="s04-tool-group">
+              <button
+                type="button"
+                className="s04-tool-btn"
+                aria-label="Rata Kiri"
+                aria-pressed={editor?.isActive({ textAlign: 'left' }) ?? false}
+                title="Rata Kiri"
+                onMouseDown={preserveFocusMouseDown}
+                onClick={() => editor?.chain().focus().setTextAlign('left').run()}
+              >
+                <AlignLeft size={14} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className="s04-tool-btn"
+                aria-label="Rata Tengah"
+                aria-pressed={editor?.isActive({ textAlign: 'center' }) ?? false}
+                title="Rata Tengah"
+                onMouseDown={preserveFocusMouseDown}
+                onClick={() => editor?.chain().focus().setTextAlign('center').run()}
+              >
+                <AlignCenter size={14} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className="s04-tool-btn"
+                aria-label="Rata Kanan"
+                aria-pressed={editor?.isActive({ textAlign: 'right' }) ?? false}
+                title="Rata Kanan"
+                onMouseDown={preserveFocusMouseDown}
+                onClick={() => editor?.chain().focus().setTextAlign('right').run()}
+              >
+                <AlignRight size={14} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className="s04-tool-btn"
+                aria-label="Rata Kiri-Kanan (Justify)"
+                aria-pressed={editor?.isActive({ textAlign: 'justify' }) ?? false}
+                title="Rata Kiri-Kanan"
+                onMouseDown={preserveFocusMouseDown}
+                onClick={() => editor?.chain().focus().setTextAlign('justify').run()}
+              >
+                <AlignJustify size={14} aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="s04-tool-group">
+              <button
+                type="button"
+                className="s04-tool-btn"
+                aria-label="Daftar Poin (Bullet List)"
+                aria-pressed={editor?.isActive('bulletList') ?? false}
+                title="Daftar Poin"
+                onMouseDown={preserveFocusMouseDown}
+                onClick={() => editor?.chain().focus().toggleBulletList().run()}
+              >
+                <List size={14} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className="s04-tool-btn"
+                aria-label="Daftar Bernomor (Numbered List)"
+                aria-pressed={editor?.isActive('orderedList') ?? false}
+                title="Daftar Bernomor"
+                onMouseDown={preserveFocusMouseDown}
+                onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+              >
+                <ListOrdered size={14} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className="s04-tool-btn"
+                aria-label="Sisipkan Garis Pembatas"
+                title="Sisipkan Garis Pembatas Horizontal"
+                onMouseDown={preserveFocusMouseDown}
+                onClick={() => editor?.chain().focus().setHorizontalRule().run()}
+              >
+                <Minus size={14} aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="s04-tool-group">
+              <button
+                type="button"
+                className="s04-tool-btn"
+                aria-label="Sisipkan Tabel 3x3"
+                title="Sisipkan Tabel 3 Kolom × 3 Baris"
+                onMouseDown={preserveFocusMouseDown}
+                onClick={() =>
+                  editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+                }
+              >
+                <Table2 size={14} aria-hidden="true" />
+                <span>Tabel</span>
+              </button>
+              <button
+                type="button"
+                className="s04-tool-btn"
+                aria-label="Sisipkan Logo atau Gambar"
+                title="Sisipkan Logo Madrasah / Gambar (PNG, JPEG, WEBP)"
+                onMouseDown={preserveFocusMouseDown}
+                onClick={() => {
+                  setImageError(null);
+                  setIsImageModalOpen(true);
+                }}
+              >
+                <ImagePlus size={14} aria-hidden="true" />
+                <span>Logo/Gambar</span>
+              </button>
+              <button
+                type="button"
+                className="s04-tool-btn"
+                aria-label="Sisipkan Pemisah Halaman"
+                title="Sisipkan Pemisah Halaman Manual (Page Break)"
+                onMouseDown={preserveFocusMouseDown}
+                onClick={() => editor?.chain().focus().insertPageBreak().run()}
+              >
+                <SplitSquareHorizontal size={14} aria-hidden="true" />
+                <span>Page Break</span>
+              </button>
+            </div>
+
+            <div className="s04-tool-group">
+              <button
+                type="button"
+                className="s04-tool-btn"
+                aria-label="Bersihkan Pemformatan Teks"
+                title="Bersihkan Pemformatan"
+                onMouseDown={preserveFocusMouseDown}
+                onClick={() => editor?.chain().focus().unsetAllMarks().clearNodes().run()}
+              >
+                <RemoveFormatting size={14} aria-hidden="true" />
+              </button>
+            </div>
           </div>
 
-          <div className="s04-tool-group">
+          <div className="s04-panel-toggles">
             <button
               type="button"
-              className="s04-tool-btn"
-              aria-label="Paragraf Normal"
-              aria-pressed={editor?.isActive('paragraph') ?? false}
-              title="Paragraf Normal (Ctrl+Alt+0)"
-              onMouseDown={preserveFocusMouseDown}
-              onClick={() => editor?.chain().focus().setParagraph().run()}
+              className="s02-btn-secondary"
+              aria-expanded={outlineOpen}
+              onClick={() => setOutlineOpen((prev) => !prev)}
+              style={{ height: '30px', padding: '0 10px', fontSize: '12px' }}
+              title="Tampilkan / sembunyikan panel navigasi struktur dokumen"
             >
-              <Pilcrow size={14} aria-hidden="true" />
+              {outlineOpen ? (
+                <PanelLeftClose size={14} aria-hidden="true" />
+              ) : (
+                <PanelLeftOpen size={14} aria-hidden="true" />
+              )}
+              <span>Struktur ({docOutline.headings.length})</span>
             </button>
+
             <button
               type="button"
-              className="s04-tool-btn"
-              aria-label="Judul Besar H1"
-              aria-pressed={editor?.isActive('heading', { level: 1 }) ?? false}
-              title="Judul Utama H1"
-              onMouseDown={preserveFocusMouseDown}
-              onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
+              className="s02-btn-secondary"
+              aria-expanded={drawerOpen}
+              onClick={() => setDrawerOpen((prev) => !prev)}
+              style={{ height: '30px', padding: '0 10px', fontSize: '12px' }}
+              title="Tampilkan / sembunyikan panel properti & detail dokumen"
             >
-              <Heading1 size={14} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              className="s04-tool-btn"
-              aria-label="Subjudul H2"
-              aria-pressed={editor?.isActive('heading', { level: 2 }) ?? false}
-              title="Subjudul H2"
-              onMouseDown={preserveFocusMouseDown}
-              onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
-            >
-              <Heading2 size={14} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              className="s04-tool-btn"
-              aria-label="Sub-bagian H3"
-              aria-pressed={editor?.isActive('heading', { level: 3 }) ?? false}
-              title="Sub-bagian H3"
-              onMouseDown={preserveFocusMouseDown}
-              onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}
-            >
-              <Heading3 size={14} aria-hidden="true" />
+              {drawerOpen ? (
+                <PanelRightClose size={14} aria-hidden="true" />
+              ) : (
+                <PanelRightOpen size={14} aria-hidden="true" />
+              )}
+              <span>{drawerOpen ? 'Tutup Properti' : 'Properti & Kertas'}</span>
             </button>
           </div>
+        </div>
 
-          <div className="s04-tool-group">
+        {/* Contextual Table Sub-Bar — appears ONLY when cursor is inside a table */}
+        {isInsideTable && (
+          <div
+            className="s04-contextual-table-bar"
+            role="toolbar"
+            aria-label="Alat penyuntingan tabel aktif"
+          >
+            <span className="s04-contextual-label">
+              <Table2 size={13} aria-hidden="true" />
+              <span>Tabel Aktif</span>
+            </span>
             <button
               type="button"
               className="s04-tool-btn"
-              aria-label="Tebal (Bold)"
-              aria-pressed={editor?.isActive('bold') ?? false}
-              title="Tebal (Ctrl+B)"
+              aria-label="Tambah Baris Tabel"
+              title="Tambah Baris di Bawah"
               onMouseDown={preserveFocusMouseDown}
-              onClick={() => editor?.chain().focus().toggleBold().run()}
+              onClick={() => editor?.chain().focus().addRowAfter().run()}
             >
-              <Bold size={14} aria-hidden="true" />
+              <Rows size={13} aria-hidden="true" />
+              <span>+Baris</span>
             </button>
             <button
               type="button"
               className="s04-tool-btn"
-              aria-label="Miring (Italic)"
-              aria-pressed={editor?.isActive('italic') ?? false}
-              title="Miring (Ctrl+I)"
+              aria-label="Tambah Kolom Tabel"
+              title="Tambah Kolom di Kanan"
               onMouseDown={preserveFocusMouseDown}
-              onClick={() => editor?.chain().focus().toggleItalic().run()}
+              onClick={() => editor?.chain().focus().addColumnAfter().run()}
             >
-              <Italic size={14} aria-hidden="true" />
+              <Columns size={13} aria-hidden="true" />
+              <span>+Kolom</span>
             </button>
             <button
               type="button"
               className="s04-tool-btn"
-              aria-label="Garis Bawah (Underline)"
-              aria-pressed={editor?.isActive('underline') ?? false}
-              title="Garis Bawah (Ctrl+U)"
+              aria-label="Gabung Sel Tabel"
+              title="Gabung Sel Terpilih (Merge Cells)"
+              disabled={!editor?.can().mergeCells()}
               onMouseDown={preserveFocusMouseDown}
-              onClick={() => editor?.chain().focus().toggleUnderline().run()}
+              onClick={() => editor?.chain().focus().mergeCells().run()}
             >
-              <UnderlineIcon size={14} aria-hidden="true" />
-            </button>
-          </div>
-
-          <div className="s04-tool-group">
-            <button
-              type="button"
-              className="s04-tool-btn"
-              aria-label="Rata Kiri"
-              aria-pressed={editor?.isActive({ textAlign: 'left' }) ?? false}
-              title="Rata Kiri"
-              onMouseDown={preserveFocusMouseDown}
-              onClick={() => editor?.chain().focus().setTextAlign('left').run()}
-            >
-              <AlignLeft size={14} aria-hidden="true" />
+              <Combine size={13} aria-hidden="true" />
+              <span>Gabung</span>
             </button>
             <button
               type="button"
               className="s04-tool-btn"
-              aria-label="Rata Tengah"
-              aria-pressed={editor?.isActive({ textAlign: 'center' }) ?? false}
-              title="Rata Tengah"
+              aria-label="Pisah Sel Tabel"
+              title="Pisahkan Sel Gabungan (Split Cell)"
+              disabled={!editor?.can().splitCell()}
               onMouseDown={preserveFocusMouseDown}
-              onClick={() => editor?.chain().focus().setTextAlign('center').run()}
+              onClick={() => editor?.chain().focus().splitCell().run()}
             >
-              <AlignCenter size={14} aria-hidden="true" />
+              <Split size={13} aria-hidden="true" />
+              <span>Pisah</span>
             </button>
             <button
               type="button"
               className="s04-tool-btn"
-              aria-label="Rata Kanan"
-              aria-pressed={editor?.isActive({ textAlign: 'right' }) ?? false}
-              title="Rata Kanan"
+              aria-label="Toggle Baris Header Tabel"
+              title="Aktifkan/Matikan Header Baris Tabel"
               onMouseDown={preserveFocusMouseDown}
-              onClick={() => editor?.chain().focus().setTextAlign('right').run()}
+              onClick={() => editor?.chain().focus().toggleHeaderRow().run()}
             >
-              <AlignRight size={14} aria-hidden="true" />
+              <TableProperties size={13} aria-hidden="true" />
+              <span>Header</span>
             </button>
             <button
               type="button"
               className="s04-tool-btn"
-              aria-label="Rata Kiri-Kanan (Justify)"
-              aria-pressed={editor?.isActive({ textAlign: 'justify' }) ?? false}
-              title="Rata Kiri-Kanan"
+              aria-label="Sel Rata Atas"
+              title="Perataan Vertikal Atas"
               onMouseDown={preserveFocusMouseDown}
-              onClick={() => editor?.chain().focus().setTextAlign('justify').run()}
+              onClick={() => editor?.chain().focus().setCellAttribute('verticalAlign', 'top').run()}
             >
-              <AlignJustify size={14} aria-hidden="true" />
-            </button>
-          </div>
-
-          <div className="s04-tool-group">
-            <button
-              type="button"
-              className="s04-tool-btn"
-              aria-label="Daftar Poin (Bullet List)"
-              aria-pressed={editor?.isActive('bulletList') ?? false}
-              title="Daftar Poin"
-              onMouseDown={preserveFocusMouseDown}
-              onClick={() => editor?.chain().focus().toggleBulletList().run()}
-            >
-              <List size={14} aria-hidden="true" />
+              <ArrowUpToLine size={13} aria-hidden="true" />
             </button>
             <button
               type="button"
               className="s04-tool-btn"
-              aria-label="Daftar Bernomor (Numbered List)"
-              aria-pressed={editor?.isActive('orderedList') ?? false}
-              title="Daftar Bernomor"
+              aria-label="Sel Rata Tengah Vertikal"
+              title="Perataan Vertikal Tengah"
               onMouseDown={preserveFocusMouseDown}
-              onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+              onClick={() => editor?.chain().focus().setCellAttribute('verticalAlign', 'middle').run()}
             >
-              <ListOrdered size={14} aria-hidden="true" />
+              <AlignVerticalJustifyCenter size={13} aria-hidden="true" />
             </button>
             <button
               type="button"
               className="s04-tool-btn"
-              aria-label="Sisipkan Garis Pembatas"
-              title="Sisipkan Garis Pembatas Horizontal"
+              aria-label="Sel Rata Bawah"
+              title="Perataan Vertikal Bawah"
               onMouseDown={preserveFocusMouseDown}
-              onClick={() => editor?.chain().focus().setHorizontalRule().run()}
+              onClick={() => editor?.chain().focus().setCellAttribute('verticalAlign', 'bottom').run()}
             >
-              <Minus size={14} aria-hidden="true" />
-            </button>
-          </div>
-
-          <div className="s04-tool-group">
-            <button
-              type="button"
-              className="s04-tool-btn"
-              aria-label="Sisipkan Pemisah Halaman"
-              title="Sisipkan Pemisah Halaman Manual (Page Break)"
-              onMouseDown={preserveFocusMouseDown}
-              onClick={() => editor?.chain().focus().insertPageBreak().run()}
-            >
-              <SplitSquareHorizontal size={14} aria-hidden="true" />
-              <span>Page Break</span>
+              <ArrowDownToLine size={13} aria-hidden="true" />
             </button>
             <button
               type="button"
               className="s04-tool-btn"
-              aria-label="Sisipkan Logo atau Gambar"
-              title="Sisipkan Logo Madrasah / Gambar (PNG, JPEG, WEBP)"
+              aria-label="Atur Tinggi Baris 14mm"
+              title="Setel Tinggi Baris Tabel (14 mm / Auto)"
               onMouseDown={preserveFocusMouseDown}
               onClick={() => {
-                setImageError(null);
-                setIsImageModalOpen(true);
+                const currentH = editor?.getAttributes('tableRow')?.rowHeightMm;
+                editor
+                  ?.chain()
+                  .focus()
+                  .updateAttributes('tableRow', { rowHeightMm: currentH ? null : 14 })
+                  .run();
               }}
             >
-              <ImagePlus size={14} aria-hidden="true" />
-              <span>Logo/Gambar</span>
+              <span>Tinggi</span>
             </button>
-          </div>
-
-          <div className="s04-tool-group">
             <button
               type="button"
-              className="s04-tool-btn"
-              aria-label="Sisipkan Tabel 3x3"
-              title="Sisipkan Tabel 3 Kolom × 3 Baris"
+              className="s04-tool-btn is-danger"
+              aria-label="Hapus Baris Tabel"
+              title="Hapus Baris Aktif"
               onMouseDown={preserveFocusMouseDown}
-              onClick={() =>
-                editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
-              }
+              onClick={() => editor?.chain().focus().deleteRow().run()}
             >
-              <Table2 size={14} aria-hidden="true" />
-              <span>Tabel</span>
+              <span>−Baris</span>
             </button>
-            {isInsideTable && (
-              <>
-                <button
-                  type="button"
-                  className="s04-tool-btn"
-                  aria-label="Tambah Baris Tabel"
-                  title="Tambah Baris di Bawah"
-                  onMouseDown={preserveFocusMouseDown}
-                  onClick={() => editor?.chain().focus().addRowAfter().run()}
-                >
-                  <Rows size={13} aria-hidden="true" />
-                  <span>+Baris</span>
-                </button>
-                <button
-                  type="button"
-                  className="s04-tool-btn"
-                  aria-label="Tambah Kolom Tabel"
-                  title="Tambah Kolom di Kanan"
-                  onMouseDown={preserveFocusMouseDown}
-                  onClick={() => editor?.chain().focus().addColumnAfter().run()}
-                >
-                  <Columns size={13} aria-hidden="true" />
-                  <span>+Kolom</span>
-                </button>
-                <button
-                  type="button"
-                  className="s04-tool-btn"
-                  aria-label="Gabung Sel Tabel"
-                  title="Gabung Sel Terpilih (Merge Cells)"
-                  disabled={!editor?.can().mergeCells()}
-                  onMouseDown={preserveFocusMouseDown}
-                  onClick={() => editor?.chain().focus().mergeCells().run()}
-                >
-                  <Combine size={13} aria-hidden="true" />
-                  <span>Gabung</span>
-                </button>
-                <button
-                  type="button"
-                  className="s04-tool-btn"
-                  aria-label="Pisah Sel Tabel"
-                  title="Pisahkan Sel Gabungan (Split Cell)"
-                  disabled={!editor?.can().splitCell()}
-                  onMouseDown={preserveFocusMouseDown}
-                  onClick={() => editor?.chain().focus().splitCell().run()}
-                >
-                  <Split size={13} aria-hidden="true" />
-                  <span>Pisah</span>
-                </button>
-                <button
-                  type="button"
-                  className="s04-tool-btn"
-                  aria-label="Toggle Baris Header Tabel"
-                  title="Aktifkan/Matikan Header Baris Tabel"
-                  onMouseDown={preserveFocusMouseDown}
-                  onClick={() => editor?.chain().focus().toggleHeaderRow().run()}
-                >
-                  <TableProperties size={13} aria-hidden="true" />
-                  <span>Header</span>
-                </button>
-                <button
-                  type="button"
-                  className="s04-tool-btn"
-                  aria-label="Sel Rata Atas"
-                  title="Perataan Vertikal Atas"
-                  onMouseDown={preserveFocusMouseDown}
-                  onClick={() => editor?.chain().focus().setCellAttribute('verticalAlign', 'top').run()}
-                >
-                  <ArrowUpToLine size={13} aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  className="s04-tool-btn"
-                  aria-label="Sel Rata Tengah Vertikal"
-                  title="Perataan Vertikal Tengah"
-                  onMouseDown={preserveFocusMouseDown}
-                  onClick={() => editor?.chain().focus().setCellAttribute('verticalAlign', 'middle').run()}
-                >
-                  <AlignVerticalJustifyCenter size={13} aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  className="s04-tool-btn"
-                  aria-label="Sel Rata Bawah"
-                  title="Perataan Vertikal Bawah"
-                  onMouseDown={preserveFocusMouseDown}
-                  onClick={() => editor?.chain().focus().setCellAttribute('verticalAlign', 'bottom').run()}
-                >
-                  <ArrowDownToLine size={13} aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  className="s04-tool-btn"
-                  aria-label="Atur Tinggi Baris 14mm"
-                  title="Setel Tinggi Baris Tabel (14 mm / Auto)"
-                  onMouseDown={preserveFocusMouseDown}
-                  onClick={() => {
-                    const currentH = editor?.getAttributes('tableRow')?.rowHeightMm;
-                    editor
-                      ?.chain()
-                      .focus()
-                      .updateAttributes('tableRow', { rowHeightMm: currentH ? null : 14 })
-                      .run();
-                  }}
-                >
-                  <span>Tinggi</span>
-                </button>
-                <button
-                  type="button"
-                  className="s04-tool-btn is-danger"
-                  aria-label="Hapus Baris Tabel"
-                  title="Hapus Baris Aktif"
-                  onMouseDown={preserveFocusMouseDown}
-                  onClick={() => editor?.chain().focus().deleteRow().run()}
-                >
-                  <span>−Baris</span>
-                </button>
-                <button
-                  type="button"
-                  className="s04-tool-btn is-danger"
-                  aria-label="Hapus Kolom Tabel"
-                  title="Hapus Kolom Aktif"
-                  onMouseDown={preserveFocusMouseDown}
-                  onClick={() => editor?.chain().focus().deleteColumn().run()}
-                >
-                  <span>−Kolom</span>
-                </button>
-                <button
-                  type="button"
-                  className="s04-tool-btn is-danger"
-                  aria-label="Hapus Tabel"
-                  title="Hapus Seluruh Tabel"
-                  onMouseDown={preserveFocusMouseDown}
-                  onClick={() => editor?.chain().focus().deleteTable().run()}
-                >
-                  <Trash2 size={13} aria-hidden="true" />
-                </button>
-              </>
-            )}
-          </div>
-
-          <div className="s04-tool-group">
             <button
               type="button"
-              className="s04-tool-btn"
-              aria-label="Bersihkan Pemformatan Teks"
-              title="Bersihkan Pemformatan"
+              className="s04-tool-btn is-danger"
+              aria-label="Hapus Kolom Tabel"
+              title="Hapus Kolom Aktif"
               onMouseDown={preserveFocusMouseDown}
-              onClick={() => editor?.chain().focus().unsetAllMarks().clearNodes().run()}
+              onClick={() => editor?.chain().focus().deleteColumn().run()}
             >
-              <RemoveFormatting size={14} aria-hidden="true" />
+              <span>−Kolom</span>
+            </button>
+            <button
+              type="button"
+              className="s04-tool-btn is-danger"
+              aria-label="Hapus Tabel"
+              title="Hapus Seluruh Tabel"
+              onMouseDown={preserveFocusMouseDown}
+              onClick={() => editor?.chain().focus().deleteTable().run()}
+            >
+              <Trash2 size={13} aria-hidden="true" />
             </button>
           </div>
-        </div>
-
-        <div className="s04-panel-toggles">
-          <button
-            type="button"
-            className="s02-btn-secondary"
-            aria-expanded={outlineOpen}
-            onClick={() => setOutlineOpen((prev) => !prev)}
-            style={{ height: '30px', padding: '0 10px', fontSize: '12px' }}
-            title="Tampilkan / sembunyikan panel navigasi struktur dokumen"
-          >
-            {outlineOpen ? (
-              <PanelLeftClose size={14} aria-hidden="true" />
-            ) : (
-              <PanelLeftOpen size={14} aria-hidden="true" />
-            )}
-            <span>Struktur ({docOutline.headings.length})</span>
-          </button>
-
-          <button
-            type="button"
-            className="s02-btn-secondary"
-            aria-expanded={drawerOpen}
-            onClick={() => setDrawerOpen((prev) => !prev)}
-            style={{ height: '30px', padding: '0 10px', fontSize: '12px' }}
-            title="Tampilkan / sembunyikan panel properti & detail dokumen"
-          >
-            {drawerOpen ? (
-              <PanelRightClose size={14} aria-hidden="true" />
-            ) : (
-              <PanelRightOpen size={14} aria-hidden="true" />
-            )}
-            <span>{drawerOpen ? 'Tutup Properti' : 'Properti & Kertas'}</span>
-          </button>
-        </div>
+        )}
       </div>
 
       {/* Main 3-Column Atelier Workbench: [Outline] + [Paper Stage] + [Properties Drawer] */}
@@ -1621,6 +1722,40 @@ export function DocumentStudio({
             <div className="s04-drawer-body">
               {drawerTab === 'detail' && (
                 <div className="s04-detail-stack">
+                  {!outlineOpen && (
+                    <div style={{ paddingBottom: '10px', borderBottom: '1px solid #e4ece8' }}>
+                      <div className="s04-outline-head" style={{ paddingBottom: '6px', marginBottom: '6px' }}>
+                        <h2>Struktur Naskah</h2>
+                        <span className="s04-outline-count s5-tnum">
+                          {docOutline.headings.length} bagian
+                        </span>
+                      </div>
+                      {docOutline.headings.length === 0 ? (
+                        <p className="s04-outline-empty">
+                          Belum ada judul bagian (H1–H3). Gunakan tombol H1–H3 untuk menandai bagian surat.
+                        </p>
+                      ) : (
+                        <ul className="s04-outline-list">
+                          {docOutline.headings.slice(0, 6).map((h) => (
+                            <li key={h.id}>
+                              <button
+                                type="button"
+                                className={`s04-outline-item level-${h.level} ${
+                                  activeHeadingIndex === h.headingIndex ? 'is-active' : ''
+                                }`}
+                                onClick={() => handleJumpToHeading(h.headingIndex)}
+                                title={h.text}
+                              >
+                                <span className="s04-outline-level s5-tnum">H{h.level}</span>
+                                <span className="s04-outline-label">{h.text}</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+
                   <dl className="s04-dl">
                     <div className="s04-dl-item">
                       <dt>ID Draft &amp; Dokumen</dt>
@@ -1630,7 +1765,7 @@ export function DocumentStudio({
                     </div>
                     <div className="s04-dl-item">
                       <dt>Nomor Resmi</dt>
-                      <dd>Belum Bernomor (diterbitkan pada Finalisasi S05)</dd>
+                      <dd>Belum Bernomor (diterbitkan saat pengesahan)</dd>
                     </div>
                     <div className="s04-dl-item">
                       <dt>Template Asal (Snapshot Beku)</dt>
@@ -1645,7 +1780,7 @@ export function DocumentStudio({
                     </div>
                     {draft.scheduleVersionId && (
                       <div className="s04-dl-item">
-                        <dt>ScheduleVersion Terikat</dt>
+                        <dt>Jadwal Resmi Terikat</dt>
                         <dd className="s5-tnum">
                           {draft.scheduleVersionId}
                           {draft.scheduleVersionFingerprint
@@ -1658,8 +1793,8 @@ export function DocumentStudio({
                       <dt>Status Studio &amp; Penyimpanan</dt>
                       <dd>
                         {hasSavedStudio || lastSavedAt
-                          ? `Draft S04 tersimpan (${statusBadgeText})`
-                          : 'Siap Disunting (Hasil Konversi Awal S03)'}
+                          ? `Draft tersimpan (${statusBadgeText})`
+                          : 'Siap Disunting'}
                       </dd>
                     </div>
                     <div className="s04-dl-item">
@@ -1667,7 +1802,7 @@ export function DocumentStudio({
                       <dd className="s5-tnum">
                         {pageSettings.paperSize.toUpperCase()}{' '}
                         {pageSettings.orientation === 'portrait' ? 'Portrait' : 'Landscape'} · estimasi
-                        jumlah halaman ~{estimatedPages} hal (pagination eksak di PDF S05)
+                        jumlah halaman ~{estimatedPages} hal (pagination eksak di PDF resmi)
                       </dd>
                     </div>
                   </dl>
@@ -1972,7 +2107,7 @@ export function DocumentStudio({
         <div className="s04-footer-note">
           <Info size={14} aria-hidden="true" />
           <span>
-            S04 Document Studio · Tekan <code>Ctrl+S</code> untuk menyimpan segera · Command Palette: <code>Ctrl+Shift+P</code>.
+            Tekan <code>Ctrl+S</code> untuk simpan segera · Perintah Cepat: <code>Ctrl+Shift+P</code>.
           </span>
         </div>
 
@@ -1994,18 +2129,11 @@ export function DocumentStudio({
             onClick={onBackToIntake}
           >
             <ArrowLeft size={14} aria-hidden="true" />
-            <span>Kembali ke Data Awal</span>
+            <span>Ubah Data Surat</span>
           </button>
           <button
             type="button"
             className="s02-btn-secondary"
-            onClick={onBackToCenter}
-          >
-            <span>Kembali ke Pusat Persuratan</span>
-          </button>
-          <button
-            type="button"
-            className="s02-btn-primary"
             disabled={isSaving}
             onClick={() => void handleSaveStudio({ isAutosave: false })}
           >
@@ -2024,11 +2152,41 @@ export function DocumentStudio({
                 onOpenPreview();
               }}
             >
-              <span>Pratinjau &amp; Checklist (S05) &rarr;</span>
+              <span>Pratinjau Layar Penuh</span>
+            </button>
+          )}
+          {onPersistState && onFinalizedToArchive && (
+            <button
+              type="button"
+              className="s02-btn-primary"
+              disabled={isSaving}
+              onClick={() => void handleOpenExpressFinalize()}
+            >
+              <FileCheck2 size={14} aria-hidden="true" />
+              <span>Sahkan &amp; Terbitkan &rarr;</span>
             </button>
           )}
         </div>
       </footer>
+
+      {onPersistState && onFinalizedToArchive && (
+        <FinalizationSlideDrawer
+          open={isFinalizeDrawerOpen}
+          state={state}
+          draft={draft}
+          content={editor ? (editor.getJSON() as TipTapJSONContent) : docJson}
+          pageSettings={pageSettings}
+          onClose={() => setIsFinalizeDrawerOpen(false)}
+          onPersistState={onPersistState}
+          onFinalized={(docId, verId) => {
+            setIsFinalizeDrawerOpen(false);
+            onFinalizedToArchive(docId, verId);
+          }}
+          onOpenFullPreview={onOpenPreview}
+          onJumpToIntake={onBackToIntake}
+          onNotify={onNotify}
+        />
+      )}
 
       {isDeleteConfirmOpen && onDeleteDraft && (
         <div

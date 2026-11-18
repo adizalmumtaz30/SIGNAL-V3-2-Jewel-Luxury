@@ -508,14 +508,14 @@ describe('Tahap 5 — S04 Document Studio / Editor Dokumen Bergaya Word', () => 
     expect(studioHtml).toContain('Editor Naskah');
     expect(studioHtml).toContain('Fit (');
     expect(studioHtml).toContain('Simpan Draft');
-    expect(studioHtml).toContain('Kembali ke Data Awal');
-    expect(studioHtml).toContain('Kembali ke Pusat Persuratan');
+    expect(studioHtml).toContain('Ubah Data Surat');
+    expect(studioHtml).toContain('Mode Fokus');
     expect(studioHtml).toContain('Detail Dokumen');
     expect(studioHtml).toContain('Sumber Snapshot');
     expect(studioHtml).toContain('Pengaturan Halaman');
-    expect(studioHtml).toContain('Dataset Demo Aktif');
+    expect(studioHtml).toContain('Dataset Demo');
     expect(studioHtml).toContain('Uji Render SSR Studio');
-    // Batas jujur Tahap 5: dilarang ada kontrol finalisasi S05 / penomoran / ekspor final
+    // Batas jujur: kontrol finalisasi hanya terbuka lewat slide-over drawer atau halaman S05
     expect(studioHtml).not.toContain('Terbitkan Nomor');
     expect(studioHtml).not.toContain('Finalisasi Dokumen');
     expect(studioHtml).not.toContain('Tanda Tangan Digital');
@@ -544,7 +544,7 @@ describe('Tahap 5 — S04 Document Studio / Editor Dokumen Bergaya Word', () => 
     expect(conflictStudioHtml).toContain('Pertahankan Naskah S04');
     expect(conflictStudioHtml).toContain('Buat Ulang dari Data S03 Baru');
 
-    // S01 menampilkan Lanjutkan S04 & dock aksi kebab tetap utuh
+    // S01 menampilkan Lanjutkan Naskah & dock aksi kebab tetap utuh
     const s01Html = renderToStaticMarkup(
       createElement(CorrespondenceCenter, {
         state: savedS04.state,
@@ -552,12 +552,12 @@ describe('Tahap 5 — S04 Document Studio / Editor Dokumen Bergaya Word', () => 
         onOpenStudio: () => {},
       })
     );
-    expect(s01Html).toContain('Data awal S03 tersimpan');
-    expect(s01Html).toContain('Lanjutkan S04');
+    expect(s01Html).toContain('Data surat tersimpan');
+    expect(s01Html).toContain('Lanjutkan Naskah');
     expect(s01Html).toContain('s5-action-dock');
     expect(s01Html).toContain('Aksi lainnya untuk');
 
-    // S03 menampilkan tombol Buka Document Studio (S04) pada draft tersimpan
+    // S03 menampilkan tombol Buka Editor Naskah pada draft tersimpan
     const s03Html = renderToStaticMarkup(
       createElement(DocumentIntakeForm, {
         state: savedS03.state,
@@ -569,7 +569,7 @@ describe('Tahap 5 — S04 Document Studio / Editor Dokumen Bergaya Word', () => 
         onOpenCenter: () => {},
       })
     );
-    expect(s03Html).toContain('Buka Document Studio (S04)');
+    expect(s03Html).toContain('Buka Editor Naskah');
 
     // App shell tetap utuh
     const appHtml = renderToStaticMarkup(createElement(App));

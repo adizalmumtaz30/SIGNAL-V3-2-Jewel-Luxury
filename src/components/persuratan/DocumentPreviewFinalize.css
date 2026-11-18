@@ -2,6 +2,10 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+  min-width: 0;
 }
 
 .s05-topbar {
@@ -84,7 +88,7 @@
 
 .s05-workbench {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 390px;
+  grid-template-columns: minmax(0, 1fr) 360px;
   gap: 16px;
   align-items: start;
 }
@@ -98,8 +102,8 @@
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  overflow: auto;
-  max-height: calc(100vh - 210px);
+  overflow-x: auto;
+  overflow-y: visible;
 }
 
 .s05-paper-caption {
@@ -163,6 +167,8 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  position: sticky;
+  top: 76px;
 }
 
 .s05-card {

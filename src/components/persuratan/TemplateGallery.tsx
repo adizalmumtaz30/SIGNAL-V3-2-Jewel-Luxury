@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import {
   ArrowLeft,
+  ArrowRight,
   CheckCircle2,
   Copy,
   FileText,
@@ -14,6 +15,7 @@ import {
   X,
 } from 'lucide-react';
 import type { AppState } from '../../domain/types';
+import { getOfficialScheduleBasisStatus } from '../../domain/persuratan/assignments/teacherIntegration';
 import { TEMPLATE_CATEGORIES, getCategoryLabel } from '../../domain/persuratan/templates/registry';
 import {
   DEFAULT_TEMPLATE_FILTERS,
@@ -163,6 +165,30 @@ export function TemplateGallery({
       ),
     [state.customTemplates]
   );
+
+  const skBasis = useMemo(() => getOfficialScheduleBasisStatus(state), [state]);
+
+  const popularTemplates = useMemo(() => {
+    const quickIds: Array<{ id: string; shortLabel: string; hint: string }> = [
+      {
+        id: 'SYS-TPL-03',
+        shortLabel: 'SK Tugas Mengajar',
+        hint: skBasis.allowed ? 'Jadwal resmi siap' : 'Perlu jadwal resmi terbit',
+      },
+      { id: 'SYS-TPL-01', shortLabel: 'Surat Tugas Guru', hint: 'Bimtek / pelatihan / dinas' },
+      { id: 'SYS-TPL-07', shortLabel: 'Undangan Rapat', hint: 'Dewan guru / komite' },
+      { id: 'SYS-TPL-14', shortLabel: 'Surat Keterangan Siswa', hint: 'Aktif belajar / administrasi' },
+      { id: 'SYS-TPL-30', shortLabel: 'Surat Kosong Berkop', hint: 'Naskah bebas berkop madrasah' },
+    ];
+    return quickIds
+      .map((item) => {
+        const tpl = allTemplates.find((t) => t.id === item.id);
+        return tpl ? { ...item, tpl } : null;
+      })
+      .filter((x): x is { id: string; shortLabel: string; hint: string; tpl: DocumentTemplate } =>
+        Boolean(x)
+      );
+  }, [allTemplates, skBasis.allowed]);
 
   const prefs: TemplatePreferences = useMemo(
     () => sanitizeTemplatePreferences(state.templatePreferences ?? DEFAULT_TEMPLATE_PREFERENCES, allTemplates),
@@ -360,7 +386,7 @@ export function TemplateGallery({
           {onOpenTemplateManager && (
             <button type="button" className="s02-btn-secondary" onClick={onOpenTemplateManager}>
               <SlidersHorizontal size={15} aria-hidden="true" />
-              <span>Kelola Template (S07)</span>
+              <span>Kelola Template</span>
             </button>
           )}
           {onBackToCenter && (
@@ -382,7 +408,7 @@ export function TemplateGallery({
                 Template terpilih untuk persiapan dokumen: {selectedNotice.name} ({selectedNotice.code})
               </strong>
               <p style={{ margin: '2px 0 0', fontSize: '12.25px', color: '#33524a' }}>
-                Preferensi template telah disimpan. Form Data Awal (<strong>S03</strong>) dan pembuatan draft di Document Studio (<strong>S04</strong>) akan diaktifkan pada <strong>Tahap 4–6</strong>; tidak ada draft palsu yang dibuat ke daftar surat S01.
+                Preferensi template telah disimpan. Lanjutkan pengisian data surat untuk mulai menyusun naskah resmi madrasah.
               </p>
             </div>
           </div>
@@ -395,6 +421,36 @@ export function TemplateGallery({
             <X size={14} />
           </button>
         </div>
+      )}
+
+      {/* Gelombang 1: 5 Template Paling Sering Dibutuhkan Madrasah (1-Klik Langsung Mulai) */}
+      {popularTemplates.length > 0 && !hasActiveFilters && (
+        <section className="s02-popular-strip" aria-label="Template paling sering dibutuhkan madrasah">
+          <div className="s02-popular-head">
+            <div>
+              <h2 className="s02-popular-title">Paling Sering Dibutuhkan Madrasah</h2>
+              <span className="s02-popular-sub">
+                Klik langsung untuk mulai membuat surat dalam satu langkah
+              </span>
+            </div>
+          </div>
+          <div className="s02-popular-grid">
+            {popularTemplates.map(({ id, shortLabel, hint, tpl }) => (
+              <button
+                key={id}
+                type="button"
+                className="s02-popular-card"
+                onClick={() => handleUseTemplate(tpl)}
+              >
+                <div className="s02-popular-card-top">
+                  <span className="s02-popular-name">{shortLabel}</span>
+                  <ArrowRight size={14} className="s02-popular-arrow" aria-hidden="true" />
+                </div>
+                <span className="s02-popular-hint">{hint}</span>
+              </button>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* Search & Collection Tabs */}
@@ -528,6 +584,7 @@ export function TemplateGallery({
                   <article
                     key={tpl.id}
                     className={`s02-template-card ${isSelected ? 'is-selected' : ''}`}
+                    onDoubleClick={() => handleUseTemplate(tpl)}
                   >
                     <div className="s02-card-top">
                       <div style={{ minWidth: 0, flex: 1 }}>
@@ -570,10 +627,18 @@ export function TemplateGallery({
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                         <button
                           type="button"
+                          className="s02-card-use-btn"
+                          onClick={() => handleUseTemplate(tpl)}
+                        >
+                          <span>Pakai</span>
+                          <ArrowRight size={13} aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
                           className={`s02-icon-btn ${isSelected ? 'is-previewing' : ''}`}
                           onClick={() => handleSelectPreview(tpl)}
                         >
-                          <span>{isSelected ? 'Sedang Dipratinjau' : 'Pratinjau Halaman'}</span>
+                          <span>{isSelected ? 'Dipratinjau' : 'Pratinjau'}</span>
                         </button>
                         <button
                           type="button"
@@ -581,7 +646,7 @@ export function TemplateGallery({
                           onClick={(e) => openCloneModal(tpl, e.currentTarget)}
                         >
                           <Copy size={13} aria-hidden="true" />
-                          <span>{isMadrasah ? 'Duplikasi' : 'Kloning ke Madrasah'}</span>
+                          <span>{isMadrasah ? 'Duplikasi' : 'Kloning'}</span>
                         </button>
                       </div>
                       <span className="s02-paper-spec-tag s5-tnum">
@@ -705,7 +770,7 @@ export function TemplateGallery({
                     {previewTemplate.autoDataSources.join('; ')}.
                   </div>
                   <div>
-                    <strong style={{ color: '#0B2923' }}>Input Operator di S03:</strong>{' '}
+                    <strong style={{ color: '#0B2923' }}>Data yang Diisi Operator:</strong>{' '}
                     {previewTemplate.requiredInputs.join('; ')}.
                   </div>
                 </div>
@@ -719,7 +784,7 @@ export function TemplateGallery({
                   onClick={onOpenTemplateManager}
                 >
                   <SlidersHorizontal size={13} aria-hidden="true" />
-                  <span>Sunting Struktur di Template Manager (S07)</span>
+                  <span>Sunting Struktur Template</span>
                 </button>
               )}
             </>

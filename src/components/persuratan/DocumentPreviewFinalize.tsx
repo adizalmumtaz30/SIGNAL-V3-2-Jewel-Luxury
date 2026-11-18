@@ -54,6 +54,7 @@ export interface DocumentPreviewFinalizeProps {
   documentRecord?: DocumentRecord | null;
   activeVersion?: DocumentVersion | null;
   onPersistState: (nextState: AppState) => Promise<void>;
+  onFinalizedToArchive?: (documentId: string, versionId: string) => void;
   onBackToStudio?: (draftId: string) => void;
   onBackToIntake?: (draftId: string) => void;
   onBackToCenter: () => void;
@@ -230,6 +231,7 @@ export function DocumentPreviewFinalize({
   documentRecord = null,
   activeVersion = null,
   onPersistState,
+  onFinalizedToArchive,
   onBackToStudio,
   onBackToIntake,
   onBackToCenter,
@@ -347,6 +349,12 @@ export function DocumentPreviewFinalize({
   const [revisionReason, setRevisionReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [showQuickIdentityFix, setShowQuickIdentityFix] = useState(false);
+  const [quickSchoolName, setQuickSchoolName] = useState(state.settings.schoolName ?? '');
+  const [quickAddress, setQuickAddress] = useState(state.settings.address ?? '');
+  const [quickCity, setQuickCity] = useState(state.settings.city ?? '');
+  const [quickHeadmasterName, setQuickHeadmasterName] = useState(state.settings.headmasterName ?? '');
+  const [quickHeadmasterNip, setQuickHeadmasterNip] = useState(state.settings.headmasterNip ?? '');
   const confirmFinalizeBtnRef = useRef<HTMLButtonElement | null>(null);
 
   const activeDocumentNumber = isLockedFinal
@@ -417,6 +425,84 @@ export function DocumentPreviewFinalize({
       numberValidation.valid
   );
 
+  const handleQuickSaveIdentity = async () => {
+    const cleanSchool = quickSchoolName.trim();
+    const cleanAddress = quickAddress.trim();
+    const cleanCity = quickCity.trim();
+    const cleanHeadmaster = quickHeadmasterName.trim();
+    const cleanNip = quickHeadmasterNip.trim();
+
+    if (!cleanSchool || !cleanAddress || !cleanCity || cleanHeadmaster.length < 2) {
+      setActionError(
+        'Lengkapi Nama Madrasah, Alamat, Kota/Kabupaten, dan Nama Kepala Madrasah terlebih dahulu.'
+      );
+      return;
+    }
+
+    setIsSubmitting(true);
+    setActionError(null);
+    try {
+      const now = new Date().toISOString();
+      const nextSettings = {
+        ...state.settings,
+        schoolName: cleanSchool,
+        address: cleanAddress,
+        city: cleanCity,
+        headmasterName: cleanHeadmaster,
+        headmasterNip: cleanNip,
+      };
+      const targetDraftId = effectiveDraft?.id;
+      const updatedDrafts = (state.intakeDrafts ?? []).map((item) => {
+        if (!targetDraftId || item.id !== targetDraftId) return item;
+        const nextSnapValue = {
+          ministry: nextSettings.ministry ?? 'KEMENTERIAN AGAMA REPUBLIK INDONESIA',
+          schoolName: cleanSchool,
+          address: cleanAddress,
+          city: cleanCity,
+          signatoryTitle: 'Kepala Madrasah',
+          signatoryName: cleanHeadmaster,
+          headmasterName: cleanHeadmaster,
+          signatoryNip: cleanNip,
+        };
+        const hasIdentitySnap = item.sourceSnapshots.some(
+          (s) => s.sourceKey === 'settings.madrasah_identity_signatory'
+        );
+        const nextSnapshots = hasIdentitySnap
+          ? item.sourceSnapshots.map((s) =>
+              s.sourceKey === 'settings.madrasah_identity_signatory'
+                ? { ...s, status: 'VERIFIED' as const, capturedAt: now, capturedValue: nextSnapValue }
+                : s
+            )
+          : [
+              ...item.sourceSnapshots,
+              {
+                sourceKey: 'settings.madrasah_identity_signatory',
+                sourceLabel: 'Identitas Madrasah & Penandatangan Resmi',
+                provenance: 'AUTO_SYSTEM' as const,
+                status: 'VERIFIED' as const,
+                capturedAt: now,
+                isDemoData: state.dataMode === 'demo',
+                capturedValue: nextSnapValue,
+              },
+            ];
+        return { ...item, sourceSnapshots: nextSnapshots, updatedAt: now };
+      });
+      await onPersistState({
+        ...state,
+        settings: nextSettings,
+        intakeDrafts: updatedDrafts,
+      });
+      setShowQuickIdentityFix(false);
+      onNotify?.('Identitas madrasah & penandatangan berhasil dilengkapi. Checklist diperbarui.', 'success');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Gagal menyimpan identitas madrasah.';
+      setActionError(msg);
+      onNotify?.(msg, 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleConfirmFinalize = async () => {
     if (!effectiveDraft || !baseContent || !canExecuteFinalization) return;
     setIsSubmitting(true);
@@ -437,6 +523,7 @@ export function DocumentPreviewFinalize({
         `Dokumen "${result.documentRecord.title}" resmi disahkan dengan Nomor ${result.documentVersion.documentNumber}.`,
         'success'
       );
+      onFinalizedToArchive?.(result.documentRecord.id, result.documentVersion.id);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Gagal menyelesaikan finalisasi dokumen.';
       setActionError(msg);
@@ -526,7 +613,7 @@ export function DocumentPreviewFinalize({
     return (
       <div className="s05-card" role="region" aria-label="Pratinjau Dokumen Tidak Tersedia">
         <p style={{ margin: 0, color: '#475e58' }}>
-          Naskah dokumen tidak ditemukan untuk ditampilkan pada Pratinjau S05.
+          Naskah dokumen tidak ditemukan untuk ditampilkan pada pratinjau pengesahan.
         </p>
         <div>
           <button type="button" className="s02-btn-secondary" onClick={onBackToCenter}>
@@ -551,11 +638,11 @@ export function DocumentPreviewFinalize({
   const currentStatus = resolvedDoc?.status ?? (resolvedVersion ? 'FINAL' : 'DRAFT');
 
   return (
-    <section className="s05-shell" aria-label="S05 Pratinjau dan Finalisasi Dokumen Resmi">
+    <section className="s05-shell" aria-label="Pratinjau dan Pengesahan Dokumen Resmi">
       <header className="s05-topbar">
         <div className="s05-topbar-meta">
           <div className="s05-kicker">
-            S05 PRATINJAU &amp; PENGESAHAN · {DOCUMENT_KIND_LABELS[docKind]}
+            PRATINJAU &amp; PENGESAHAN · {DOCUMENT_KIND_LABELS[docKind]}
           </div>
           <div className="s05-title-row">
             <h1>{docTitle}</h1>
@@ -588,7 +675,7 @@ export function DocumentPreviewFinalize({
         <div className="s05-topbar-actions">
           <button type="button" className="s02-btn-secondary" onClick={onBackToCenter}>
             <ArrowLeft size={14} aria-hidden="true" />
-            <span>Kembali ke S01</span>
+            <span>Kembali ke Arsip</span>
           </button>
 
           {!isLockedFinal && effectiveDraft && onBackToStudio && (
@@ -597,7 +684,7 @@ export function DocumentPreviewFinalize({
               className="s02-btn-secondary"
               onClick={() => onBackToStudio(effectiveDraft.id)}
             >
-              <span>Sunting Lagi di S04</span>
+              <span>Sunting Naskah</span>
             </button>
           )}
 
@@ -820,7 +907,7 @@ export function DocumentPreviewFinalize({
                           className="s05-jump-btn"
                           onClick={() => onBackToStudio(effectiveDraft.id)}
                         >
-                          Perbaiki di S04 &rarr;
+                          Perbaiki di Editor &rarr;
                         </button>
                       )}
                       {!item.passed && item.fixTarget === 's03' && effectiveDraft && onBackToIntake && (
@@ -829,18 +916,116 @@ export function DocumentPreviewFinalize({
                           className="s05-jump-btn"
                           onClick={() => onBackToIntake(effectiveDraft.id)}
                         >
-                          Perbaiki di S03 &rarr;
+                          Perbaiki Data Surat &rarr;
                         </button>
                       )}
-                      {!item.passed && item.fixTarget === 'settings' && onOpenSettings && (
-                        <button type="button" className="s05-jump-btn" onClick={onOpenSettings}>
-                          Lengkapi di Pengaturan &rarr;
-                        </button>
+                      {!item.passed && item.fixTarget === 'settings' && (
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '3px' }}>
+                          <button
+                            type="button"
+                            className="s05-jump-btn"
+                            onClick={() => setShowQuickIdentityFix((v) => !v)}
+                          >
+                            {showQuickIdentityFix
+                              ? 'Tutup isian cepat'
+                              : 'Lengkapi cepat di sini →'}
+                          </button>
+                          {onOpenSettings && (
+                            <button type="button" className="s05-jump-btn" onClick={onOpenSettings}>
+                              Buka Pengaturan &rarr;
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   </li>
                 ))}
               </ul>
+
+              {showQuickIdentityFix && (
+                <div
+                  style={{
+                    padding: '12px',
+                    borderRadius: '10px',
+                    background: '#f7faf8',
+                    border: '1px solid #c5d7cf',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                  }}
+                  role="region"
+                  aria-label="Lengkapi cepat identitas madrasah"
+                >
+                  <strong style={{ fontSize: '12px', color: '#0b2923' }}>
+                    Lengkapi Identitas Madrasah &amp; Penandatangan
+                  </strong>
+                  <input
+                    type="text"
+                    aria-label="Nama Madrasah"
+                    placeholder="Nama Madrasah *"
+                    value={quickSchoolName}
+                    onChange={(e) => setQuickSchoolName(e.target.value)}
+                    className="s05-number-input"
+                    style={{ height: '34px', fontSize: '12.5px', fontFamily: 'inherit', fontWeight: 500 }}
+                  />
+                  <input
+                    type="text"
+                    aria-label="Alamat Madrasah"
+                    placeholder="Alamat Lengkap *"
+                    value={quickAddress}
+                    onChange={(e) => setQuickAddress(e.target.value)}
+                    className="s05-number-input"
+                    style={{ height: '34px', fontSize: '12.5px', fontFamily: 'inherit', fontWeight: 500 }}
+                  />
+                  <input
+                    type="text"
+                    aria-label="Kota atau Kabupaten"
+                    placeholder="Kota / Kabupaten *"
+                    value={quickCity}
+                    onChange={(e) => setQuickCity(e.target.value)}
+                    className="s05-number-input"
+                    style={{ height: '34px', fontSize: '12.5px', fontFamily: 'inherit', fontWeight: 500 }}
+                  />
+                  <input
+                    type="text"
+                    aria-label="Nama Kepala Madrasah"
+                    placeholder="Nama Kepala Madrasah / Penandatangan *"
+                    value={quickHeadmasterName}
+                    onChange={(e) => setQuickHeadmasterName(e.target.value)}
+                    className="s05-number-input"
+                    style={{ height: '34px', fontSize: '12.5px', fontFamily: 'inherit', fontWeight: 500 }}
+                  />
+                  <input
+                    type="text"
+                    aria-label="NIP atau NPK Kepala Madrasah"
+                    placeholder="NIP / NPK (Opsional)"
+                    value={quickHeadmasterNip}
+                    onChange={(e) => setQuickHeadmasterNip(e.target.value)}
+                    className="s05-number-input"
+                    style={{ height: '34px', fontSize: '12.5px', fontFamily: 'inherit', fontWeight: 500 }}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                    <button
+                      type="button"
+                      className="s02-btn-secondary"
+                      style={{ height: '32px', fontSize: '12px' }}
+                      disabled={isSubmitting}
+                      onClick={() => setShowQuickIdentityFix(false)}
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      className="s02-btn-primary"
+                      style={{ height: '32px', fontSize: '12px' }}
+                      disabled={isSubmitting}
+                      onClick={() => void handleQuickSaveIdentity()}
+                    >
+                      {isSubmitting ? 'Menyimpan…' : 'Simpan Identitas'}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {checklist.requiresDemoAck && (
                 <label className="s05-demo-ack">

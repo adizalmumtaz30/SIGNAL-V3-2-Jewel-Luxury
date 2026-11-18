@@ -558,7 +558,7 @@ describe('Tahap 8 — S05 Preview, Checklist, Penomoran, Finalisasi PDF & Revisi
         onBackToCenter: () => {},
       })
     );
-    expect(previewHtml).toContain('S05 PRATINJAU &amp; PENGESAHAN');
+    expect(previewHtml).toContain('PRATINJAU &amp; PENGESAHAN');
     expect(previewHtml).toContain('Checklist Administrasi');
     expect(previewHtml).toContain('Terbitkan Nomor Surat');
     expect(previewHtml).toContain('Finalisasi Dokumen');

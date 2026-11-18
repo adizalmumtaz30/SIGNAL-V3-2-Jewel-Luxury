@@ -197,7 +197,7 @@ describe('Paket 2 — Modernisasi Pola Interaksi Figma Pro & Hapus Draft Aman', 
       })
     );
     expect(s01Html).toContain('s5-action-dock');
-    expect(s01Html).toContain('Buka S04');
+    expect(s01Html).toContain('Buka Naskah');
     expect(s01Html).toContain('Detail');
     expect(s01Html).toContain('Aksi lainnya untuk');
     if (ahmad?.nip) {

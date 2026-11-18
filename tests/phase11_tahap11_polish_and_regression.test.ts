@@ -328,11 +328,11 @@ describe('Tahap 11 — Polish, Aksesibilitas, Beranda, Command Palette & Regresi
       })
     );
 
-    // Quick actions & Persuratan indexing
-    expect(html).toContain('Buka Pusat Persuratan &amp; Arsip (S01)');
-    expect(html).toContain('Buat Surat Baru — Galeri Template (S02)');
-    expect(html).toContain('Kelola Template Madrasah (S07)');
-    expect(html).toContain('Buat SK Pembagian Tugas Mengajar (SYS-TPL-03)');
+    // Quick actions & Persuratan indexing (zero developer jargon)
+    expect(html).toContain('Buka Pusat Persuratan &amp; Arsip');
+    expect(html).toContain('Buat Surat Baru — Pilih Template');
+    expect(html).toContain('Kelola Template Madrasah');
+    expect(html).toContain('Buat SK Pembagian Tugas Mengajar');
     expect(html).toContain('Surat Tugas Olimpiade Sains Madrasah');
     expect(html).toContain('Draft Surat Tugas Rapat Kerja');
 

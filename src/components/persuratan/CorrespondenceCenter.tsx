@@ -973,10 +973,10 @@ export function CorrespondenceCenter({
                         {linkedIntake && (
                           <div className="s01-meta-inline" style={{ color: '#145343', fontWeight: 600 }}>
                             {hasStudioContent
-                              ? `Data awal S03 tersimpan · Draft S04 sedang disunting${
-                                  linkedIntake.s03EditedAfterStudioAt ? ' (S03 diperbarui pasca-S04)' : ''
+                              ? `Data surat tersimpan · Naskah sedang disunting${
+                                  linkedIntake.s03EditedAfterStudioAt ? ' (data surat diperbarui)' : ''
                                 }`
-                              : 'Data awal S03 tersimpan · Siap disunting di Document Studio (S04)'}
+                              : 'Data surat tersimpan · Siap disunting di Editor Naskah'}
                           </div>
                         )}
                         {tagText && <div className="s01-meta-inline">{tagText}</div>}
@@ -1005,22 +1005,26 @@ export function CorrespondenceCenter({
                             {(doc.status === 'FINAL' ||
                               doc.status === 'ARCHIVED' ||
                               doc.status === 'REVISED') &&
-                            onOpenPreview ? (
+                            (onOpenArchiveDetail || onOpenPreview) ? (
                               <>
                                 <button
                                   type="button"
                                   className="s5-dock-btn primary"
                                   onClick={() => {
                                     setOpenMenuDocId(null);
-                                    onOpenPreview({
-                                      documentId: doc.id,
-                                      draftId: linkedIntake?.id ?? null,
-                                      versionId: doc.currentVersionId ?? null,
-                                    });
+                                    if (onOpenArchiveDetail) {
+                                      onOpenArchiveDetail(doc.id, doc.currentVersionId ?? null);
+                                    } else if (onOpenPreview) {
+                                      onOpenPreview({
+                                        documentId: doc.id,
+                                        draftId: linkedIntake?.id ?? null,
+                                        versionId: doc.currentVersionId ?? null,
+                                      });
+                                    }
                                   }}
                                 >
                                   <CheckCircle2 size={13} aria-hidden="true" />
-                                  <span>Lihat S05 / Versi Final</span>
+                                  <span>Buka Arsip &amp; PDF</span>
                                 </button>
                                 <button
                                   type="button"
@@ -1028,7 +1032,7 @@ export function CorrespondenceCenter({
                                   onClick={(e) => openDetailModal(doc, e.currentTarget)}
                                 >
                                   <Eye size={13} aria-hidden="true" />
-                                  <span>Detail</span>
+                                  <span>Ringkasan</span>
                                 </button>
                               </>
                             ) : linkedIntake && onOpenStudio ? (
@@ -1042,7 +1046,7 @@ export function CorrespondenceCenter({
                                   }}
                                 >
                                   <FileText size={13} aria-hidden="true" />
-                                  <span>{hasStudioContent ? 'Lanjutkan S04' : 'Buka S04'}</span>
+                                  <span>{hasStudioContent ? 'Lanjutkan Naskah' : 'Buka Naskah'}</span>
                                 </button>
                                 <button
                                   type="button"
@@ -1099,7 +1103,7 @@ export function CorrespondenceCenter({
                                   }}
                                 >
                                   <Archive size={13} aria-hidden="true" />
-                                  <span>Detail Arsip &amp; Lampiran (S06)</span>
+                                  <span>Detail &amp; Lampiran Arsip</span>
                                 </button>
                               )}
                               <button
@@ -1122,7 +1126,7 @@ export function CorrespondenceCenter({
                                   }}
                                 >
                                   <FileEdit size={13} aria-hidden="true" />
-                                  <span>Edit S03</span>
+                                  <span>Ubah Data Surat</span>
                                 </button>
                               )}
                               {linkedIntake && onDuplicateDraft && (
@@ -1414,11 +1418,11 @@ export function CorrespondenceCenter({
                 <div className="s01-notice-box">
                   {inspectedDoc.intakeDraftId ? (
                     <>
-                      Draft data awal S03 (<code>{inspectedDoc.intakeDraftId}</code>) tersimpan lokal beserta snapshot sumber. Anda dapat menyunting di Document Studio (S04), mensahkan di S05, atau membuka Detail Arsip &amp; Lampiran (S06).
+                      Draft surat tersimpan lokal beserta snapshot data sumber. Anda dapat melanjutkan penyuntingan naskah, mengesahkan dokumen resmi, atau mengelola lampiran di ruang arsip.
                     </>
                   ) : (
                     <>
-                      Buka <strong>Detail Arsip &amp; Lampiran (S06)</strong> untuk mengelola lampiran, riwayat versi resmi, pengarsipan, dan pembuatan template madrasah.
+                      Buka <strong>Detail &amp; Lampiran Arsip</strong> untuk mengunduh PDF resmi, mengelola lampiran, riwayat versi, pengarsipan, dan pembuatan template madrasah.
                     </>
                   )}
                 </div>
@@ -1465,7 +1469,7 @@ export function CorrespondenceCenter({
                     }}
                   >
                     <FileEdit size={14} aria-hidden="true" />
-                    <span>Edit Data Awal (S03)</span>
+                    <span>Ubah Data Surat</span>
                   </button>
                 )}
                 {inspectedDoc.status === 'DRAFT' && inspectedLinkedIntake && onOpenStudio && (
@@ -1481,15 +1485,15 @@ export function CorrespondenceCenter({
                     <FileText size={14} aria-hidden="true" />
                     <span>
                       {inspectedHasStudio
-                        ? 'Lanjutkan Document Studio (S04)'
-                        : 'Buka Document Studio (S04)'}
+                        ? 'Lanjutkan Naskah'
+                        : 'Buka Editor Naskah'}
                     </span>
                   </button>
                 )}
-                {onOpenPreview && (inspectedLinkedIntake || inspectedDoc.currentVersionId) && (
+                {inspectedDoc.status === 'DRAFT' && onOpenPreview && inspectedLinkedIntake && (
                   <button
                     type="button"
-                    className={inspectedDoc.status === 'DRAFT' ? 's01-btn-secondary' : 's01-cta-btn'}
+                    className="s01-btn-secondary"
                     onClick={() => {
                       const targetDocId = inspectedDoc.id;
                       const targetDraftId = inspectedLinkedIntake?.id ?? null;
@@ -1503,18 +1507,16 @@ export function CorrespondenceCenter({
                     }}
                   >
                     <CheckCircle2 size={14} aria-hidden="true" />
-                    <span>
-                      {inspectedDoc.status === 'DRAFT'
-                        ? 'Pratinjau & Sahkan (S05)'
-                        : 'Lihat Dokumen Final & Riwayat (S05)'}
-                    </span>
+                    <span>Pratinjau &amp; Sahkan</span>
                   </button>
                 )}
                 {onOpenArchiveDetail && (
                   <button
                     type="button"
                     className={
-                      inspectedDoc.status === 'FINAL' || inspectedDoc.status === 'ARCHIVED'
+                      inspectedDoc.status === 'FINAL' ||
+                      inspectedDoc.status === 'ARCHIVED' ||
+                      inspectedDoc.status === 'REVISED'
                         ? 's01-cta-btn'
                         : 's01-btn-secondary'
                     }
@@ -1526,7 +1528,7 @@ export function CorrespondenceCenter({
                     }}
                   >
                     <Archive size={14} aria-hidden="true" />
-                    <span>Buka Arsip &amp; Lampiran (S06)</span>
+                    <span>Buka Arsip &amp; Lampiran</span>
                   </button>
                 )}
                 <button type="button" className="s01-btn-secondary" onClick={closeDetailModal}>

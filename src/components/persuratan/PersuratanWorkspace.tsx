@@ -121,6 +121,7 @@ export function PersuratanWorkspace({
   const [intakeSessionKey, setIntakeSessionKey] = useState<number>(1);
   const [studioSessionKey, setStudioSessionKey] = useState<number>(1);
   const [dirtySource, setDirtySource] = useState<PersuratanDirtySource>(null);
+  const [isStudioFocusMode, setIsStudioFocusMode] = useState<boolean>(false);
   const [pendingTransition, setPendingTransition] = useState<PendingTransition | null>(null);
   const [pendingEditS03WarningDraft, setPendingEditS03WarningDraft] =
     useState<DocumentIntakeDraft | null>(null);
@@ -194,6 +195,9 @@ export function PersuratanWorkspace({
     }
     setDirtySource(null);
     onDirtyChange?.(false, null);
+    if (transition.targetView !== 'studio') {
+      setIsStudioFocusMode(false);
+    }
     setSubView(transition.targetView);
   };
 
@@ -257,7 +261,7 @@ export function PersuratanWorkspace({
   const handleEditExistingIntakeDraft = (draftId: string) => {
     const found = (state.intakeDrafts ?? []).find((d) => d.id === draftId);
     if (!found) {
-      onNotify?.('Draft data awal S03 tidak ditemukan di workspace.', 'warning');
+      onNotify?.('Draft data surat tidak ditemukan di workspace.', 'warning');
       return;
     }
     if (found.studio?.editorStatus === 'IN_PROGRESS' && found.studio.content) {
@@ -270,7 +274,7 @@ export function PersuratanWorkspace({
   const handleOpenStudio = (draftId: string) => {
     const found = (state.intakeDrafts ?? []).find((d) => d.id === draftId);
     if (!found) {
-      onNotify?.('Draft data awal S03 belum ditemukan untuk dibuka di Document Studio.', 'warning');
+      onNotify?.('Draft surat belum ditemukan untuk dibuka di Editor Naskah.', 'warning');
       return;
     }
     requestTransition({
@@ -403,6 +407,7 @@ export function PersuratanWorkspace({
 
   return (
     <div className="p5-persuratan-shell">
+      {!(subView === 'studio' && isStudioFocusMode) && (
       <nav className="s02-subnav-bar" aria-label="Navigasi Modul Persuratan dan Arsip">
         <div className="s02-subnav-tabs" role="tablist" aria-label="Area kerja Persuratan">
           <button
@@ -484,7 +489,7 @@ export function PersuratanWorkspace({
               onClick={() => requestSubViewChange('detail')}
             >
               <Archive size={15} aria-hidden="true" />
-              <span>Detail Arsip (S06)</span>
+              <span>Detail &amp; Arsip</span>
             </button>
           )}
         </div>
@@ -511,6 +516,7 @@ export function PersuratanWorkspace({
           </li>
         </ol>
       </nav>
+      )}
 
       {subView === 'center' && (
         <CorrespondenceCenter
@@ -570,6 +576,9 @@ export function PersuratanWorkspace({
           storageError={storageError}
           onRetryStorage={onRetryStorage}
           onSaveDraft={handleSaveIntakeDraft}
+          onPersistState={persistStateUnified}
+          onFinalizedToArchive={(docId, verId) => handleOpenArchiveDetail(docId, verId)}
+          onOpenPreview={handleOpenPreview}
           onOpenStudio={handleOpenStudio}
           onDeleteDraft={
             activeDraft
@@ -595,6 +604,10 @@ export function PersuratanWorkspace({
           storageError={storageError}
           onRetryStorage={onRetryStorage}
           onPersistStudioState={handlePersistStudioState}
+          onPersistState={persistStateUnified}
+          onFinalizedToArchive={(docId, verId) => handleOpenArchiveDetail(docId, verId)}
+          isFocusMode={isStudioFocusMode}
+          onToggleFocusMode={setIsStudioFocusMode}
           onDeleteDraft={() =>
             handleDeleteDraft(
               { draftId: activeDraft.id, documentId: activeDraft.documentId },
@@ -636,6 +649,7 @@ export function PersuratanWorkspace({
               onUpdateState?.(() => nextState);
             }
           }}
+          onFinalizedToArchive={(docId, verId) => handleOpenArchiveDetail(docId, verId)}
           onBackToStudio={(draftId) => handleOpenStudio(draftId)}
           onBackToIntake={(draftId) => handleEditExistingIntakeDraft(draftId)}
           onBackToCenter={() => requestSubViewChange('center')}
@@ -738,16 +752,16 @@ export function PersuratanWorkspace({
                   <AlertTriangle size={20} />
                 </div>
                 <div>
-                  <h2 id="s03-s04-warning-title">Naskah Document Studio (S04) Sudah Ada</h2>
-                  <p>Draft ini sudah memiliki naskah yang sedang disunting di S04.</p>
+                  <h2 id="s03-s04-warning-title">Naskah Surat Sudah Tersusun</h2>
+                  <p>Draft ini sudah memiliki naskah yang sedang disunting di Editor Naskah.</p>
                 </div>
               </div>
             </div>
             <div className="s01-modal-body">
               <p style={{ margin: 0 }}>
-                Menyunting Form Data Awal (S03) akan memperbarui snapshot sumber, sementara naskah S04
-                yang sudah Anda tulis akan tetap dipertahankan (tidak tertimpa otomatis). Saat membuka
-                S04 kembali, Anda dapat memilih tetap memakai naskah lama atau menyusun ulang dari data S03 baru.
+                Mengubah data surat akan memperbarui snapshot sumber, sementara naskah yang sudah Anda
+                tulis tetap dipertahankan (tidak tertimpa otomatis). Saat membuka editor kembali, Anda
+                dapat memilih tetap memakai naskah lama atau menyusun ulang dari data baru.
               </p>
             </div>
             <div
@@ -770,7 +784,7 @@ export function PersuratanWorkspace({
                   handleOpenStudio(target.id);
                 }}
               >
-                Lanjutkan ke S04
+                Lanjutkan ke Naskah
               </button>
               <button
                 type="button"
@@ -781,7 +795,7 @@ export function PersuratanWorkspace({
                   openIntakeForDraft(target);
                 }}
               >
-                Edit S03 (Pertahankan S04)
+                Ubah Data Surat (Naskah Aman)
               </button>
             </div>
           </div>
@@ -817,13 +831,13 @@ export function PersuratanWorkspace({
                 <div>
                   <h2 id="s03-unsaved-modal-title">
                     {isDirty && dirtySource === 'studio'
-                      ? 'Perubahan Naskah S04 Belum Disimpan'
-                      : 'Isian Data Awal Belum Disimpan'}
+                      ? 'Perubahan Naskah Belum Disimpan'
+                      : 'Isian Data Surat Belum Disimpan'}
                   </h2>
                   <p>
                     {dirtySource === 'studio'
-                      ? 'Perubahan pada Document Studio (S04) belum disimpan sebagai draft.'
-                      : 'Perubahan sementara pada Form Data Awal (S03) belum disimpan sebagai draft.'}
+                      ? 'Perubahan pada Editor Naskah belum disimpan sebagai draft.'
+                      : 'Perubahan sementara pada Data Surat belum disimpan sebagai draft.'}
                   </p>
                 </div>
               </div>
@@ -844,7 +858,7 @@ export function PersuratanWorkspace({
                 className="s02-btn-secondary"
                 onClick={() => setPendingTransition(null)}
               >
-                {dirtySource === 'studio' ? 'Lanjutkan Menyunting S04' : 'Lanjutkan Mengisi Form'}
+                {dirtySource === 'studio' ? 'Lanjutkan Menyunting Naskah' : 'Lanjutkan Mengisi Form'}
               </button>
               <button
                 type="button"

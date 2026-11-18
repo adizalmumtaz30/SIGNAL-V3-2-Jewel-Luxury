@@ -433,16 +433,18 @@ describe('Tahap 4 — Form Data Awal / Context Form (S03)', () => {
     );
 
     expect(intakeHtml).toContain('Isian Konteks');
+    expect(intakeHtml).toContain('Pratinjau Surat Live');
     expect(intakeHtml).toContain('Sumber Data Sistem');
-    expect(intakeHtml).toContain('Simpan sebagai Draft');
+    expect(intakeHtml).toContain('Sahkan Langsung');
+    expect(intakeHtml).toContain('Simpan Draft Saja');
     expect(intakeHtml).toContain('Kembali ke Template');
-    expect(intakeHtml).toContain('Lampiran Undangan');
+    expect(intakeHtml).toContain('Lampiran Berkas Pendukung');
     expect(intakeHtml).toContain('Dataset Demo Aktif');
-    // Batas jujur Tahap 4: tidak boleh ada tombol finalisasi/cetak S05 di S03
+    // Batas jujur S03: panel pengesahan baru terbuka saat operator mengklik Sahkan Langsung
     expect(intakeHtml).not.toContain('Terbitkan Nomor');
     expect(intakeHtml).not.toContain('Finalisasi Dokumen');
 
-    // Render S01 setelah draft S03 tersimpan -> menampilkan status jujur & aksi Edit S03
+    // Render S01 setelah draft tersimpan -> menampilkan status jujur & aksi Buka Naskah
     const saved = saveIntakeDraftToState(
       demo,
       tpl01,
@@ -465,10 +467,10 @@ describe('Tahap 4 — Form Data Awal / Context Form (S03)', () => {
         onOpenStudio: () => {},
       })
     );
-    expect(s01Html).toContain('Data awal S03 tersimpan');
+    expect(s01Html).toContain('Data surat tersimpan');
     expect(s01Html).toContain('s5-action-dock');
     expect(s01Html).toContain('Aksi lainnya untuk');
-    expect(s01Html).toContain('Buka S04');
+    expect(s01Html).toContain('Buka Naskah');
     expect(s01Html).toContain('Belum Bernomor');
 
     // Subnav PersuratanWorkspace & App shell tetap merender aman

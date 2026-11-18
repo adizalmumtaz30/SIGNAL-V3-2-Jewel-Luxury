@@ -136,7 +136,7 @@ describe('Tahap 6 — Penyempurnaan S04 Editor Dasar (Outline, Autosave Status, 
 
     expect(resumedHtml).toContain('Struktur Naskah');
     expect(resumedHtml).toContain('Agenda Tambahan Operator');
-    expect(resumedHtml).toContain('Autosave Aktif');
+    expect(resumedHtml).toContain('Autosave');
     expect(resumedHtml).toContain('Tersimpan lokal');
     expect(resumedHtml).toContain('F4 / Folio (210 × 330 mm)');
   });
