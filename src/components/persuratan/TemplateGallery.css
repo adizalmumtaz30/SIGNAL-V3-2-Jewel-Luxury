@@ -7,7 +7,7 @@
 .p5-persuratan-shell {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 24px;
   max-width: 1280px;
   width: 100%;
   margin: 0 auto;
@@ -17,25 +17,23 @@
 .s02-page {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 24px;
   max-width: 1280px;
   width: 100%;
   margin: 0 auto;
   min-width: 0;
 }
 
-/* Unified Sub-workspace Switcher Bar inside Persuratan & Arsip */
+/* Figma-Pro Quiet Hairline Sub-Navigation (Zero Box-in-Box) */
 .s02-subnav-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 16px;
   flex-wrap: wrap;
-  padding: 8px 14px;
-  border-radius: 14px;
-  background: var(--s5-surface-card, #ffffff);
-  border: var(--s5-border-medium, 1px solid #d2ddd7);
-  box-shadow: var(--s5-shadow-resting, 0 1px 3px rgba(11, 41, 35, 0.04));
+  padding: 0 2px;
+  border-bottom: 1px solid rgba(11, 41, 35, 0.09);
+  background: transparent;
 }
 
 .s02-subnav-tabs {
@@ -46,79 +44,69 @@
 }
 
 .s02-subnav-tab {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  height: 36px;
-  padding: 0 13px;
-  border-radius: 10px;
-  border: 1px solid transparent;
+  height: 42px;
+  padding: 0 12px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
   background: transparent;
-  color: var(--s5-ink-secondary, #2f443e);
+  color: #556a63;
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
-  transition: background-color 150ms var(--s5-spring-fast, ease),
-    color 150ms var(--s5-spring-fast, ease),
-    border-color 150ms var(--s5-spring-fast, ease);
+  transition: color 150ms ease, border-color 150ms ease;
 }
 
 .s02-subnav-tab:hover {
-  background: var(--s5-canvas-subtle, #f0f4f1);
-  color: var(--s5-emerald-obsidian, #0b2923);
+  color: #0b241f;
 }
 
 .s02-subnav-tab.is-active {
-  background: var(--s5-emerald-primary, #124037);
-  color: #ffffff;
-  border-color: rgba(197, 160, 89, 0.55);
-  box-shadow: 0 2px 6px rgba(11, 41, 35, 0.14);
+  color: #0b241f;
+  border-bottom-color: #113b33;
 }
 
 .s02-subnav-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1px 6px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 700;
-  background: var(--s5-emerald-subtle, #e8f2ee);
-  color: var(--s5-emerald-primary, #124037);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #6b7f78;
 }
 
 .s02-subnav-tab.is-active .s02-subnav-count {
-  background: rgba(255, 255, 255, 0.16);
-  color: var(--s5-gold-bright, #e5c378);
+  color: #113b33;
 }
 
 .p5-step-trail {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   list-style: none;
   margin: 0;
-  padding: 0 4px;
+  padding: 0 4px 2px;
   font-size: 12px;
   font-weight: 500;
-  color: var(--s5-ink-tertiary, #526861);
+  color: #6b7f78;
   white-space: nowrap;
 }
 
-.p5-step-item.is-done {
-  color: var(--s5-emerald-primary, #124037);
+.p5-step-trail li.is-done {
+  color: #113b33;
   font-weight: 600;
 }
 
-.p5-step-item.is-active {
-  color: var(--s5-emerald-obsidian, #0b2923);
+.p5-step-trail li.is-current {
+  color: #0b241f;
   font-weight: 700;
 }
 
 .p5-step-sep {
-  color: var(--s5-ink-disabled, #8a9d96);
+  color: #b0c0ba;
   font-size: 11px;
 }
 
@@ -731,10 +719,7 @@
 }
 
 .s02-paper-kop {
-  text-align: center;
-  border-bottom: 2px solid #162420;
-  padding-bottom: 6px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .s02-paper-kop strong {

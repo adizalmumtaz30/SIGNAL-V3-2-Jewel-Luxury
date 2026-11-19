@@ -51,6 +51,12 @@ export function compareDraftSnapshotsWithLiveState(
     const snapVal = kopSnap.capturedValue as Record<string, unknown>;
     const kopPairs: Array<[string, string, unknown, unknown]> = [
       ['schoolName', 'Nama Madrasah', snapVal.schoolName, autoData.kop.schoolName],
+      ['ministry', 'Yayasan / Lembaga', snapVal.ministry, autoData.kop.ministry],
+      ['regionalOffice', 'Akte Notaris / SK Pendirian', snapVal.regionalOffice, autoData.kop.regionalOffice],
+      ['legalDecree', 'SK Menkumham / Legalitas', snapVal.legalDecree, autoData.kop.legalDecree],
+      ['accreditation', 'Status Akreditasi', snapVal.accreditation, autoData.kop.accreditation],
+      ['nsm', 'NSM', snapVal.nsm, autoData.kop.nsm],
+      ['npsn', 'NPSN', snapVal.npsn, autoData.kop.npsn],
       ['academicYear', 'Tahun Ajaran', snapVal.academicYear, autoData.kop.academicYear],
       ['semester', 'Semester', snapVal.semester, autoData.kop.semester],
       ['signatoryTitle', 'Jabatan Penandatangan', snapVal.signatoryTitle, autoData.kop.signatoryTitle],
@@ -58,6 +64,7 @@ export function compareDraftSnapshotsWithLiveState(
       ['signatoryNip', 'NIP Penandatangan', snapVal.signatoryNip, autoData.kop.signatoryNip],
       ['address', 'Alamat Madrasah', snapVal.address, autoData.kop.address],
       ['city', 'Kota / Titimangsa', snapVal.city, autoData.kop.city],
+      ['phone', 'Telepon', snapVal.phone, autoData.kop.phone],
     ];
 
     for (const [fieldKey, label, sVal, lVal] of kopPairs) {
@@ -217,8 +224,19 @@ export function adoptSelectedSourceUpdatesToDraft(
           schoolName: autoData.kop.schoolName || null,
           ministry: autoData.kop.ministry || null,
           regionalOffice: autoData.kop.regionalOffice || null,
+          legalDecree: autoData.kop.legalDecree || null,
+          accreditation: autoData.kop.accreditation || null,
+          nsm: autoData.kop.nsm || null,
+          npsn: autoData.kop.npsn || null,
           address: autoData.kop.address || null,
           city: autoData.kop.city || null,
+          postalCode: autoData.kop.postalCode || null,
+          phone: autoData.kop.phone || null,
+          email: autoData.kop.email || null,
+          website: autoData.kop.website || null,
+          logoUrl: autoData.kop.logoUrl || null,
+          kopMode: autoData.kop.kopMode,
+          kopImageUrl: autoData.kop.kopImageUrl || null,
           academicYear: autoData.kop.academicYear || null,
           semester: autoData.kop.semester || null,
           signatoryTitle: autoData.kop.signatoryTitle,

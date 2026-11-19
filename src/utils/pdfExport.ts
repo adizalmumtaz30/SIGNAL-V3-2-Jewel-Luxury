@@ -6,7 +6,14 @@ import {
   formatMonthShortYear,
 } from '../domain/attendanceRecap';
 import { getTimelineRows, isSlotBlocked, jpToAstronomical } from '../domain/time';
-import { getDefaultMadrasahLogo } from './madrasahLogo';
+import {
+  OFFICIAL_KOP_ASPECT_RATIO,
+  resolveEffectiveKopData,
+} from '../domain/kopIdentity';
+import {
+  getDefaultMadrasahLogo,
+  getOfficialKopBannerDataUrl,
+} from './madrasahLogo';
 import { groupClassesForMasterMatrix } from './matrixGrouping';
 
 // Color palette matching SIGNAL branding
@@ -22,6 +29,8 @@ export interface OfficialDocCustomTexts {
   includeKop?: boolean;
   ministry?: string;
   regionalOffice?: string;
+  legalDecree?: string;
+  accreditation?: string;
   districtOffice?: string;
   schoolName?: string;
   nsm?: string;
@@ -33,6 +42,8 @@ export interface OfficialDocCustomTexts {
   email?: string;
   website?: string;
   logoUrl?: string;
+  kopMode?: 'structured' | 'image';
+  kopImageUrl?: string;
 
   // Document Title & Heading Overrides
   documentTitle?: string;
@@ -213,95 +224,139 @@ export function renderOfficialKopSurat(
 ): number {
   const pageWidth = doc.internal.pageSize.getWidth();
   const s = state.settings;
+  const kop = resolveEffectiveKopData(s, overrides);
+  const marginX = 12;
+  const usableWidth = pageWidth - marginX * 2;
 
-  const ministry = overrides?.ministry ?? s.ministry ?? 'KEMENTERIAN AGAMA REPUBLIK INDONESIA';
-  const regionalOffice = overrides?.regionalOffice ?? s.regionalOffice ?? 'KANTOR KEMENTERIAN AGAMA KABUPATEN MALANG';
-  const schoolName = overrides?.schoolName ?? s.schoolName ?? 'MTs Cendekia Nusantara';
-  const nsm = overrides?.nsm ?? s.nsm ?? '';
-  const npsn = overrides?.npsn ?? s.npsn ?? '';
-  const academicYear = overrides?.academicYear ?? s.academicYear ?? '2026/2027';
-  const semester = overrides?.semester ?? s.semester ?? 'Ganjil';
-  const address = overrides?.address ?? s.address ?? 'Jl. Raya Cendekia No. 45, Sumberpucung';
-  const city = overrides?.city ?? s.city ?? '';
-  const postalCode = overrides?.postalCode ?? s.postalCode ?? '';
-  const phone = overrides?.phone ?? s.phone ?? '';
-  const email = overrides?.email ?? s.email ?? '';
-  const logoData = overrides?.logoUrl ?? s.logoUrl ?? getDefaultMadrasahLogo();
+  // Mode 1: Full-width Official Kop Banner Image (when kopMode === 'image' & PNG data URL is ready)
+  if (kop.kopMode === 'image') {
+    const bannerData = getOfficialKopBannerDataUrl(kop.kopImageUrl);
+    if (bannerData) {
+      try {
+        const naturalHeightMm = usableWidth / OFFICIAL_KOP_ASPECT_RATIO;
+        const maxBannerHeight = isCompact ? 26 : 44;
+        const drawHeight = Math.min(naturalHeightMm, maxBannerHeight);
+        const drawWidth = Math.min(usableWidth, drawHeight * OFFICIAL_KOP_ASPECT_RATIO);
+        const drawX = marginX + (usableWidth - drawWidth) / 2;
+        doc.addImage(bannerData, 'PNG', drawX, startY, drawWidth, drawHeight);
+        return startY + drawHeight + (isCompact ? 3.5 : 5);
+      } catch (e) {
+        console.warn('Could not render full Kop banner image to PDF, falling back to structured Kop:', e);
+      }
+    }
+  }
 
-  const logoSize = isCompact ? 13.5 : 18; // mm
-  const logoX = 12;
-  const logoY = startY;
+  // Mode 2: Structured Official Letterhead matching the uploaded MTs Daruttafsir Al-Husaini layout 1:1
+  const logoData = kop.logoUrl || getDefaultMadrasahLogo();
+  const logoSize = isCompact ? 18.5 : 27; // mm
+  const logoX = marginX + (isCompact ? 1 : 2);
+  const logoY = startY + (isCompact ? 0.5 : 1);
 
   if (logoData) {
     try {
-      doc.addImage(logoData, 'PNG', logoX, logoY, logoSize, logoSize);
+      const imgFmt = /^data:image\/jpeg/i.test(logoData)
+        ? 'JPEG'
+        : /^data:image\/webp/i.test(logoData)
+        ? 'WEBP'
+        : 'PNG';
+      doc.addImage(logoData, imgFmt, logoX, logoY, logoSize, logoSize * 0.97);
     } catch (e) {
       console.warn('Could not render logo to PDF:', e);
     }
   }
 
-  const textLeft = isCompact ? 28 : 36;
-  const textRight = pageWidth - 12;
+  const textLeft = logoX + logoSize + (isCompact ? 3 : 5);
+  const textRight = pageWidth - marginX;
   const textCenter = (textLeft + textRight) / 2;
 
-  let y = startY + (isCompact ? 2.5 : 3.5);
+  let y = startY + (isCompact ? 3.2 : 4.6);
 
-  // 1. Kementerian yang menaungi
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(isCompact ? 8.8 : 10.5);
-  doc.setTextColor(15, 35, 33);
-  doc.text(ministry.toUpperCase(), textCenter, y, { align: 'center' });
+  // 1 & 2. Judul Madrasah (2 baris Times Bold Besar — sesuai gambar Kop resmi)
+  doc.setFont('times', 'bold');
+  doc.setFontSize(isCompact ? 11.2 : 16);
+  doc.setTextColor(0, 0, 0);
+  doc.text(kop.titleLine1, textCenter, y, { align: 'center' });
 
-  // 2. Kantor Wilayah / Kankemenag
-  y += isCompact ? 3.8 : 4.5;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(isCompact ? 8 : 9.5);
-  doc.setTextColor(25, 45, 43);
-  doc.text(regionalOffice.toUpperCase(), textCenter, y, { align: 'center' });
+  if (kop.titleLine2) {
+    y += isCompact ? 4.1 : 5.8;
+    doc.text(kop.titleLine2, textCenter, y, { align: 'center' });
+  }
 
-  // 3. Nama Madrasah
-  y += isCompact ? 4.2 : 5.2;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(isCompact ? 10.5 : 12.5);
-  doc.setTextColor(...TEAL);
-  const normalizedSchool = schoolName.toUpperCase().startsWith('MADRASAH TSANAWIYAH') || schoolName.toUpperCase().startsWith('MTS')
-    ? schoolName.toUpperCase()
-    : `MADRASAH TSANAWIYAH ${schoolName.toUpperCase()}`;
-  doc.text(normalizedSchool, textCenter, y, { align: 'center' });
+  // 3. Nama Yayasan / Lembaga Menaungi
+  if (kop.foundationLine) {
+    y += isCompact ? 3.2 : 4.5;
+    doc.setFont('times', 'bold');
+    doc.setFontSize(isCompact ? 8.4 : 11.2);
+    doc.setTextColor(12, 12, 12);
+    doc.text(kop.foundationLine, textCenter, y, { align: 'center' });
+  }
 
-  // 4. NSM & NPSN & Tahun Ajaran
-  y += isCompact ? 3.3 : 4;
+  // 4. Akte Notaris / Kankemenag
+  if (kop.notaryLine) {
+    y += isCompact ? 2.7 : 3.7;
+    doc.setFont('times', 'normal');
+    doc.setFontSize(isCompact ? 7.1 : 9.2);
+    doc.setTextColor(18, 18, 18);
+    doc.text(kop.notaryLine, textCenter, y, { align: 'center' });
+  }
+
+  // 5. Keputusan Menkumham RI / SK Legalitas
+  if (kop.decreeLine) {
+    y += isCompact ? 2.6 : 3.6;
+    doc.setFont('times', 'normal');
+    doc.setFontSize(isCompact ? 7.1 : 9.2);
+    doc.setTextColor(18, 18, 18);
+    doc.text(kop.decreeLine, textCenter, y, { align: 'center' });
+  }
+
+  // 6. NSM & NPSN
+  if (kop.registryLine) {
+    y += isCompact ? 2.6 : 3.6;
+    doc.setFont('times', 'normal');
+    doc.setFontSize(isCompact ? 7.3 : 9.4);
+    doc.setTextColor(18, 18, 18);
+    doc.text(kop.registryLine, textCenter, y, { align: 'center' });
+  }
+
+  // 7. Status Akreditasi (Bold)
+  if (kop.accreditationLine) {
+    y += isCompact ? 2.7 : 3.7;
+    doc.setFont('times', 'bold');
+    doc.setFontSize(isCompact ? 7.6 : 9.8);
+    doc.setTextColor(0, 0, 0);
+    doc.text(kop.accreditationLine.toUpperCase(), textCenter, y, { align: 'center' });
+  }
+
+  // Pastikan pita alamat berada di bawah logo maupun teks
+  const bandTopY = Math.max(y + (isCompact ? 1.8 : 2.6), logoY + logoSize + (isCompact ? 0.6 : 1.4));
+
+  // Garis atas hitam penuh pita alamat
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(isCompact ? 0.45 : 0.6);
+  doc.line(marginX, bandTopY, pageWidth - marginX, bandTopY);
+
+  let bandBottomY = bandTopY;
+  if (kop.addressBandLine) {
+    const addrTextY = bandTopY + (isCompact ? 3.1 : 4.1);
+    doc.setFont('times', 'normal');
+    doc.setFontSize(isCompact ? 7.3 : 9.4);
+    doc.setTextColor(12, 12, 12);
+    doc.text(kop.addressBandLine, pageWidth / 2, addrTextY, { align: 'center' });
+    bandBottomY = addrTextY + (isCompact ? 1.4 : 1.9);
+
+    // Garis bawah hitam penuh pita alamat
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(isCompact ? 0.45 : 0.6);
+    doc.line(marginX, bandBottomY, pageWidth - marginX, bandBottomY);
+  } else {
+    bandBottomY = bandTopY + 1.0;
+    doc.setLineWidth(0.35);
+    doc.line(marginX, bandBottomY, pageWidth - marginX, bandBottomY);
+  }
+
+  // Kembalikan font default ke helvetica agar tabel & badan dokumen tetap konsisten
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(isCompact ? 6.8 : 7.8);
-  doc.setTextColor(60, 75, 70);
-  const nsmStr = nsm ? `NSM: ${nsm}` : '';
-  const npsnStr = npsn ? `NPSN: ${npsn}` : '';
-  const taStr = `T.A. ${academicYear} (${semester})`;
-  const line4 = [nsmStr, npsnStr, taStr].filter(Boolean).join('  ·  ');
-  doc.text(line4, textCenter, y, { align: 'center' });
-
-  // 5. Alamat, Kontak, Email, Website
-  y += isCompact ? 3 : 3.5;
-  doc.setFontSize(isCompact ? 6.5 : 7.2);
-  doc.setTextColor(80, 95, 90);
-  const cityStr = city ? `, ${city}` : '';
-  const postStr = postalCode ? ` ${postalCode}` : '';
-  const phoneStr = phone ? ` · Telp/WA: ${phone}` : '';
-  const emailStr = email ? ` · Email: ${email}` : '';
-  doc.text(`${address}${cityStr}${postStr}${phoneStr}${emailStr}`, textCenter, y, { align: 'center' });
-
-  // 6. Double Rule Line Divider (Emerald + Subtle Gold Accent)
-  y += isCompact ? 2.6 : 3.2;
-  doc.setDrawColor(...TEAL);
-  doc.setLineWidth(isCompact ? 0.85 : 1.1);
-  doc.line(12, y, pageWidth - 12, y);
-
-  y += isCompact ? 0.85 : 1.1;
-  doc.setDrawColor(...GOLD);
-  doc.setLineWidth(0.4);
-  doc.line(12, y, pageWidth - 12, y);
-
-  return y + (isCompact ? 6.4 : 7.8);
+  return bandBottomY + (isCompact ? 4.2 : 6.0);
 }
 
 function addDocHeader(

@@ -33,7 +33,19 @@ import {
   createDefaultPeriodDefinitions,
   toClock,
 } from '../domain/time';
-import { getDefaultMadrasahLogo, processLogoUpload } from '../utils/madrasahLogo';
+import {
+  getDefaultMadrasahLogo,
+  preloadOfficialKopAssets,
+  processKopBannerUpload,
+  processLogoUpload,
+  subscribeOfficialKopAssets,
+} from '../utils/madrasahLogo';
+import {
+  DEFAULT_MADRASAH_IDENTITY,
+  OFFICIAL_KOP_ASSET_PATH,
+  type KopRenderMode,
+} from '../domain/kopIdentity';
+import { OfficialKopSuratPreview } from './OfficialKopSuratPreview';
 import {
   DEFAULT_NUMBERING_PATTERN,
   normalizeDocumentNumberingConfig,
@@ -214,23 +226,41 @@ export function SettingsScreen({
 
   // Madrasah Profile & Document Integration
   const [ministry, setMinistry] = useState(
-    state.settings.ministry ?? 'KEMENTERIAN AGAMA REPUBLIK INDONESIA',
+    state.settings.ministry ?? DEFAULT_MADRASAH_IDENTITY.ministry,
   );
   const [regionalOffice, setRegionalOffice] = useState(
-    state.settings.regionalOffice ?? 'KANTOR KEMENTERIAN AGAMA KABUPATEN MALANG',
+    state.settings.regionalOffice ?? DEFAULT_MADRASAH_IDENTITY.regionalOffice,
+  );
+  const [legalDecree, setLegalDecree] = useState(
+    state.settings.legalDecree ?? DEFAULT_MADRASAH_IDENTITY.legalDecree,
+  );
+  const [accreditation, setAccreditation] = useState(
+    state.settings.accreditation ?? DEFAULT_MADRASAH_IDENTITY.accreditation,
   );
   const [address, setAddress] = useState(
-    state.settings.address ?? 'Jl. Raya Cendekia No. 45, Sumberpucung',
+    state.settings.address ?? DEFAULT_MADRASAH_IDENTITY.address,
   );
-  const [city, setCity] = useState(state.settings.city ?? 'Kabupaten Malang');
-  const [postalCode, setPostalCode] = useState(state.settings.postalCode ?? '65165');
-  const [npsn, setNpsn] = useState(state.settings.npsn ?? '20580001');
-  const [nsm, setNsm] = useState(state.settings.nsm ?? '121235070001');
-  const [phone, setPhone] = useState(state.settings.phone ?? '(0341) 395882 / 0812-3456-7890');
-  const [email, setEmail] = useState(state.settings.email ?? 'mts.cendekia@kemenag.go.id');
-  const [website, setWebsite] = useState(state.settings.website ?? 'www.mtscendekia.sch.id');
+  const [city, setCity] = useState(state.settings.city ?? DEFAULT_MADRASAH_IDENTITY.city);
+  const [postalCode, setPostalCode] = useState(
+    state.settings.postalCode ?? DEFAULT_MADRASAH_IDENTITY.postalCode,
+  );
+  const [npsn, setNpsn] = useState(state.settings.npsn ?? DEFAULT_MADRASAH_IDENTITY.npsn);
+  const [nsm, setNsm] = useState(state.settings.nsm ?? DEFAULT_MADRASAH_IDENTITY.nsm);
+  const [phone, setPhone] = useState(state.settings.phone ?? DEFAULT_MADRASAH_IDENTITY.phone);
+  const [email, setEmail] = useState(state.settings.email ?? DEFAULT_MADRASAH_IDENTITY.email);
+  const [website, setWebsite] = useState(
+    state.settings.website ?? DEFAULT_MADRASAH_IDENTITY.website,
+  );
   const [logoUrl, setLogoUrl] = useState<string>(state.settings.logoUrl ?? '');
   const [logoError, setLogoError] = useState<string | null>(null);
+  const [kopMode, setKopMode] = useState<KopRenderMode>(
+    state.settings.kopMode ?? DEFAULT_MADRASAH_IDENTITY.kopMode,
+  );
+  const [kopImageUrl, setKopImageUrl] = useState<string>(
+    state.settings.kopImageUrl ?? DEFAULT_MADRASAH_IDENTITY.kopImageUrl,
+  );
+  const [kopBannerError, setKopBannerError] = useState<string | null>(null);
+  const [, setKopAssetTick] = useState(0);
 
   // Official Signatories
   const [headmasterName, setHeadmasterName] = useState(
@@ -277,20 +307,25 @@ export function SettingsScreen({
     setActiveDays(nextSettings.activeDays);
     setGeminiEnabled(nextSettings.geminiEnabled);
     setPreviewDay(nextSettings.activeDays[0] || 'Senin');
-    setMinistry(nextSettings.ministry ?? 'KEMENTERIAN AGAMA REPUBLIK INDONESIA');
+    setMinistry(nextSettings.ministry ?? DEFAULT_MADRASAH_IDENTITY.ministry);
     setRegionalOffice(
-      nextSettings.regionalOffice ?? 'KANTOR KEMENTERIAN AGAMA KABUPATEN MALANG',
+      nextSettings.regionalOffice ?? DEFAULT_MADRASAH_IDENTITY.regionalOffice,
     );
-    setAddress(nextSettings.address ?? 'Jl. Raya Cendekia No. 45, Sumberpucung');
-    setCity(nextSettings.city ?? 'Kabupaten Malang');
-    setPostalCode(nextSettings.postalCode ?? '65165');
-    setNpsn(nextSettings.npsn ?? '20580001');
-    setNsm(nextSettings.nsm ?? '121235070001');
-    setPhone(nextSettings.phone ?? '(0341) 395882 / 0812-3456-7890');
-    setEmail(nextSettings.email ?? 'mts.cendekia@kemenag.go.id');
-    setWebsite(nextSettings.website ?? 'www.mtscendekia.sch.id');
+    setLegalDecree(nextSettings.legalDecree ?? DEFAULT_MADRASAH_IDENTITY.legalDecree);
+    setAccreditation(nextSettings.accreditation ?? DEFAULT_MADRASAH_IDENTITY.accreditation);
+    setAddress(nextSettings.address ?? DEFAULT_MADRASAH_IDENTITY.address);
+    setCity(nextSettings.city ?? DEFAULT_MADRASAH_IDENTITY.city);
+    setPostalCode(nextSettings.postalCode ?? DEFAULT_MADRASAH_IDENTITY.postalCode);
+    setNpsn(nextSettings.npsn ?? DEFAULT_MADRASAH_IDENTITY.npsn);
+    setNsm(nextSettings.nsm ?? DEFAULT_MADRASAH_IDENTITY.nsm);
+    setPhone(nextSettings.phone ?? DEFAULT_MADRASAH_IDENTITY.phone);
+    setEmail(nextSettings.email ?? DEFAULT_MADRASAH_IDENTITY.email);
+    setWebsite(nextSettings.website ?? DEFAULT_MADRASAH_IDENTITY.website);
     setLogoUrl(nextSettings.logoUrl ?? '');
     setLogoError(null);
+    setKopMode(nextSettings.kopMode ?? DEFAULT_MADRASAH_IDENTITY.kopMode);
+    setKopImageUrl(nextSettings.kopImageUrl ?? DEFAULT_MADRASAH_IDENTITY.kopImageUrl);
+    setKopBannerError(null);
     setHeadmasterName(nextSettings.headmasterName ?? 'H. Ahmad Fauzi, S.Ag., M.Pd.I.');
     setHeadmasterNip(nextSettings.headmasterNip ?? '19750812 200212 1 003');
     setHeadmasterTitle(nextSettings.headmasterTitle ?? 'Kepala Madrasah');
@@ -311,6 +346,13 @@ export function SettingsScreen({
   useEffect(() => {
     syncFromSettings(state.settings);
   }, [state.settings]);
+
+  useEffect(() => {
+    void preloadOfficialKopAssets();
+    return subscribeOfficialKopAssets(() => {
+      setKopAssetTick((n) => n + 1);
+    });
+  }, []);
 
   // Observe luxury header visibility so Floating Save Bar appears only when header is scrolled out
   useEffect(() => {
@@ -716,7 +758,49 @@ export function SettingsScreen({
   const handleResetLogo = () => {
     setLogoUrl('');
     setLogoError(null);
-    onNotify('Logo dikembalikan ke lambang standar Kemenag.', 'info');
+    onNotify('Logo dikembalikan ke lambang resmi MTs Daruttafsir Al-Husaini.', 'info');
+  };
+
+  const handleKopBannerUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      setKopBannerError(null);
+      const dataUrl = await processKopBannerUpload(file);
+      setKopImageUrl(dataUrl);
+      setKopMode('image');
+      onNotify('Gambar Kop Surat penuh dimuat. Klik Simpan Pengaturan untuk menerapkan.', 'success');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gagal memproses berkas gambar kop surat.';
+      setKopBannerError(msg);
+      onNotify(msg, 'error');
+    }
+  };
+
+  const handleResetKopBanner = () => {
+    setKopImageUrl(OFFICIAL_KOP_ASSET_PATH);
+    setKopBannerError(null);
+    onNotify('Gambar kop surat dikembalikan ke Kop Resmi MTs Daruttafsir Al-Husaini.', 'info');
+  };
+
+  const handleApplyOfficialTemplate = () => {
+    setSchoolName(DEFAULT_MADRASAH_IDENTITY.schoolName);
+    setMinistry(DEFAULT_MADRASAH_IDENTITY.ministry);
+    setRegionalOffice(DEFAULT_MADRASAH_IDENTITY.regionalOffice);
+    setLegalDecree(DEFAULT_MADRASAH_IDENTITY.legalDecree);
+    setAccreditation(DEFAULT_MADRASAH_IDENTITY.accreditation);
+    setNsm(DEFAULT_MADRASAH_IDENTITY.nsm);
+    setNpsn(DEFAULT_MADRASAH_IDENTITY.npsn);
+    setAddress(DEFAULT_MADRASAH_IDENTITY.address);
+    setCity(DEFAULT_MADRASAH_IDENTITY.city);
+    setPostalCode(DEFAULT_MADRASAH_IDENTITY.postalCode);
+    setPhone(DEFAULT_MADRASAH_IDENTITY.phone);
+    setEmail(DEFAULT_MADRASAH_IDENTITY.email);
+    setWebsite(DEFAULT_MADRASAH_IDENTITY.website);
+    setLogoUrl('');
+    setKopMode(DEFAULT_MADRASAH_IDENTITY.kopMode);
+    setKopImageUrl(DEFAULT_MADRASAH_IDENTITY.kopImageUrl);
+    onNotify('Template identitas & Kop Resmi MTs Daruttafsir Al-Husaini diterapkan. Klik Simpan untuk mengunci.', 'success');
   };
 
   const handleSave = () => {
@@ -724,18 +808,22 @@ export function SettingsScreen({
     const safeMinVal = Math.max(20, Math.min(90, Number(periodMinutes) || 40));
     setPeriodMinutes(String(safeMinVal));
     onSettingsChange({
-      schoolName: schoolName.trim() || 'MTs Cendekia Nusantara',
-      ministry: ministry.trim() || 'KEMENTERIAN AGAMA REPUBLIK INDONESIA',
-      regionalOffice: regionalOffice.trim() || 'KANTOR KEMENTERIAN AGAMA KABUPATEN MALANG',
-      address: address.trim() || 'Jl. Raya Cendekia No. 45, Sumberpucung',
-      city: city.trim() || 'Kabupaten Malang',
-      postalCode: postalCode.trim() || '65165',
-      npsn: npsn.trim() || '20580001',
-      nsm: nsm.trim() || '121235070001',
-      phone: phone.trim() || '(0341) 395882 / 0812-3456-7890',
-      email: email.trim() || 'mts.cendekia@kemenag.go.id',
-      website: website.trim() || 'www.mtscendekia.sch.id',
+      schoolName: schoolName.trim() || DEFAULT_MADRASAH_IDENTITY.schoolName,
+      ministry: ministry.trim(),
+      regionalOffice: regionalOffice.trim(),
+      legalDecree: legalDecree.trim(),
+      accreditation: accreditation.trim(),
+      address: address.trim() || DEFAULT_MADRASAH_IDENTITY.address,
+      city: city.trim() || DEFAULT_MADRASAH_IDENTITY.city,
+      postalCode: postalCode.trim(),
+      npsn: npsn.trim(),
+      nsm: nsm.trim(),
+      phone: phone.trim(),
+      email: email.trim(),
+      website: website.trim(),
       logoUrl: logoUrl.trim() || undefined,
+      kopMode,
+      kopImageUrl: kopImageUrl.trim() || OFFICIAL_KOP_ASSET_PATH,
       headmasterName: headmasterName.trim() || 'H. Ahmad Fauzi, S.Ag., M.Pd.I.',
       headmasterNip: headmasterNip.trim() || '19750812 200212 1 003',
       headmasterTitle: headmasterTitle.trim() || 'Kepala Madrasah',
@@ -752,7 +840,7 @@ export function SettingsScreen({
       documentNumbering: normalizeDocumentNumberingConfig(
         {
           enabled: true,
-          madrasahCode: numberingMadrasahCode.trim() || 'MTs',
+          madrasahCode: numberingMadrasahCode.trim() || 'MTs.DA',
           formatPattern: numberingPattern.trim() || DEFAULT_NUMBERING_PATTERN,
           seqPadding: numberingPadding,
           resetMode: numberingResetMode,
@@ -787,18 +875,22 @@ export function SettingsScreen({
     if (geminiEnabled !== s.geminiEnabled) return true;
     if (JSON.stringify(activeDays) !== JSON.stringify(s.activeDays)) return true;
     if (JSON.stringify(definitions) !== JSON.stringify(savedDefs)) return true;
-    if (ministry !== (s.ministry ?? 'KEMENTERIAN AGAMA REPUBLIK INDONESIA')) return true;
-    if (regionalOffice !== (s.regionalOffice ?? 'KANTOR KEMENTERIAN AGAMA KABUPATEN MALANG'))
+    if (ministry !== (s.ministry ?? DEFAULT_MADRASAH_IDENTITY.ministry)) return true;
+    if (regionalOffice !== (s.regionalOffice ?? DEFAULT_MADRASAH_IDENTITY.regionalOffice))
       return true;
-    if (address !== (s.address ?? 'Jl. Raya Cendekia No. 45, Sumberpucung')) return true;
-    if (city !== (s.city ?? 'Kabupaten Malang')) return true;
-    if (postalCode !== (s.postalCode ?? '65165')) return true;
-    if (npsn !== (s.npsn ?? '20580001')) return true;
-    if (nsm !== (s.nsm ?? '121235070001')) return true;
-    if (phone !== (s.phone ?? '(0341) 395882 / 0812-3456-7890')) return true;
-    if (email !== (s.email ?? 'mts.cendekia@kemenag.go.id')) return true;
-    if (website !== (s.website ?? 'www.mtscendekia.sch.id')) return true;
+    if (legalDecree !== (s.legalDecree ?? DEFAULT_MADRASAH_IDENTITY.legalDecree)) return true;
+    if (accreditation !== (s.accreditation ?? DEFAULT_MADRASAH_IDENTITY.accreditation)) return true;
+    if (address !== (s.address ?? DEFAULT_MADRASAH_IDENTITY.address)) return true;
+    if (city !== (s.city ?? DEFAULT_MADRASAH_IDENTITY.city)) return true;
+    if (postalCode !== (s.postalCode ?? DEFAULT_MADRASAH_IDENTITY.postalCode)) return true;
+    if (npsn !== (s.npsn ?? DEFAULT_MADRASAH_IDENTITY.npsn)) return true;
+    if (nsm !== (s.nsm ?? DEFAULT_MADRASAH_IDENTITY.nsm)) return true;
+    if (phone !== (s.phone ?? DEFAULT_MADRASAH_IDENTITY.phone)) return true;
+    if (email !== (s.email ?? DEFAULT_MADRASAH_IDENTITY.email)) return true;
+    if (website !== (s.website ?? DEFAULT_MADRASAH_IDENTITY.website)) return true;
     if (logoUrl !== (s.logoUrl ?? '')) return true;
+    if (kopMode !== (s.kopMode ?? DEFAULT_MADRASAH_IDENTITY.kopMode)) return true;
+    if (kopImageUrl !== (s.kopImageUrl ?? DEFAULT_MADRASAH_IDENTITY.kopImageUrl)) return true;
     if (headmasterName !== (s.headmasterName ?? 'H. Ahmad Fauzi, S.Ag., M.Pd.I.')) return true;
     if (headmasterNip !== (s.headmasterNip ?? '19750812 200212 1 003')) return true;
     if (headmasterTitle !== (s.headmasterTitle ?? 'Kepala Madrasah')) return true;
@@ -822,6 +914,8 @@ export function SettingsScreen({
     definitions,
     ministry,
     regionalOffice,
+    legalDecree,
+    accreditation,
     address,
     city,
     postalCode,
@@ -831,6 +925,8 @@ export function SettingsScreen({
     email,
     website,
     logoUrl,
+    kopMode,
+    kopImageUrl,
     headmasterName,
     headmasterNip,
     headmasterTitle,
@@ -1870,7 +1966,7 @@ export function SettingsScreen({
       {activeTab === 'general' && (
         <div className="s5-settings-layout s5-settings-tab-body">
           <div className="s5-settings-main">
-            {/* 1. Kementerian & Satuan Pendidikan */}
+            {/* 1. Identitas & Legalitas Madrasah */}
             <section className="s5-lux-panel">
               <div className="s5-calm-panel-head">
                 <div className="s5-panel-title-group">
@@ -1878,40 +1974,60 @@ export function SettingsScreen({
                     <Building2 size={16} />
                   </div>
                   <div>
-                    <h3 className="s5-calm-panel-title">Kementerian &amp; Satuan Pendidikan</h3>
-                    <p className="s5-calm-panel-desc">Ditampilkan pada Kop Surat dokumen cetak PDF.</p>
+                    <h3 className="s5-calm-panel-title">Identitas &amp; Legalitas Kop Surat</h3>
+                    <p className="s5-calm-panel-desc">Terintegrasi otomatis ke seluruh dokumen PDF, Jadwal, Presensi, dan Persuratan.</p>
                   </div>
                 </div>
+                <button
+                  type="button"
+                  className="button button-quiet"
+                  onClick={handleApplyOfficialTemplate}
+                  title="Kembalikan seluruh baris identitas ke Kop Resmi MTs Daruttafsir Al-Husaini"
+                  style={{ fontSize: '12px', gap: '5px' }}
+                >
+                  <RotateCcw size={13} />
+                  <span>Reset Kop Resmi</span>
+                </button>
               </div>
 
               <div className="s5-settings-form-grid">
-                <div className="s5-form-field s5-span-2">
-                  <label htmlFor="id-ministry">Kementerian yang Menaungi</label>
-                  <input
-                    id="id-ministry"
-                    value={ministry}
-                    onChange={(e) => setMinistry(e.target.value)}
-                    placeholder="KEMENTERIAN AGAMA REPUBLIK INDONESIA"
-                  />
-                </div>
-
-                <div className="s5-form-field s5-span-2">
-                  <label htmlFor="id-regional">Kantor Wilayah / Kankemenag Daerah</label>
-                  <input
-                    id="id-regional"
-                    value={regionalOffice}
-                    onChange={(e) => setRegionalOffice(e.target.value)}
-                    placeholder="KANTOR KEMENTERIAN AGAMA KABUPATEN MALANG"
-                  />
-                </div>
-
                 <div className="s5-form-field s5-span-2">
                   <label htmlFor="id-school">Nama Satuan Pendidikan / Madrasah</label>
                   <input
                     id="id-school"
                     value={schoolName}
                     onChange={(e) => setSchoolName(e.target.value)}
-                    placeholder="MTs Cendekia Nusantara"
+                    placeholder={DEFAULT_MADRASAH_IDENTITY.schoolName}
+                  />
+                </div>
+
+                <div className="s5-form-field s5-span-2">
+                  <label htmlFor="id-ministry">Yayasan / Lembaga yang Menaungi</label>
+                  <input
+                    id="id-ministry"
+                    value={ministry}
+                    onChange={(e) => setMinistry(e.target.value)}
+                    placeholder={DEFAULT_MADRASAH_IDENTITY.ministry}
+                  />
+                </div>
+
+                <div className="s5-form-field s5-span-2">
+                  <label htmlFor="id-regional">Akte Notaris / SK Pendirian</label>
+                  <input
+                    id="id-regional"
+                    value={regionalOffice}
+                    onChange={(e) => setRegionalOffice(e.target.value)}
+                    placeholder={DEFAULT_MADRASAH_IDENTITY.regionalOffice}
+                  />
+                </div>
+
+                <div className="s5-form-field s5-span-2">
+                  <label htmlFor="id-decree">Keputusan Menkumham / SK Legalitas</label>
+                  <input
+                    id="id-decree"
+                    value={legalDecree}
+                    onChange={(e) => setLegalDecree(e.target.value)}
+                    placeholder={DEFAULT_MADRASAH_IDENTITY.legalDecree}
                   />
                 </div>
 
@@ -1922,7 +2038,7 @@ export function SettingsScreen({
                     className="s5-tnum"
                     value={nsm}
                     onChange={(e) => setNsm(e.target.value)}
-                    placeholder="121235070001"
+                    placeholder={DEFAULT_MADRASAH_IDENTITY.nsm}
                   />
                 </div>
 
@@ -1933,7 +2049,17 @@ export function SettingsScreen({
                     className="s5-tnum"
                     value={npsn}
                     onChange={(e) => setNpsn(e.target.value)}
-                    placeholder="20580001"
+                    placeholder={DEFAULT_MADRASAH_IDENTITY.npsn}
+                  />
+                </div>
+
+                <div className="s5-form-field s5-span-2">
+                  <label htmlFor="id-accreditation">Status Akreditasi</label>
+                  <input
+                    id="id-accreditation"
+                    value={accreditation}
+                    onChange={(e) => setAccreditation(e.target.value)}
+                    placeholder={DEFAULT_MADRASAH_IDENTITY.accreditation}
                   />
                 </div>
 
@@ -1979,7 +2105,7 @@ export function SettingsScreen({
                   </div>
                   <div>
                     <h3 className="s5-calm-panel-title">Domisili &amp; Kontak</h3>
-                    <p className="s5-calm-panel-desc">Digunakan untuk alamat kop surat dan titimangsa kota pengesahan.</p>
+                    <p className="s5-calm-panel-desc">Ditampilkan pada pita alamat kop surat dan titimangsa kota pengesahan.</p>
                   </div>
                 </div>
               </div>
@@ -1991,60 +2117,60 @@ export function SettingsScreen({
                     id="id-address"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Jl. Raya Cendekia No. 45, Sumberpucung"
+                    placeholder={DEFAULT_MADRASAH_IDENTITY.address}
                   />
                 </div>
 
                 <div className="s5-form-field">
-                  <label htmlFor="id-city">Kota / Kabupaten</label>
+                  <label htmlFor="id-city">Kota / Kabupaten (Titimangsa)</label>
                   <input
                     id="id-city"
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
-                    placeholder="Kabupaten Malang"
+                    placeholder={DEFAULT_MADRASAH_IDENTITY.city}
                   />
                 </div>
 
                 <div className="s5-form-field">
-                  <label htmlFor="id-postal">Kode Pos</label>
+                  <label htmlFor="id-postal">Kode Pos (Opsional)</label>
                   <input
                     id="id-postal"
                     className="s5-tnum"
                     value={postalCode}
                     onChange={(e) => setPostalCode(e.target.value)}
-                    placeholder="65165"
+                    placeholder="16518"
                   />
                 </div>
 
                 <div className="s5-form-field">
-                  <label htmlFor="id-phone">Telepon / WhatsApp</label>
+                  <label htmlFor="id-phone">Telepon</label>
                   <input
                     id="id-phone"
                     className="s5-tnum"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="(0341) 395882 / 0812-3456-7890"
+                    placeholder={DEFAULT_MADRASAH_IDENTITY.phone}
                   />
                 </div>
 
                 <div className="s5-form-field">
-                  <label htmlFor="id-email">Email Madrasah</label>
+                  <label htmlFor="id-email">Email Madrasah (Opsional)</label>
                   <input
                     id="id-email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="mts.cendekia@kemenag.go.id"
+                    placeholder="mts.daruttafsir@sch.id"
                   />
                 </div>
 
                 <div className="s5-form-field s5-span-2">
-                  <label htmlFor="id-website">Website / Portal</label>
+                  <label htmlFor="id-website">Website / Portal (Opsional)</label>
                   <input
                     id="id-website"
                     value={website}
                     onChange={(e) => setWebsite(e.target.value)}
-                    placeholder="www.mtscendekia.sch.id"
+                    placeholder="www.mtsdaruttafsir.sch.id"
                   />
                 </div>
               </div>
@@ -2210,48 +2336,118 @@ export function SettingsScreen({
           {/* Right Sticky Preview Column */}
           <aside className="s5-settings-aside is-sticky">
             <section className="s5-lux-panel">
-              <h3 className="s5-calm-panel-title" style={{ marginBottom: '12px' }}>
-                Logo Madrasah
+              <h3 className="s5-calm-panel-title" style={{ marginBottom: '10px' }}>
+                Logo &amp; Mode Kop Surat
               </h3>
 
-              <div className="s5-emblem-row">
-                <div className="s5-emblem-ring">
-                  <img src={logoUrl || getDefaultMadrasahLogo()} alt="Logo Madrasah" />
-                </div>
-                <div className="s5-emblem-copy">
-                  <strong>{logoUrl ? 'Logo Kustom Aktif' : 'Lambang Standar Kemenag'}</strong>
-                  <span>PNG / JPEG rasio 1:1 untuk Kop PDF.</span>
-                </div>
-              </div>
-
-              <div className="s5-emblem-actions">
-                <label
-                  className="button button-secondary"
-                  style={{ flex: 1, justifyContent: 'center', cursor: 'pointer' }}
+              <div className="s5-inline-segment" style={{ width: '100%', marginBottom: '12px' }}>
+                <button
+                  type="button"
+                  className={`s5-seg-btn ${kopMode === 'structured' ? 'is-active' : ''}`}
+                  onClick={() => setKopMode('structured')}
+                  style={{ flex: 1 }}
                 >
-                  <Upload size={14} />
-                  <span>Unggah Logo</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoUpload}
-                    style={{ display: 'none' }}
-                  />
-                </label>
-
-                {logoUrl && (
-                  <button
-                    type="button"
-                    className="button button-quiet"
-                    onClick={handleResetLogo}
-                  >
-                    <RotateCcw size={14} />
-                    <span>Reset</span>
-                  </button>
-                )}
+                  Kop Terstruktur
+                </button>
+                <button
+                  type="button"
+                  className={`s5-seg-btn ${kopMode === 'image' ? 'is-active' : ''}`}
+                  onClick={() => setKopMode('image')}
+                  style={{ flex: 1 }}
+                >
+                  Gambar Penuh
+                </button>
               </div>
 
-              {logoError && <div className="s5-emblem-error">{logoError}</div>}
+              {kopMode === 'structured' ? (
+                <>
+                  <div className="s5-emblem-row">
+                    <div className="s5-emblem-ring">
+                      <img src={logoUrl || getDefaultMadrasahLogo()} alt="Logo Madrasah" />
+                    </div>
+                    <div className="s5-emblem-copy">
+                      <strong>
+                        {logoUrl ? 'Logo Kustom Aktif' : 'Lambang Resmi MTs Daruttafsir Al-Husaini'}
+                      </strong>
+                      <span>Teks kop dapat diedit langsung; logo otomatis tampil di semua PDF.</span>
+                    </div>
+                  </div>
+
+                  <div className="s5-emblem-actions">
+                    <label
+                      className="button button-secondary"
+                      style={{ flex: 1, justifyContent: 'center', cursor: 'pointer' }}
+                    >
+                      <Upload size={14} />
+                      <span>Ganti Logo</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoUpload}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+
+                    {logoUrl && (
+                      <button
+                        type="button"
+                        className="button button-quiet"
+                        onClick={handleResetLogo}
+                      >
+                        <RotateCcw size={14} />
+                        <span>Reset</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {logoError && <div className="s5-emblem-error">{logoError}</div>}
+                </>
+              ) : (
+                <>
+                  <div
+                    style={{
+                      border: '0.75px solid #D5E0DA',
+                      borderRadius: '10px',
+                      padding: '8px',
+                      background: '#FFFFFF',
+                      marginBottom: '10px',
+                    }}
+                  >
+                    <img
+                      src={kopImageUrl || OFFICIAL_KOP_ASSET_PATH}
+                      alt="Banner Kop Surat Resmi"
+                      style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '4px' }}
+                    />
+                  </div>
+                  <div className="s5-emblem-actions">
+                    <label
+                      className="button button-secondary"
+                      style={{ flex: 1, justifyContent: 'center', cursor: 'pointer' }}
+                    >
+                      <Upload size={14} />
+                      <span>Unggah Gambar Kop</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleKopBannerUpload}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+
+                    {kopImageUrl !== OFFICIAL_KOP_ASSET_PATH && (
+                      <button
+                        type="button"
+                        className="button button-quiet"
+                        onClick={handleResetKopBanner}
+                      >
+                        <RotateCcw size={14} />
+                        <span>Bawaan</span>
+                      </button>
+                    )}
+                  </div>
+                  {kopBannerError && <div className="s5-emblem-error">{kopBannerError}</div>}
+                </>
+              )}
             </section>
 
             <section className="s5-lux-panel">
@@ -2262,67 +2458,28 @@ export function SettingsScreen({
 
               <div className="s5-pdf-paper-stage">
                 <div className="s5-pdf-paper-sheet">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <img
-                      src={logoUrl || getDefaultMadrasahLogo()}
-                      alt="Logo Kop"
-                      style={{ width: '38px', height: '38px', objectFit: 'contain', flexShrink: 0 }}
-                    />
-                    <div style={{ flex: 1, textAlign: 'center', minWidth: 0 }}>
-                      <div
-                        style={{
-                          fontSize: '8.5px',
-                          fontWeight: 700,
-                          color: '#0b3435',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.04em',
-                          lineHeight: 1.25,
-                        }}
-                      >
-                        {ministry || 'KEMENTERIAN AGAMA REPUBLIK INDONESIA'}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: '8px',
-                          fontWeight: 700,
-                          color: '#16483f',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.03em',
-                          lineHeight: 1.25,
-                          marginTop: '1px',
-                        }}
-                      >
-                        {regionalOffice || 'KANTOR KEMENTERIAN AGAMA KABUPATEN MALANG'}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: '10.5px',
-                          fontWeight: 700,
-                          color: '#0b3435',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.02em',
-                          lineHeight: 1.25,
-                          marginTop: '2px',
-                        }}
-                      >
-                        {schoolName || 'MTS CENDEKIA NUSANTARA'}
-                      </div>
-                      <div
-                        className="s5-tnum"
-                        style={{ fontSize: '7.5px', fontWeight: 600, color: '#435e58', marginTop: '2px' }}
-                      >
-                        NSM: {nsm || '-'} · NPSN: {npsn || '-'}
-                      </div>
-                      <div style={{ fontSize: '7px', color: '#526861', marginTop: '1px', lineHeight: 1.25 }}>
-                        {address || '-'}, {city || '-'} {postalCode || ''}
-                      </div>
-                      <div style={{ fontSize: '7px', color: '#526861', marginTop: '1px' }}>
-                        Telp: {phone || '-'} · Email: {email || '-'}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="s5-pdf-kop-line" />
+                  <OfficialKopSuratPreview
+                    settings={state.settings}
+                    overrides={{
+                      schoolName,
+                      ministry,
+                      regionalOffice,
+                      legalDecree,
+                      accreditation,
+                      nsm,
+                      npsn,
+                      address,
+                      city,
+                      postalCode,
+                      phone,
+                      email,
+                      website,
+                      logoUrl: logoUrl || undefined,
+                      kopMode,
+                      kopImageUrl,
+                    }}
+                    variant="compact"
+                  />
 
                   <div style={{ textAlign: 'center', padding: '4px 0 6px' }}>
                     <div

@@ -3,10 +3,11 @@ import { buildTimeSlots, createDefaultPeriodDefinitions } from './time';
 import { generateSchedule } from './generator';
 import { buildScheduleFingerprint } from './validator';
 import { migrateLegacyRoleTitlesToAssignments } from './teacherAssignments';
+import { DEFAULT_MADRASAH_IDENTITY } from './kopIdentity';
 
 export function createDemoState(): AppState {
   const settings: AppState['settings'] = {
-    schoolName: 'MTs Cendekia Nusantara',
+    schoolName: DEFAULT_MADRASAH_IDENTITY.schoolName,
     academicYear: '2026/2027',
     semester: 'Ganjil' as const,
     periodMinutes: 40,
@@ -18,17 +19,21 @@ export function createDemoState(): AppState {
     searchLimit: 65000,
     geminiEnabled: false,
 
-    // Identitas Lengkap Madrasah & Dokumen Resmi
-    ministry: 'KEMENTERIAN AGAMA REPUBLIK INDONESIA',
-    regionalOffice: 'KANTOR KEMENTERIAN AGAMA KABUPATEN MALANG',
-    address: 'Jl. Raya Cendekia No. 45, Sumberpucung',
-    city: 'Kabupaten Malang',
-    postalCode: '65165',
-    npsn: '20580001',
-    nsm: '121235070001',
-    phone: '0812-3456-7890 / (0341) 395123',
-    email: 'mts.cendekia@kemenag.go.id',
-    website: 'www.mtscendekia.sch.id',
+    // Identitas Lengkap Madrasah & Dokumen Resmi (MTs Daruttafsir Al-Husaini)
+    ministry: DEFAULT_MADRASAH_IDENTITY.ministry,
+    regionalOffice: DEFAULT_MADRASAH_IDENTITY.regionalOffice,
+    legalDecree: DEFAULT_MADRASAH_IDENTITY.legalDecree,
+    accreditation: DEFAULT_MADRASAH_IDENTITY.accreditation,
+    address: DEFAULT_MADRASAH_IDENTITY.address,
+    city: DEFAULT_MADRASAH_IDENTITY.city,
+    postalCode: DEFAULT_MADRASAH_IDENTITY.postalCode,
+    npsn: DEFAULT_MADRASAH_IDENTITY.npsn,
+    nsm: DEFAULT_MADRASAH_IDENTITY.nsm,
+    phone: DEFAULT_MADRASAH_IDENTITY.phone,
+    email: DEFAULT_MADRASAH_IDENTITY.email,
+    website: DEFAULT_MADRASAH_IDENTITY.website,
+    kopMode: DEFAULT_MADRASAH_IDENTITY.kopMode,
+    kopImageUrl: DEFAULT_MADRASAH_IDENTITY.kopImageUrl,
     headmasterName: 'Drs. H. M. Zainuddin, M.Pd.I',
     headmasterNip: '197405101999031003',
     headmasterTitle: 'Kepala Madrasah',

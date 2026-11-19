@@ -95,12 +95,18 @@ export function normalizeDocumentNumberingConfig(
     }
   }
 
+  const startingSequence =
+    typeof raw?.startingSequence === 'number' && Number.isFinite(raw.startingSequence)
+      ? Math.max(1, Math.min(999999, Math.trunc(raw.startingSequence)))
+      : 1;
+
   return {
     enabled: raw?.enabled ?? true,
     madrasahCode,
     formatPattern,
     seqPadding,
     resetMode,
+    startingSequence,
     kindCodes,
   };
 }
@@ -194,7 +200,7 @@ export function computeNextSequentialNumber(params: {
     inspectRecord(ver.documentNumber, ver.documentDate, ver.documentId);
   }
 
-  let candidateSeq = maxSeq + 1;
+  let candidateSeq = Math.max(maxSeq + 1, config.startingSequence ?? 1);
   let suggestedNumber = '';
 
   for (let guard = 0; guard < 500; guard += 1) {

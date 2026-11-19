@@ -145,8 +145,10 @@ export interface AppSettings {
   geminiEnabled: boolean;
 
   // Identitas Madrasah Lengkap & Terintegrasi Dokumen Resmi:
-  ministry?: string; // Kementerian yang menaungi (e.g. "KEMENTERIAN AGAMA REPUBLIK INDONESIA")
-  regionalOffice?: string; // Kantor Wilayah / Kankemenag Kab/Kota
+  ministry?: string; // Yayasan / Kementerian yang menaungi
+  regionalOffice?: string; // Akte Notaris / Kantor Wilayah
+  legalDecree?: string; // SK Menkumham / SK Legalitas Yayasan
+  accreditation?: string; // Status Akreditasi (e.g. "TERAKREDITASI B")
   address?: string; // Alamat lengkap jalan & nomor
   city?: string; // Kabupaten / Kota
   postalCode?: string; // Kode Pos
@@ -156,6 +158,8 @@ export interface AppSettings {
   email?: string; // Email resmi madrasah
   website?: string; // Situs web resmi madrasah
   logoUrl?: string; // Data URL logo resmi madrasah (PNG base64)
+  kopMode?: 'structured' | 'image'; // Mode kop surat terstruktur vs gambar banner penuh
+  kopImageUrl?: string; // URL atau Data URL gambar kop surat resmi penuh
   headmasterName?: string; // Nama Kepala Madrasah
   headmasterNip?: string; // NIP / NPK Kepala Madrasah
   headmasterTitle?: string; // Jabatan Kepala Madrasah (default: "Kepala Madrasah")

@@ -38,6 +38,7 @@ import type {
   TemplatePreferences,
   TemplatePreviewBlock,
 } from '../../domain/persuratan/templates/types';
+import { OfficialKopSuratPreview } from '../OfficialKopSuratPreview';
 import './TemplateGallery.css';
 
 export interface TemplateGalleryProps {
@@ -339,13 +340,6 @@ export function TemplateGallery({
     );
   };
 
-  const kopSchoolName =
-    state.settings.schoolName?.trim() || '{{NAMA_MADRASAH}}';
-  const kopMinistry =
-    state.settings.ministry?.trim() || '{{KEMENTERIAN_NAUNGAN}}';
-  const kopAddress =
-    state.settings.address?.trim() || '{{ALAMAT_MADRASAH}}';
-
   const favSet = useMemo(() => new Set(prefs.favoriteTemplateIds), [prefs.favoriteTemplateIds]);
 
   const emptyCollectionMessages: Record<TemplateCollection, { title: string; desc: string }> = {
@@ -373,29 +367,30 @@ export function TemplateGallery({
 
   return (
     <section className="s02-page" aria-label="Galeri Template Persuratan">
-      {/* Header */}
+      {/* Header — Clean Quiet Authority */}
       <header className="s02-header">
         <div>
-          <div className="s5-page-kicker">Katalog Template Naskah Dinas</div>
           <h1 className="s5-page-title">Galeri Template Persuratan</h1>
           <p className="s5-page-subtitle">
-            Pilih template terstruktur dari {allTemplates.length} katalog atau kelola salinan khusus madrasah.
+            Pilih dari {allTemplates.length} katalog naskah dinas siap pakai.
           </p>
         </div>
-        <div className="s02-header-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          {onOpenTemplateManager && (
-            <button type="button" className="s02-btn-secondary" onClick={onOpenTemplateManager}>
-              <SlidersHorizontal size={15} aria-hidden="true" />
-              <span>Kelola Template</span>
-            </button>
-          )}
-          {onBackToCenter && (
-            <button type="button" className="s02-back-btn" onClick={onBackToCenter}>
-              <ArrowLeft size={15} aria-hidden="true" />
-              <span>Kembali ke Arsip &amp; Surat</span>
-            </button>
-          )}
-        </div>
+        {(onOpenTemplateManager || onBackToCenter) && (
+          <div className="s02-header-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {onOpenTemplateManager && (
+              <button type="button" className="s02-btn-secondary" onClick={onOpenTemplateManager}>
+                <SlidersHorizontal size={15} aria-hidden="true" />
+                <span>Kelola Template</span>
+              </button>
+            )}
+            {onBackToCenter && (
+              <button type="button" className="s02-back-btn" onClick={onBackToCenter}>
+                <ArrowLeft size={15} aria-hidden="true" />
+                <span>Arsip &amp; Surat</span>
+              </button>
+            )}
+          </div>
+        )}
       </header>
 
       {/* Honest Selected Template Handoff Notice (No Fake Draft Created) */}
@@ -722,9 +717,7 @@ export function TemplateGallery({
                 <div className="s02-paper-sheet" aria-label="Simulasi tata letak halaman dokumen">
                   {previewTemplate.documentHeader.includeKopSurat && (
                     <div className="s02-paper-kop">
-                      <span>{kopMinistry}</span>
-                      <strong>{kopSchoolName}</strong>
-                      <span>{kopAddress}</span>
+                      <OfficialKopSuratPreview settings={state.settings} variant="mini" />
                     </div>
                   )}
                   <div className="s02-paper-doc-title">
@@ -738,13 +731,13 @@ export function TemplateGallery({
               </div>
 
               {previewTemplate.legalNotice && (
-                <div className="s02-legal-note" role="note">
-                  <strong style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', marginBottom: '2px' }}>
+                <details className="s02-specs-disclosure">
+                  <summary style={{ color: '#7a5216', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <Info size={13} aria-hidden="true" />
-                    <span>Verifikasi Tata Naskah &amp; Kewenangan</span>
-                  </strong>
-                  <div>{previewTemplate.legalNotice}</div>
-                </div>
+                    <span>Catatan Tata Naskah &amp; Kewenangan</span>
+                  </summary>
+                  <div className="s02-specs-disclosure-body">{previewTemplate.legalNotice}</div>
+                </details>
               )}
 
               {/* Progressive Disclosure for Auto Sources & Required S03 Inputs */}

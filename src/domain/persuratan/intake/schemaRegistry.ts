@@ -41,7 +41,7 @@ const SYSTEM_SCHEMA_OVERRIDES: Record<string, SchemaPatchBuilder> = {
   'SYS-TPL-01': () => ({
     supportsAttachmentNotice: true,
     attachmentNoticeText:
-      'Lampiran undangan (PDF/JPG/PNG) akan menggunakan penyimpanan Blob IndexedDB khusus yang baru diaktifkan pada tahap lanjutan. Saat ini (Tahap 4), jangan unggah file lampiran base64 ke draft; cantumkan nomor/tanggal surat undangan pada kolom Dasar Surat atau Catatan Khusus.',
+      'Lampirkan undangan atau surat rujukan (PDF, JPG, PNG, WEBP, atau DOCX) langsung melalui area unggah di bawah.',
     controls: [
       {
         key: 'peserta',
@@ -112,7 +112,7 @@ const SYSTEM_SCHEMA_OVERRIDES: Record<string, SchemaPatchBuilder> = {
   'SYS-TPL-02': () => ({
     supportsAttachmentNotice: true,
     attachmentNoticeText:
-      'Lampiran surat undangan dinas (PDF/JPG/PNG) menggunakan IndexedDB Blob Store yang diaktifkan pada tahap lampiran berikutnya; tulis nomor surat rujukan pada form ini.',
+      'Lampirkan surat undangan dinas atau dokumen rujukan (PDF/JPG/PNG/DOCX) langsung di bawah.',
     controls: [
       {
         key: 'peserta',
@@ -308,7 +308,7 @@ const SYSTEM_SCHEMA_OVERRIDES: Record<string, SchemaPatchBuilder> = {
   'SYS-TPL-08': () => ({
     supportsAttachmentNotice: true,
     attachmentNoticeText:
-      'Lampiran dokumen pendukung menggunakan penyimpanan Blob IndexedDB tahap berikutnya; cantumkan daftar lampiran pada isi pokok bila ada.',
+      'Lampirkan dokumen pendukung (PDF/JPG/PNG/DOCX) langsung melalui area unggah lampiran di bawah.',
     controls: [
       {
         key: 'instansi_tujuan',
@@ -747,8 +747,19 @@ export function resolveSystemAutoData(state: AppState): ResolvedSystemAutoData {
     schoolName,
     ministry,
     regionalOffice,
+    legalDecree: (s.legalDecree ?? '').trim(),
+    accreditation: (s.accreditation ?? '').trim(),
+    nsm: (s.nsm ?? '').trim(),
+    npsn: (s.npsn ?? '').trim(),
     address,
     city,
+    postalCode: (s.postalCode ?? '').trim(),
+    phone: (s.phone ?? '').trim(),
+    email: (s.email ?? '').trim(),
+    website: (s.website ?? '').trim(),
+    logoUrl: (s.logoUrl ?? '').trim() || undefined,
+    kopMode: s.kopMode === 'image' ? 'image' : 'structured',
+    kopImageUrl: (s.kopImageUrl ?? '').trim() || undefined,
     academicYear: (s.academicYear ?? '').trim(),
     semester: s.semester,
     signatoryTitle,

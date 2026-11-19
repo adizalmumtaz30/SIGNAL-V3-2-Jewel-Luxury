@@ -494,27 +494,21 @@ export function PersuratanWorkspace({
           )}
         </div>
 
-        <ol className="p5-step-trail s5-tnum" aria-label="Alur pembuatan dokumen">
-          <li className={activeStepIndex > 2 ? 'is-done' : activeStepIndex === 2 ? 'is-current' : ''}>
-            <span>1. Pilih Template</span>
-          </li>
-          <li aria-hidden="true" className="p5-step-sep">/</li>
-          <li className={activeStepIndex > 3 ? 'is-done' : activeStepIndex === 3 ? 'is-current' : ''}>
-            <span>2. Isian Konteks</span>
-          </li>
-          <li aria-hidden="true" className="p5-step-sep">/</li>
-          <li className={activeStepIndex > 4 ? 'is-done' : activeStepIndex === 4 ? 'is-current' : ''}>
-            <span>3. Editor Naskah</span>
-          </li>
-          <li aria-hidden="true" className="p5-step-sep">/</li>
-          <li className={activeStepIndex > 5 ? 'is-done' : activeStepIndex === 5 ? 'is-current' : ''}>
-            <span>4. Pratinjau &amp; Sahkan</span>
-          </li>
-          <li aria-hidden="true" className="p5-step-sep">/</li>
-          <li className={activeStepIndex === 6 ? 'is-current' : ''}>
-            <span>5. Arsip</span>
-          </li>
-        </ol>
+        {(subView === 'intake' || subView === 'studio' || subView === 'preview') && (
+          <ol className="p5-step-trail s5-tnum" aria-label="Alur pembuatan dokumen">
+            <li className={activeStepIndex > 3 ? 'is-done' : activeStepIndex === 3 ? 'is-current' : ''}>
+              <span>1. Data Surat</span>
+            </li>
+            <li aria-hidden="true" className="p5-step-sep">/</li>
+            <li className={activeStepIndex > 4 ? 'is-done' : activeStepIndex === 4 ? 'is-current' : ''}>
+              <span>2. Editor Naskah</span>
+            </li>
+            <li aria-hidden="true" className="p5-step-sep">/</li>
+            <li className={activeStepIndex >= 5 ? 'is-current' : ''}>
+              <span>3. Pratinjau &amp; Sahkan</span>
+            </li>
+          </ol>
+        )}
       </nav>
       )}
 
@@ -523,6 +517,8 @@ export function PersuratanWorkspace({
           state={state}
           storageError={storageError}
           onRetryStorage={onRetryStorage}
+          onPersistState={persistStateUnified}
+          onNotify={onNotify}
           onOpenTemplateGallery={() => requestSubViewChange('templates')}
           onEditIntakeDraft={handleEditExistingIntakeDraft}
           onOpenStudio={handleOpenStudio}

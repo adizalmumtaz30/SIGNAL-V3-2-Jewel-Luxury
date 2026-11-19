@@ -27,6 +27,8 @@ import {
   type WeeklyClassSchedulePdfOptions,
 } from '../utils/pdfExport';
 import { jpToAstronomical } from '../domain/time';
+import { DEFAULT_MADRASAH_IDENTITY, type KopRenderMode } from '../domain/kopIdentity';
+import { OfficialKopSuratPreview } from './OfficialKopSuratPreview';
 
 interface SchedulePdfExportModalProps {
   state: AppState;
@@ -76,29 +78,44 @@ export function SchedulePdfExportModal({
 
   // Editable Document Components (initialized from Madrasah Profile settings)
   const [ministry, setMinistry] = useState<string>(
-    () => state.settings.ministry || 'KEMENTERIAN AGAMA REPUBLIK INDONESIA',
+    () => state.settings.ministry ?? DEFAULT_MADRASAH_IDENTITY.ministry,
   );
   const [regionalOffice, setRegionalOffice] = useState<string>(
-    () => state.settings.regionalOffice || 'KANTOR KEMENTERIAN AGAMA KABUPATEN MALANG',
+    () => state.settings.regionalOffice ?? DEFAULT_MADRASAH_IDENTITY.regionalOffice,
+  );
+  const [legalDecree, setLegalDecree] = useState<string>(
+    () => state.settings.legalDecree ?? DEFAULT_MADRASAH_IDENTITY.legalDecree,
+  );
+  const [accreditation, setAccreditation] = useState<string>(
+    () => state.settings.accreditation ?? DEFAULT_MADRASAH_IDENTITY.accreditation,
   );
   const [schoolName, setSchoolName] = useState<string>(
-    () => state.settings.schoolName || 'MTs Cendekia Nusantara',
+    () => state.settings.schoolName || DEFAULT_MADRASAH_IDENTITY.schoolName,
   );
-  const [nsm, setNsm] = useState<string>(() => state.settings.nsm || '121235070001');
-  const [npsn, setNpsn] = useState<string>(() => state.settings.npsn || '20580001');
+  const [nsm, setNsm] = useState<string>(() => state.settings.nsm ?? DEFAULT_MADRASAH_IDENTITY.nsm);
+  const [npsn, setNpsn] = useState<string>(
+    () => state.settings.npsn ?? DEFAULT_MADRASAH_IDENTITY.npsn,
+  );
   const [address, setAddress] = useState<string>(
-    () => state.settings.address || 'Jl. Raya Cendekia No. 45, Sumberpucung',
+    () => state.settings.address ?? DEFAULT_MADRASAH_IDENTITY.address,
   );
-  const [city, setCity] = useState<string>(() => state.settings.city || 'Kabupaten Malang');
-  const [postalCode, setPostalCode] = useState<string>(() => state.settings.postalCode || '65165');
+  const [city, setCity] = useState<string>(
+    () => state.settings.city ?? DEFAULT_MADRASAH_IDENTITY.city,
+  );
+  const [postalCode, setPostalCode] = useState<string>(
+    () => state.settings.postalCode ?? DEFAULT_MADRASAH_IDENTITY.postalCode,
+  );
   const [phone, setPhone] = useState<string>(
-    () => state.settings.phone || '(0341) 395882 / 0812-3456-7890',
+    () => state.settings.phone ?? DEFAULT_MADRASAH_IDENTITY.phone,
   );
   const [email, setEmail] = useState<string>(
-    () => state.settings.email || 'mts.cendekia@kemenag.go.id',
+    () => state.settings.email ?? DEFAULT_MADRASAH_IDENTITY.email,
   );
   const [website, setWebsite] = useState<string>(
-    () => state.settings.website || 'www.mtscendekia.sch.id',
+    () => state.settings.website ?? DEFAULT_MADRASAH_IDENTITY.website,
+  );
+  const [kopMode, setKopMode] = useState<KopRenderMode>(
+    () => state.settings.kopMode ?? DEFAULT_MADRASAH_IDENTITY.kopMode,
   );
 
   // Document Title & Periods
@@ -113,7 +130,7 @@ export function SchedulePdfExportModal({
 
   // Signatory Overrides
   const [signerCity, setSignerCity] = useState<string>(
-    () => state.settings.city || 'Kabupaten Malang',
+    () => state.settings.city || DEFAULT_MADRASAH_IDENTITY.city,
   );
   const [signerDate, setSignerDate] = useState<string>(() =>
     new Intl.DateTimeFormat('id-ID', {
@@ -157,22 +174,25 @@ export function SchedulePdfExportModal({
   );
 
   const handleResetToSettings = () => {
-    setMinistry(state.settings.ministry || 'KEMENTERIAN AGAMA REPUBLIK INDONESIA');
+    setMinistry(state.settings.ministry ?? DEFAULT_MADRASAH_IDENTITY.ministry);
     setRegionalOffice(
-      state.settings.regionalOffice || 'KANTOR KEMENTERIAN AGAMA KABUPATEN MALANG',
+      state.settings.regionalOffice ?? DEFAULT_MADRASAH_IDENTITY.regionalOffice,
     );
-    setSchoolName(state.settings.schoolName || 'MTs Cendekia Nusantara');
-    setNsm(state.settings.nsm || '121235070001');
-    setNpsn(state.settings.npsn || '20580001');
-    setAddress(state.settings.address || 'Jl. Raya Cendekia No. 45, Sumberpucung');
-    setCity(state.settings.city || 'Kabupaten Malang');
-    setPostalCode(state.settings.postalCode || '65165');
-    setPhone(state.settings.phone || '(0341) 395882 / 0812-3456-7890');
-    setEmail(state.settings.email || 'mts.cendekia@kemenag.go.id');
-    setWebsite(state.settings.website || 'www.mtscendekia.sch.id');
+    setLegalDecree(state.settings.legalDecree ?? DEFAULT_MADRASAH_IDENTITY.legalDecree);
+    setAccreditation(state.settings.accreditation ?? DEFAULT_MADRASAH_IDENTITY.accreditation);
+    setSchoolName(state.settings.schoolName || DEFAULT_MADRASAH_IDENTITY.schoolName);
+    setNsm(state.settings.nsm ?? DEFAULT_MADRASAH_IDENTITY.nsm);
+    setNpsn(state.settings.npsn ?? DEFAULT_MADRASAH_IDENTITY.npsn);
+    setAddress(state.settings.address ?? DEFAULT_MADRASAH_IDENTITY.address);
+    setCity(state.settings.city ?? DEFAULT_MADRASAH_IDENTITY.city);
+    setPostalCode(state.settings.postalCode ?? DEFAULT_MADRASAH_IDENTITY.postalCode);
+    setPhone(state.settings.phone ?? DEFAULT_MADRASAH_IDENTITY.phone);
+    setEmail(state.settings.email ?? DEFAULT_MADRASAH_IDENTITY.email);
+    setWebsite(state.settings.website ?? DEFAULT_MADRASAH_IDENTITY.website);
+    setKopMode(state.settings.kopMode ?? DEFAULT_MADRASAH_IDENTITY.kopMode);
     setAcademicYear(state.settings.academicYear || '2026/2027');
     setSemester(state.settings.semester || 'Ganjil');
-    setSignerCity(state.settings.city || 'Kabupaten Malang');
+    setSignerCity(state.settings.city || DEFAULT_MADRASAH_IDENTITY.city);
     setPrincipalTitle(state.settings.headmasterTitle || 'Kepala Madrasah');
     setPrincipalName(state.settings.headmasterName || 'H. Ahmad Fauzi, S.Ag., M.Pd.I.');
     setPrincipalNip(state.settings.headmasterNip || '19750812 200212 1 003');
@@ -271,6 +291,8 @@ export function SchedulePdfExportModal({
       const commonOverrides = {
         ministry: ministry.trim(),
         regionalOffice: regionalOffice.trim(),
+        legalDecree: legalDecree.trim(),
+        accreditation: accreditation.trim(),
         schoolName: schoolName.trim(),
         nsm: nsm.trim(),
         npsn: npsn.trim(),
@@ -280,6 +302,8 @@ export function SchedulePdfExportModal({
         phone: phone.trim(),
         email: email.trim(),
         website: website.trim(),
+        kopMode,
+        kopImageUrl: state.settings.kopImageUrl,
         academicYear: academicYear.trim(),
         semester,
         extraNotes: extraNotes.trim(),
@@ -824,20 +848,25 @@ export function SchedulePdfExportModal({
                   {contentSubTab === 'kop' && (
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                       <div className="field-group" style={{ gridColumn: 'span 2' }}>
-                        <label style={{ fontSize: '11px' }}>Kementerian Pembina</label>
-                        <input
-                          value={ministry}
-                          onChange={(e) => setMinistry(e.target.value)}
-                          style={{ height: '34px', fontSize: '12px' }}
-                        />
-                      </div>
-                      <div className="field-group" style={{ gridColumn: 'span 2' }}>
-                        <label style={{ fontSize: '11px' }}>Kantor Kemenag / Yayasan</label>
-                        <input
-                          value={regionalOffice}
-                          onChange={(e) => setRegionalOffice(e.target.value)}
-                          style={{ height: '34px', fontSize: '12px' }}
-                        />
+                        <label style={{ fontSize: '11px' }}>Mode Tampilan Kop Surat</label>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button
+                            type="button"
+                            onClick={() => setKopMode('structured')}
+                            className={`s5-studio-preset-btn ${kopMode === 'structured' ? 'is-active' : ''}`}
+                            style={{ flex: 1, height: '32px', fontSize: '11.5px' }}
+                          >
+                            Kop Terstruktur (Editable)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setKopMode('image')}
+                            className={`s5-studio-preset-btn ${kopMode === 'image' ? 'is-active' : ''}`}
+                            style={{ flex: 1, height: '32px', fontSize: '11.5px' }}
+                          >
+                            Gambar Kop Resmi Penuh
+                          </button>
+                        </div>
                       </div>
                       <div className="field-group" style={{ gridColumn: 'span 2' }}>
                         <label style={{ fontSize: '11px' }}>Nama Resmi Madrasah</label>
@@ -845,6 +874,30 @@ export function SchedulePdfExportModal({
                           value={schoolName}
                           onChange={(e) => setSchoolName(e.target.value)}
                           style={{ height: '34px', fontSize: '12px', fontWeight: 700 }}
+                        />
+                      </div>
+                      <div className="field-group" style={{ gridColumn: 'span 2' }}>
+                        <label style={{ fontSize: '11px' }}>Yayasan / Lembaga Menaungi</label>
+                        <input
+                          value={ministry}
+                          onChange={(e) => setMinistry(e.target.value)}
+                          style={{ height: '34px', fontSize: '12px' }}
+                        />
+                      </div>
+                      <div className="field-group" style={{ gridColumn: 'span 2' }}>
+                        <label style={{ fontSize: '11px' }}>Akte Notaris / SK Pendirian</label>
+                        <input
+                          value={regionalOffice}
+                          onChange={(e) => setRegionalOffice(e.target.value)}
+                          style={{ height: '34px', fontSize: '12px' }}
+                        />
+                      </div>
+                      <div className="field-group" style={{ gridColumn: 'span 2' }}>
+                        <label style={{ fontSize: '11px' }}>Keputusan Menkumham / SK Legalitas</label>
+                        <input
+                          value={legalDecree}
+                          onChange={(e) => setLegalDecree(e.target.value)}
+                          style={{ height: '34px', fontSize: '12px' }}
                         />
                       </div>
                       <div className="field-group">
@@ -860,6 +913,14 @@ export function SchedulePdfExportModal({
                         <input
                           value={npsn}
                           onChange={(e) => setNpsn(e.target.value)}
+                          style={{ height: '34px', fontSize: '12px' }}
+                        />
+                      </div>
+                      <div className="field-group" style={{ gridColumn: 'span 2' }}>
+                        <label style={{ fontSize: '11px' }}>Status Akreditasi</label>
+                        <input
+                          value={accreditation}
+                          onChange={(e) => setAccreditation(e.target.value)}
                           style={{ height: '34px', fontSize: '12px' }}
                         />
                       </div>
@@ -880,26 +941,10 @@ export function SchedulePdfExportModal({
                         />
                       </div>
                       <div className="field-group">
-                        <label style={{ fontSize: '11px' }}>Kode Pos</label>
-                        <input
-                          value={postalCode}
-                          onChange={(e) => setPostalCode(e.target.value)}
-                          style={{ height: '34px', fontSize: '12px' }}
-                        />
-                      </div>
-                      <div className="field-group">
-                        <label style={{ fontSize: '11px' }}>Telepon / WhatsApp</label>
+                        <label style={{ fontSize: '11px' }}>Telepon</label>
                         <input
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
-                          style={{ height: '34px', fontSize: '12px' }}
-                        />
-                      </div>
-                      <div className="field-group">
-                        <label style={{ fontSize: '11px' }}>Email Madrasah</label>
-                        <input
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
                           style={{ height: '34px', fontSize: '12px' }}
                         />
                       </div>
@@ -1142,20 +1187,27 @@ export function SchedulePdfExportModal({
               {/* Miniature Official Paper Sheet */}
               <div className="s5-pdf-paper-sheet">
                 {includeKop && (
-                  <>
-                    <div style={{ textAlign: 'center', lineHeight: 1.28 }}>
-                      <div style={{ fontSize: '9.5px', fontWeight: 600, color: '#2F443E' }}>
-                        {regionalOffice}
-                      </div>
-                      <div style={{ fontSize: '12px', fontWeight: 700, color: '#0B2923', marginTop: '1px' }}>
-                        {schoolName}
-                      </div>
-                      <div style={{ fontSize: '9.5px', color: '#526861', marginTop: '1px' }}>
-                        NSM {nsm} · NPSN {npsn} · {city}
-                      </div>
-                    </div>
-                    <div className="s5-pdf-kop-line" />
-                  </>
+                  <OfficialKopSuratPreview
+                    settings={state.settings}
+                    overrides={{
+                      schoolName,
+                      ministry,
+                      regionalOffice,
+                      legalDecree,
+                      accreditation,
+                      nsm,
+                      npsn,
+                      address,
+                      city,
+                      postalCode,
+                      phone,
+                      email,
+                      website,
+                      kopMode,
+                      kopImageUrl: state.settings.kopImageUrl,
+                    }}
+                    variant="compact"
+                  />
                 )}
 
                 <div style={{ textAlign: 'center', margin: '8px 0 9px' }}>

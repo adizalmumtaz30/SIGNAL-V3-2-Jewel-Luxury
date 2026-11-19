@@ -1,7 +1,12 @@
 /**
- * Madrasah Logo & Identity Utilities
- * Provides default official emblem generation and client-side image processing for official documents.
+ * Madrasah Logo & Official Letterhead Asset Utilities
+ * Extracts the exact pentagonal emblem from the uploaded MTs Daruttafsir Al-Husaini Kop Surat
+ * and provides high-resolution banner preloading & custom upload processing.
  */
+import {
+  OFFICIAL_KOP_ASSET_PATH,
+  OFFICIAL_KOP_EMBLEM_CROP,
+} from '../domain/kopIdentity';
 
 export const COMMON_TEACHER_POSITIONS = [
   'Guru Mapel',
@@ -25,14 +30,129 @@ export const COMMON_TEACHER_POSITIONS = [
   'Wali Kelas IX-B',
 ] as const;
 
-let cachedDefaultLogo: string | null = null;
+let cachedFallbackEmblem: string | null = null;
+let cachedUploadedEmblem: string | null = null;
+let cachedUploadedBanner: string | null = null;
+let preloadPromise: Promise<void> | null = null;
+const assetListeners = new Set<() => void>();
+
+function notifyAssetListeners() {
+  for (const fn of assetListeners) {
+    try {
+      fn();
+    } catch {
+      // ignore subscriber errors
+    }
+  }
+}
 
 /**
- * Generate a crisp official Madrasah / Kemenag style emblem as a PNG Data URL.
- * Works entirely in browser canvas without external network requests.
+ * Subscribe to official letterhead/emblem asset readiness so React previews refresh automatically.
  */
-export function getDefaultMadrasahLogo(): string {
-  if (cachedDefaultLogo) return cachedDefaultLogo;
+export function subscribeOfficialKopAssets(listener: () => void): () => void {
+  assetListeners.add(listener);
+  return () => {
+    assetListeners.delete(listener);
+  };
+}
+
+/**
+ * Loads `/assets/aistudio/336186599-KOP_MTS_TERBARU_82f9023d.png` in browser and caches:
+ * 1. Cropped pentagonal emblem PNG Data URL (for structured Kop & Studio logo insert)
+ * 2. Scaled full-width Kop banner PNG Data URL (for image-mode Kop PDF export)
+ */
+export function preloadOfficialKopAssets(): Promise<void> {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return Promise.resolve();
+  }
+  if (cachedUploadedEmblem && cachedUploadedBanner) {
+    return Promise.resolve();
+  }
+  if (preloadPromise) return preloadPromise;
+
+  preloadPromise = new Promise<void>((resolve) => {
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          // 1. Crop exact pentagonal crest from left side of uploaded Kop Surat
+          const emblemCanvas = document.createElement('canvas');
+          emblemCanvas.width = 320;
+          emblemCanvas.height = 312;
+          const eCtx = emblemCanvas.getContext('2d');
+          if (eCtx) {
+            eCtx.clearRect(0, 0, emblemCanvas.width, emblemCanvas.height);
+            eCtx.drawImage(
+              img,
+              OFFICIAL_KOP_EMBLEM_CROP.x,
+              OFFICIAL_KOP_EMBLEM_CROP.y,
+              OFFICIAL_KOP_EMBLEM_CROP.width,
+              OFFICIAL_KOP_EMBLEM_CROP.height,
+              0,
+              0,
+              emblemCanvas.width,
+              emblemCanvas.height
+            );
+            cachedUploadedEmblem = emblemCanvas.toDataURL('image/png');
+          }
+
+          // 2. Cache crisp banner image for jsPDF full-banner mode
+          const maxBannerW = 1600;
+          const natW = img.naturalWidth || 3264;
+          const natH = img.naturalHeight || 798;
+          const scale = Math.min(1, maxBannerW / natW);
+          const bw = Math.round(natW * scale);
+          const bh = Math.round(natH * scale);
+          const bannerCanvas = document.createElement('canvas');
+          bannerCanvas.width = bw;
+          bannerCanvas.height = bh;
+          const bCtx = bannerCanvas.getContext('2d');
+          if (bCtx) {
+            bCtx.fillStyle = '#ffffff';
+            bCtx.fillRect(0, 0, bw, bh);
+            bCtx.drawImage(img, 0, 0, bw, bh);
+            cachedUploadedBanner = bannerCanvas.toDataURL('image/png');
+          }
+
+          notifyAssetListeners();
+        } catch (err) {
+          console.warn('Could not extract official Kop emblem/banner:', err);
+        }
+        resolve();
+      };
+      img.onerror = () => {
+        resolve();
+      };
+      img.src = OFFICIAL_KOP_ASSET_PATH;
+    } catch {
+      resolve();
+    }
+  });
+
+  return preloadPromise;
+}
+
+// Kick off background preload immediately in browser environments
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+  void preloadOfficialKopAssets();
+}
+
+/**
+ * Returns the cached PNG Data URL of the full uploaded Kop Surat banner (if loaded in browser).
+ */
+export function getOfficialKopBannerDataUrl(customKopImageUrl?: string): string {
+  if (customKopImageUrl && /^data:image\//i.test(customKopImageUrl)) {
+    return customKopImageUrl;
+  }
+  return cachedUploadedBanner ?? '';
+}
+
+/**
+ * Draws a crisp pentagonal Madrasah fallback emblem if the uploaded PNG hasn't finished decoding yet.
+ */
+function buildFallbackPentagonalEmblem(): string {
+  if (cachedFallbackEmblem) return cachedFallbackEmblem;
   if (typeof document === 'undefined') return '';
 
   try {
@@ -43,131 +163,114 @@ export function getDefaultMadrasahLogo(): string {
     if (!ctx) return '';
 
     const cx = 120;
-    const cy = 120;
 
-    // Outer Teal Green Circle
+    // Pentagonal green crest matching MTs Daruttafsir Al-Husaini silhouette
     ctx.beginPath();
-    ctx.arc(cx, cy, 114, 0, Math.PI * 2);
-    ctx.fillStyle = '#0b3435';
-    ctx.fill();
-
-    // Outer Gold Ring
-    ctx.beginPath();
-    ctx.arc(cx, cy, 108, 0, Math.PI * 2);
-    ctx.strokeStyle = '#bc945e';
-    ctx.lineWidth = 4.5;
-    ctx.stroke();
-
-    // Inner Deep Emerald Disc
-    ctx.beginPath();
-    ctx.arc(cx, cy, 100, 0, Math.PI * 2);
-    ctx.fillStyle = '#16483f';
-    ctx.fill();
-
-    // Secondary Gold Ring
-    ctx.beginPath();
-    ctx.arc(cx, cy, 94, 0, Math.PI * 2);
-    ctx.strokeStyle = '#e6c88b';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // 8-Pointed Star (Rub el Hizb symbol)
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.fillStyle = 'rgba(188, 148, 94, 0.25)';
-    ctx.strokeStyle = '#bc945e';
-    ctx.lineWidth = 3;
-
-    for (let r = 0; r < 2; r++) {
-      ctx.rotate((Math.PI / 4) * r);
-      ctx.beginPath();
-      ctx.rect(-58, -58, 116, 116);
-      ctx.fill();
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    // Inner Crest / Open Book (Al-Qur'an / Kitab) Motif
-    ctx.save();
-    ctx.translate(cx, cy);
-
-    // Book Base / Pages
-    ctx.beginPath();
-    // Left page
-    ctx.moveTo(-36, 16);
-    ctx.quadraticCurveTo(-20, 6, 0, 16);
-    ctx.lineTo(0, -18);
-    ctx.quadraticCurveTo(-20, -28, -36, -18);
+    ctx.moveTo(cx, 16);
+    ctx.lineTo(220, 86);
+    ctx.lineTo(186, 218);
+    ctx.lineTo(54, 218);
+    ctx.lineTo(20, 86);
     ctx.closePath();
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#00e600';
     ctx.fill();
-    ctx.strokeStyle = '#bc945e';
+    ctx.strokeStyle = '#0a0a0a';
+    ctx.lineWidth = 8;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+
+    // Inner border
+    ctx.beginPath();
+    ctx.moveTo(cx, 28);
+    ctx.lineTo(208, 92);
+    ctx.lineTo(178, 208);
+    ctx.lineTo(62, 208);
+    ctx.lineTo(32, 92);
+    ctx.closePath();
+    ctx.strokeStyle = '#0f3d1e';
     ctx.lineWidth = 2.5;
     ctx.stroke();
 
-    // Right page
+    // Top golden star
+    ctx.fillStyle = '#ffea00';
+    ctx.strokeStyle = '#0a0a0a';
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(0, 16);
-    ctx.quadraticCurveTo(20, 6, 36, 16);
-    ctx.lineTo(36, -18);
-    ctx.quadraticCurveTo(20, -28, 0, -18);
+    for (let i = 0; i < 10; i++) {
+      const r = i % 2 === 0 ? 18 : 8;
+      const angle = (Math.PI / 5) * i - Math.PI / 2;
+      const px = cx + r * Math.cos(angle);
+      const py = 56 + r * Math.sin(angle);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
     ctx.closePath();
-    ctx.fillStyle = '#f8faf9';
     ctx.fill();
     ctx.stroke();
 
-    // Book spine crease
+    // Open yellow book in center
+    ctx.fillStyle = '#ffea00';
+    ctx.strokeStyle = '#0a0a0a';
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.moveTo(0, -18);
-    ctx.lineTo(0, 16);
-    ctx.strokeStyle = '#0b3435';
-    ctx.lineWidth = 2;
+    ctx.moveTo(cx, 94);
+    ctx.quadraticCurveTo(cx - 20, 86, cx - 34, 94);
+    ctx.lineTo(cx - 34, 134);
+    ctx.quadraticCurveTo(cx - 20, 126, cx, 134);
+    ctx.quadraticCurveTo(cx + 20, 126, cx + 34, 134);
+    ctx.lineTo(cx + 34, 94);
+    ctx.quadraticCurveTo(cx + 20, 86, cx, 94);
+    ctx.closePath();
+    ctx.fill();
     ctx.stroke();
 
-    // Rays / Torch atop the book
-    ctx.beginPath();
-    ctx.arc(0, -32, 10, 0, Math.PI * 2);
-    ctx.fillStyle = '#f4b238';
-    ctx.fill();
-    ctx.strokeStyle = '#bc945e';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // Star atop
-    ctx.beginPath();
-    ctx.arc(0, -32, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffffff';
-    ctx.fill();
-
-    // Bottom banner
-    ctx.beginPath();
-    ctx.rect(-44, 26, 88, 14);
-    ctx.fillStyle = '#bc945e';
-    ctx.fill();
-    ctx.strokeStyle = '#0b3435';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    ctx.fillStyle = '#0b3435';
-    ctx.font = 'bold 8.5px sans-serif';
+    // Label
+    ctx.fillStyle = '#0a0a0a';
+    ctx.font = 'bold 11px sans-serif';
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('IKHLAS BERAMAL', 0, 33);
+    ctx.fillText('MADRASAH TSANAWIYAH', cx, 158);
+    ctx.font = 'bold 9.5px sans-serif';
+    ctx.fillText('DARUTTAFSIR AL-HUSAINI', cx, 188);
 
-    ctx.restore();
-
-    cachedDefaultLogo = canvas.toDataURL('image/png');
-    return cachedDefaultLogo || '';
+    cachedFallbackEmblem = canvas.toDataURL('image/png');
+    return cachedFallbackEmblem || '';
   } catch (err) {
-    console.error('Failed to create default madrasah logo canvas:', err);
+    console.error('Failed to create fallback madrasah emblem:', err);
     return '';
   }
 }
 
 /**
- * Process uploaded image file into an optimized PNG data URL (max 260x260)
+ * Returns the official MTs Daruttafsir Al-Husaini emblem as a PNG Data URL.
+ * Prefers the exact cropped crest from the uploaded Kop Surat once loaded.
+ */
+export function getDefaultMadrasahLogo(): string {
+  if (cachedUploadedEmblem) return cachedUploadedEmblem;
+  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+    void preloadOfficialKopAssets();
+  }
+  return buildFallbackPentagonalEmblem();
+}
+
+/**
+ * Process uploaded logo image file into an optimized PNG data URL (max 320x320).
  */
 export async function processLogoUpload(file: File): Promise<string> {
+  return processImageUploadWithMaxDim(file, 320, false);
+}
+
+/**
+ * Process uploaded full letterhead banner image into an optimized PNG data URL (max width 1600px).
+ */
+export async function processKopBannerUpload(file: File): Promise<string> {
+  return processImageUploadWithMaxDim(file, 1600, true);
+}
+
+async function processImageUploadWithMaxDim(
+  file: File,
+  maxDim: number,
+  fillWhiteBg: boolean
+): Promise<string> {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith('image/')) {
       reject(new Error('File yang dipilih bukan berkas gambar.'));
@@ -175,13 +278,12 @@ export async function processLogoUpload(file: File): Promise<string> {
     }
 
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Gagal membaca berkas logo.'));
+    reader.onerror = () => reject(new Error('Gagal membaca berkas gambar.'));
     reader.onload = () => {
       const img = new Image();
       img.onerror = () => reject(new Error('Format gambar tidak dapat dimuat.'));
       img.onload = () => {
         try {
-          const maxDim = 260;
           let width = img.naturalWidth || img.width;
           let height = img.naturalHeight || img.height;
 
@@ -204,7 +306,12 @@ export async function processLogoUpload(file: File): Promise<string> {
             return;
           }
 
-          ctx.clearRect(0, 0, width, height);
+          if (fillWhiteBg) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, height);
+          } else {
+            ctx.clearRect(0, 0, width, height);
+          }
           ctx.drawImage(img, 0, 0, width, height);
           const pngDataUrl = canvas.toDataURL('image/png');
           resolve(pngDataUrl);

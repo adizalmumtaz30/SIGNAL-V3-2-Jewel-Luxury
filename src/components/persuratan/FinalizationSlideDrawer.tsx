@@ -8,11 +8,16 @@ import {
   LockKeyhole,
   ShieldAlert,
   ShieldCheck,
+  SlidersHorizontal,
   X,
   XCircle,
 } from 'lucide-react';
 import type { AppState } from '../../domain/types';
-import type { DocumentIntakeDraft, DocumentRecord } from '../../domain/persuratan/types';
+import type {
+  DocumentIntakeDraft,
+  DocumentNumberingConfig,
+  DocumentRecord,
+} from '../../domain/persuratan/types';
 import type {
   DocumentStudioPageSettings,
   TipTapJSONContent,
@@ -24,6 +29,8 @@ import {
 } from '../../domain/persuratan/finalization/numberingEngine';
 import { finalizeDocumentTransaction } from '../../domain/persuratan/finalization/finalizeEngine';
 import { DOCUMENT_KIND_LABELS, formatIndonesianDate } from '../../domain/persuratan/selectors';
+import { NumberingFormatModal } from './NumberingFormatModal';
+import { DEFAULT_MADRASAH_IDENTITY } from '../../domain/kopIdentity';
 import './FinalizationSlideDrawer.css';
 
 export interface FinalizationSlideDrawerProps {
@@ -102,6 +109,7 @@ export function FinalizationSlideDrawer({
   const [isSavingIdentity, setIsSavingIdentity] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [isFormatModalOpen, setIsFormatModalOpen] = useState<boolean>(false);
 
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
 
@@ -183,10 +191,22 @@ export function FinalizationSlideDrawer({
           (s) => s.sourceKey === 'settings.madrasah_identity_signatory'
         );
         const nextSnapValue = {
-          ministry: nextSettings.ministry ?? 'KEMENTERIAN AGAMA REPUBLIK INDONESIA',
+          ministry: nextSettings.ministry ?? DEFAULT_MADRASAH_IDENTITY.ministry,
+          regionalOffice: nextSettings.regionalOffice ?? DEFAULT_MADRASAH_IDENTITY.regionalOffice,
+          legalDecree: nextSettings.legalDecree ?? DEFAULT_MADRASAH_IDENTITY.legalDecree,
+          accreditation: nextSettings.accreditation ?? DEFAULT_MADRASAH_IDENTITY.accreditation,
+          nsm: nextSettings.nsm ?? DEFAULT_MADRASAH_IDENTITY.nsm,
+          npsn: nextSettings.npsn ?? DEFAULT_MADRASAH_IDENTITY.npsn,
           schoolName: cleanSchool,
           address: cleanAddress,
           city: cleanCity,
+          postalCode: nextSettings.postalCode ?? DEFAULT_MADRASAH_IDENTITY.postalCode,
+          phone: nextSettings.phone ?? DEFAULT_MADRASAH_IDENTITY.phone,
+          email: nextSettings.email ?? DEFAULT_MADRASAH_IDENTITY.email,
+          website: nextSettings.website ?? DEFAULT_MADRASAH_IDENTITY.website,
+          logoUrl: nextSettings.logoUrl,
+          kopMode: nextSettings.kopMode ?? DEFAULT_MADRASAH_IDENTITY.kopMode,
+          kopImageUrl: nextSettings.kopImageUrl ?? DEFAULT_MADRASAH_IDENTITY.kopImageUrl,
           signatoryTitle: 'Kepala Madrasah',
           signatoryName: cleanHeadmaster,
           headmasterName: cleanHeadmaster,
@@ -330,16 +350,30 @@ export function FinalizationSlideDrawer({
                 <ShieldCheck size={15} aria-hidden="true" />
                 <span>Nomor Surat Resmi</span>
               </h3>
-              <button
-                type="button"
-                className="fsd-link-btn"
-                disabled={isSubmitting}
-                onClick={() =>
-                  setNumberingMode((prev) => (prev === 'AUTO' ? 'MANUAL' : 'AUTO'))
-                }
-              >
-                {numberingMode === 'AUTO' ? 'Ubah manual' : 'Gunakan nomor otomatis'}
-              </button>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
+                <button
+                  type="button"
+                  className="fsd-link-btn"
+                  disabled={isSubmitting}
+                  onClick={() => setIsFormatModalOpen(true)}
+                  title="Atur pola penomoran surat resmi madrasah"
+                >
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    <SlidersHorizontal size={12} aria-hidden="true" />
+                    <span>Atur Format</span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="fsd-link-btn"
+                  disabled={isSubmitting}
+                  onClick={() =>
+                    setNumberingMode((prev) => (prev === 'AUTO' ? 'MANUAL' : 'AUTO'))
+                  }
+                >
+                  {numberingMode === 'AUTO' ? 'Ubah manual' : 'Gunakan nomor otomatis'}
+                </button>
+              </div>
             </div>
 
             <input
@@ -598,6 +632,24 @@ export function FinalizationSlideDrawer({
           </div>
         </footer>
       </div>
+
+      <NumberingFormatModal
+        open={isFormatModalOpen}
+        state={state}
+        previewKind={docKind}
+        onClose={() => setIsFormatModalOpen(false)}
+        onSaveConfig={async (nextConfig: DocumentNumberingConfig) => {
+          await onPersistState({
+            ...state,
+            settings: {
+              ...state.settings,
+              documentNumbering: nextConfig,
+            },
+          });
+          setNumberingMode('AUTO');
+          onNotify?.('Format penomoran surat madrasah berhasil diperbarui.', 'success');
+        }}
+      />
     </div>
   );
 }

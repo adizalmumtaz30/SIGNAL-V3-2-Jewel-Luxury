@@ -566,12 +566,13 @@ describe('Tahap 8 — S05 Preview, Checklist, Penomoran, Finalisasi PDF & Revisi
     const workspaceHtml = renderToStaticMarkup(
       createElement(PersuratanWorkspace, {
         state,
+        launchRequest: { view: 'preview', draftId: draft.id, nonce: 1 },
         onPersistState: async () => {},
         onNotify: () => {},
         onNavigateToSettings: () => {},
       })
     );
     expect(workspaceHtml).toContain('Arsip &amp; Surat');
-    expect(workspaceHtml).toContain('4. Pratinjau &amp; Sahkan');
+    expect(workspaceHtml).toContain('3. Pratinjau &amp; Sahkan');
   });
 });

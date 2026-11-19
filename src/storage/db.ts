@@ -1,6 +1,7 @@
 import { openDB, type IDBPDatabase } from 'idb';
 import type { AppState, ScheduleEntry, TeacherAssignment } from '../domain/types';
 import { createDemoState } from '../domain/seed';
+import { DEFAULT_MADRASAH_IDENTITY } from '../domain/kopIdentity';
 import { buildTimeSlots, createDefaultPeriodDefinitions } from '../domain/time';
 import { generateSchedule } from '../domain/generator';
 import {
@@ -513,15 +514,37 @@ export async function loadAppState(): Promise<AppState> {
 
       if (!state.settings.periodMinutes) state.settings.periodMinutes = 40;
       if (state.dataMode !== 'custom') {
-        if (!state.settings.ministry) state.settings.ministry = 'KEMENTERIAN AGAMA REPUBLIK INDONESIA';
-        if (!state.settings.regionalOffice) state.settings.regionalOffice = 'KANTOR KEMENTERIAN AGAMA KABUPATEN MALANG';
-        if (!state.settings.address) state.settings.address = 'Jl. Raya Cendekia No. 45, Sumberpucung';
-        if (!state.settings.city) state.settings.city = 'Kabupaten Malang';
-        if (!state.settings.postalCode) state.settings.postalCode = '65165';
-        if (!state.settings.npsn) state.settings.npsn = '20580001';
-        if (!state.settings.nsm) state.settings.nsm = '121235070001';
-        if (!state.settings.phone) state.settings.phone = '0812-3456-7890 / (0341) 395123';
-        if (!state.settings.email) state.settings.email = 'mts.cendekia@kemenag.go.id';
+        const isLegacyDemoIdentity =
+          !state.settings.schoolName ||
+          state.settings.schoolName.trim().toLowerCase() === 'mts cendekia nusantara';
+        if (isLegacyDemoIdentity) {
+          state.settings.schoolName = DEFAULT_MADRASAH_IDENTITY.schoolName;
+          state.settings.ministry = DEFAULT_MADRASAH_IDENTITY.ministry;
+          state.settings.regionalOffice = DEFAULT_MADRASAH_IDENTITY.regionalOffice;
+          state.settings.legalDecree = DEFAULT_MADRASAH_IDENTITY.legalDecree;
+          state.settings.accreditation = DEFAULT_MADRASAH_IDENTITY.accreditation;
+          state.settings.address = DEFAULT_MADRASAH_IDENTITY.address;
+          state.settings.city = DEFAULT_MADRASAH_IDENTITY.city;
+          state.settings.postalCode = DEFAULT_MADRASAH_IDENTITY.postalCode;
+          state.settings.npsn = DEFAULT_MADRASAH_IDENTITY.npsn;
+          state.settings.nsm = DEFAULT_MADRASAH_IDENTITY.nsm;
+          state.settings.phone = DEFAULT_MADRASAH_IDENTITY.phone;
+          state.settings.email = DEFAULT_MADRASAH_IDENTITY.email;
+          state.settings.website = DEFAULT_MADRASAH_IDENTITY.website;
+          state.settings.kopMode = DEFAULT_MADRASAH_IDENTITY.kopMode;
+          state.settings.kopImageUrl = DEFAULT_MADRASAH_IDENTITY.kopImageUrl;
+        } else {
+          if (!state.settings.ministry) state.settings.ministry = DEFAULT_MADRASAH_IDENTITY.ministry;
+          if (!state.settings.regionalOffice) state.settings.regionalOffice = DEFAULT_MADRASAH_IDENTITY.regionalOffice;
+          if (state.settings.legalDecree === undefined) state.settings.legalDecree = DEFAULT_MADRASAH_IDENTITY.legalDecree;
+          if (state.settings.accreditation === undefined) state.settings.accreditation = DEFAULT_MADRASAH_IDENTITY.accreditation;
+          if (!state.settings.address) state.settings.address = DEFAULT_MADRASAH_IDENTITY.address;
+          if (!state.settings.city) state.settings.city = DEFAULT_MADRASAH_IDENTITY.city;
+          if (!state.settings.npsn) state.settings.npsn = DEFAULT_MADRASAH_IDENTITY.npsn;
+          if (!state.settings.nsm) state.settings.nsm = DEFAULT_MADRASAH_IDENTITY.nsm;
+          if (!state.settings.phone) state.settings.phone = DEFAULT_MADRASAH_IDENTITY.phone;
+          if (!state.settings.kopImageUrl) state.settings.kopImageUrl = DEFAULT_MADRASAH_IDENTITY.kopImageUrl;
+        }
         if (!state.settings.headmasterName) state.settings.headmasterName = 'Drs. H. M. Zainuddin, M.Pd.I';
         if (!state.settings.headmasterNip) state.settings.headmasterNip = '197405101999031003';
         if (!state.settings.headmasterTitle) state.settings.headmasterTitle = 'Kepala Madrasah';

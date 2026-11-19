@@ -6,7 +6,7 @@
 .s01-page {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
   max-width: 1280px;
   width: 100%;
   margin: 0 auto;
@@ -116,13 +116,12 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   padding: 18px 20px;
   border-radius: 14px;
-  border: var(--s5-border-medium, 1px solid #d2ddd7);
-  border-top: 2px solid rgba(18, 64, 55, 0.16);
+  border: 1px solid rgba(11, 41, 35, 0.08);
   background: var(--s5-surface-card, #ffffff);
-  box-shadow: var(--s5-shadow-resting);
+  box-shadow: 0 1px 2px rgba(11, 41, 35, 0.03);
   text-align: left;
   cursor: pointer;
   transition: border-color 160ms var(--s5-spring-fast), box-shadow 160ms var(--s5-spring-fast), transform 160ms var(--s5-spring-fast), background-color 160ms ease;
@@ -226,9 +225,9 @@
 /* Main Workspace Card (Tabs + Filters + Sticky Table + Pagination) */
 .s01-workspace-card {
   background: var(--s5-surface-card, #ffffff);
-  border: 1px solid #d2ddd7;
+  border: 1px solid rgba(11, 41, 35, 0.09);
   border-radius: 16px;
-  box-shadow: var(--s5-shadow-card);
+  box-shadow: 0 2px 10px rgba(11, 41, 35, 0.03);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -509,14 +508,18 @@
 }
 
 .s01-table tbody td {
-  padding: 13px 16px;
-  border-bottom: 1px solid #edf2ef;
+  padding: 16px 16px;
+  border-bottom: 1px solid rgba(11, 41, 35, 0.06);
   vertical-align: top;
   color: var(--s5-ink-primary, #0F201C);
 }
 
 .s01-table tbody tr:hover {
-  background: #f9fbfa;
+  background: #f8fbf9;
+}
+
+.s01-table tbody tr.is-row-selected {
+  background: #f1f8f5;
 }
 
 .s01-doc-number {
@@ -984,12 +987,7 @@
 }
 
 .s01-mini-kop {
-  text-align: center;
-  font-size: 9.5px;
-  letter-spacing: 0.04em;
-  border-bottom: 1.5px solid #162420;
-  padding-bottom: 4px;
-  margin-bottom: 3px;
+  margin-bottom: 4px;
 }
 
 .s01-mini-heading {
@@ -1124,4 +1122,159 @@
     animation: none !important;
   }
 }
+
+/* ==========================================================================
+   FIGMA-PRO PRIVATE ACADEMY LUXURY — Auto-Resume, Agenda Menu & Bulk Bar
+   ========================================================================== */
+.s01-agenda-wrap {
+  position: relative;
+}
+
+.s01-agenda-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  min-width: 240px;
+  padding: 6px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid rgba(11, 41, 35, 0.12);
+  box-shadow: 0 12px 30px rgba(11, 41, 35, 0.14);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.s01-resume-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 16px;
+  border-radius: 12px;
+  background: #f5f9f7;
+  border: 1px solid rgba(18, 64, 55, 0.12);
+  flex-wrap: wrap;
+}
+
+.s01-resume-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #2f443e;
+  min-width: 0;
+}
+
+.s01-resume-icon {
+  color: #124037;
+  flex-shrink: 0;
+}
+
+.s01-resume-label {
+  color: #526861;
+  font-weight: 500;
+}
+
+.s01-resume-title {
+  color: #0b2923;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 460px;
+}
+
+.s01-resume-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(18, 64, 55, 0.22);
+  background: #ffffff;
+  color: #124037;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.s01-resume-btn:hover {
+  background: #124037;
+  color: #ffffff;
+  border-color: #124037;
+}
+
+.s01-check-col {
+  width: 40px;
+  text-align: center;
+  padding-right: 4px !important;
+}
+
+.s01-checkbox {
+  width: 15px;
+  height: 15px;
+  accent-color: #124037;
+  cursor: pointer;
+  margin-top: 2px;
+}
+
+.s01-bulk-bar {
+  position: sticky;
+  bottom: 16px;
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 18px;
+  border-radius: 14px;
+  background: #0b2923;
+  color: #ffffff;
+  box-shadow: 0 14px 32px rgba(11, 41, 35, 0.28);
+  border: 1px solid rgba(197, 160, 89, 0.4);
+  flex-wrap: wrap;
+}
+
+.s01-bulk-count {
+  font-size: 13.5px;
+  color: #e6f0ec;
+}
+
+.s01-bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.s01-bulk-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: transparent;
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.s01-bulk-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.s01-bulk-btn.primary {
+  background: #c5a059;
+  border-color: #c5a059;
+  color: #0b2923;
+}
+
+.s01-bulk-btn.primary:hover:not(:disabled) {
+  background: #d5b26c;
+}
+
 

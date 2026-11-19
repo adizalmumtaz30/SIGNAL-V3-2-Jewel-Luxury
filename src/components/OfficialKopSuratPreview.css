@@ -1,0 +1,218 @@
+/* Official Madrasah Letterhead (Kop Surat) — Faithful to MTs Daruttafsir Al-Husaini Upload */
+
+.oks-root {
+  width: 100%;
+  background: #ffffff;
+  color: #0b0b0b;
+  font-family: 'Times New Roman', Georgia, Cambria, serif;
+  box-sizing: border-box;
+  margin-bottom: 12px;
+}
+
+.oks-root.is-image-mode {
+  line-height: 0;
+}
+
+.oks-banner-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.oks-header-row {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 2px 4px 7px;
+}
+
+.oks-emblem-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.oks-emblem-img {
+  width: 74px;
+  height: 74px;
+  object-fit: contain;
+  display: block;
+}
+
+/* Pure CSS crop fallback during SSR / before canvas decode completes */
+.oks-emblem-crop-wrap {
+  width: 74px;
+  height: 72px;
+  overflow: hidden;
+  position: relative;
+}
+
+.oks-emblem-crop-fallback {
+  position: absolute;
+  top: -3px;
+  left: -6px;
+  width: 390px;
+  max-width: none;
+  height: auto;
+}
+
+.oks-text-col {
+  text-align: center;
+  min-width: 0;
+  color: #080808;
+  padding-right: 12px;
+}
+
+.oks-title-line {
+  font-size: 15.5px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0.015em;
+  color: #000000;
+}
+
+.oks-foundation-line {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.25;
+  margin-top: 2px;
+  color: #0a0a0a;
+}
+
+.oks-legal-line {
+  font-size: 9.2px;
+  font-weight: 400;
+  line-height: 1.24;
+  color: #111111;
+}
+
+.oks-registry-line {
+  font-size: 9.4px;
+  font-weight: 500;
+  line-height: 1.24;
+  color: #111111;
+}
+
+.oks-accreditation-line {
+  font-size: 9.6px;
+  font-weight: 700;
+  line-height: 1.22;
+  letter-spacing: 0.02em;
+  color: #000000;
+  margin-top: 1px;
+}
+
+.oks-address-band {
+  border-top: 1.5px solid #000000;
+  border-bottom: 1.5px solid #000000;
+  padding: 3.5px 6px;
+  text-align: center;
+  font-size: 9.2px;
+  font-weight: 400;
+  line-height: 1.25;
+  color: #0a0a0a;
+}
+
+/* Compact Variant (Settings Right Card & Export Modal Preview) */
+.oks-root.is-compact {
+  margin-bottom: 8px;
+}
+
+.oks-root.is-compact .oks-header-row {
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 8px;
+  padding: 2px 2px 5px;
+}
+
+.oks-root.is-compact .oks-emblem-img,
+.oks-root.is-compact .oks-emblem-crop-wrap {
+  width: 52px;
+  height: 50px;
+}
+
+.oks-root.is-compact .oks-emblem-crop-fallback {
+  top: -2px;
+  left: -4px;
+  width: 274px;
+}
+
+.oks-root.is-compact .oks-text-col {
+  padding-right: 4px;
+}
+
+.oks-root.is-compact .oks-title-line {
+  font-size: 11px;
+}
+
+.oks-root.is-compact .oks-foundation-line {
+  font-size: 8.2px;
+}
+
+.oks-root.is-compact .oks-legal-line,
+.oks-root.is-compact .oks-registry-line {
+  font-size: 6.8px;
+}
+
+.oks-root.is-compact .oks-accreditation-line {
+  font-size: 7.1px;
+}
+
+.oks-root.is-compact .oks-address-band {
+  border-top-width: 1.15px;
+  border-bottom-width: 1.15px;
+  padding: 2.5px 4px;
+  font-size: 6.8px;
+}
+
+/* Mini Variant (S03 Live Miniature Paper Preview) */
+.oks-root.is-mini {
+  margin-bottom: 8px;
+}
+
+.oks-root.is-mini .oks-header-row {
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 6px;
+  padding: 1px 2px 4px;
+}
+
+.oks-root.is-mini .oks-emblem-img,
+.oks-root.is-mini .oks-emblem-crop-wrap {
+  width: 42px;
+  height: 41px;
+}
+
+.oks-root.is-mini .oks-emblem-crop-fallback {
+  top: -2px;
+  left: -3px;
+  width: 222px;
+}
+
+.oks-root.is-mini .oks-text-col {
+  padding-right: 2px;
+}
+
+.oks-root.is-mini .oks-title-line {
+  font-size: 9.5px;
+}
+
+.oks-root.is-mini .oks-foundation-line {
+  font-size: 7.4px;
+}
+
+.oks-root.is-mini .oks-legal-line,
+.oks-root.is-mini .oks-registry-line {
+  font-size: 6.1px;
+}
+
+.oks-root.is-mini .oks-accreditation-line {
+  font-size: 6.4px;
+}
+
+.oks-root.is-mini .oks-address-band {
+  border-top-width: 1px;
+  border-bottom-width: 1px;
+  padding: 2px 3px;
+  font-size: 6.1px;
+}

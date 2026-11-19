@@ -83,6 +83,7 @@ export interface DocumentNumberingConfig {
   formatPattern: string; // e.g. '{SEQ}/{KODE_SURAT}/{KODE_MADRASAH}/{BULAN_ROMAWI}/{TAHUN}'
   seqPadding: number; // default 3 (001)
   resetMode: NumberingResetMode;
+  startingSequence?: number; // default 1 — nomor urut awal periode berjalan
   kindCodes: Partial<Record<DocumentKind, string>>;
 }
 

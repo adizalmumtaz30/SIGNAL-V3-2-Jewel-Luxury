@@ -117,3 +117,50 @@ export function triggerPdfBytesDownload(bytes: Uint8Array, fileName: string): vo
   link.remove();
   URL.revokeObjectURL(url);
 }
+
+/**
+ * Mencetak Blob PDF resmi secara langsung melalui iframe tersembunyi (tanpa window.open).
+ * Aman untuk lingkungan browser modern & iframe sandbox.
+ */
+export function triggerPdfBytesPrint(bytes: Uint8Array): boolean {
+  if (typeof document === 'undefined' || typeof URL === 'undefined') return false;
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  const blob = new Blob([copy.buffer], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  iframe.setAttribute('aria-hidden', 'true');
+  iframe.src = url;
+
+  const cleanup = () => {
+    setTimeout(() => {
+      try {
+        iframe.remove();
+      } catch {
+        // ignore cleanup error
+      }
+      URL.revokeObjectURL(url);
+    }, 60_000);
+  };
+
+  iframe.onload = () => {
+    try {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+    } catch {
+      // Fallback: if browser PDF viewer blocks scripted iframe print, keep downloadable
+    } finally {
+      cleanup();
+    }
+  };
+
+  document.body.appendChild(iframe);
+  return true;
+}
+

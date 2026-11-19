@@ -86,6 +86,34 @@ export function archiveDocumentInState(
 }
 
 /**
+ * Mengarsipkan banyak dokumen resmi (FINAL/REVISED/RECEIVED) sekaligus dalam satu pembaruan atomik.
+ * Dokumen DRAFT atau yang sudah ARCHIVED dilewati secara aman tanpa melempar error.
+ */
+export function bulkArchiveDocumentsInState(
+  state: AppState,
+  documentIds: string[],
+  timestamp: string = new Date().toISOString()
+): { state: AppState; archivedIds: string[]; skippedIds: string[] } {
+  const uniqueIds = Array.from(new Set(documentIds.filter(Boolean)));
+  let nextState = state;
+  const archivedIds: string[] = [];
+  const skippedIds: string[] = [];
+
+  for (const id of uniqueIds) {
+    const found = (nextState.documents ?? []).find((d) => d.id === id);
+    if (!found || found.status === 'DRAFT' || found.status === 'ARCHIVED') {
+      skippedIds.push(id);
+      continue;
+    }
+    const res = archiveDocumentInState(nextState, id, timestamp);
+    nextState = res.state;
+    archivedIds.push(id);
+  }
+
+  return { state: nextState, archivedIds, skippedIds };
+}
+
+/**
  * Restores an ARCHIVED document back to active FINAL archive status without modifying snapshots.
  */
 export function restoreArchivedDocumentInState(

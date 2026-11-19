@@ -5,6 +5,7 @@ import {
   Copy,
   Edit3,
   FilePlus2,
+  Hash,
   Lock,
   Plus,
   Power,
@@ -37,6 +38,9 @@ import {
   validateTemplateStructure,
 } from '../../domain/persuratan/templates/templateManagerEngine';
 import { DOCUMENT_KIND_LABELS } from '../../domain/persuratan/selectors';
+import { TemplateVisualEditor } from './TemplateVisualEditor';
+import { NumberingFormatModal } from './NumberingFormatModal';
+import { OfficialKopSuratPreview } from '../OfficialKopSuratPreview';
 import './TemplateManager.css';
 
 export interface TemplateManagerProps {
@@ -50,39 +54,17 @@ export interface TemplateManagerProps {
 
 type ManagerScope = 'ALL' | 'MADRASAH' | 'SYSTEM' | 'INACTIVE';
 
-function blocksToPlainEditorText(blocks: TemplatePreviewBlock[]): string {
-  return blocks
-    .map((b) => {
-      if (b.type === 'heading' || b.type === 'paragraph') return b.text;
-      if (b.type === 'list') return b.items.map((item) => `- ${item}`).join('\n');
-      if (b.type === 'meta_grid') return b.rows.map((r) => `${r.label}: ${r.value}`).join('\n');
-      if (b.type === 'table') return b.columns.join(' | ');
-      return `${b.rightTitle} / ${b.rightName}`;
-    })
-    .join('\n\n');
-}
-
-function plainEditorTextToBlocks(text: string): TemplatePreviewBlock[] {
-  const chunks = text
-    .split(/\n{2,}/)
-    .map((c) => c.trim())
-    .filter(Boolean);
-  if (chunks.length === 0) return [];
-  return chunks.map((chunk) => {
-    const lines = chunk.split('\n').map((l) => l.trim()).filter(Boolean);
-    if (lines.length > 1 && lines.every((l) => l.startsWith('- '))) {
-      return {
-        type: 'list' as const,
-        ordered: false,
-        items: lines.map((l) => l.slice(2).trim()),
-      };
-    }
-    return {
-      type: 'paragraph' as const,
-      text: lines.join(' '),
-    };
-  });
-}
+const DEFAULT_CUSTOM_BLOCKS: TemplatePreviewBlock[] = [
+  { type: 'paragraph', text: "Assalamu'alaikum Wr. Wb." },
+  {
+    type: 'paragraph',
+    text: 'Disampaikan kepada {{PIHAK_TUJUAN}} perihal {{PERIHAL}} pada tanggal {{TANGGAL_SURAT}}.',
+  },
+  {
+    type: 'paragraph',
+    text: 'Kepala Madrasah — {{NAMA_KEPALA_MADRASAH}}',
+  },
+];
 
 export function TemplateManager({
   state,
@@ -115,7 +97,9 @@ export function TemplateManager({
   const [formKop, setFormKop] = useState(true);
   const [formHeaderTitle, setFormHeaderTitle] = useState('');
   const [formNumberPlaceholder, setFormNumberPlaceholder] = useState('Nomor: {{NOMOR_SURAT}}');
-  const [formBodyText, setFormBodyText] = useState('');
+  const [formBlocks, setFormBlocks] = useState<TemplatePreviewBlock[]>(DEFAULT_CUSTOM_BLOCKS);
+  const [visualEditorKey, setVisualEditorKey] = useState<string>('init');
+  const [isNumberingModalOpen, setIsNumberingModalOpen] = useState<boolean>(false);
   const [formFields, setFormFields] = useState<TemplateFieldDefinition[]>([
     { key: 'perihal', label: 'Perihal / Pokok Surat', kind: 'OPERATOR_INPUT', required: true },
     { key: 'pihak_tujuan', label: 'Pihak Tujuan', kind: 'OPERATOR_INPUT', required: false },
@@ -179,7 +163,7 @@ export function TemplateManager({
         title: formHeaderTitle,
         numberPlaceholder: formNumberPlaceholder,
       },
-      previewBlocks: plainEditorTextToBlocks(formBodyText),
+      previewBlocks: formBlocks,
     };
     return validateTemplateStructure(candidate);
   }, [
@@ -194,7 +178,7 @@ export function TemplateManager({
     formKop,
     formHeaderTitle,
     formNumberPlaceholder,
-    formBodyText,
+    formBlocks,
     formFields,
   ]);
 
@@ -209,9 +193,8 @@ export function TemplateManager({
     setFormKop(true);
     setFormHeaderTitle('SURAT EDARAN MADRASAH');
     setFormNumberPlaceholder('Nomor: {{NOMOR_SURAT}}');
-    setFormBodyText(
-      'Assalamu\'alaikum Wr. Wb.\n\nDisampaikan kepada {{PIHAK_TUJUAN}} perihal {{PERIHAL}} pada tanggal {{TANGGAL_SURAT}}.\n\nKepala Madrasah\n{{NAMA_KEPALA_MADRASAH}}'
-    );
+    setFormBlocks(DEFAULT_CUSTOM_BLOCKS);
+    setVisualEditorKey(`create-${Date.now()}`);
     setFormFields([
       { key: 'perihal', label: 'Perihal / Pokok Surat', kind: 'OPERATOR_INPUT', required: true },
       { key: 'pihak_tujuan', label: 'Pihak Tujuan', kind: 'OPERATOR_INPUT', required: false },
@@ -238,7 +221,8 @@ export function TemplateManager({
     setFormKop(tpl.documentHeader.includeKopSurat);
     setFormHeaderTitle(tpl.documentHeader.title);
     setFormNumberPlaceholder(tpl.documentHeader.numberPlaceholder);
-    setFormBodyText(blocksToPlainEditorText(tpl.previewBlocks));
+    setFormBlocks(tpl.previewBlocks.length > 0 ? tpl.previewBlocks : DEFAULT_CUSTOM_BLOCKS);
+    setVisualEditorKey(`edit-${tpl.id}-${tpl.version}`);
     setFormFields(tpl.fields.length > 0 ? tpl.fields.map((f) => ({ ...f })) : []);
     setEditorMode('edit');
   };
@@ -273,7 +257,7 @@ export function TemplateManager({
     e.preventDefault();
     setIsSaving(true);
     try {
-      const blocks = plainEditorTextToBlocks(formBodyText);
+      const blocks = formBlocks;
       if (editorMode === 'create') {
         const res = createCustomTemplateInState(state, {
           name: formName,
@@ -394,16 +378,20 @@ export function TemplateManager({
     <section className="s07-shell" aria-label="S07 Template Manager Madrasah">
       <header className="s07-header">
         <div>
-          <div className="s5-page-kicker">S07 · PENGELOLA TEMPLATE NASKAH DINAS</div>
-          <h1 className="s5-page-title">Template Manager Madrasah</h1>
+          <h1 className="s5-page-title">Kelola Template Madrasah</h1>
           <p className="s5-page-subtitle">
-            Kelola {systemCount} template bawaan SIGNAL (baca-saja) dan {madrasahCount} template khusus madrasah. Perubahan template tidak memengaruhi dokumen lama.
+            {systemCount} template bawaan &amp; {madrasahCount} template khusus madrasah. Perubahan tidak memengaruhi arsip lama.
           </p>
         </div>
         <div className="s07-header-actions">
-          <button type="button" className="s02-btn-secondary" onClick={onBackToGallery}>
-            <ArrowLeft size={14} aria-hidden="true" />
-            <span>Kembali ke Galeri S02</span>
+          <button
+            type="button"
+            className="s02-btn-secondary"
+            onClick={() => setIsNumberingModalOpen(true)}
+            title="Atur format nomor surat madrasah"
+          >
+            <Hash size={14} aria-hidden="true" />
+            <span>Format Nomor Surat</span>
           </button>
           {(state.documents?.length ?? 0) > 0 && (
             <button
@@ -416,9 +404,13 @@ export function TemplateManager({
               }}
             >
               <ShieldCheck size={14} aria-hidden="true" />
-              <span>Ekstrak dari Dokumen (Sanitasi PII)</span>
+              <span>Ekstrak dari Dokumen</span>
             </button>
           )}
+          <button type="button" className="s02-btn-secondary" onClick={onBackToGallery}>
+            <ArrowLeft size={14} aria-hidden="true" />
+            <span>Galeri</span>
+          </button>
           <button type="button" className="s02-btn-primary" onClick={openCreateForm}>
             <FilePlus2 size={15} aria-hidden="true" />
             <span>Buat Template Baru</span>
@@ -729,12 +721,11 @@ export function TemplateManager({
                   </label>
                 </div>
                 <div className="s07-field is-full">
-                  <label htmlFor="s07-body">Struktur Isi &amp; Placeholder (pisahkan paragraf dengan baris kosong) *</label>
-                  <textarea
-                    id="s07-body"
-                    className="s07-textarea"
-                    value={formBodyText}
-                    onChange={(e) => setFormBodyText(e.target.value)}
+                  <label>Editor Visual Struktur Naskah &amp; Token *</label>
+                  <TemplateVisualEditor
+                    initialBlocks={formBlocks}
+                    editorKey={visualEditorKey}
+                    onChangeBlocks={setFormBlocks}
                   />
                 </div>
               </div>
@@ -939,7 +930,7 @@ export function TemplateManager({
                 <div className="s02-paper-sheet">
                   {selectedTemplate.documentHeader.includeKopSurat && (
                     <div className="s02-paper-kop">
-                      <strong>{state.settings.schoolName || '{{NAMA_MADRASAH}}'}</strong>
+                      <OfficialKopSuratPreview settings={state.settings} variant="mini" />
                     </div>
                   )}
                   <div className="s02-paper-doc-title">{selectedTemplate.documentHeader.title}</div>
@@ -963,6 +954,24 @@ export function TemplateManager({
           )}
         </aside>
       </div>
+      {/* Modal Pengaturan Format Penomoran Surat Madrasah */}
+      {isNumberingModalOpen && (
+        <NumberingFormatModal
+          open={isNumberingModalOpen}
+          state={state}
+          onClose={() => setIsNumberingModalOpen(false)}
+          onSaveConfig={async (nextConfig) => {
+            await onPersistState({
+              ...state,
+              settings: {
+                ...state.settings,
+                documentNumbering: nextConfig,
+              },
+            });
+            onNotify?.('Format penomoran surat madrasah berhasil diperbarui.', 'success');
+          }}
+        />
+      )}
     </section>
   );
 }
