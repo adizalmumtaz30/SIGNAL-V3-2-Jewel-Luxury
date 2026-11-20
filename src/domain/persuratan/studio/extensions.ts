@@ -162,6 +162,8 @@ export const DocImageNode = Node.create({
   },
 });
 
+const VALID_TABLE_LAYOUTS = new Set(['grid', 'borderless', 'meta', 'letter_header', 'signature']);
+
 export const ExtendedTable = Table.extend({
   addAttributes() {
     return {
@@ -172,6 +174,22 @@ export const ExtendedTable = Table.extend({
         renderHTML: (attributes) => ({
           'data-repeat-header': attributes.repeatHeader !== false ? 'true' : 'false',
         }),
+      },
+      tableLayout: {
+        default: 'grid',
+        parseHTML: (element) => {
+          const raw = element.getAttribute('data-table-layout');
+          return raw && VALID_TABLE_LAYOUTS.has(raw) ? raw : 'grid';
+        },
+        renderHTML: (attributes) => {
+          const layout =
+            typeof attributes.tableLayout === 'string' && VALID_TABLE_LAYOUTS.has(attributes.tableLayout)
+              ? attributes.tableLayout
+              : 'grid';
+          return {
+            'data-table-layout': layout,
+          };
+        },
       },
     };
   },

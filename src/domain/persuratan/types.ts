@@ -79,11 +79,12 @@ export type NumberingResetMode = 'YEARLY' | 'MONTHLY' | 'CONTINUOUS';
 
 export interface DocumentNumberingConfig {
   enabled: boolean;
-  madrasahCode: string; // e.g. 'MTs.CN'
+  madrasahCode: string; // e.g. 'MTs.DAH'
   formatPattern: string; // e.g. '{SEQ}/{KODE_SURAT}/{KODE_MADRASAH}/{BULAN_ROMAWI}/{TAHUN}'
   seqPadding: number; // default 3 (001)
   resetMode: NumberingResetMode;
   startingSequence?: number; // default 1 — nomor urut awal periode berjalan
+  separateSkSequence?: boolean; // pisahkan buku nomor SK dari surat keluar umum
   kindCodes: Partial<Record<DocumentKind, string>>;
 }
 

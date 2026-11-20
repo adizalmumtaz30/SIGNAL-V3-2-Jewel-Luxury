@@ -80,6 +80,8 @@ export interface ScheduleWorkloadSnapshotItem {
   teacherName: string;
   totalJP: number;
   classesCount: number;
+  subjectsTaught?: string[];
+  classesTaught?: string[];
 }
 
 export interface ResolvedScheduleVersionSummary {

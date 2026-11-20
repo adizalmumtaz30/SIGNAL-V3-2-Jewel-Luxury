@@ -1,5 +1,12 @@
 import type { AppState } from '../../types';
-import type { DocumentAttachmentMeta, DocumentRecord } from '../types';
+import type {
+  DocumentAttachmentMeta,
+  DocumentIntakeDraft,
+  DocumentKind,
+  DocumentRecord,
+  TipTapJSONContent,
+  TipTapJSONNode,
+} from '../types';
 import {
   deleteBinaryBlob,
   saveBinaryBlob,
@@ -279,3 +286,188 @@ export async function removeAttachmentFromDocumentInState(params: {
     removed: target,
   };
 }
+
+function getDefaultNumberTokenForKind(kind: DocumentKind): string {
+  if (kind === 'SK') return '{{NOMOR_SK}}';
+  if (kind === 'BERITA_ACARA') return '{{NOMOR_BERITA_ACARA}}';
+  if (kind === 'NOTULA') return '{{NOMOR_NOTULA}}';
+  if (kind === 'LAPORAN') return '{{NOMOR_LAPORAN}}';
+  if (kind === 'LAINNYA') return '{{NOMOR_NOTA_DINAS}}';
+  return '{{NOMOR_SURAT}}';
+}
+
+function restoreOfficialNumberPlaceholderInContent(
+  content: TipTapJSONContent,
+  oldNumber: string | null | undefined,
+  kind: DocumentKind
+): TipTapJSONContent {
+  const cloned = JSON.parse(JSON.stringify(content)) as TipTapJSONContent;
+  const trimmedOld = (oldNumber ?? '').trim();
+  if (!trimmedOld) return cloned;
+  const token = getDefaultNumberTokenForKind(kind);
+
+  const walk = (node: TipTapJSONNode) => {
+    if (typeof node.text === 'string' && node.text.includes(trimmedOld)) {
+      node.text = node.text.split(trimmedOld).join(token);
+    }
+    if (Array.isArray(node.content)) {
+      for (const child of node.content) {
+        walk(child);
+      }
+    }
+  };
+  for (const child of cloned.content ?? []) {
+    walk(child);
+  }
+  return cloned;
+}
+
+/**
+ * Menggandakan dokumen resmi (FINAL / ARCHIVED / REVISED) menjadi draft baru ("Buat Surat Serupa")
+ * dengan tanggal hari ini, tanpa nomor surat, dan mengembalikan placeholder nomor otomatis pada naskah,
+ * tanpa menyentuh atau mengubah dokumen arsip asal yang terkunci.
+ */
+export function cloneOfficialDocumentToNewDraft(params: {
+  state: AppState;
+  documentId: string;
+  versionId?: string | null;
+  todayIso?: string;
+  timestamp?: string;
+}): {
+  state: AppState;
+  draft: DocumentIntakeDraft;
+  documentRecord: DocumentRecord;
+} {
+  const {
+    state,
+    documentId,
+    versionId = null,
+    todayIso = new Date().toISOString().slice(0, 10),
+    timestamp = new Date().toISOString(),
+  } = params;
+
+  const sourceDoc = (state.documents ?? []).find((d) => d.id === documentId);
+  if (!sourceDoc) {
+    throw new Error('Dokumen sumber tidak ditemukan untuk dibuat salinan serupa.');
+  }
+
+  const versions = (state.documentVersions ?? []).filter((v) => v.documentId === documentId);
+  const sourceVersion =
+    (versionId ? versions.find((v) => v.id === versionId) : null) ??
+    (sourceDoc.currentVersionId
+      ? versions.find((v) => v.id === sourceDoc.currentVersionId)
+      : null) ??
+    versions.sort((a, b) => b.versionNumber - a.versionNumber)[0] ??
+    null;
+
+  const sourceDraft =
+    (sourceDoc.intakeDraftId
+      ? (state.intakeDrafts ?? []).find((dr) => dr.id === sourceDoc.intakeDraftId)
+      : null) ?? null;
+
+  if (!sourceVersion && !sourceDraft) {
+    throw new Error(
+      'Dokumen ini tidak memiliki naskah sumber yang dapat disalin menjadi surat serupa.'
+    );
+  }
+
+  const suffix = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+  const newDraftId = `drf-clone-${suffix}`;
+  const newDocId = `doc-clone-${suffix}`;
+
+  const baseTitle = sourceVersion?.title ?? sourceDoc.title;
+  const newTitle = baseTitle.startsWith('Salinan ') ? baseTitle : `${baseTitle} (Baru)`;
+  const baseKind = sourceVersion?.documentKind ?? sourceDoc.documentType;
+
+  const rawContent: TipTapJSONContent = sourceVersion
+    ? restoreOfficialNumberPlaceholderInContent(
+        sourceVersion.snapshotContent,
+        sourceVersion.documentNumber,
+        baseKind
+      )
+    : sourceDraft?.studioState?.content
+      ? (JSON.parse(JSON.stringify(sourceDraft.studioState.content)) as TipTapJSONContent)
+      : { type: 'doc', content: [{ type: 'paragraph' }] };
+
+  const pageSettings = sourceVersion?.snapshotPageSettings
+    ? JSON.parse(JSON.stringify(sourceVersion.snapshotPageSettings))
+    : sourceDraft?.studioState?.pageSettings
+      ? JSON.parse(JSON.stringify(sourceDraft.studioState.pageSettings))
+      : {
+          paperSize: 'a4' as const,
+          orientation: 'portrait' as const,
+          marginsMm: { top: 20, right: 20, bottom: 20, left: 25 },
+        };
+
+  const templateSnapshot = JSON.parse(
+    JSON.stringify(sourceVersion?.templateSnapshot ?? sourceDraft!.templateSnapshot)
+  );
+  const sourceSnapshots = JSON.parse(
+    JSON.stringify(sourceVersion?.sourceSnapshots ?? sourceDraft?.sourceSnapshots ?? [])
+  );
+  const fieldValues = JSON.parse(
+    JSON.stringify({
+      ...(sourceVersion?.fieldValues ?? sourceDraft?.fieldValues ?? {}),
+      documentDate: todayIso,
+    })
+  );
+
+  const newDraft: DocumentIntakeDraft = {
+    id: newDraftId,
+    documentId: newDocId,
+    templateId: sourceDoc.templateId ?? templateSnapshot.id,
+    templateVersion: sourceDoc.templateVersion ?? templateSnapshot.version,
+    status: 'DRAFT',
+    title: newTitle,
+    subject: sourceVersion?.subject ?? sourceDoc.subject,
+    documentDate: todayIso,
+    counterpartName: sourceVersion?.counterpartName ?? sourceDoc.counterpartName,
+    relatedTeacherIds: [...(sourceVersion?.relatedTeacherIds ?? sourceDoc.relatedTeacherIds ?? [])],
+    scheduleVersionId: sourceVersion?.scheduleVersionId ?? sourceDoc.scheduleVersionId ?? null,
+    scheduleVersionFingerprint: sourceVersion?.scheduleVersionFingerprint ?? null,
+    fieldValues,
+    templateSnapshot,
+    sourceSnapshots,
+    studioState: {
+      schemaVersion: 1,
+      editorStatus: 'IN_PROGRESS',
+      content: rawContent,
+      pageSettings,
+      updatedAt: timestamp,
+    },
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+
+  const newDocRecord: DocumentRecord = {
+    id: newDocId,
+    direction: 'OUTGOING',
+    documentType: baseKind,
+    documentNumber: null,
+    title: newTitle,
+    subject: newDraft.subject,
+    documentDate: todayIso,
+    counterpartName: newDraft.counterpartName,
+    status: 'DRAFT',
+    relatedTeacherIds: newDraft.relatedTeacherIds,
+    tags: [...(sourceDoc.tags ?? [])],
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    archivedAt: null,
+    intakeDraftId: newDraftId,
+    templateId: newDraft.templateId,
+    templateVersion: newDraft.templateVersion,
+    scheduleVersionId: newDraft.scheduleVersionId,
+  };
+
+  return {
+    state: {
+      ...state,
+      documents: [newDocRecord, ...(state.documents ?? [])],
+      intakeDrafts: [newDraft, ...(state.intakeDrafts ?? [])],
+    },
+    draft: newDraft,
+    documentRecord: newDocRecord,
+  };
+}
+

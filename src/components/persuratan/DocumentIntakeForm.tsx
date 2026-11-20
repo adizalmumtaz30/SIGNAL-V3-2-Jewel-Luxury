@@ -86,24 +86,53 @@ export interface DocumentIntakeFormProps {
   onNotify?: (message: string, type?: 'success' | 'info' | 'warning' | 'error') => void;
 }
 
+function renderMiniInline(nodes: TipTapJSONNode[] | undefined) {
+  if (!nodes || nodes.length === 0) return null;
+  return nodes.map((child, idx) => {
+    if (child.type === 'hardBreak') return <br key={idx} />;
+    if (child.type !== 'text') return null;
+    const text = child.text ?? '';
+    const marks = new Set((child.marks ?? []).map((m) => m.type));
+    let el: React.ReactNode = text;
+    if (marks.has('underline')) el = <u>{el}</u>;
+    if (marks.has('italic')) el = <em>{el}</em>;
+    if (marks.has('bold')) el = <strong>{el}</strong>;
+    return <span key={idx}>{el}</span>;
+  });
+}
+
 function renderMiniPreviewNodes(nodes: TipTapJSONNode[]) {
   return nodes.slice(0, 28).map((node, idx) => {
     const align =
       node.attrs?.textAlign && typeof node.attrs.textAlign === 'string'
         ? (node.attrs.textAlign as 'left' | 'center' | 'right' | 'justify')
         : undefined;
-    const text = (node.content ?? [])
-      .map((c) => (typeof c.text === 'string' ? c.text : ''))
-      .join('');
 
+    if (node.type === 'pageBreak') {
+      return (
+        <div
+          key={idx}
+          style={{
+            borderTop: '1px dashed #8da89e',
+            textAlign: 'center',
+            fontSize: '7.5px',
+            color: '#526861',
+            margin: '5px 0',
+            paddingTop: '2px',
+          }}
+        >
+          — Halaman Berikutnya —
+        </div>
+      );
+    }
     if (node.type === 'horizontalRule') {
-      return <hr key={idx} style={{ border: 0, borderTop: '1px solid #9bb0a9', margin: '4px 0' }} />;
+      return <hr key={idx} style={{ border: 0, borderTop: '1px solid #000000', margin: '4px 0' }} />;
     }
     if (node.type === 'heading') {
       const Tag = node.attrs?.level === 1 ? 'h1' : node.attrs?.level === 3 ? 'h3' : 'h2';
       return (
         <Tag key={idx} style={{ textAlign: align }}>
-          {text}
+          {renderMiniInline(node.content)}
         </Tag>
       );
     }
@@ -113,10 +142,9 @@ function renderMiniPreviewNodes(nodes: TipTapJSONNode[]) {
         <ListTag key={idx} style={{ margin: '2px 0 4px 14px', padding: 0 }}>
           {(node.content ?? []).slice(0, 6).map((li, liIdx) => (
             <li key={liIdx}>
-              {(li.content ?? [])
-                .flatMap((p) => p.content ?? [])
-                .map((t) => t.text ?? '')
-                .join('')}
+              {(li.content ?? []).map((p, pIdx) => (
+                <span key={pIdx}>{renderMiniInline(p.content)}</span>
+              ))}
             </li>
           ))}
         </ListTag>
@@ -124,28 +152,35 @@ function renderMiniPreviewNodes(nodes: TipTapJSONNode[]) {
     }
     if (node.type === 'table') {
       const rows = node.content ?? [];
+      const rawLayout =
+        typeof node.attrs?.tableLayout === 'string' ? node.attrs.tableLayout : 'grid';
       return (
-        <table key={idx}>
+        <table key={idx} data-table-layout={rawLayout}>
           <tbody>
-            {rows.slice(0, 6).map((row, rIdx) => (
+            {rows.slice(0, 8).map((row, rIdx) => (
               <tr key={rIdx}>
                 {(row.content ?? []).map((cell, cIdx) => {
                   const CellTag = cell.type === 'tableHeader' ? 'th' : 'td';
-                  const cellText = (cell.content ?? [])
-                    .flatMap((p) => p.content ?? [])
-                    .map((t) => t.text ?? '')
-                    .join(' ');
-                  return <CellTag key={cIdx}>{cellText}</CellTag>;
+                  return (
+                    <CellTag key={cIdx}>
+                      {(cell.content ?? []).map((p, pIdx) => {
+                        const isEmpty = !p.content || p.content.length === 0;
+                        return (
+                          <div key={pIdx}>{isEmpty ? '\u00A0' : renderMiniInline(p.content)}</div>
+                        );
+                      })}
+                    </CellTag>
+                  );
                 })}
               </tr>
             ))}
-            {rows.length > 6 && (
+            {rows.length > 8 && (
               <tr>
                 <td
                   colSpan={Math.max(1, rows[0]?.content?.length ?? 1)}
                   style={{ textAlign: 'center', fontStyle: 'italic', color: '#526861' }}
                 >
-                  … +{rows.length - 6} baris lainnya
+                  … +{rows.length - 8} baris lainnya
                 </td>
               </tr>
             )}
@@ -153,9 +188,10 @@ function renderMiniPreviewNodes(nodes: TipTapJSONNode[]) {
         </table>
       );
     }
+    const isEmptyPara = !node.content || node.content.length === 0;
     return (
       <p key={idx} style={{ textAlign: align }}>
-        {text || '\u00A0'}
+        {isEmptyPara ? '\u00A0' : renderMiniInline(node.content)}
       </p>
     );
   });

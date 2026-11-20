@@ -83,19 +83,68 @@ export interface DocumentArchiveDetailProps {
 
 type S06TabId = 'overview' | 'metadata' | 'attachments' | 'versions';
 
+function renderStaticInline(nodes: TipTapJSONNode[] | undefined) {
+  if (!nodes || nodes.length === 0) return null;
+  return nodes.map((child, idx) => {
+    if (child.type === 'hardBreak') return <br key={idx} />;
+    if (child.type !== 'text') return null;
+    const text = child.text ?? '';
+    const marks = new Set((child.marks ?? []).map((m) => m.type));
+    let el: React.ReactNode = text;
+    if (marks.has('underline')) el = <u>{el}</u>;
+    if (marks.has('italic')) el = <em>{el}</em>;
+    if (marks.has('bold')) el = <strong>{el}</strong>;
+    return <span key={idx}>{el}</span>;
+  });
+}
+
+function getStaticColWidth(layout: string, colIdx: number): string | undefined {
+  if (layout === 'meta') {
+    if (colIdx === 0) return '28%';
+    if (colIdx === 1) return '4%';
+    if (colIdx === 2) return '68%';
+  }
+  if (layout === 'letter_header') {
+    if (colIdx === 0) return '15%';
+    if (colIdx === 1) return '3%';
+    if (colIdx === 2) return '49%';
+    if (colIdx === 3) return '33%';
+  }
+  if (layout === 'signature') {
+    if (colIdx === 0) return '52%';
+    if (colIdx === 1) return '48%';
+  }
+  return undefined;
+}
+
 function renderStaticNodes(nodes: TipTapJSONNode[] | undefined) {
   if (!nodes || nodes.length === 0) return null;
   return nodes.map((node, idx) => {
-    const text = (node.content ?? []).map((c) => c.text ?? '').join('');
+    const align =
+      node.attrs?.textAlign && typeof node.attrs.textAlign === 'string'
+        ? (node.attrs.textAlign as 'left' | 'center' | 'right' | 'justify')
+        : undefined;
+
     if (node.type === 'heading') {
+      const level = node.attrs?.level === 1 ? 1 : node.attrs?.level === 3 ? 3 : 2;
       return (
-        <h3 key={idx} style={{ margin: '8px 0 4px', fontSize: '13.5px', color: '#0b2923' }}>
-          {text}
+        <h3
+          key={idx}
+          style={{
+            margin: '8px 0 4px',
+            fontFamily: "'Times New Roman', Georgia, serif",
+            fontSize: level === 1 ? '14.5px' : level === 2 ? '13.5px' : '12.5px',
+            fontWeight: 700,
+            color: '#000000',
+            textAlign: align,
+          }}
+        >
+          {renderStaticInline(node.content)}
         </h3>
       );
     }
     if (node.type === 'horizontalRule') {
-      return <hr key={idx} style={{ border: 0, borderTop: '1px solid #30453f', margin: '8px 0' }} />;
+      return <hr key={idx} style={{ border: 0, borderTop: '1.5px solid #000000', margin: '8px 0' }} />;
     }
     if (node.type === 'pageBreak') {
       return (
@@ -115,31 +164,70 @@ function renderStaticNodes(nodes: TipTapJSONNode[] | undefined) {
       );
     }
     if (node.type === 'table') {
+      const rawLayout =
+        typeof node.attrs?.tableLayout === 'string' ? node.attrs.tableLayout : 'grid';
+      const isBorderless =
+        rawLayout === 'borderless' ||
+        rawLayout === 'meta' ||
+        rawLayout === 'letter_header' ||
+        rawLayout === 'signature';
+
       return (
         <table
           key={idx}
-          style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11.5px', margin: '8px 0' }}
+          data-table-layout={rawLayout}
+          style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            tableLayout: isBorderless ? 'fixed' : 'auto',
+            fontFamily: "'Times New Roman', Georgia, serif",
+            fontSize: isBorderless ? '12.5px' : '11.5px',
+            color: '#000000',
+            margin: rawLayout === 'signature' ? '14px 0 6px' : isBorderless ? '4px 0 8px' : '8px 0',
+          }}
         >
           <tbody>
-            {(node.content ?? []).slice(0, 20).map((row, rIdx) => (
+            {(node.content ?? []).slice(0, 25).map((row, rIdx) => (
               <tr key={rIdx}>
                 {(row.content ?? []).map((cell, cIdx) => {
                   const CellTag = cell.type === 'tableHeader' ? 'th' : 'td';
-                  const cellText = (cell.content ?? [])
-                    .flatMap((p) => p.content ?? [])
-                    .map((t) => t.text ?? '')
-                    .join(' ');
+                  const cellAlign =
+                    (cell.content?.[0]?.attrs?.textAlign as
+                      | 'left'
+                      | 'center'
+                      | 'right'
+                      | 'justify'
+                      | undefined) ??
+                    (rawLayout === 'letter_header' && cIdx === 3
+                      ? 'right'
+                      : (rawLayout === 'meta' || rawLayout === 'letter_header') && cIdx === 1
+                        ? 'center'
+                        : 'left');
                   return (
                     <CellTag
                       key={cIdx}
                       style={{
-                        border: '1px solid #748881',
-                        padding: '4px 6px',
-                        textAlign: 'left',
-                        background: cell.type === 'tableHeader' ? '#f1f5f3' : 'transparent',
+                        width: isBorderless ? getStaticColWidth(rawLayout, cIdx) : undefined,
+                        border: isBorderless ? 'none' : '1px solid #222222',
+                        padding: isBorderless ? '1.5px 3px' : '4px 6px',
+                        textAlign: cellAlign,
+                        verticalAlign: 'top',
+                        color: '#000000',
+                        background: isBorderless
+                          ? 'transparent'
+                          : cell.type === 'tableHeader'
+                            ? '#f2f2f2'
+                            : 'transparent',
                       }}
                     >
-                      {cellText}
+                      {(cell.content ?? []).map((p, pIdx) => {
+                        const isEmpty = !p.content || p.content.length === 0;
+                        return (
+                          <div key={pIdx} style={{ minHeight: isEmpty ? '1.15em' : undefined }}>
+                            {isEmpty ? '\u00A0' : renderStaticInline(p.content)}
+                          </div>
+                        );
+                      })}
                     </CellTag>
                   );
                 })}
@@ -152,22 +240,41 @@ function renderStaticNodes(nodes: TipTapJSONNode[] | undefined) {
     if (node.type === 'bulletList' || node.type === 'orderedList') {
       const Tag = node.type === 'orderedList' ? 'ol' : 'ul';
       return (
-        <Tag key={idx} style={{ margin: '4px 0 8px 18px', padding: 0, fontSize: '12px' }}>
+        <Tag
+          key={idx}
+          style={{
+            margin: '4px 0 8px 18px',
+            padding: 0,
+            fontFamily: "'Times New Roman', Georgia, serif",
+            fontSize: '12.5px',
+            color: '#000000',
+          }}
+        >
           {(node.content ?? []).map((li, liIdx) => (
-            <li key={liIdx}>
-              {(li.content ?? [])
-                .flatMap((p) => p.content ?? [])
-                .map((t) => t.text ?? '')
-                .join('')}
+            <li key={liIdx} style={{ marginBottom: '2px' }}>
+              {(li.content ?? []).map((p, pIdx) => (
+                <span key={pIdx}>{renderStaticInline(p.content)}</span>
+              ))}
             </li>
           ))}
         </Tag>
       );
     }
+    const text = (node.content ?? []).map((c) => c.text ?? '').join('');
     if (!text.trim()) return null;
     return (
-      <p key={idx} style={{ margin: '0 0 6px', fontSize: '12px', lineHeight: 1.5 }}>
-        {text}
+      <p
+        key={idx}
+        style={{
+          margin: '0 0 6px',
+          fontFamily: "'Times New Roman', Georgia, serif",
+          fontSize: '12.5px',
+          lineHeight: 1.5,
+          color: '#000000',
+          textAlign: align,
+        }}
+      >
+        {renderStaticInline(node.content)}
       </p>
     );
   });

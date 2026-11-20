@@ -775,6 +775,9 @@ export function resolveSystemAutoData(state: AppState): ResolvedSystemAutoData {
   const verifiedScheduleVersions: ResolvedScheduleVersionSummary[] = [];
   let invalidScheduleVersionCount = 0;
 
+  const subjectNameById = new Map(state.subjects.map((subj) => [subj.id, subj.name]));
+  const classNameById = new Map(state.classes.map((cls) => [cls.id, cls.name]));
+
   for (const item of publishedAll) {
     if (!item.isValidForOfficialUse) {
       invalidScheduleVersionCount += 1;
@@ -803,6 +806,12 @@ export function resolveSystemAutoData(state: AppState): ResolvedSystemAutoData {
           teacherName: w.teacher.name,
           totalJP: w.totalJP,
           classesCount: w.classesTaught.length,
+          subjectsTaught: w.subjectsTaught
+            .map((id) => subjectNameById.get(id) ?? id)
+            .filter(Boolean),
+          classesTaught: w.classesTaught
+            .map((id) => classNameById.get(id) ?? id)
+            .filter(Boolean),
         })),
     });
   }

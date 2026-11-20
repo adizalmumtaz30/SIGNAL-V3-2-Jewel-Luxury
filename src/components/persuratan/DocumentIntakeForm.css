@@ -640,7 +640,7 @@
   border-radius: 4px;
   box-shadow: 0 8px 22px -4px rgba(11, 41, 35, 0.14), 0 1px 4px rgba(11, 41, 35, 0.06);
   padding: 18px 18px 20px;
-  color: #16181a;
+  color: #000000;
   font-family: 'Times New Roman', Georgia, Cambria, serif;
   font-size: 9.25px;
   line-height: 1.42;
@@ -666,19 +666,21 @@
 
 .s03-live-kop-meta {
   font-size: 7.5px;
-  color: #465752;
+  color: #222222;
   margin-top: 1px;
 }
 
 .s03-live-paper h1 {
   font-size: 10.5px;
   margin: 4px 0;
+  color: #000000;
 }
 
 .s03-live-paper h2,
 .s03-live-paper h3 {
   font-size: 9.5px;
   margin: 4px 0;
+  color: #000000;
 }
 
 .s03-live-paper p {
@@ -694,16 +696,47 @@
 
 .s03-live-paper th,
 .s03-live-paper td {
-  border: 1px solid #8fa39d;
+  border: 1px solid #222222;
   padding: 2px 4px;
   text-align: left;
   vertical-align: top;
+  color: #000000;
 }
 
 .s03-live-paper th {
-  background: #f1f6f4;
+  background: #f2f2f2;
   font-weight: 700;
 }
+
+.s03-live-paper table[data-table-layout='borderless'],
+.s03-live-paper table[data-table-layout='meta'],
+.s03-live-paper table[data-table-layout='letter_header'],
+.s03-live-paper table[data-table-layout='signature'] {
+  table-layout: fixed;
+  font-size: 9px;
+}
+
+.s03-live-paper table[data-table-layout='borderless'] td,
+.s03-live-paper table[data-table-layout='meta'] td,
+.s03-live-paper table[data-table-layout='letter_header'] td,
+.s03-live-paper table[data-table-layout='signature'] td {
+  border: none;
+  background: transparent;
+  padding: 1px 2px;
+}
+
+.s03-live-paper table[data-table-layout='meta'] td:nth-child(1) { width: 28%; }
+.s03-live-paper table[data-table-layout='meta'] td:nth-child(2) { width: 4%; text-align: center; }
+.s03-live-paper table[data-table-layout='meta'] td:nth-child(3) { width: 68%; }
+
+.s03-live-paper table[data-table-layout='letter_header'] td:nth-child(1) { width: 15%; }
+.s03-live-paper table[data-table-layout='letter_header'] td:nth-child(2) { width: 3%; text-align: center; }
+.s03-live-paper table[data-table-layout='letter_header'] td:nth-child(3) { width: 49%; }
+.s03-live-paper table[data-table-layout='letter_header'] td:nth-child(4) { width: 33%; text-align: right; }
+
+.s03-live-paper table[data-table-layout='signature'] { margin-top: 8px; }
+.s03-live-paper table[data-table-layout='signature'] td:nth-child(1) { width: 52%; }
+.s03-live-paper table[data-table-layout='signature'] td:nth-child(2) { width: 48%; text-align: left; }
 
 /* Collapsible Optional Fields Disclosure */
 .s03-optional-disclosure {

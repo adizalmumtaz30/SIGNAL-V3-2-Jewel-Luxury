@@ -193,6 +193,43 @@
   font-family: var(--font-mono);
 }
 
+.nfm-checkbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 13px;
+  border-radius: 10px;
+  border: 1px solid rgba(11, 41, 35, 0.11);
+  background: #f8fbf9;
+  cursor: pointer;
+}
+
+.nfm-checkbox-row input[type='checkbox'] {
+  margin-top: 2px;
+  width: 15px;
+  height: 15px;
+  accent-color: #113b33;
+  flex-shrink: 0;
+}
+
+.nfm-checkbox-row span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nfm-checkbox-row strong {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #0f201c;
+}
+
+.nfm-checkbox-row small {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: #5a6e67;
+}
+
 .nfm-kinds-block {
   display: flex;
   flex-direction: column;

@@ -22,6 +22,11 @@ export const AUTO_FINALIZATION_NUMBER_TOKENS = new Set<string>([
   'NO_DOKUMEN',
   'NOMOR_URUT',
   'NOMOR_ARSIP',
+  'NOMOR_NOTA_DINAS',
+  'NOMOR_BERITA_ACARA',
+  'NOMOR_LAPORAN',
+  'NOMOR_NOTULA',
+  'NOMOR_NOTULAN',
 ]);
 
 function readSnapshotRecord(

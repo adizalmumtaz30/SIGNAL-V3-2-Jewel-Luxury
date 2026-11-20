@@ -287,6 +287,12 @@ function validateNodeAttrs(nodeType: string, attrs: unknown): string | null {
     if (attrs.repeatHeader !== undefined && typeof attrs.repeatHeader !== 'boolean') {
       return 'Atribut repeatHeader tabel harus boolean.';
     }
+    if (attrs.tableLayout !== undefined && attrs.tableLayout !== null) {
+      const allowedLayouts = new Set(['grid', 'borderless', 'meta', 'letter_header', 'signature']);
+      if (typeof attrs.tableLayout !== 'string' || !allowedLayouts.has(attrs.tableLayout)) {
+        return `Tipe tata letak tabel "${String(attrs.tableLayout)}" tidak diizinkan.`;
+      }
+    }
   }
 
   if (nodeType === 'tableRow') {

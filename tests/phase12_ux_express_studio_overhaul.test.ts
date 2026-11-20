@@ -163,12 +163,22 @@ describe('Reformasi UI/UX Gelombang 1, Gelombang 2 & 3-Step Express Studio', () 
     });
 
     // (a) Saat naskah masih mengandung token manual (mis. IDENTITAS_PESERTA_1), drawer tetap menjaga validasi ketat
+    const contentWithManualToken = {
+      type: 'doc' as const,
+      content: [
+        ...built.content.content,
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text: 'Identitas tambahan: {{IDENTITAS_PESERTA_1}}' }],
+        },
+      ],
+    };
     const blockedDrawerHtml = renderToStaticMarkup(
       React.createElement(FinalizationSlideDrawer, {
         open: true,
         state: saved.state,
         draft: saved.draft,
-        content: built.content,
+        content: contentWithManualToken,
         pageSettings: built.pageSettings,
         onClose: () => {},
         onPersistState: async () => {},

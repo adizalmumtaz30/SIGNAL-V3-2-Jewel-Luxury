@@ -84,6 +84,25 @@ function renderInlineSegments(nodes: TipTapJSONNode[] | undefined) {
   });
 }
 
+function getTableColumnWidth(layout: string, colIdx: number): string | undefined {
+  if (layout === 'meta') {
+    if (colIdx === 0) return '28%';
+    if (colIdx === 1) return '4%';
+    if (colIdx === 2) return '68%';
+  }
+  if (layout === 'letter_header') {
+    if (colIdx === 0) return '15%';
+    if (colIdx === 1) return '3%';
+    if (colIdx === 2) return '49%';
+    if (colIdx === 3) return '33%';
+  }
+  if (layout === 'signature') {
+    if (colIdx === 0) return '52%';
+    if (colIdx === 1) return '48%';
+  }
+  return undefined;
+}
+
 function renderPaperNodes(nodes: TipTapJSONNode[]) {
   return nodes.map((node, idx) => {
     const align =
@@ -104,7 +123,7 @@ function renderPaperNodes(nodes: TipTapJSONNode[]) {
       );
     }
     if (node.type === 'horizontalRule') {
-      return <hr key={idx} style={{ border: 0, borderTop: '1px solid #9ab0a9', margin: '10px 0' }} />;
+      return <hr key={idx} style={{ border: 0, borderTop: '1.5px solid #000000', margin: '10px 0' }} />;
     }
     if (node.type === 'docImage') {
       const src = typeof node.attrs?.src === 'string' ? node.attrs.src : '';
@@ -134,8 +153,9 @@ function renderPaperNodes(nodes: TipTapJSONNode[]) {
           key={idx}
           style={{
             textAlign: align,
-            margin: '8px 0 6px',
-            fontSize: Tag === 'h1' ? '13.5pt' : Tag === 'h2' ? '12pt' : '11pt',
+            margin: '8px 0 5px',
+            color: '#000000',
+            fontSize: Tag === 'h1' ? '13.5pt' : Tag === 'h2' ? '12pt' : '11.5pt',
           }}
         >
           {renderInlineSegments(node.content)}
@@ -145,7 +165,7 @@ function renderPaperNodes(nodes: TipTapJSONNode[]) {
     if (node.type === 'bulletList' || node.type === 'orderedList') {
       const ListTag = node.type === 'orderedList' ? 'ol' : 'ul';
       return (
-        <ListTag key={idx} style={{ margin: '4px 0 8px 20px', padding: 0 }}>
+        <ListTag key={idx} style={{ margin: '4px 0 8px 20px', padding: 0, color: '#000000' }}>
           {(node.content ?? []).map((li, liIdx) => (
             <li key={liIdx} style={{ marginBottom: '2px' }}>
               {(li.content ?? []).map((p, pIdx) => (
@@ -157,14 +177,25 @@ function renderPaperNodes(nodes: TipTapJSONNode[]) {
       );
     }
     if (node.type === 'table') {
+      const rawLayout =
+        typeof node.attrs?.tableLayout === 'string' ? node.attrs.tableLayout : 'grid';
+      const isBorderless =
+        rawLayout === 'borderless' ||
+        rawLayout === 'meta' ||
+        rawLayout === 'letter_header' ||
+        rawLayout === 'signature';
+
       return (
         <table
           key={idx}
+          data-table-layout={rawLayout}
           style={{
             width: '100%',
             borderCollapse: 'collapse',
-            margin: '10px 0',
-            fontSize: '10pt',
+            tableLayout: isBorderless ? 'fixed' : 'auto',
+            margin: rawLayout === 'signature' ? '16px 0 8px' : isBorderless ? '5px 0 9px' : '10px 0',
+            fontSize: isBorderless ? '11.5pt' : '10pt',
+            color: '#000000',
           }}
         >
           <tbody>
@@ -190,27 +221,62 @@ function renderPaperNodes(nodes: TipTapJSONNode[]) {
                       cell.attrs?.verticalAlign === 'bottom'
                         ? cell.attrs.verticalAlign
                         : 'top';
+                    const cellAlign =
+                      (cell.content?.[0]?.attrs?.textAlign as
+                        | 'left'
+                        | 'center'
+                        | 'right'
+                        | 'justify'
+                        | undefined) ??
+                      (rawLayout === 'letter_header' && cIdx === 3
+                        ? 'right'
+                        : (rawLayout === 'meta' || rawLayout === 'letter_header') && cIdx === 1
+                          ? 'center'
+                          : 'left');
+                    const colWidth = isBorderless
+                      ? getTableColumnWidth(rawLayout, cIdx)
+                      : undefined;
+
                     return (
                       <CellTag
                         key={cIdx}
                         colSpan={colSpan}
                         rowSpan={rowSpan}
                         style={{
-                          border: '1px solid #9bb0a9',
-                          padding: '5px 7px',
+                          width: colWidth,
+                          border: isBorderless ? 'none' : '1px solid #222222',
+                          padding: isBorderless ? '2px 3px' : '5px 7px',
                           verticalAlign: vAlign,
-                          background: CellTag === 'th' ? '#eef5f2' : '#ffffff',
-                          textAlign:
-                            (cell.content?.[0]?.attrs?.textAlign as
+                          background: isBorderless
+                            ? 'transparent'
+                            : CellTag === 'th'
+                              ? '#f2f2f2'
+                              : '#ffffff',
+                          color: '#000000',
+                          textAlign: cellAlign,
+                        }}
+                      >
+                        {(cell.content ?? []).map((p, pIdx) => {
+                          const pAlign =
+                            (p.attrs?.textAlign as
                               | 'left'
                               | 'center'
                               | 'right'
-                              | undefined) ?? 'left',
-                        }}
-                      >
-                        {(cell.content ?? []).map((p, pIdx) => (
-                          <div key={pIdx}>{renderInlineSegments(p.content)}</div>
-                        ))}
+                              | 'justify'
+                              | undefined) ?? cellAlign;
+                          const isEmpty = !p.content || p.content.length === 0;
+                          return (
+                            <div
+                              key={pIdx}
+                              style={{
+                                textAlign: pAlign,
+                                minHeight: isEmpty ? '1.2em' : undefined,
+                              }}
+                            >
+                              {isEmpty ? '\u00A0' : renderInlineSegments(p.content)}
+                            </div>
+                          );
+                        })}
                       </CellTag>
                     );
                   })}
@@ -222,9 +288,18 @@ function renderPaperNodes(nodes: TipTapJSONNode[]) {
       );
     }
 
+    const isEmptyPara = !node.content || node.content.length === 0;
     return (
-      <p key={idx} style={{ textAlign: align, margin: '0 0 6px' }}>
-        {renderInlineSegments(node.content)}
+      <p
+        key={idx}
+        style={{
+          textAlign: align,
+          margin: '0 0 6px',
+          color: '#000000',
+          minHeight: isEmptyPara ? '1.1em' : undefined,
+        }}
+      >
+        {isEmptyPara ? '\u00A0' : renderInlineSegments(node.content)}
       </p>
     );
   });

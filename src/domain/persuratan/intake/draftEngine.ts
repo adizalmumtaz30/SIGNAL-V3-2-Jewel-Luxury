@@ -218,10 +218,30 @@ export function buildSourceSnapshots(
     status: autoData.kop.isComplete ? 'VERIFIED' : 'MISSING',
   });
 
-  // 2. Snapshot Guru Terpilih (tanpa live-binding ke Data Master; nama, kode, jabatan dibekukan)
+  // 2. Snapshot Guru Terpilih (tanpa live-binding ke Data Master; nama, kode, jabatan, mapel dibekukan tanpa NIP)
   const meta = deriveDocumentMetadata(template, values, state);
   if (meta.relatedTeacherIds.length > 0) {
     const teacherById = new Map(state.teachers.map((t) => [t.id, t]));
+    const subjectById = new Map(state.subjects.map((s) => [s.id, s.name]));
+    const selectedVer = meta.scheduleVersionId
+      ? autoData.verifiedScheduleVersions.find((v) => v.id === meta.scheduleVersionId)
+      : autoData.verifiedScheduleVersions[0];
+
+    const resolveTeacherSubjects = (teacherId: string): string | null => {
+      const fromVer = selectedVer?.teacherWorkloads.find((w) => w.teacherId === teacherId)?.subjectsTaught;
+      if (fromVer && fromVer.length > 0) return fromVer.join(', ');
+      const reqSubjs = Array.from(
+        new Set(
+          (state.requirements ?? [])
+            .filter((r) => r.teacherId === teacherId && r.requiredJP > 0)
+            .map((r) => subjectById.get(r.subjectId) ?? '')
+            .filter(Boolean)
+        )
+      );
+      if (reqSubjs.length > 0) return reqSubjs.join(', ');
+      return null;
+    };
+
     const capturedTeachers = meta.relatedTeacherIds.map((id) => {
       const t = teacherById.get(id);
       return t
@@ -230,8 +250,9 @@ export function buildSourceSnapshots(
             code: t.code,
             name: t.name,
             roleTitle: t.roleTitle ?? null,
+            subjectsText: resolveTeacherSubjects(t.id),
           }
-        : { id, code: null, name: id, roleTitle: null };
+        : { id, code: null, name: id, roleTitle: null, subjectsText: null };
     });
     snapshots.push({
       sourceKey: 'master.teachers.selected',

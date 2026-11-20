@@ -11,9 +11,11 @@ import type {
 import type { DocumentIntakeDraft } from '../types';
 import { computeUint8ArraySha256, isPdfBytesSignatureValid } from './finalPdfStore';
 
-const INK_RGB: [number, number, number] = [20, 42, 41];
-const TEAL_RGB: [number, number, number] = [18, 64, 55];
-const MUTED_RGB: [number, number, number] = [95, 114, 108];
+// Tinta hitam murni standar Tata Naskah Dinas (tajam pada cetak laser/fotokopi)
+const PURE_BLACK: [number, number, number] = [0, 0, 0];
+const BORDER_DARK: [number, number, number] = [30, 30, 30];
+const HEADER_NEUTRAL_BG: [number, number, number] = [242, 242, 242];
+const FOOTER_MUTED: [number, number, number] = [85, 85, 85];
 
 function deepClone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
@@ -28,6 +30,11 @@ const NUMBER_TOKEN_PATTERNS = [
   /\{\{NO_DOKUMEN\}\}(?:\s*\[Belum diisi\])?/g,
   /\{\{NOMOR_URUT\}\}(?:\s*\[Belum diisi\])?/g,
   /\{\{NOMOR_ARSIP\}\}(?:\s*\[Belum diisi\])?/g,
+  /\{\{NOMOR_NOTA_DINAS\}\}(?:\s*\[Belum diisi\])?/g,
+  /\{\{NOMOR_BERITA_ACARA\}\}(?:\s*\[Belum diisi\])?/g,
+  /\{\{NOMOR_LAPORAN\}\}(?:\s*\[Belum diisi\])?/g,
+  /\{\{NOMOR_NOTULA\}\}(?:\s*\[Belum diisi\])?/g,
+  /\{\{NOMOR_NOTULAN\}\}(?:\s*\[Belum diisi\])?/g,
   /\[Nomor Terbit S05\]/g,
 ];
 
@@ -105,43 +112,109 @@ function readSnapshotIdentity(
   };
 }
 
-function collectPlainTextWithStyle(node: TipTapJSONNode): {
+interface InlineRun {
   text: string;
-  hasBold: boolean;
-  hasItalic: boolean;
-} {
-  let hasBold = false;
-  let hasItalic = false;
-  const chunks: string[] = [];
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+}
 
+interface WordToken {
+  text: string;
+  isSpace: boolean;
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+}
+
+function collectInlineRuns(
+  node: TipTapJSONNode,
+  inherited?: { bold?: boolean; italic?: boolean; underline?: boolean }
+): InlineRun[] {
+  const runs: InlineRun[] = [];
   const walk = (n: TipTapJSONNode) => {
     if (n.type === 'text' && typeof n.text === 'string') {
-      chunks.push(n.text);
-      if (Array.isArray(n.marks)) {
-        for (const m of n.marks) {
-          if (m.type === 'bold') hasBold = true;
-          if (m.type === 'italic') hasItalic = true;
-        }
-      }
+      const marks = Array.isArray(n.marks) ? n.marks : [];
+      const bold = Boolean(inherited?.bold) || marks.some((m) => m.type === 'bold');
+      const italic = Boolean(inherited?.italic) || marks.some((m) => m.type === 'italic');
+      const underline = Boolean(inherited?.underline) || marks.some((m) => m.type === 'underline');
+      runs.push({ text: n.text, bold, italic, underline });
     } else if (n.type === 'hardBreak') {
-      chunks.push('\n');
+      runs.push({
+        text: '\n',
+        bold: Boolean(inherited?.bold),
+        italic: Boolean(inherited?.italic),
+        underline: Boolean(inherited?.underline),
+      });
     } else if (Array.isArray(n.content)) {
       for (const c of n.content) walk(c);
     }
   };
   walk(node);
+  return runs;
+}
 
+function collectPlainTextWithStyle(node: TipTapJSONNode): {
+  text: string;
+  hasBold: boolean;
+  hasItalic: boolean;
+  hasUnderline: boolean;
+} {
+  const runs = collectInlineRuns(node);
   return {
-    text: chunks.join(''),
-    hasBold,
-    hasItalic,
+    text: runs.map((r) => r.text).join(''),
+    hasBold: runs.some((r) => r.bold && r.text.trim().length > 0),
+    hasItalic: runs.some((r) => r.italic && r.text.trim().length > 0),
+    hasUnderline: runs.some((r) => r.underline && r.text.trim().length > 0),
   };
+}
+
+function collectCellParagraphLines(cell: TipTapJSONNode): Array<{
+  text: string;
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+  align: 'left' | 'center' | 'right' | 'justify';
+}> {
+  const paragraphs = (cell.content ?? []).filter((c) => c.type === 'paragraph' || c.type === 'heading');
+  if (paragraphs.length === 0) {
+    const fallback = collectPlainTextWithStyle(cell);
+    return [
+      {
+        text: fallback.text,
+        bold: fallback.hasBold,
+        italic: fallback.hasItalic,
+        underline: fallback.hasUnderline,
+        align: 'left',
+      },
+    ];
+  }
+  return paragraphs.map((p) => {
+    const info = collectPlainTextWithStyle(p);
+    const rawAlign = p.attrs?.textAlign;
+    const align: 'left' | 'center' | 'right' | 'justify' =
+      rawAlign === 'center' || rawAlign === 'right' || rawAlign === 'justify' ? rawAlign : 'left';
+    return {
+      text: info.text,
+      bold: info.hasBold,
+      italic: info.hasItalic,
+      underline: info.hasUnderline,
+      align,
+    };
+  });
 }
 
 function detectImageFormat(dataUrl: string): 'PNG' | 'JPEG' | 'WEBP' {
   if (/^data:image\/jpeg/i.test(dataUrl)) return 'JPEG';
   if (/^data:image\/webp/i.test(dataUrl)) return 'WEBP';
   return 'PNG';
+}
+
+function getFontStyleName(bold: boolean, italic: boolean): 'normal' | 'bold' | 'italic' | 'bolditalic' {
+  if (bold && italic) return 'bolditalic';
+  if (bold) return 'bold';
+  if (italic) return 'italic';
+  return 'normal';
 }
 
 export interface RenderedOfficialPdfResult {
@@ -152,8 +225,11 @@ export interface RenderedOfficialPdfResult {
 }
 
 /**
- * Merender dokumen Studio S04 menjadi berkas PDF resmi berpagination eksak dengan jsPDF & autoTable.
- * Tidak memanggil `doc.save()` agar aman di lingkungan unit test Node serta transaksi finalisasi S05.
+ * Merender dokumen Studio S04 menjadi berkas PDF resmi Tata Naskah Dinas Kemenag/Madrasah:
+ * - Tipografi Times (Serif) 11.5pt tinta hitam murni (#000000) selaras dengan Kop Surat resmi
+ * - Mendukung inline bold/italic/underline dalam satu paragraf + rata kanan-kiri (justify) sejati
+ * - Mendukung blok tanpa garis kotak untuk Header Korespondensi, Meta Key-Value sejajar titik dua,
+ *   dan Blok Tanda Tangan (posisi kolom kanan, teks rata kiri, anti terpotong antar halaman)
  */
 export async function renderOfficialDocumentPdf(params: {
   draft: DocumentIntakeDraft;
@@ -181,7 +257,8 @@ export async function renderOfficialDocumentPdf(params: {
   const contentWidth = Math.max(40, widthMm - marginLeft - marginRight);
   const headerOffset = pageSettings.headerText ? 8 : 0;
   const topStartY = marginTop + headerOffset;
-  const bottomLimitY = heightMm - marginBottom - (pageSettings.footerText || pageSettings.showPageNumbers ? 8 : 0);
+  const bottomLimitY =
+    heightMm - marginBottom - (pageSettings.footerText || pageSettings.showPageNumbers ? 8 : 0);
 
   let cursorY = topStartY;
 
@@ -192,13 +269,13 @@ export async function renderOfficialDocumentPdf(params: {
     }
   };
 
-  // 1. Render Kop Surat pada halaman pertama bila template mengaktifkannya
+  // 1. Render Kop Surat resmi pada halaman pertama bila template mengaktifkannya
   const includeKop = draft.templateSnapshot.documentHeader?.includeKopSurat === true;
   const snapIdentity = readSnapshotIdentity(draft, state);
   if (includeKop) {
     cursorY = Math.max(
       cursorY,
-      renderOfficialKopSurat(doc, state, Math.max(10, topStartY - 4), {
+      renderOfficialKopSurat(doc, state, Math.max(10, topStartY - 6), {
         ministry: snapIdentity.ministry,
         regionalOffice: snapIdentity.regionalOffice,
         legalDecree: snapIdentity.legalDecree,
@@ -221,59 +298,381 @@ export async function renderOfficialDocumentPdf(params: {
     );
   }
 
-  // Helper render teks bernavigasi align & line wrap
-  const drawTextBlock = (
-    text: string,
+  /**
+   * Mesin render rich-text inline (Times Serif, hitam murni, mixed bold/italic/underline, true justify).
+   */
+  const drawRichRuns = (
+    runs: InlineRun[],
     options: {
       fontSize: number;
-      bold?: boolean;
-      italic?: boolean;
       align?: 'left' | 'center' | 'right' | 'justify';
       color?: [number, number, number];
       indentMm?: number;
+      startX?: number;
+      maxWidth?: number;
       gapAfterMm?: number;
+      lineHeightFactor?: number;
+      hangingPrefix?: string;
     }
   ) => {
-    const clean = text ?? '';
-    const lineHeightMm = options.fontSize * 0.44;
-    if (!clean.trim()) {
-      cursorY += lineHeightMm * 0.6;
+    const fontSize = options.fontSize;
+    const lineHeightMm = fontSize * (options.lineHeightFactor ?? 0.45);
+    const fullText = runs.map((r) => r.text).join('');
+    if (!fullText.trim()) {
+      cursorY += lineHeightMm * 0.55;
       return;
     }
 
-    const fontStyle =
-      options.bold && options.italic
-        ? 'bolditalic'
-        : options.bold
-        ? 'bold'
-        : options.italic
-        ? 'italic'
-        : 'normal';
-
-    doc.setFont('helvetica', fontStyle);
-    doc.setFontSize(options.fontSize);
-    doc.setTextColor(...(options.color ?? INK_RGB));
-
-    const indent = options.indentMm ?? 0;
-    const availWidth = Math.max(20, contentWidth - indent);
-    const wrapped = doc.splitTextToSize(clean, availWidth) as string[];
+    const baseStartX = options.startX ?? marginLeft + (options.indentMm ?? 0);
+    const availWidth = Math.max(
+      20,
+      options.maxWidth ?? contentWidth - (options.indentMm ?? 0)
+    );
     const alignMode = options.align ?? 'left';
+    const color = options.color ?? PURE_BLACK;
 
-    for (const line of wrapped) {
-      ensureSpace(lineHeightMm + 1);
-      const xPos =
-        alignMode === 'center'
-          ? marginLeft + contentWidth / 2
-          : alignMode === 'right'
-          ? marginLeft + contentWidth
-          : marginLeft + indent;
-      doc.text(line, xPos, cursorY, {
-        align: alignMode === 'justify' ? 'left' : alignMode,
+    // Pecah runs per explicit newline (\n) agar setiap baris baru dihormati
+    const logicalParagraphs: InlineRun[][] = [[]];
+    for (const run of runs) {
+      const parts = run.text.split('\n');
+      parts.forEach((part, idx) => {
+        if (idx > 0) logicalParagraphs.push([]);
+        if (part.length > 0) {
+          logicalParagraphs[logicalParagraphs.length - 1].push({
+            ...run,
+            text: part,
+          });
+        }
       });
-      cursorY += lineHeightMm;
     }
 
+    const measureToken = (tok: WordToken): number => {
+      doc.setFont('times', getFontStyleName(tok.bold, tok.italic));
+      doc.setFontSize(fontSize);
+      return doc.getTextWidth(tok.text);
+    };
+
+    const drawSingleLine = (
+      lineTokens: WordToken[],
+      isLastLineOfParagraph: boolean,
+      lineX: number,
+      lineAvailW: number
+    ) => {
+      // Trim trailing whitespace tokens
+      const trimmed = [...lineTokens];
+      while (trimmed.length > 0 && trimmed[trimmed.length - 1].isSpace) {
+        trimmed.pop();
+      }
+      if (trimmed.length === 0) {
+        cursorY += lineHeightMm * 0.55;
+        return;
+      }
+
+      ensureSpace(lineHeightMm + 1);
+      doc.setTextColor(...color);
+
+      const widths = trimmed.map(measureToken);
+      const totalWidth = widths.reduce((sum, w) => sum + w, 0);
+      const spaceIndices: number[] = [];
+      trimmed.forEach((t, i) => {
+        if (t.isSpace) spaceIndices.push(i);
+      });
+
+      let extraPerSpace = 0;
+      let curX = lineX;
+
+      if (alignMode === 'center') {
+        curX = lineX + Math.max(0, (lineAvailW - totalWidth) / 2);
+      } else if (alignMode === 'right') {
+        curX = lineX + Math.max(0, lineAvailW - totalWidth);
+      } else if (
+        alignMode === 'justify' &&
+        !isLastLineOfParagraph &&
+        spaceIndices.length > 0 &&
+        totalWidth < lineAvailW
+      ) {
+        const slack = lineAvailW - totalWidth;
+        // Batasi peregangan spasi agar baris pendek tidak merenggang janggal
+        const candidateExtra = slack / spaceIndices.length;
+        if (candidateExtra <= 3.2) {
+          extraPerSpace = candidateExtra;
+        }
+      }
+
+      for (let i = 0; i < trimmed.length; i += 1) {
+        const tok = trimmed[i];
+        const w = widths[i];
+        if (tok.isSpace) {
+          curX += w + extraPerSpace;
+          continue;
+        }
+        doc.setFont('times', getFontStyleName(tok.bold, tok.italic));
+        doc.setFontSize(fontSize);
+        doc.text(tok.text, curX, cursorY);
+
+        if (tok.underline) {
+          doc.setDrawColor(...color);
+          doc.setLineWidth(0.28);
+          doc.line(curX, cursorY + 0.9, curX + w, cursorY + 0.9);
+        }
+        curX += w;
+      }
+
+      // Sambungkan garis bawah di atas spasi bila kata sebelum & sesudahnya sama-sama underline
+      for (const sIdx of spaceIndices) {
+        const prev = trimmed[sIdx - 1];
+        const next = trimmed[sIdx + 1];
+        if (prev?.underline && next?.underline) {
+          let sx = lineX;
+          if (alignMode === 'center') sx = lineX + Math.max(0, (lineAvailW - totalWidth) / 2);
+          else if (alignMode === 'right') sx = lineX + Math.max(0, lineAvailW - totalWidth);
+          for (let j = 0; j < sIdx; j += 1) {
+            sx += widths[j] + (trimmed[j].isSpace ? extraPerSpace : 0);
+          }
+          const sw = widths[sIdx] + extraPerSpace;
+          doc.setDrawColor(...color);
+          doc.setLineWidth(0.28);
+          doc.line(sx, cursorY + 0.9, sx + sw, cursorY + 0.9);
+        }
+      }
+
+      cursorY += lineHeightMm;
+    };
+
+    logicalParagraphs.forEach((paraRuns, pIdx) => {
+      const tokens: WordToken[] = [];
+      for (const run of paraRuns) {
+        const parts = run.text.split(/(\s+)/);
+        for (const part of parts) {
+          if (!part) continue;
+          tokens.push({
+            text: part,
+            isSpace: /^\s+$/.test(part),
+            bold: run.bold,
+            italic: run.italic,
+            underline: run.underline,
+          });
+        }
+      }
+
+      if (tokens.length === 0) {
+        cursorY += lineHeightMm * 0.5;
+        return;
+      }
+
+      // Hanging prefix (misal nomor daftar "1. " atau bullet "• ") hanya di baris pertama
+      let prefixWidth = 0;
+      if (pIdx === 0 && options.hangingPrefix) {
+        doc.setFont('times', 'normal');
+        doc.setFontSize(fontSize);
+        prefixWidth = doc.getTextWidth(options.hangingPrefix);
+      }
+
+      const wrappedLines: WordToken[][] = [];
+      let currentLine: WordToken[] = [];
+      let currentW = 0;
+      const lineLimit = Math.max(20, availWidth - prefixWidth);
+
+      for (const tok of tokens) {
+        if (currentLine.length === 0 && tok.isSpace) continue;
+        const tokW = measureToken(tok);
+        if (currentLine.length > 0 && currentW + tokW > lineLimit) {
+          wrappedLines.push(currentLine);
+          currentLine = tok.isSpace ? [] : [tok];
+          currentW = tok.isSpace ? 0 : tokW;
+        } else {
+          currentLine.push(tok);
+          currentW += tokW;
+        }
+      }
+      if (currentLine.length > 0) {
+        wrappedLines.push(currentLine);
+      }
+
+      wrappedLines.forEach((lineTokens, lineIdx) => {
+        if (pIdx === 0 && lineIdx === 0 && options.hangingPrefix) {
+          ensureSpace(lineHeightMm + 1);
+          doc.setFont('times', 'normal');
+          doc.setFontSize(fontSize);
+          doc.setTextColor(...color);
+          doc.text(options.hangingPrefix, baseStartX, cursorY);
+        }
+        drawSingleLine(
+          lineTokens,
+          lineIdx === wrappedLines.length - 1,
+          baseStartX + prefixWidth,
+          lineLimit
+        );
+      });
+    });
+
     cursorY += options.gapAfterMm ?? 1.8;
+  };
+
+  /**
+   * Render blok Tanda Tangan borderless Tata Naskah Dinas (anti terpotong halaman).
+   */
+  const renderSignatureTable = (allRows: TipTapJSONNode[]) => {
+    const firstRow = allRows[0];
+    const cells = firstRow?.content ?? [];
+    if (cells.length === 0) return;
+
+    const leftLines = cells[0] ? collectCellParagraphLines(cells[0]) : [];
+    const rightLines = cells[1] ? collectCellParagraphLines(cells[1]) : [];
+    const hasLeftContent = leftLines.some((l) => l.text.trim().length > 0);
+
+    const maxLines = Math.max(leftLines.length, rightLines.length, 5);
+    const estimatedHeightMm = Math.max(36, maxLines * 5.2 + 8);
+    ensureSpace(estimatedHeightMm);
+
+    const startY = cursorY;
+    const leftX = marginLeft + 4;
+    const rightX = hasLeftContent ? marginLeft + contentWidth * 0.54 : marginLeft + contentWidth * 0.56;
+    const colWidth = contentWidth * 0.44;
+    const fontSize = 11;
+    const lineStep = 5.0;
+
+    const drawCol = (
+      colLines: ReturnType<typeof collectCellParagraphLines>,
+      colX: number
+    ): number => {
+      let y = startY;
+      for (const ln of colLines) {
+        const clean = ln.text.trim();
+        if (!clean) {
+          y += 5.4; // ruang tanda tangan basah yang lega
+          continue;
+        }
+        doc.setFont('times', getFontStyleName(ln.bold, ln.italic));
+        doc.setFontSize(fontSize);
+        doc.setTextColor(...PURE_BLACK);
+        const wrapped = doc.splitTextToSize(clean, colWidth) as string[];
+        for (const wLine of wrapped) {
+          doc.text(wLine, colX, y);
+          if (ln.underline) {
+            const tw = doc.getTextWidth(wLine);
+            doc.setDrawColor(...PURE_BLACK);
+            doc.setLineWidth(0.28);
+            doc.line(colX, y + 0.9, colX + tw, y + 0.9);
+          }
+          y += lineStep;
+        }
+      }
+      return y;
+    };
+
+    const endLeftY = hasLeftContent ? drawCol(leftLines, leftX) : startY;
+    const endRightY = drawCol(rightLines, rightX);
+    cursorY = Math.max(endLeftY, endRightY) + 3;
+  };
+
+  /**
+   * Render Header Korespondensi (Nomor/Sifat/Lampiran/Hal kiri + Titimangsa kanan, tanpa border).
+   */
+  const renderLetterHeaderTable = (allRows: TipTapJSONNode[]) => {
+    const labelW = 20;
+    const colonW = 3.5;
+    const rightW = 48;
+    const valW = Math.max(40, contentWidth - labelW - colonW - rightW - 2);
+    const fontSize = 11;
+    const lineH = 4.9;
+
+    for (const row of allRows) {
+      const cells = row.content ?? [];
+      const labelTxt = cells[0] ? collectPlainTextWithStyle(cells[0]).text.trim() : '';
+      const colonTxt = cells[1] ? collectPlainTextWithStyle(cells[1]).text.trim() : ':';
+      const valInfo = cells[2] ? collectPlainTextWithStyle(cells[2]) : { text: '', hasBold: false, hasItalic: false, hasUnderline: false };
+      const rightTxt = cells[3] ? collectPlainTextWithStyle(cells[3]).text.trim() : '';
+
+      doc.setFont('times', valInfo.hasBold ? 'bold' : 'normal');
+      doc.setFontSize(fontSize);
+      const wrappedVal = doc.splitTextToSize(valInfo.text.trim() || '-', valW) as string[];
+      const rowHeight = Math.max(1, wrappedVal.length) * lineH;
+      ensureSpace(rowHeight + 1);
+
+      doc.setTextColor(...PURE_BLACK);
+      doc.setFont('times', 'normal');
+      doc.text(labelTxt, marginLeft, cursorY);
+      doc.text(colonTxt, marginLeft + labelW, cursorY);
+
+      doc.setFont('times', valInfo.hasBold ? 'bold' : 'normal');
+      wrappedVal.forEach((wl, wIdx) => {
+        doc.text(wl, marginLeft + labelW + colonW, cursorY + wIdx * lineH);
+      });
+
+      if (rightTxt) {
+        doc.setFont('times', 'normal');
+        doc.text(rightTxt, marginLeft + contentWidth, cursorY, { align: 'right' });
+      }
+
+      cursorY += rowHeight + 0.6;
+    }
+    cursorY += 2.5;
+  };
+
+  /**
+   * Render blok Key-Value borderless sejajar titik dua (untuk biodata, Hari/Tanggal/Tempat, SK Menimbang/Diktum).
+   */
+  const renderBorderlessMetaTable = (allRows: TipTapJSONNode[]) => {
+    // Deteksi apakah 3 kolom (Label | : | Value) atau 2 kolom lama (Label | : Value)
+    const isThreeCol = (allRows[0]?.content?.length ?? 0) >= 3;
+    const firstLabel = allRows[0]?.content?.[0]
+      ? collectPlainTextWithStyle(allRows[0].content[0]).text.trim()
+      : '';
+    const isSkKonsideran = /^(Menimbang|Mengingat|Memperhatikan|Menetapkan|KESATU)/i.test(firstLabel);
+
+    const indentX = isSkKonsideran ? marginLeft : marginLeft + 6;
+    const labelW = isSkKonsideran ? 30 : 38;
+    const colonW = 4;
+    const valX = indentX + labelW + colonW;
+    const valW = Math.max(40, marginLeft + contentWidth - valX);
+    const fontSize = 11;
+    const lineH = 4.9;
+
+    for (const row of allRows) {
+      const cells = row.content ?? [];
+      const labelTxt = cells[0] ? collectPlainTextWithStyle(cells[0]).text.trim() : '';
+      let valueTxt = '';
+      if (isThreeCol) {
+        valueTxt = cells[2] ? collectPlainTextWithStyle(cells[2]).text.trim() : '';
+      } else {
+        valueTxt = (cells[1] ? collectPlainTextWithStyle(cells[1]).text.trim() : '').replace(/^:\s*/, '');
+      }
+
+      const subLines = valueTxt.split('\n');
+      const wrappedAll: string[] = [];
+      doc.setFont('times', 'normal');
+      doc.setFontSize(fontSize);
+      for (const sl of subLines) {
+        const w = doc.splitTextToSize(sl.trim(), valW) as string[];
+        wrappedAll.push(...(w.length > 0 ? w : ['']));
+      }
+
+      const neededH = Math.max(1, wrappedAll.length) * lineH;
+      ensureSpace(Math.min(neededH, 16) + 1);
+
+      doc.setTextColor(...PURE_BLACK);
+      doc.setFont('times', isSkKonsideran && /^(KESATU|KEDUA|KETIGA|KEEMPAT|KELIMA|Menetapkan)$/i.test(labelTxt) ? 'bold' : 'normal');
+      doc.setFontSize(fontSize);
+      doc.text(labelTxt, indentX, cursorY);
+      doc.setFont('times', 'normal');
+      doc.text(':', indentX + labelW, cursorY);
+
+      wrappedAll.forEach((wl, idx) => {
+        if (idx > 0) {
+          ensureSpace(lineH + 1);
+        }
+        doc.setFont('times', 'normal');
+        doc.setFontSize(fontSize);
+        doc.text(wl, valX, cursorY);
+        if (idx < wrappedAll.length - 1) {
+          cursorY += lineH;
+        }
+      });
+
+      cursorY += lineH + (isSkKonsideran ? 1.8 : 0.7);
+    }
+    cursorY += 2.0;
   };
 
   const renderNode = (node: TipTapJSONNode) => {
@@ -285,7 +684,7 @@ export async function renderOfficialDocumentPdf(params: {
 
     if (node.type === 'horizontalRule') {
       ensureSpace(4);
-      doc.setDrawColor(160, 178, 170);
+      doc.setDrawColor(...BORDER_DARK);
       doc.setLineWidth(0.35);
       doc.line(marginLeft, cursorY, marginLeft + contentWidth, cursorY);
       cursorY += 3.5;
@@ -299,7 +698,7 @@ export async function renderOfficialDocumentPdf(params: {
         typeof node.attrs?.widthMm === 'number' && Number.isFinite(node.attrs.widthMm)
           ? Math.min(contentWidth, Math.max(10, node.attrs.widthMm))
           : 26;
-      const imgHeight = widthReq; // proporsional persegi / lambang resmi
+      const imgHeight = widthReq;
       ensureSpace(imgHeight + 4);
       const alignAttr = node.attrs?.align;
       const xPos =
@@ -312,7 +711,6 @@ export async function renderOfficialDocumentPdf(params: {
         doc.addImage(src, detectImageFormat(src), xPos, cursorY, widthReq, imgHeight);
         cursorY += imgHeight + 3;
       } catch {
-        // Fallback aman bila encoder gambar gagal di runtime headless tertentu
         cursorY += 4;
       }
       return;
@@ -320,37 +718,35 @@ export async function renderOfficialDocumentPdf(params: {
 
     if (node.type === 'heading') {
       const level = node.attrs?.level === 1 ? 1 : node.attrs?.level === 3 ? 3 : 2;
-      const { text } = collectPlainTextWithStyle(node);
+      const runs = collectInlineRuns(node, { bold: true });
       const align =
         node.attrs?.textAlign === 'center' ||
         node.attrs?.textAlign === 'right' ||
         node.attrs?.textAlign === 'justify'
           ? node.attrs.textAlign
           : 'left';
-      drawTextBlock(text, {
-        fontSize: level === 1 ? 13 : level === 2 ? 11.5 : 10.5,
-        bold: true,
+      drawRichRuns(runs, {
+        fontSize: level === 1 ? 12.5 : level === 2 ? 11.5 : 11,
         align,
-        color: level === 1 ? TEAL_RGB : INK_RGB,
-        gapAfterMm: 2.5,
+        color: PURE_BLACK,
+        gapAfterMm: level === 1 ? 1.4 : 2.2,
       });
       return;
     }
 
     if (node.type === 'paragraph') {
-      const { text, hasBold, hasItalic } = collectPlainTextWithStyle(node);
+      const runs = collectInlineRuns(node);
       const align =
         node.attrs?.textAlign === 'center' ||
         node.attrs?.textAlign === 'right' ||
         node.attrs?.textAlign === 'justify'
           ? node.attrs.textAlign
           : 'left';
-      drawTextBlock(text, {
-        fontSize: 10.5,
-        bold: hasBold,
-        italic: hasItalic,
+      drawRichRuns(runs, {
+        fontSize: 11.2,
         align,
-        gapAfterMm: 1.8,
+        color: PURE_BLACK,
+        gapAfterMm: 1.7,
       });
       return;
     }
@@ -362,19 +758,45 @@ export async function renderOfficialDocumentPdf(params: {
       const items = node.content ?? [];
       items.forEach((li, idx) => {
         const prefix = isOrdered ? `${startNum + idx}. ` : '• ';
-        const { text } = collectPlainTextWithStyle(li);
-        drawTextBlock(`${prefix}${text.trim()}`, {
-          fontSize: 10.2,
-          indentMm: 4,
-          gapAfterMm: 1.3,
+        const runs = collectInlineRuns(li);
+        const firstChildAlign = li.content?.[0]?.attrs?.textAlign;
+        const align: 'left' | 'center' | 'right' | 'justify' =
+          firstChildAlign === 'justify' || firstChildAlign === 'center' || firstChildAlign === 'right'
+            ? firstChildAlign
+            : 'justify';
+        drawRichRuns(runs, {
+          fontSize: 11,
+          align,
+          indentMm: 5,
+          hangingPrefix: prefix,
+          gapAfterMm: 1.2,
         });
       });
+      cursorY += 1;
       return;
     }
 
     if (node.type === 'table') {
       const allRows = (node.content ?? []).filter((r) => r.type === 'tableRow');
       if (allRows.length === 0) return;
+
+      const explicitLayout =
+        typeof node.attrs?.tableLayout === 'string' ? node.attrs.tableLayout : 'grid';
+
+      if (explicitLayout === 'letter_header') {
+        renderLetterHeaderTable(allRows);
+        return;
+      }
+      if (explicitLayout === 'meta') {
+        renderBorderlessMetaTable(allRows);
+        return;
+      }
+      if (explicitLayout === 'signature') {
+        renderSignatureTable(allRows);
+        return;
+      }
+
+      const isBorderless = explicitLayout === 'borderless';
 
       const buildAutoTableCell = (cell: TipTapJSONNode, minHeightMm?: number) => {
         const { text, hasBold } = collectPlainTextWithStyle(cell);
@@ -447,20 +869,22 @@ export async function renderOfficialDocumentPdf(params: {
         head: headRows.length > 0 ? headRows : undefined,
         body: bodyRows,
         showHead: repeatHead ? 'everyPage' : 'firstPage',
-        theme: 'grid',
+        theme: isBorderless ? 'plain' : 'grid',
         styles: {
-          font: 'helvetica',
-          fontSize: 9,
-          textColor: INK_RGB,
-          lineColor: [185, 198, 192],
-          lineWidth: 0.25,
-          cellPadding: 2,
+          font: 'times',
+          fontSize: 10,
+          textColor: PURE_BLACK,
+          lineColor: BORDER_DARK,
+          lineWidth: isBorderless ? 0 : 0.22,
+          cellPadding: isBorderless ? 1.2 : 2.2,
           overflow: 'linebreak',
         },
         headStyles: {
-          fillColor: [232, 242, 238],
-          textColor: [11, 41, 35],
+          fillColor: isBorderless ? [255, 255, 255] : HEADER_NEUTRAL_BG,
+          textColor: PURE_BLACK,
           fontStyle: 'bold',
+          lineColor: BORDER_DARK,
+          lineWidth: isBorderless ? 0 : 0.25,
         },
       });
 
@@ -487,21 +911,21 @@ export async function renderOfficialDocumentPdf(params: {
 
   for (let p = 1; p <= pageCount; p += 1) {
     doc.setPage(p);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(...MUTED_RGB);
+    doc.setFont('times', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(...FOOTER_MUTED);
 
     if (pageSettings.headerText && pageSettings.headerText.trim()) {
       const headerY = Math.max(6, marginTop - 4);
       doc.text(pageSettings.headerText.trim(), marginLeft, headerY);
-      doc.setDrawColor(215, 224, 220);
+      doc.setDrawColor(190, 190, 190);
       doc.setLineWidth(0.2);
       doc.line(marginLeft, headerY + 1.8, widthMm - marginRight, headerY + 1.8);
     }
 
     if (pageSettings.footerText || pageSettings.showPageNumbers) {
       const footerY = heightMm - Math.max(5, marginBottom - 6);
-      doc.setDrawColor(215, 224, 220);
+      doc.setDrawColor(190, 190, 190);
       doc.setLineWidth(0.2);
       doc.line(marginLeft, footerY - 3.5, widthMm - marginRight, footerY - 3.5);
 

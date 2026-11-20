@@ -75,6 +75,7 @@ export function NumberingFormatModal({
   const [seqPadding, setSeqPadding] = useState(initial.seqPadding);
   const [resetMode, setResetMode] = useState<NumberingResetMode>(initial.resetMode);
   const [startingSequence, setStartingSequence] = useState(initial.startingSequence ?? 1);
+  const [separateSkSequence, setSeparateSkSequence] = useState(Boolean(initial.separateSkSequence));
   const [kindCodes, setKindCodes] = useState<Partial<Record<DocumentKind, string>>>({
     ...DEFAULT_KIND_CODES,
     ...initial.kindCodes,
@@ -90,6 +91,7 @@ export function NumberingFormatModal({
     setSeqPadding(initial.seqPadding);
     setResetMode(initial.resetMode);
     setStartingSequence(initial.startingSequence ?? 1);
+    setSeparateSkSequence(Boolean(initial.separateSkSequence));
     setKindCodes({ ...DEFAULT_KIND_CODES, ...initial.kindCodes });
     setTimeout(() => firstInputRef.current?.focus(), 20);
   }, [open, initial]);
@@ -104,11 +106,21 @@ export function NumberingFormatModal({
           seqPadding,
           resetMode,
           startingSequence,
+          separateSkSequence,
           kindCodes,
         },
         state.settings
       ),
-    [madrasahCode, formatPattern, seqPadding, resetMode, startingSequence, kindCodes, state.settings]
+    [
+      madrasahCode,
+      formatPattern,
+      seqPadding,
+      resetMode,
+      startingSequence,
+      separateSkSequence,
+      kindCodes,
+      state.settings,
+    ]
   );
 
   const livePreview = useMemo(
@@ -141,6 +153,7 @@ export function NumberingFormatModal({
         seqPadding: 3,
         resetMode: 'YEARLY',
         startingSequence: 1,
+        separateSkSequence: false,
         kindCodes: { ...DEFAULT_KIND_CODES },
       },
       state.settings
@@ -150,6 +163,7 @@ export function NumberingFormatModal({
     setSeqPadding(def.seqPadding);
     setResetMode(def.resetMode);
     setStartingSequence(def.startingSequence ?? 1);
+    setSeparateSkSequence(Boolean(def.separateSkSequence));
     setKindCodes({ ...DEFAULT_KIND_CODES });
   };
 
@@ -257,6 +271,21 @@ export function NumberingFormatModal({
               </select>
             </div>
           </div>
+
+          <label className="nfm-checkbox-row" htmlFor="nfm-separate-sk">
+            <input
+              id="nfm-separate-sk"
+              type="checkbox"
+              checked={separateSkSequence}
+              onChange={(e) => setSeparateSkSequence(e.target.checked)}
+            />
+            <span>
+              <strong>Pisahkan buku nomor SK dari surat keluar umum</strong>
+              <small>
+                Nomor urut Surat Keputusan (SK) dihitung tersendiri, tidak tercampur dengan buku agenda surat keluar.
+              </small>
+            </span>
+          </label>
 
           {/* Pattern Editor */}
           <div className="nfm-field">

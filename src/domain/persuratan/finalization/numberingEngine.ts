@@ -44,19 +44,52 @@ export function formatRomanMonth(monthOneBased: number): string {
 export function deriveMadrasahAbbreviation(schoolName?: string): string {
   const clean = (schoolName ?? '').trim();
   if (!clean) return 'MDR';
-  const words = clean
-    .replace(/[^A-Za-z0-9\s]/g, ' ')
-    .split(/\s+/)
+
+  // Detect explicit Madrasah level (MTs / MA / MI / RA) even when written out in full
+  const upper = clean.toUpperCase();
+  let levelPrefix = '';
+  if (/\bMTS\b/.test(upper) || /MADRASAH\s+TSANAWIYAH/.test(upper)) {
+    levelPrefix = 'MTs';
+  } else if (/\bMA\b/.test(upper) || /MADRASAH\s+ALIYAH/.test(upper)) {
+    levelPrefix = 'MA';
+  } else if (/\bMI\b/.test(upper) || /MADRASAH\s+IBTIDAIYAH/.test(upper)) {
+    levelPrefix = 'MI';
+  } else if (/\bRA\b/.test(upper) || /RAUDHATUL\s+ATHFAL/.test(upper)) {
+    levelPrefix = 'RA';
+  }
+
+  const STOP_WORDS = new Set([
+    'MADRASAH',
+    'TSANAWIYAH',
+    'ALIYAH',
+    'IBTIDAIYAH',
+    'RAUDHATUL',
+    'ATHFAL',
+    'MTS',
+    'MA',
+    'MI',
+    'RA',
+    'NEGERI',
+    'SWASTA',
+  ]);
+
+  const rawWords = clean
+    .replace(/[^A-Za-z0-9\s-]/g, ' ')
+    .split(/[\s-]+/)
     .filter(Boolean);
-  if (words.length === 0) return 'MDR';
-  if (words[0].toUpperCase() === 'MTS' || words[0].toUpperCase() === 'MA' || words[0].toUpperCase() === 'MI') {
-    const rest = words
-      .slice(1)
+
+  if (rawWords.length === 0) return 'MDR';
+
+  if (levelPrefix) {
+    const coreWords = rawWords.filter((w) => !STOP_WORDS.has(w.toUpperCase()));
+    const initials = coreWords
+      .slice(0, 4)
       .map((w) => w[0].toUpperCase())
       .join('');
-    return rest ? `${words[0]}.${rest}` : words[0].toUpperCase();
+    return initials ? `${levelPrefix}.${initials}` : levelPrefix;
   }
-  return words
+
+  return rawWords
     .slice(0, 4)
     .map((w) => w[0].toUpperCase())
     .join('');
@@ -107,6 +140,7 @@ export function normalizeDocumentNumberingConfig(
     seqPadding,
     resetMode,
     startingSequence,
+    separateSkSequence: Boolean(raw?.separateSkSequence),
     kindCodes,
   };
 }
@@ -132,16 +166,24 @@ function buildPeriodKey(resetMode: NumberingResetMode, year: string, month: numb
   return year;
 }
 
-function extractLeadingSequenceNumber(docNumber: string): number | null {
+export function extractLeadingSequenceNumber(docNumber: string): number | null {
   const trimmed = docNumber.trim();
+  // Mendukung format Kemenag dengan awalan sifat surat seperti "B-001/...", "S-014/...", "R-002/..."
+  const kemenagPrefixed = /^[A-Za-z]{1,4}\s*[-.]\s*(\d{1,6})\s*[/.-]/.exec(trimmed);
+  if (kemenagPrefixed) {
+    const n = Number(kemenagPrefixed[1]);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
   const leading = /^(\d{1,6})\s*[/.-]/.exec(trimmed);
   if (leading) {
     const n = Number(leading[1]);
     return Number.isFinite(n) && n > 0 ? n : null;
   }
-  const anySeq = /\b(\d{2,6})\b/.exec(trimmed);
-  if (anySeq) {
-    const n = Number(anySeq[1]);
+  // Ambil segmen pertama sebelum '/' bila berupa angka murni
+  const firstSlashPart = trimmed.split('/')[0]?.trim() ?? '';
+  const trailingDigits = /(\d{1,6})$/.exec(firstSlashPart);
+  if (trailingDigits) {
+    const n = Number(trailingDigits[1]);
     return Number.isFinite(n) && n > 0 ? n : null;
   }
   return null;
@@ -177,12 +219,22 @@ export function computeNextSequentialNumber(params: {
   const kindCode = config.kindCodes[kind] ?? DEFAULT_KIND_CODES[kind] ?? 'DOC';
   const romanMonth = formatRomanMonth(month);
   const twoDigitMonth = String(month).padStart(2, '0');
+  const isTargetSk = kind === 'SK';
 
   let maxSeq = 0;
 
-  const inspectRecord = (num: string | null | undefined, dateStr: string, docId?: string) => {
+  const inspectRecord = (
+    num: string | null | undefined,
+    dateStr: string,
+    recordKind?: DocumentKind,
+    docId?: string
+  ) => {
     if (!num || !num.trim()) return;
     if (excludeDocumentId && docId === excludeDocumentId) return;
+    if (config.separateSkSequence && recordKind) {
+      const recordIsSk = recordKind === 'SK';
+      if (recordIsSk !== isTargetSk) return;
+    }
     const { year: rYear, month: rMonth } = extractIsoYearAndMonth(dateStr);
     const rPeriodKey = buildPeriodKey(config.resetMode, rYear, rMonth);
     if (rPeriodKey !== targetPeriodKey) return;
@@ -194,10 +246,10 @@ export function computeNextSequentialNumber(params: {
 
   for (const doc of state.documents ?? []) {
     if (doc.direction === 'INCOMING') continue;
-    inspectRecord(doc.documentNumber, doc.documentDate, doc.id);
+    inspectRecord(doc.documentNumber, doc.documentDate, doc.documentType, doc.id);
   }
   for (const ver of state.documentVersions ?? []) {
-    inspectRecord(ver.documentNumber, ver.documentDate, ver.documentId);
+    inspectRecord(ver.documentNumber, ver.documentDate, ver.documentKind, ver.documentId);
   }
 
   let candidateSeq = Math.max(maxSeq + 1, config.startingSequence ?? 1);
