@@ -4,8 +4,10 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
+  Download,
   FileCheck2,
   LockKeyhole,
+  Printer,
   ShieldAlert,
   ShieldCheck,
   SlidersHorizontal,
@@ -28,6 +30,11 @@ import {
   validateOfficialDocumentNumber,
 } from '../../domain/persuratan/finalization/numberingEngine';
 import { finalizeDocumentTransaction } from '../../domain/persuratan/finalization/finalizeEngine';
+import {
+  triggerPdfBytesDownload,
+  triggerPdfBytesPrint,
+} from '../../domain/persuratan/finalization/finalPdfStore';
+import { evaluateTataNaskahAuthenticity } from '../../domain/persuratan/studio/tataNaskahHelpers';
 import { DOCUMENT_KIND_LABELS, formatIndonesianDate } from '../../domain/persuratan/selectors';
 import { NumberingFormatModal } from './NumberingFormatModal';
 import { DEFAULT_MADRASAH_IDENTITY } from '../../domain/kopIdentity';
@@ -150,6 +157,29 @@ export function FinalizationSlideDrawer({
     [liveDraft, content, state, resolvedDoc]
   );
 
+  const authenticityReport = useMemo(() => {
+    const kopSnap = liveDraft.sourceSnapshots.find(
+      (s) => s.sourceKey === 'settings.madrasah_identity_signatory'
+    );
+    const snapObj =
+      kopSnap?.capturedValue && typeof kopSnap.capturedValue === 'object'
+        ? (kopSnap.capturedValue as Record<string, unknown>)
+        : {};
+    const snapSignatory =
+      typeof snapObj.signatoryName === 'string' && snapObj.signatoryName.trim()
+        ? snapObj.signatoryName.trim()
+        : state.settings.headmasterName;
+    const includeKopSurat =
+      liveDraft.templateSnapshot.documentHeader.includeKopSurat !== false &&
+      !(liveDraft.templateId === 'SYS-TPL-30' && liveDraft.fieldValues?.tampilkan_kop === 'Tidak');
+    return evaluateTataNaskahAuthenticity({
+      content,
+      includeKopSurat,
+      draft: liveDraft,
+      signatoryName: snapSignatory,
+    });
+  }, [content, liveDraft, state.settings.headmasterName]);
+
   const canFinalizeNow = Boolean(
     checklist.canFinalize &&
       (!checklist.requiresDemoAck || demoAcknowledged) &&
@@ -259,7 +289,7 @@ export function FinalizationSlideDrawer({
     }
   };
 
-  const handleFinalize = async () => {
+  const handleFinalize = async (postAction: 'archive' | 'download' | 'print' = 'archive') => {
     if (!canFinalizeNow || isSubmitting) return;
     setIsSubmitting(true);
     setActionError(null);
@@ -274,8 +304,18 @@ export function FinalizationSlideDrawer({
         demoAcknowledged,
       });
       await onPersistState(result.state);
+      const safeFileName = `${result.documentVersion.documentNumber.replace(/[/\\:*?"<>|]/g, '_')}.pdf`;
+      if (postAction === 'download') {
+        triggerPdfBytesDownload(result.pdfBytes, safeFileName);
+      } else if (postAction === 'print') {
+        triggerPdfBytesPrint(result.pdfBytes);
+      }
       onNotify?.(
-        `Dokumen "${result.documentRecord.title}" resmi disahkan (${result.documentVersion.documentNumber}). PDF siap diunduh di Arsip.`,
+        postAction === 'download'
+          ? `Dokumen "${result.documentRecord.title}" disahkan (${result.documentVersion.documentNumber}) dan PDF langsung diunduh.`
+          : postAction === 'print'
+            ? `Dokumen "${result.documentRecord.title}" disahkan (${result.documentVersion.documentNumber}). Dialog cetak dibuka…`
+            : `Dokumen "${result.documentRecord.title}" resmi disahkan (${result.documentVersion.documentNumber}). PDF siap diunduh di Arsip.`,
         'success'
       );
       onFinalized(result.documentRecord.id, result.documentVersion.id);
@@ -384,7 +424,7 @@ export function FinalizationSlideDrawer({
               value={activeNumber}
               disabled={numberingMode === 'AUTO' || isSubmitting}
               onChange={(e) => setManualNumber(e.target.value)}
-              placeholder="Contoh: 001/SK/MTs.CN/XI/2026"
+              placeholder="Contoh: 001/SK/MTs.DAH/XI/2026"
             />
 
             <div
@@ -584,6 +624,38 @@ export function FinalizationSlideDrawer({
             )}
           </section>
 
+          {authenticityReport.passedCount < authenticityReport.totalCount && (
+            <div className="fsd-audit-warn" role="note" aria-label="Catatan Audit Tata Naskah">
+              <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: '1px' }} aria-hidden="true" />
+              <div className="fsd-audit-warn-body">
+                <strong className="s5-tnum">
+                  Audit Tata Naskah ({authenticityReport.passedCount}/{authenticityReport.totalCount})
+                </strong>
+                <span>
+                  Perhatikan:{' '}
+                  {authenticityReport.items
+                    .filter((i) => !i.passed)
+                    .map((i) => i.label)
+                    .join(', ')}
+                  .
+                </span>
+                {onJumpToStudio && (
+                  <button
+                    type="button"
+                    className="fsd-link-btn"
+                    style={{ alignSelf: 'flex-start', marginTop: '2px' }}
+                    onClick={() => {
+                      onClose();
+                      onJumpToStudio();
+                    }}
+                  >
+                    Periksa di Editor Naskah &rarr;
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="fsd-freeze-note" role="note">
             <LockKeyhole size={15} style={{ flexShrink: 0, marginTop: '1px' }} aria-hidden="true" />
             <span>
@@ -599,13 +671,34 @@ export function FinalizationSlideDrawer({
             type="button"
             className="fsd-primary-btn"
             disabled={!canFinalizeNow || isSubmitting}
-            onClick={() => void handleFinalize()}
+            onClick={() => void handleFinalize('archive')}
           >
             <FileCheck2 size={16} aria-hidden="true" />
             <span>
               {isSubmitting ? 'Mengesahkan & Menerbitkan PDF…' : 'Sahkan & Terbitkan PDF Resmi'}
             </span>
           </button>
+
+          <div className="fsd-quick-actions">
+            <button
+              type="button"
+              className="fsd-secondary-action-btn"
+              disabled={!canFinalizeNow || isSubmitting}
+              onClick={() => void handleFinalize('download')}
+            >
+              <Download size={14} aria-hidden="true" />
+              <span>Terbitkan &amp; Unduh PDF</span>
+            </button>
+            <button
+              type="button"
+              className="fsd-secondary-action-btn"
+              disabled={!canFinalizeNow || isSubmitting}
+              onClick={() => void handleFinalize('print')}
+            >
+              <Printer size={14} aria-hidden="true" />
+              <span>Terbitkan &amp; Cetak</span>
+            </button>
+          </div>
 
           <div className="fsd-foot-secondary">
             <button

@@ -224,7 +224,7 @@ export function NumberingFormatModal({
                 className="nfm-input"
                 value={madrasahCode}
                 onChange={(e) => setMadrasahCode(e.target.value)}
-                placeholder="Mis. MTs.13.07 atau MTs.CN"
+                placeholder="Mis. MTs.DAH atau MTs.13.07"
               />
             </div>
 

@@ -765,6 +765,8 @@ export function resolveSystemAutoData(state: AppState): ResolvedSystemAutoData {
     signatoryTitle,
     signatoryName,
     signatoryNip,
+    curriculumLeaderTitle: (s.curriculumLeaderTitle ?? '').trim() || 'Waka Bidang Kurikulum',
+    curriculumLeaderName: (s.curriculumLeaderName ?? '').trim(),
     hasSchoolIdentity,
     hasSignatory,
     isComplete: hasSchoolIdentity && hasSignatory,

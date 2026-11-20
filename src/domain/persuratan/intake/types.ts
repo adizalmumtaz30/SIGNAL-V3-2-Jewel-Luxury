@@ -69,6 +69,8 @@ export interface ResolvedKopSystemData {
   signatoryTitle: string;
   signatoryName: string;
   signatoryNip: string;
+  curriculumLeaderTitle?: string;
+  curriculumLeaderName?: string;
   hasSchoolIdentity: boolean;
   hasSignatory: boolean;
   isComplete: boolean;

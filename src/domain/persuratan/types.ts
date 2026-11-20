@@ -73,6 +73,10 @@ export interface DocumentRecord {
   finalPdfChecksum?: string | null;
   revisionReason?: string | null;
   linkedAssignmentId?: string | null;
+  // Metadata khusus Surat Masuk (INCOMING)
+  incomingAgendaNumber?: string | null;
+  receivedDate?: string | null;
+  dispositionNote?: string | null;
 }
 
 export type NumberingResetMode = 'YEARLY' | 'MONTHLY' | 'CONTINUOUS';

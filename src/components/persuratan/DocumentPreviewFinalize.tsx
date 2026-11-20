@@ -8,6 +8,7 @@ import {
   FileText,
   History,
   LockKeyhole,
+  Printer,
   RotateCcw,
   ShieldAlert,
   ShieldCheck,
@@ -45,11 +46,13 @@ import {
 import {
   defaultFinalPdfStorageAdapter,
   triggerPdfBytesDownload,
+  triggerPdfBytesPrint,
 } from '../../domain/persuratan/finalization/finalPdfStore';
 import {
   renderOfficialDocumentPdf,
   substituteOfficialDocumentNumberInContent,
 } from '../../domain/persuratan/finalization/pdfRenderer';
+import { evaluateTataNaskahAuthenticity } from '../../domain/persuratan/studio/tataNaskahHelpers';
 import { DOCUMENT_KIND_LABELS, DOCUMENT_STATUS_LABELS, formatIndonesianDate } from '../../domain/persuratan/selectors';
 import './DocumentPreviewFinalize.css';
 
@@ -472,6 +475,18 @@ export function DocumentPreviewFinalize({
     return baseContent;
   }, [baseContent, activeDocumentNumber]);
 
+  const authenticityReport = useMemo(() => {
+    if (!previewContent) return null;
+    return evaluateTataNaskahAuthenticity({
+      content: previewContent,
+      includeKopSurat:
+        (resolvedVersion?.templateSnapshot ?? effectiveDraft?.templateSnapshot)?.documentHeader
+          ?.includeKopSurat !== false,
+      draft: effectiveDraft,
+      signatoryName: state.settings.headmasterName,
+    });
+  }, [previewContent, resolvedVersion, effectiveDraft, state.settings.headmasterName]);
+
   const versionChain = useMemo(() => {
     const id = resolvedDoc?.id ?? effectiveDraft?.documentId;
     if (!id) return null;
@@ -714,6 +729,48 @@ export function DocumentPreviewFinalize({
     }
   };
 
+  const handlePrintFinalPdf = async () => {
+    if (!resolvedVersion || !effectiveDraft || !baseContent) return;
+    setIsSubmitting(true);
+    setActionError(null);
+    try {
+      const existing = await defaultFinalPdfStorageAdapter.getFinalPdf(
+        resolvedVersion.pdfStorageKey
+      );
+      if (existing) {
+        triggerPdfBytesPrint(existing.bytes);
+        onNotify?.('Membuka dialog cetak PDF resmi terverifikasi…', 'info');
+        return;
+      }
+      const rendered = await renderOfficialDocumentPdf({
+        draft: effectiveDraft,
+        content: resolvedVersion.snapshotContent,
+        pageSettings: resolvedVersion.snapshotPageSettings,
+        state,
+        officialNumber: resolvedVersion.documentNumber,
+      });
+      await defaultFinalPdfStorageAdapter.saveFinalPdf({
+        storageKey: resolvedVersion.pdfStorageKey,
+        versionId: resolvedVersion.id,
+        documentId: resolvedVersion.documentId,
+        documentNumber: resolvedVersion.documentNumber,
+        sha256: rendered.sha256,
+        sizeBytes: rendered.pdfBytes.byteLength,
+        mimeType: 'application/pdf',
+        createdAt: resolvedVersion.finalizedAt,
+        bytes: rendered.pdfBytes,
+      });
+      triggerPdfBytesPrint(rendered.pdfBytes);
+      onNotify?.('Membuka dialog cetak PDF resmi dari snapshot terverifikasi…', 'info');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Gagal menyiapkan cetak PDF final.';
+      setActionError(msg);
+      onNotify?.(msg, 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleCreateRevision = async () => {
     if (!resolvedDoc) return;
     setIsSubmitting(true);
@@ -830,6 +887,16 @@ export function DocumentPreviewFinalize({
               >
                 <RotateCcw size={14} aria-hidden="true" />
                 <span>Buat Revisi Baru</span>
+              </button>
+              <button
+                type="button"
+                className="s02-btn-secondary"
+                disabled={isSubmitting}
+                onClick={() => void handlePrintFinalPdf()}
+                aria-label="Cetak langsung PDF resmi"
+              >
+                <Printer size={14} aria-hidden="true" />
+                <span>Cetak</span>
               </button>
               <button
                 type="button"
@@ -991,7 +1058,7 @@ export function DocumentPreviewFinalize({
                 value={activeDocumentNumber}
                 disabled={isLockedFinal || numberingMode === 'AUTO'}
                 onChange={(e) => setManualNumber(e.target.value)}
-                placeholder="Contoh: 001/SK/MTs.CN/XI/2026"
+                placeholder="Contoh: 001/SK/MTs.DAH/XI/2026"
               />
               {!isLockedFinal && (
                 <small style={{ fontSize: '11.5px', color: numberValidation.valid ? '#1d5d44' : '#8f2d24' }}>
@@ -1176,6 +1243,44 @@ export function DocumentPreviewFinalize({
                   </span>
                 </label>
               )}
+            </div>
+          )}
+
+          {/* Card 2B: Audit Tata Naskah Dinas Ringkas */}
+          {!isLockedFinal && authenticityReport && (
+            <div className="s05-card" aria-label="Audit Tata Naskah Dinas">
+              <div className="s05-card-head">
+                <h2>
+                  <ShieldCheck size={16} aria-hidden="true" />
+                  <span>Audit Tata Naskah Dinas</span>
+                </h2>
+                <span
+                  className="s5-tnum"
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    color:
+                      authenticityReport.passedCount === authenticityReport.totalCount
+                        ? '#1b5e43'
+                        : '#855318',
+                  }}
+                >
+                  {authenticityReport.passedCount}/{authenticityReport.totalCount}
+                </span>
+              </div>
+              <ul className="s05-checklist">
+                {authenticityReport.items.map((chk) => (
+                  <li key={chk.id} className={`s05-check-item is-${chk.passed ? 'ok' : 'warning'}`}>
+                    <div className={`s05-check-icon is-${chk.passed ? 'ok' : 'warning'}`} aria-hidden="true">
+                      {chk.passed ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
+                    </div>
+                    <div className="s05-check-copy">
+                      <strong>{chk.label}</strong>
+                      <span>{chk.detail}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 

@@ -754,7 +754,7 @@ export function TemplateGallery({
                   <div>
                     <strong style={{ color: '#0B2923' }}>Ukuran Kertas:</strong>{' '}
                     {previewTemplate.initialPageSettings.paperSize === 'f4'
-                      ? 'F4 / Folio (210 × 330 mm)'
+                      ? 'F4 / Folio (215 × 330 mm)'
                       : 'A4 (210 × 297 mm)'}{' '}
                     · {previewTemplate.initialPageSettings.orientation}
                   </div>

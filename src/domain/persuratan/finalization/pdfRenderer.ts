@@ -647,14 +647,17 @@ export async function renderOfficialDocumentPdf(params: {
         const w = doc.splitTextToSize(sl.trim(), valW) as string[];
         wrappedAll.push(...(w.length > 0 ? w : ['']));
       }
+      const wrappedLabel = doc.splitTextToSize(labelTxt, Math.max(18, labelW - 2)) as string[];
 
-      const neededH = Math.max(1, wrappedAll.length) * lineH;
+      const neededH = Math.max(1, wrappedAll.length, wrappedLabel.length) * lineH;
       ensureSpace(Math.min(neededH, 16) + 1);
 
       doc.setTextColor(...PURE_BLACK);
       doc.setFont('times', isSkKonsideran && /^(KESATU|KEDUA|KETIGA|KEEMPAT|KELIMA|Menetapkan)$/i.test(labelTxt) ? 'bold' : 'normal');
       doc.setFontSize(fontSize);
-      doc.text(labelTxt, indentX, cursorY);
+      wrappedLabel.forEach((lblLine, lIdx) => {
+        doc.text(lblLine, indentX, cursorY + lIdx * lineH);
+      });
       doc.setFont('times', 'normal');
       doc.text(':', indentX + labelW, cursorY);
 
@@ -670,7 +673,8 @@ export async function renderOfficialDocumentPdf(params: {
         }
       });
 
-      cursorY += lineH + (isSkKonsideran ? 1.8 : 0.7);
+      const labelExtraH = Math.max(0, wrappedLabel.length - wrappedAll.length) * lineH;
+      cursorY += lineH + labelExtraH + (isSkKonsideran ? 1.8 : 0.7);
     }
     cursorY += 2.0;
   };
@@ -858,6 +862,26 @@ export async function renderOfficialDocumentPdf(params: {
           ? Boolean(node.attrs.repeatHeader)
           : pageSettings.repeatTableHeader !== false;
 
+      // Lebar kolom proporsional cerdas berdasarkan judul kolom tabel resmi
+      const headerTitles =
+        headRows[0]?.map((c) => c.content.trim().toLowerCase()) ??
+        (allRows[0]?.content ?? []).map((c) => collectPlainTextWithStyle(c).text.trim().toLowerCase());
+      const columnStyles: Record<number, { cellWidth?: number; halign?: 'left' | 'center' | 'right' }> = {};
+      headerTitles.forEach((title, idx) => {
+        if (title === 'no' || title === 'no.') {
+          columnStyles[idx] = { cellWidth: 10, halign: 'center' };
+        } else if (
+          title.includes('total jp') ||
+          title === 'jumlah' ||
+          title === 'banyaknya' ||
+          title.includes('hadir (%)')
+        ) {
+          columnStyles[idx] = { cellWidth: 24, halign: 'center' };
+        } else if (title.includes('periode') || title.includes('target waktu') || title.includes('masa berlaku')) {
+          columnStyles[idx] = { cellWidth: 32 };
+        }
+      });
+
       autoTable(doc, {
         startY: cursorY,
         margin: {
@@ -886,6 +910,7 @@ export async function renderOfficialDocumentPdf(params: {
           lineColor: BORDER_DARK,
           lineWidth: isBorderless ? 0 : 0.25,
         },
+        ...(Object.keys(columnStyles).length > 0 ? { columnStyles } : {}),
       });
 
       const lastTableY = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable

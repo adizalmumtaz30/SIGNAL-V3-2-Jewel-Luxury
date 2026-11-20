@@ -281,8 +281,8 @@ export function SchedulePdfExportModal({
         ? '297 × 210 mm · Landscape'
         : '210 × 297 mm · Portrait'
       : isLandscapeOutput
-      ? '330 × 210 mm · Landscape'
-      : '210 × 330 mm · Portrait';
+      ? '330 × 215 mm · Landscape'
+      : '215 × 330 mm · Portrait';
 
   const handleDownload = () => {
     try {
@@ -666,7 +666,7 @@ export function SchedulePdfExportModal({
                           {
                             id: 'f4' as const,
                             title: 'Kertas F4 / Folio',
-                            sub: '210 × 330 mm · Standar Kemenag',
+                            sub: '215 × 330 mm · Standar Kemenag',
                           },
                         ]
                       ).map((opt) => {

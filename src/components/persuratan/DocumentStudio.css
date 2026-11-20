@@ -1588,6 +1588,124 @@
   white-space: nowrap;
 }
 
+/* Audit Tata Naskah Dinas Panel */
+.s04-audit-box {
+  padding-top: 10px;
+  border-top: 1px solid #e4ece8;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.s04-audit-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.s04-audit-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0b2923;
+}
+
+.s04-audit-score {
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.s04-audit-score.is-ok {
+  color: #165b41;
+}
+
+.s04-audit-score.is-warn {
+  color: #8a5418;
+}
+
+.s04-audit-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.s04-audit-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid #dce6e1;
+  background: #fbfdfc;
+  font-size: 11.25px;
+  line-height: 1.4;
+}
+
+.s04-audit-item.is-ok {
+  border-color: #d3e5dc;
+  background: #f5faf7;
+}
+
+.s04-audit-item.is-ok .s04-audit-icon {
+  color: #165b41;
+}
+
+.s04-audit-item.is-warn {
+  border-color: #e4cc9a;
+  background: #fdf8ec;
+}
+
+.s04-audit-item.is-warn .s04-audit-icon {
+  color: #8a5418;
+}
+
+.s04-audit-icon {
+  margin-top: 1px;
+  flex-shrink: 0;
+  display: inline-flex;
+}
+
+.s04-audit-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.s04-audit-body strong {
+  font-size: 11.5px;
+  color: #0b2923;
+}
+
+.s04-audit-body span {
+  color: #4c625c;
+}
+
+.s04-audit-fix-btn {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid #124037;
+  background: #ffffff;
+  color: #124037;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.s04-audit-fix-btn:hover {
+  background: #e8f2ee;
+}
+
 
 
 

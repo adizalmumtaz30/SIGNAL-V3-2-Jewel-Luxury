@@ -49,6 +49,7 @@ export function previewBlocksToTipTapDoc(blocks: TemplatePreviewBlock[]): TipTap
     } else if (blk.type === 'paragraph') {
       nodes.push({
         type: 'paragraph',
+        ...(blk.align ? { attrs: { textAlign: blk.align } } : {}),
         content: [{ type: 'text', text: blk.text }],
       });
     } else if (blk.type === 'list') {
@@ -60,12 +61,18 @@ export function previewBlocksToTipTapDoc(blocks: TemplatePreviewBlock[]): TipTap
         })),
       });
     } else if (blk.type === 'meta_grid') {
-      for (const r of blk.rows) {
-        nodes.push({
-          type: 'paragraph',
-          content: [{ type: 'text', text: `${r.label}: ${r.value}` }],
-        });
-      }
+      nodes.push({
+        type: 'table',
+        attrs: { tableLayout: 'meta', repeatHeader: false },
+        content: blk.rows.map((r) => ({
+          type: 'tableRow',
+          content: [
+            { type: 'tableCell', content: [{ type: 'paragraph', content: [{ type: 'text', text: r.label }] }] },
+            { type: 'tableCell', content: [{ type: 'paragraph', content: [{ type: 'text', text: ':' }] }] },
+            { type: 'tableCell', content: [{ type: 'paragraph', content: [{ type: 'text', text: r.value }] }] },
+          ],
+        })),
+      });
     } else if (blk.type === 'table') {
       const headerRow: TipTapJSONNode = {
         type: 'tableRow',
@@ -83,16 +90,33 @@ export function previewBlocksToTipTapDoc(blocks: TemplatePreviewBlock[]): TipTap
       }));
       nodes.push({
         type: 'table',
+        attrs: { tableLayout: 'grid', repeatHeader: true },
         content: [headerRow, ...bodyRows],
       });
     } else if (blk.type === 'signature') {
+      const leftContent: TipTapJSONNode[] = blk.leftTitle
+        ? [
+            { type: 'paragraph', content: [{ type: 'text', text: blk.leftTitle }] },
+            { type: 'paragraph', content: [{ type: 'text', text: blk.leftName ?? '' }] },
+          ]
+        : [{ type: 'paragraph', content: [] }];
+      const rightContent: TipTapJSONNode[] = [
+        { type: 'paragraph', content: [{ type: 'text', text: blk.rightTitle }] },
+        { type: 'paragraph', content: [{ type: 'text', text: blk.rightName }] },
+        ...(blk.rightIdLabel
+          ? [{ type: 'paragraph' as const, content: [{ type: 'text' as const, text: blk.rightIdLabel }] }]
+          : []),
+      ];
       nodes.push({
-        type: 'paragraph',
-        attrs: { textAlign: 'right' },
+        type: 'table',
+        attrs: { tableLayout: 'signature', repeatHeader: false },
         content: [
           {
-            type: 'text',
-            text: `${blk.rightTitle} — ${blk.rightName}`,
+            type: 'tableRow',
+            content: [
+              { type: 'tableCell', content: leftContent },
+              { type: 'tableCell', content: rightContent },
+            ],
           },
         ],
       });
@@ -114,6 +138,11 @@ function collectNodePlainText(node: TipTapJSONNode): string {
   return (node.content ?? []).map(collectNodePlainText).join('');
 }
 
+function collectCellLines(cell: TipTapJSONNode | undefined): string[] {
+  if (!cell || !Array.isArray(cell.content)) return [];
+  return cell.content.map((p) => collectNodePlainText(p).trim()).filter(Boolean);
+}
+
 export function tipTapDocToPreviewBlocks(doc: TipTapJSONContent): TemplatePreviewBlock[] {
   const blocks: TemplatePreviewBlock[] = [];
   for (const node of doc.content ?? []) {
@@ -127,7 +156,12 @@ export function tipTapDocToPreviewBlocks(doc: TipTapJSONContent): TemplatePrevie
     } else if (node.type === 'paragraph') {
       const text = collectNodePlainText(node).trim();
       if (text) {
-        blocks.push({ type: 'paragraph', text });
+        const rawAlign = node.attrs?.textAlign;
+        const align =
+          rawAlign === 'left' || rawAlign === 'center' || rawAlign === 'right' || rawAlign === 'justify'
+            ? rawAlign
+            : undefined;
+        blocks.push({ type: 'paragraph', text, ...(align ? { align } : {}) });
       }
     } else if (node.type === 'bulletList' || node.type === 'orderedList') {
       const items = (node.content ?? [])
@@ -142,17 +176,57 @@ export function tipTapDocToPreviewBlocks(doc: TipTapJSONContent): TemplatePrevie
       }
     } else if (node.type === 'table') {
       const rows = node.content ?? [];
-      if (rows.length > 0) {
-        const columns = (rows[0].content ?? []).map((cell) => collectNodePlainText(cell).trim() || 'Kolom');
-        const sampleRows = rows.slice(1).map((r) =>
-          (r.content ?? []).map((cell) => collectNodePlainText(cell).trim())
-        );
-        blocks.push({
-          type: 'table',
-          columns,
-          sampleRows: sampleRows.length > 0 ? sampleRows : [columns.map(() => '...')],
-        });
+      if (rows.length === 0) continue;
+      const layout = typeof node.attrs?.tableLayout === 'string' ? node.attrs.tableLayout : 'grid';
+
+      if (layout === 'meta') {
+        const metaRows = rows
+          .map((r) => {
+            const cells = r.content ?? [];
+            const label = collectNodePlainText(cells[0] ?? {}).trim();
+            const valCell = cells.length >= 3 ? cells[2] : cells[1];
+            const value = collectNodePlainText(valCell ?? {})
+              .trim()
+              .replace(/^:\s*/, '');
+            return { label, value };
+          })
+          .filter((r) => r.label || r.value);
+        if (metaRows.length > 0) {
+          blocks.push({ type: 'meta_grid', rows: metaRows });
+        }
+        continue;
       }
+
+      if (layout === 'signature') {
+        const cells = rows[0]?.content ?? [];
+        const leftLines = collectCellLines(cells[0]);
+        const rightLines = collectCellLines(cells[1]);
+        blocks.push({
+          type: 'signature',
+          ...(leftLines.length > 0
+            ? {
+                leftTitle: leftLines[0],
+                leftName: leftLines[1] ?? '',
+              }
+            : {}),
+          rightTitle: rightLines[0] ?? '{{JABATAN_KEPALA_MADRASAH}}',
+          rightName: rightLines[1] ?? '{{NAMA_KEPALA_MADRASAH}}',
+          ...(rightLines[2] ? { rightIdLabel: rightLines[2] } : {}),
+        });
+        continue;
+      }
+
+      const columns = (rows[0].content ?? []).map(
+        (cell) => collectNodePlainText(cell).trim() || 'Kolom'
+      );
+      const sampleRows = rows.slice(1).map((r) =>
+        (r.content ?? []).map((cell) => collectNodePlainText(cell).trim())
+      );
+      blocks.push({
+        type: 'table',
+        columns,
+        sampleRows: sampleRows.length > 0 ? sampleRows : [columns.map(() => '...')],
+      });
     }
   }
   return blocks;

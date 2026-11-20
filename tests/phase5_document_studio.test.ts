@@ -210,7 +210,9 @@ describe('Tahap 5 — S04 Document Studio / Editor Dokumen Bergaya Word', () => 
 
     expect(textAfter).toBe(textBefore);
     expect(textAfter).not.toContain('MADRASAH YANG BERUBAH SETELAH DRAFT');
-    expect(textAfter).toContain(demo.history[0].fingerprint);
+    expect(saved.draft.scheduleVersionFingerprint).toBe(demo.history[0].fingerprint);
+    expect(textAfter).not.toContain(demo.history[0].fingerprint);
+    expect(textAfter).not.toContain('Kode Validasi:');
     expect(textAfter).toContain('JP');
   });
 

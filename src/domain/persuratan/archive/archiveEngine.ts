@@ -13,6 +13,11 @@ import {
   validateAttachmentFile,
   type BinaryBlobStoreLike,
 } from '../attachments/attachmentStore';
+import {
+  extractLeadingSequenceNumber,
+  formatRomanMonth,
+  normalizeDocumentNumberingConfig,
+} from '../finalization/numberingEngine';
 
 export interface DeleteProtectionCheck {
   allowed: boolean;
@@ -137,9 +142,11 @@ export function restoreArchivedDocumentInState(
     throw new Error('Hanya dokumen berstatus Diarsipkan yang dapat dipulihkan.');
   }
 
+  const restoredStatus = target.direction === 'INCOMING' ? ('RECEIVED' as const) : ('FINAL' as const);
+
   const updatedDoc: DocumentRecord = {
     ...target,
-    status: 'FINAL',
+    status: restoredStatus,
     archivedAt: null,
     updatedAt: timestamp,
   };
@@ -385,14 +392,14 @@ export function cloneOfficialDocumentToNewDraft(params: {
         sourceVersion.documentNumber,
         baseKind
       )
-    : sourceDraft?.studioState?.content
-      ? (JSON.parse(JSON.stringify(sourceDraft.studioState.content)) as TipTapJSONContent)
+    : sourceDraft?.studio?.content
+      ? (JSON.parse(JSON.stringify(sourceDraft.studio.content)) as TipTapJSONContent)
       : { type: 'doc', content: [{ type: 'paragraph' }] };
 
   const pageSettings = sourceVersion?.snapshotPageSettings
     ? JSON.parse(JSON.stringify(sourceVersion.snapshotPageSettings))
-    : sourceDraft?.studioState?.pageSettings
-      ? JSON.parse(JSON.stringify(sourceDraft.studioState.pageSettings))
+    : sourceDraft?.studio?.pageSettings
+      ? JSON.parse(JSON.stringify(sourceDraft.studio.pageSettings))
       : {
           paperSize: 'a4' as const,
           orientation: 'portrait' as const,
@@ -411,13 +418,16 @@ export function cloneOfficialDocumentToNewDraft(params: {
       documentDate: todayIso,
     })
   );
+  const fieldProvenance = sourceDraft?.fieldProvenance
+    ? JSON.parse(JSON.stringify(sourceDraft.fieldProvenance))
+    : {};
 
   const newDraft: DocumentIntakeDraft = {
     id: newDraftId,
     documentId: newDocId,
-    templateId: sourceDoc.templateId ?? templateSnapshot.id,
+    templateId: sourceDoc.templateId ?? templateSnapshot.templateId ?? templateSnapshot.id,
     templateVersion: sourceDoc.templateVersion ?? templateSnapshot.version,
-    status: 'DRAFT',
+    intakeStatus: 'READY_FOR_EDITOR',
     title: newTitle,
     subject: sourceVersion?.subject ?? sourceDoc.subject,
     documentDate: todayIso,
@@ -426,9 +436,10 @@ export function cloneOfficialDocumentToNewDraft(params: {
     scheduleVersionId: sourceVersion?.scheduleVersionId ?? sourceDoc.scheduleVersionId ?? null,
     scheduleVersionFingerprint: sourceVersion?.scheduleVersionFingerprint ?? null,
     fieldValues,
+    fieldProvenance,
     templateSnapshot,
     sourceSnapshots,
-    studioState: {
+    studio: {
       schemaVersion: 1,
       editorStatus: 'IN_PROGRESS',
       content: rawContent,
@@ -470,4 +481,191 @@ export function cloneOfficialDocumentToNewDraft(params: {
     documentRecord: newDocRecord,
   };
 }
+
+/**
+ * Menghitung saran Nomor Agenda Surat Masuk berikutnya secara deterministik berdasarkan periode
+ * tanpa menyentuh urutan penomoran Surat Keluar / SK.
+ */
+export function computeNextIncomingAgendaNumber(
+  state: AppState,
+  receivedDate: string = new Date().toISOString().slice(0, 10)
+): string {
+  const config = normalizeDocumentNumberingConfig(
+    state.settings.documentNumbering,
+    state.settings
+  );
+  const match = /^(\d{4})-(\d{2})-\d{2}$/.exec(receivedDate.trim());
+  const now = new Date();
+  const year = match ? match[1] : String(now.getUTCFullYear());
+  const month = match ? Math.max(1, Math.min(12, Number(match[2]) || 1)) : now.getUTCMonth() + 1;
+  const romanMonth = formatRomanMonth(month);
+  const smCode = config.kindCodes.SURAT_MASUK ?? 'SM';
+
+  let maxSeq = 0;
+  for (const doc of state.documents ?? []) {
+    if (doc.direction !== 'INCOMING') continue;
+    const refDate = (doc.receivedDate || doc.documentDate || '').slice(0, 4);
+    if (config.resetMode !== 'CONTINUOUS' && refDate && refDate !== year) continue;
+    if (doc.incomingAgendaNumber) {
+      const seq = extractLeadingSequenceNumber(doc.incomingAgendaNumber);
+      if (seq !== null && seq > maxSeq) maxSeq = seq;
+    }
+  }
+
+  const nextSeq = maxSeq + 1;
+  const padded = String(nextSeq).padStart(config.seqPadding, '0');
+  return `${padded}/${smCode}/${config.madrasahCode}/${romanMonth}/${year}`;
+}
+
+/**
+ * Mencatat Surat Masuk baru ke dalam arsip persuratan dengan status RECEIVED
+ * dan nomor agenda masuk terstruktur tanpa mengonsumsi nomor surat keluar.
+ */
+export function recordIncomingDocumentInState(params: {
+  state: AppState;
+  originalNumber: string;
+  senderName: string;
+  subject: string;
+  title?: string;
+  documentDate: string;
+  receivedDate?: string;
+  incomingAgendaNumber?: string;
+  dispositionNote?: string;
+  relatedTeacherIds?: string[];
+  tags?: string[];
+  timestamp?: string;
+}): { state: AppState; document: DocumentRecord } {
+  const {
+    state,
+    originalNumber,
+    senderName,
+    subject,
+    title,
+    documentDate,
+    receivedDate,
+    incomingAgendaNumber,
+    dispositionNote,
+    relatedTeacherIds = [],
+    tags = [],
+    timestamp = new Date().toISOString(),
+  } = params;
+
+  const cleanOrigNumber = originalNumber.trim();
+  const cleanSender = senderName.trim();
+  const cleanSubject = subject.trim();
+  const cleanDocDate = documentDate.trim();
+  const cleanReceivedDate = (receivedDate ?? cleanDocDate).trim() || cleanDocDate;
+
+  if (!cleanOrigNumber) {
+    throw new Error('Nomor surat asal wajib diisi untuk mencatat Surat Masuk.');
+  }
+  if (!cleanSender) {
+    throw new Error('Asal instansi / pengirim wajib diisi.');
+  }
+  if (!cleanSubject) {
+    throw new Error('Perihal / ringkasan isi surat masuk wajib diisi.');
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(cleanDocDate)) {
+    throw new Error('Tanggal surat asal harus berformat valid (YYYY-MM-DD).');
+  }
+
+  const resolvedTitle = (title ?? '').trim() || cleanSubject;
+  const resolvedAgenda =
+    (incomingAgendaNumber ?? '').trim() ||
+    computeNextIncomingAgendaNumber(state, cleanReceivedDate);
+
+  const suffix = `${Date.now().toString(36).toUpperCase()}-${Math.random()
+    .toString(36)
+    .slice(2, 6)
+    .toUpperCase()}`;
+  const docId = `doc-sm-${suffix}`;
+
+  const cleanTags = Array.from(
+    new Set(
+      ['Surat Masuk', ...(dispositionNote?.trim() ? ['Disposisi'] : []), ...tags]
+        .map((t) => t.trim())
+        .filter(Boolean)
+    )
+  );
+
+  const newDoc: DocumentRecord = {
+    id: docId,
+    direction: 'INCOMING',
+    documentType: 'SURAT_MASUK',
+    documentNumber: cleanOrigNumber,
+    title: resolvedTitle,
+    subject: cleanSubject,
+    documentDate: cleanDocDate,
+    counterpartName: cleanSender,
+    status: 'RECEIVED',
+    relatedTeacherIds: Array.from(new Set(relatedTeacherIds.filter(Boolean))),
+    tags: cleanTags,
+    incomingAgendaNumber: resolvedAgenda,
+    receivedDate: cleanReceivedDate,
+    dispositionNote: dispositionNote?.trim() || null,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    archivedAt: null,
+  };
+
+  return {
+    state: {
+      ...state,
+      documents: [newDoc, ...(state.documents ?? [])],
+    },
+    document: newDoc,
+  };
+}
+
+/**
+ * Memperbarui catatan disposisi atau status tindak lanjut Surat Masuk (RECEIVED <-> IN_REVIEW).
+ */
+export function updateIncomingDispositionInState(params: {
+  state: AppState;
+  documentId: string;
+  dispositionNote: string;
+  nextStatus?: 'RECEIVED' | 'IN_REVIEW';
+  timestamp?: string;
+}): { state: AppState; document: DocumentRecord } {
+  const {
+    state,
+    documentId,
+    dispositionNote,
+    nextStatus,
+    timestamp = new Date().toISOString(),
+  } = params;
+
+  const docs = state.documents ?? [];
+  const target = docs.find((d) => d.id === documentId);
+  if (!target) {
+    throw new Error('Dokumen Surat Masuk tidak ditemukan.');
+  }
+  if (target.direction !== 'INCOMING') {
+    throw new Error('Catatan disposisi hanya berlaku untuk Surat Masuk.');
+  }
+  if (target.status === 'ARCHIVED') {
+    throw new Error('Surat Masuk yang telah diarsipkan bersifat terkunci. Pulihkan arsip jika ingin mengubah disposisi.');
+  }
+
+  const cleanNote = dispositionNote.trim();
+  const baseTags = (target.tags ?? []).filter((t) => t !== 'Disposisi');
+  const nextTags = cleanNote ? [...baseTags, 'Disposisi'] : baseTags;
+
+  const updatedDoc: DocumentRecord = {
+    ...target,
+    dispositionNote: cleanNote || null,
+    status: nextStatus ?? target.status,
+    tags: nextTags,
+    updatedAt: timestamp,
+  };
+
+  return {
+    state: {
+      ...state,
+      documents: docs.map((d) => (d.id === documentId ? updatedDoc : d)),
+    },
+    document: updatedDoc,
+  };
+}
+
 

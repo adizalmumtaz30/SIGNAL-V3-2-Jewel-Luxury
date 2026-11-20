@@ -453,6 +453,22 @@ export function DocumentIntakeForm({
     return { primaryControls: primary, optionalControls: optional };
   }, [schema.controls]);
 
+  const supportsHeadmasterDelegation = useMemo(
+    () =>
+      template.previewBlocks.some(
+        (b) =>
+          b.type === 'signature' &&
+          (b.rightName.includes('NAMA_KEPALA_MADRASAH') ||
+            b.rightTitle.includes('JABATAN_KEPALA_MADRASAH'))
+      ),
+    [template.previewBlocks]
+  );
+
+  const delegationMode: 'direct' | 'an' | 'plt' =
+    values.penandatangan_mode === 'an' || values.penandatangan_mode === 'plt'
+      ? values.penandatangan_mode
+      : 'direct';
+
   const optionalHasErrorOrValue = useMemo(
     () =>
       optionalControls.some((c) => {
@@ -1391,6 +1407,103 @@ export function DocumentIntakeForm({
 
               {/* Primary Required & System Controls */}
               {primaryControls.map((ctrl) => renderControl(ctrl))}
+
+              {/* Penandatangan Langsung vs Delegasi (a.n. / Plt.) */}
+              {supportsHeadmasterDelegation && (
+                <div className="s03-field is-full" style={{ paddingTop: '4px' }}>
+                  <label htmlFor="s03-penandatangan-mode" className="s03-label">
+                    <span>Pejabat Penandatangan Naskah</span>
+                    <span className="s03-opt-tag">Tata Naskah Dinas</span>
+                  </label>
+                  <select
+                    id="s03-penandatangan-mode"
+                    className="s03-select"
+                    value={delegationMode}
+                    onChange={(e) => {
+                      const nextMode = e.target.value as 'direct' | 'an' | 'plt';
+                      markDirty({
+                        ...values,
+                        penandatangan_mode: nextMode,
+                        ...(nextMode === 'an' &&
+                        !String(values.penandatangan_delegasi_jabatan ?? '').trim()
+                          ? {
+                              penandatangan_delegasi_jabatan:
+                                autoData.kop.curriculumLeaderTitle || 'Waka Bidang Kurikulum',
+                            }
+                          : {}),
+                        ...(nextMode !== 'direct' &&
+                        !String(values.penandatangan_delegasi_nama ?? '').trim() &&
+                        autoData.kop.curriculumLeaderName
+                          ? { penandatangan_delegasi_nama: autoData.kop.curriculumLeaderName }
+                          : {}),
+                      });
+                    }}
+                  >
+                    <option value="direct">
+                      {autoData.kop.signatoryTitle} ({autoData.kop.signatoryName || 'Langsung'})
+                    </option>
+                    <option value="an">
+                      a.n. {autoData.kop.signatoryTitle} —{' '}
+                      {autoData.kop.curriculumLeaderTitle || 'Waka Bidang Kurikulum'}
+                    </option>
+                    <option value="plt">Plt. {autoData.kop.signatoryTitle}</option>
+                  </select>
+
+                  {delegationMode !== 'direct' && (
+                    <div
+                      className="s03-fields-grid"
+                      style={{ marginTop: '8px', padding: '10px 12px', background: '#f6faf8', borderRadius: '10px', border: '1px solid #d5e2dc' }}
+                    >
+                      {delegationMode === 'an' && (
+                        <div className="s03-field">
+                          <label htmlFor="s03-delegasi-jabatan" className="s03-label">
+                            <span>Jabatan Penerima Kuasa (a.n.)</span>
+                          </label>
+                          <input
+                            id="s03-delegasi-jabatan"
+                            type="text"
+                            className="s03-input"
+                            placeholder={
+                              autoData.kop.curriculumLeaderTitle || 'Waka Bidang Kurikulum'
+                            }
+                            value={
+                              typeof values.penandatangan_delegasi_jabatan === 'string'
+                                ? values.penandatangan_delegasi_jabatan
+                                : ''
+                            }
+                            onChange={(e) =>
+                              setFieldValue('penandatangan_delegasi_jabatan', e.target.value)
+                            }
+                          />
+                        </div>
+                      )}
+                      <div className="s03-field">
+                        <label htmlFor="s03-delegasi-nama" className="s03-label">
+                          <span>Nama Pejabat Penandatangan</span>
+                        </label>
+                        <input
+                          id="s03-delegasi-nama"
+                          type="text"
+                          className="s03-input"
+                          placeholder={
+                            autoData.kop.curriculumLeaderName ||
+                            autoData.kop.signatoryName ||
+                            'Nama lengkap penandatangan'
+                          }
+                          value={
+                            typeof values.penandatangan_delegasi_nama === 'string'
+                              ? values.penandatangan_delegasi_nama
+                              : ''
+                          }
+                          onChange={(e) =>
+                            setFieldValue('penandatangan_delegasi_nama', e.target.value)
+                          }
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Collapsible Optional Fields Disclosure */}
@@ -1690,7 +1803,25 @@ export function DocumentIntakeForm({
                 <div className="s03-dl-item">
                   <dt>Pejabat Penandatangan</dt>
                   <dd>
-                    {autoData.kop.hasSignatory ? (
+                    {delegationMode === 'an' ? (
+                      <>
+                        a.n. {autoData.kop.signatoryTitle} (
+                        {String(values.penandatangan_delegasi_jabatan || '').trim() ||
+                          autoData.kop.curriculumLeaderTitle ||
+                          'Waka Bidang Kurikulum'}
+                        ):{' '}
+                        {String(values.penandatangan_delegasi_nama || '').trim() ||
+                          autoData.kop.curriculumLeaderName ||
+                          autoData.kop.signatoryName}
+                      </>
+                    ) : delegationMode === 'plt' ? (
+                      <>
+                        Plt. {autoData.kop.signatoryTitle}:{' '}
+                        {String(values.penandatangan_delegasi_nama || '').trim() ||
+                          autoData.kop.curriculumLeaderName ||
+                          autoData.kop.signatoryName}
+                      </>
+                    ) : autoData.kop.hasSignatory ? (
                       <>
                         {autoData.kop.signatoryTitle}: {autoData.kop.signatoryName}
                       </>
@@ -1698,7 +1829,7 @@ export function DocumentIntakeForm({
                       'Belum tersedia'
                     )}
                   </dd>
-                  {autoData.kop.hasSignatory && (
+                  {delegationMode === 'direct' && autoData.kop.hasSignatory && (
                     <dd style={{ fontWeight: 400, fontSize: '11.5px', color: '#4c625c' }}>
                       {autoData.kop.signatoryNip
                         ? `NIP/NPK ${autoData.kop.signatoryNip}`

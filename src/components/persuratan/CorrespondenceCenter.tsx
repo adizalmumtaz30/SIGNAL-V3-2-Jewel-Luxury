@@ -27,6 +27,7 @@ import {
   Send,
   SlidersHorizontal,
   Trash2,
+  Upload,
   X,
   XCircle,
 } from 'lucide-react';
@@ -54,7 +55,12 @@ import {
   paginateCorrespondenceDocuments,
   sortCorrespondenceDocuments,
 } from '../../domain/persuratan/selectors';
-import { bulkArchiveDocumentsInState } from '../../domain/persuratan/archive/archiveEngine';
+import {
+  attachFileToDocumentInState,
+  bulkArchiveDocumentsInState,
+  computeNextIncomingAgendaNumber,
+  recordIncomingDocumentInState,
+} from '../../domain/persuratan/archive/archiveEngine';
 import {
   exportAgendaRegisterPdf,
   triggerAgendaCsvDownload,
@@ -84,6 +90,7 @@ export interface CorrespondenceCenterProps {
     draftId?: string | null;
     documentId?: string | null;
   }) => Promise<void> | void;
+  onCloneOfficial?: (documentId: string, versionId?: string | null) => Promise<void> | void;
   onDeleteDraft?: (target: {
     draftId?: string | null;
     documentId?: string | null;
@@ -274,6 +281,7 @@ export function CorrespondenceCenter({
   onOpenPreview,
   onOpenArchiveDetail,
   onDuplicateDraft,
+  onCloneOfficial,
   onDeleteDraft,
   controlledFilters,
   onControlledFiltersChange,
@@ -344,10 +352,27 @@ export function CorrespondenceCenter({
   const [isAgendaMenuOpen, setIsAgendaMenuOpen] = useState<boolean>(false);
   const [isExportingAgenda, setIsExportingAgenda] = useState<boolean>(false);
   const [isNumberingModalOpen, setIsNumberingModalOpen] = useState<boolean>(false);
+  const [isIncomingModalOpen, setIsIncomingModalOpen] = useState<boolean>(false);
+  const [incomingOrigNumber, setIncomingOrigNumber] = useState<string>('');
+  const [incomingSender, setIncomingSender] = useState<string>('');
+  const [incomingSubject, setIncomingSubject] = useState<string>('');
+  const [incomingDocDate, setIncomingDocDate] = useState<string>(() =>
+    new Date().toISOString().slice(0, 10)
+  );
+  const [incomingReceivedDate, setIncomingReceivedDate] = useState<string>(() =>
+    new Date().toISOString().slice(0, 10)
+  );
+  const [incomingAgendaNo, setIncomingAgendaNo] = useState<string>('');
+  const [incomingDisposition, setIncomingDisposition] = useState<string>('');
+  const [incomingTeacherIds, setIncomingTeacherIds] = useState<string[]>([]);
+  const [incomingScanFile, setIncomingScanFile] = useState<File | null>(null);
+  const [incomingError, setIncomingError] = useState<string | null>(null);
+  const [isSavingIncoming, setIsSavingIncoming] = useState<boolean>(false);
 
   const createBtnRef = useRef<HTMLButtonElement | null>(null);
   const lastDetailBtnRef = useRef<HTMLElement | null>(null);
   const createModalCloseRef = useRef<HTMLButtonElement | null>(null);
+  const incomingOrigInputRef = useRef<HTMLInputElement | null>(null);
   const detailDrawerCloseRef = useRef<HTMLButtonElement | null>(null);
   const deleteCancelBtnRef = useRef<HTMLButtonElement | null>(null);
 
@@ -597,11 +622,82 @@ export function CorrespondenceCenter({
     }
   };
 
+  const openIncomingModal = () => {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    setIncomingOrigNumber('');
+    setIncomingSender('');
+    setIncomingSubject('');
+    setIncomingDocDate(todayIso);
+    setIncomingReceivedDate(todayIso);
+    setIncomingAgendaNo(computeNextIncomingAgendaNumber(state, todayIso));
+    setIncomingDisposition('');
+    setIncomingTeacherIds([]);
+    setIncomingScanFile(null);
+    setIncomingError(null);
+    setIsIncomingModalOpen(true);
+  };
+
+  const handleSaveIncomingDocument = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!onPersistState) return;
+    setIncomingError(null);
+    setIsSavingIncoming(true);
+    try {
+      const recorded = recordIncomingDocumentInState({
+        state,
+        originalNumber: incomingOrigNumber,
+        senderName: incomingSender,
+        subject: incomingSubject,
+        documentDate: incomingDocDate,
+        receivedDate: incomingReceivedDate,
+        incomingAgendaNumber: incomingAgendaNo,
+        dispositionNote: incomingDisposition,
+        relatedTeacherIds: incomingTeacherIds,
+      });
+
+      let nextState = recorded.state;
+      let attachedNotice = '';
+      if (incomingScanFile) {
+        const bytes = new Uint8Array(await incomingScanFile.arrayBuffer());
+        const attached = await attachFileToDocumentInState({
+          state: nextState,
+          documentId: recorded.document.id,
+          fileName: incomingScanFile.name,
+          declaredMimeType: incomingScanFile.type,
+          bytes,
+          notes: 'Scan / berkas asli Surat Masuk',
+        });
+        nextState = attached.state;
+        attachedNotice = ` + lampiran "${attached.attachment.fileName}"`;
+      }
+
+      await onPersistState(nextState);
+      setIsIncomingModalOpen(false);
+      onNotify?.(
+        `Surat Masuk "${recorded.document.title}" dicatat (Agenda: ${recorded.document.incomingAgendaNumber ?? '-'})` +
+          `${attachedNotice}.`,
+        'success'
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Gagal mencatat Surat Masuk.';
+      setIncomingError(msg);
+      onNotify?.(msg, 'error');
+    } finally {
+      setIsSavingIncoming(false);
+    }
+  };
+
   useEffect(() => {
     if (isCreateModalOpen) {
       createModalCloseRef.current?.focus();
     }
   }, [isCreateModalOpen]);
+
+  useEffect(() => {
+    if (isIncomingModalOpen) {
+      setTimeout(() => incomingOrigInputRef.current?.focus(), 0);
+    }
+  }, [isIncomingModalOpen]);
 
   useEffect(() => {
     if (inspectedDoc) {
@@ -739,6 +835,18 @@ export function CorrespondenceCenter({
               </div>
             )}
           </div>
+
+          {onPersistState && (
+            <button
+              type="button"
+              className="s01-btn-secondary"
+              onClick={openIncomingModal}
+              title="Catat surat masuk beserta nomor agenda dan scan PDF/foto"
+            >
+              <Inbox size={14} aria-hidden="true" />
+              <span>Catat Surat Masuk</span>
+            </button>
+          )}
 
           <button
             ref={createBtnRef}
@@ -1063,34 +1171,60 @@ export function CorrespondenceCenter({
               Daftar persuratan dan arsip madrasah masih kosong. Aplikasi tidak menyisipkan surat contoh palsu agar
               data operasional Anda tetap bersih dan akurat.
             </p>
-            <button
-              type="button"
-              className="s01-cta-btn"
-              onClick={() => {
-                if (onOpenTemplateGallery) {
-                  onOpenTemplateGallery();
-                } else {
-                  setIsCreateModalOpen(true);
-                }
-              }}
-            >
-              <FilePlus2 size={16} aria-hidden="true" />
-              <span>Buat Dokumen</span>
-            </button>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
+              <button
+                type="button"
+                className="s01-cta-btn"
+                onClick={() => {
+                  if (onOpenTemplateGallery) {
+                    onOpenTemplateGallery();
+                  } else {
+                    setIsCreateModalOpen(true);
+                  }
+                }}
+              >
+                <FilePlus2 size={16} aria-hidden="true" />
+                <span>Buat Dokumen</span>
+              </button>
+              {onPersistState && (
+                <button
+                  type="button"
+                  className="s01-btn-secondary"
+                  onClick={openIncomingModal}
+                >
+                  <Inbox size={15} aria-hidden="true" />
+                  <span>Catat Surat Masuk</span>
+                </button>
+              )}
+            </div>
           </div>
         ) : sortedDocuments.length === 0 ? (
           <div className="s01-empty-box">
             <div className="s01-empty-icon" aria-hidden="true">
               <Filter size={22} />
             </div>
-            <h3>Tidak ada dokumen yang cocok dengan filter</h3>
+            <h3>
+              {filters.tab === 'INCOMING' && stats.incoming === 0
+                ? 'Belum ada Surat Masuk tercatat'
+                : 'Tidak ada dokumen yang cocok dengan filter'}
+            </h3>
             <p>
-              Coba ubah kata kunci pencarian, tab kategori, rentang tanggal, atau status dokumen yang dipilih.
+              {filters.tab === 'INCOMING' && stats.incoming === 0
+                ? 'Catat surat masuk dari Kemenag, yayasan, atau instansi eksternal beserta nomor agenda dan scan dokumennya.'
+                : 'Coba ubah kata kunci pencarian, tab kategori, rentang tanggal, atau status dokumen yang dipilih.'}
             </p>
-            <button type="button" className="s01-btn-secondary" onClick={resetFilters}>
-              <RotateCcw size={14} aria-hidden="true" />
-              <span>Reset Filter</span>
-            </button>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
+              {filters.tab === 'INCOMING' && onPersistState && (
+                <button type="button" className="s01-cta-btn" onClick={openIncomingModal}>
+                  <Inbox size={15} aria-hidden="true" />
+                  <span>Catat Surat Masuk</span>
+                </button>
+              )}
+              <button type="button" className="s01-btn-secondary" onClick={resetFilters}>
+                <RotateCcw size={14} aria-hidden="true" />
+                <span>Reset Filter</span>
+              </button>
+            </div>
           </div>
         ) : (
           <div className="s01-table-scroll">
@@ -1186,7 +1320,13 @@ export function CorrespondenceCenter({
                         <div className={`s01-doc-number ${doc.documentNumber ? '' : 'is-unnumbered'}`}>
                           {doc.documentNumber ?? 'Belum Bernomor'}
                         </div>
-                        <div className="s01-doc-id">{doc.id}</div>
+                        {doc.direction === 'INCOMING' && doc.incomingAgendaNumber ? (
+                          <div className="s01-doc-id" title="Nomor Agenda Surat Masuk">
+                            Agenda: {doc.incomingAgendaNumber}
+                          </div>
+                        ) : (
+                          <div className="s01-doc-id">{doc.id}</div>
+                        )}
                       </td>
                       <td>
                         <button
@@ -1296,6 +1436,10 @@ export function CorrespondenceCenter({
                             )}
 
                             {(Boolean(onOpenArchiveDetail) ||
+                              ((doc.status === 'FINAL' ||
+                                doc.status === 'ARCHIVED' ||
+                                doc.status === 'REVISED') &&
+                                Boolean(onCloneOfficial)) ||
                               (linkedIntake && (onEditIntakeDraft || onDuplicateDraft)) ||
                               (doc.status === 'DRAFT' && !doc.documentNumber && onDeleteDraft)) && (
                               <button
@@ -1373,6 +1517,23 @@ export function CorrespondenceCenter({
                                   <span>Duplikasi Draft</span>
                                 </button>
                               )}
+                              {(doc.status === 'FINAL' ||
+                                doc.status === 'ARCHIVED' ||
+                                doc.status === 'REVISED') &&
+                                onCloneOfficial && (
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    className="s5-menu-item"
+                                    onClick={() => {
+                                      setOpenMenuDocId(null);
+                                      void onCloneOfficial(doc.id, doc.currentVersionId ?? null);
+                                    }}
+                                  >
+                                    <Copy size={13} aria-hidden="true" />
+                                    <span>Terbitkan Ulang Serupa</span>
+                                  </button>
+                                )}
                               {doc.status === 'DRAFT' && !doc.documentNumber && onDeleteDraft && (
                                 <button
                                   type="button"
@@ -1500,7 +1661,7 @@ export function CorrespondenceCenter({
         />
       )}
 
-      {/* Modal: Buat Dokumen (Honest Phase 2 Boundary Notice) */}
+      {/* Modal: Buat Dokumen / Pilih Jalur Pembuatan */}
       {isCreateModalOpen && (
         <div
           className="s01-modal-scrim"
@@ -1528,7 +1689,7 @@ export function CorrespondenceCenter({
                 </div>
                 <div>
                   <h2 id="s01-create-modal-title">Buat Dokumen Baru</h2>
-                  <p>Alur pembuatan naskah dinas terhubung ke Galeri Template &amp; Document Studio.</p>
+                  <p>Pilih jalur pembuatan naskah keluar resmi atau pencatatan surat masuk.</p>
                 </div>
               </div>
               <button
@@ -1545,24 +1706,243 @@ export function CorrespondenceCenter({
               <div className="s01-notice-box">
                 <strong style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
                   <Info size={15} aria-hidden="true" />
-                  <span>Tahap 3 (Galeri Template S02) Belum Diaktifkan</span>
+                  <span>Alur Persuratan Terintegrasi</span>
                 </strong>
                 <span>
-                  Saat ini aplikasi berada pada <strong>Tahap 2 (Pusat Persuratan &amp; Arsip S01)</strong>. Pembuatan
-                  dokumen dari Galeri Template (S02), pengisian Form Data Awal (S03), dan penyuntingan di Document
-                  Studio (S04) akan diaktifkan pada <strong>Tahap 3–6</strong>.
+                  Untuk menerbitkan surat keluar, buka <strong>Galeri Template Surat</strong> agar data guru,
+                  jadwal, dan kop madrasah terisi otomatis sebelum disunting dan disahkan menjadi PDF resmi. Untuk
+                  arsip eksternal, gunakan tombol <strong>Catat Surat Masuk</strong>.
                 </span>
               </div>
-              <p style={{ margin: 0 }}>
-                Tidak ada dokumen atau draft contoh yang dibuat ke penyimpanan lokal saat dialog ini dibuka atau ditutup,
-                sehingga daftar persuratan Anda tetap menampilkan data nyata secara akurat.
-              </p>
             </div>
             <div className="s01-modal-foot">
-              <button type="button" className="s01-cta-btn" onClick={closeCreateModal}>
-                Mengerti &amp; Tutup
+              {onPersistState && (
+                <button
+                  type="button"
+                  className="s01-btn-secondary"
+                  onClick={() => {
+                    closeCreateModal();
+                    openIncomingModal();
+                  }}
+                >
+                  <Inbox size={14} aria-hidden="true" />
+                  <span>Catat Surat Masuk</span>
+                </button>
+              )}
+              {onOpenTemplateGallery ? (
+                <button
+                  type="button"
+                  className="s01-cta-btn"
+                  onClick={() => {
+                    closeCreateModal();
+                    onOpenTemplateGallery();
+                  }}
+                >
+                  <FilePlus2 size={14} aria-hidden="true" />
+                  <span>Buka Galeri Template</span>
+                </button>
+              ) : (
+                <button type="button" className="s01-cta-btn" onClick={closeCreateModal}>
+                  Tutup
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Catat Surat Masuk */}
+      {isIncomingModalOpen && onPersistState && (
+        <div
+          className="s01-modal-scrim"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget && !isSavingIncoming) setIsIncomingModalOpen(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' && !isSavingIncoming) {
+              e.stopPropagation();
+              setIsIncomingModalOpen(false);
+            }
+          }}
+        >
+          <div
+            className="s01-modal-panel s01-incoming-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="s01-incoming-modal-title"
+          >
+            <div className="s01-modal-head">
+              <div className="s01-modal-title-wrap">
+                <div className="s01-modal-icon" aria-hidden="true">
+                  <Inbox size={20} />
+                </div>
+                <div>
+                  <h2 id="s01-incoming-modal-title">Catat Surat Masuk</h2>
+                  <p>Arsipkan surat dari Kemenag, yayasan, atau instansi lain ke Buku Agenda.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="s01-modal-close"
+                disabled={isSavingIncoming}
+                onClick={() => setIsIncomingModalOpen(false)}
+                aria-label="Tutup dialog catat surat masuk"
+              >
+                <X size={16} />
               </button>
             </div>
+            <form onSubmit={(e) => void handleSaveIncomingDocument(e)}>
+              <div className="s01-modal-body s01-incoming-form-body">
+                {incomingError && (
+                  <div className="s01-notice-box" role="alert" style={{ borderColor: '#e7b5af', color: '#8f2d24', background: '#fff9f8' }}>
+                    {incomingError}
+                  </div>
+                )}
+
+                <div className="s01-incoming-grid">
+                  <label className="s01-incoming-field">
+                    <span>Nomor Surat Asal *</span>
+                    <input
+                      ref={incomingOrigInputRef}
+                      type="text"
+                      className="s01-input"
+                      required
+                      placeholder="Contoh: B-142/Kk.10.22/PP.00/11/2026"
+                      value={incomingOrigNumber}
+                      onChange={(e) => setIncomingOrigNumber(e.target.value)}
+                    />
+                  </label>
+                  <label className="s01-incoming-field">
+                    <span>Nomor Agenda Masuk</span>
+                    <input
+                      type="text"
+                      className="s01-input"
+                      placeholder="Otomatis jika dikosongkan"
+                      value={incomingAgendaNo}
+                      onChange={(e) => setIncomingAgendaNo(e.target.value)}
+                    />
+                  </label>
+                </div>
+
+                <label className="s01-incoming-field">
+                  <span>Asal Instansi / Pengirim *</span>
+                  <input
+                    type="text"
+                    className="s01-input"
+                    required
+                    placeholder="Contoh: Kantor Kementerian Agama Kota Depok"
+                    value={incomingSender}
+                    onChange={(e) => setIncomingSender(e.target.value)}
+                  />
+                </label>
+
+                <label className="s01-incoming-field">
+                  <span>Perihal / Ringkasan Isi Surat *</span>
+                  <input
+                    type="text"
+                    className="s01-input"
+                    required
+                    placeholder="Contoh: Undangan Rapat Koordinasi Asesmen Madrasah"
+                    value={incomingSubject}
+                    onChange={(e) => setIncomingSubject(e.target.value)}
+                  />
+                </label>
+
+                <div className="s01-incoming-grid">
+                  <label className="s01-incoming-field">
+                    <span>Tanggal Surat Asal *</span>
+                    <input
+                      type="date"
+                      className="s01-input"
+                      required
+                      value={incomingDocDate}
+                      onChange={(e) => setIncomingDocDate(e.target.value)}
+                    />
+                  </label>
+                  <label className="s01-incoming-field">
+                    <span>Tanggal Diterima Madrasah</span>
+                    <input
+                      type="date"
+                      className="s01-input"
+                      value={incomingReceivedDate}
+                      onChange={(e) => {
+                        const nextVal = e.target.value;
+                        setIncomingReceivedDate(nextVal);
+                        if (nextVal) {
+                          setIncomingAgendaNo(computeNextIncomingAgendaNumber(state, nextVal));
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+
+                <label className="s01-incoming-field">
+                  <span>Catatan Disposisi Awal (Opsional)</span>
+                  <textarea
+                    className="s01-input s01-incoming-textarea"
+                    rows={2}
+                    placeholder="Contoh: Mohon Wakamad Kurikulum menindaklanjuti & menghadiri rapat."
+                    value={incomingDisposition}
+                    onChange={(e) => setIncomingDisposition(e.target.value)}
+                  />
+                </label>
+
+                {state.teachers.length > 0 && (
+                  <div className="s01-incoming-field">
+                    <span>Diteruskan / Terkait Guru (Opsional)</span>
+                    <div className="s01-incoming-teacher-list">
+                      {state.teachers.map((t) => {
+                        const checked = incomingTeacherIds.includes(t.id);
+                        return (
+                          <label key={t.id} className="s01-incoming-teacher-chip">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() =>
+                                setIncomingTeacherIds((prev) =>
+                                  checked ? prev.filter((id) => id !== t.id) : [...prev, t.id]
+                                )
+                              }
+                            />
+                            <span>
+                              {t.name}
+                              {t.roleTitle ? ` · ${t.roleTitle}` : ''}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <label className="s01-incoming-field">
+                  <span>Unggah Scan Surat Asli (PDF / PNG / JPG — Opsional)</span>
+                  <div className="s01-incoming-file-row">
+                    <Upload size={14} aria-hidden="true" />
+                    <input
+                      type="file"
+                      accept=".pdf,.png,.jpg,.jpeg,.webp"
+                      onChange={(e) => setIncomingScanFile(e.target.files?.[0] ?? null)}
+                    />
+                  </div>
+                </label>
+              </div>
+              <div className="s01-modal-foot">
+                <button
+                  type="button"
+                  className="s01-btn-secondary"
+                  disabled={isSavingIncoming}
+                  onClick={() => setIsIncomingModalOpen(false)}
+                >
+                  Batal
+                </button>
+                <button type="submit" className="s01-cta-btn" disabled={isSavingIncoming}>
+                  <Inbox size={14} aria-hidden="true" />
+                  <span>{isSavingIncoming ? 'Menyimpan…' : 'Simpan Surat Masuk'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -1668,6 +2048,22 @@ export function CorrespondenceCenter({
                     <dt>Nomor Surat</dt>
                     <dd>{inspectedDoc.documentNumber ?? 'Belum Bernomor'}</dd>
                   </div>
+                  {inspectedDoc.direction === 'INCOMING' && (
+                    <>
+                      <div className="s01-meta-item">
+                        <dt>Nomor Agenda Masuk</dt>
+                        <dd>{inspectedDoc.incomingAgendaNumber || '—'}</dd>
+                      </div>
+                      <div className="s01-meta-item">
+                        <dt>Tanggal Diterima</dt>
+                        <dd className="s5-tnum">
+                          {inspectedDoc.receivedDate
+                            ? formatIndonesianDate(inspectedDoc.receivedDate)
+                            : formatIndonesianDate(inspectedDoc.documentDate)}
+                        </dd>
+                      </div>
+                    </>
+                  )}
                   <div className="s01-meta-item" style={{ gridColumn: '1 / -1' }}>
                     <dt>Perihal</dt>
                     <dd>{inspectedDoc.subject || '—'}</dd>
@@ -1699,6 +2095,12 @@ export function CorrespondenceCenter({
                         .join(' · ') || '—'}
                     </dd>
                   </div>
+                  {inspectedDoc.direction === 'INCOMING' && inspectedDoc.dispositionNote && (
+                    <div className="s01-meta-item" style={{ gridColumn: '1 / -1' }}>
+                      <dt>Catatan Disposisi</dt>
+                      <dd>{inspectedDoc.dispositionNote}</dd>
+                    </div>
+                  )}
                 </dl>
 
                 <div className="s01-notice-box">

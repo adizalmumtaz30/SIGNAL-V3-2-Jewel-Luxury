@@ -141,68 +141,80 @@ export function exportAgendaRegisterPdf(
 
   const kopEndY = renderOfficialKopSurat(doc, state, 7, undefined, true);
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
-  doc.setTextColor(11, 41, 35);
-  doc.text('BUKU AGENDA PERSURATAN MADRASAH', 148.5, kopEndY + 1, {
+  const rows = buildAgendaRows(documents, state);
+  const PURE_BLACK: [number, number, number] = [0, 0, 0];
+
+  doc.setFont('times', 'bold');
+  doc.setFontSize(12.5);
+  doc.setTextColor(...PURE_BLACK);
+  const titleTxt = 'BUKU AGENDA PERSURATAN MADRASAH';
+  doc.text(titleTxt, 148.5, kopEndY + 2, {
     align: 'center',
   });
+  const titleW = doc.getTextWidth(titleTxt);
+  doc.setDrawColor(...PURE_BLACK);
+  doc.setLineWidth(0.32);
+  doc.line(148.5 - titleW / 2, kopEndY + 3.1, 148.5 + titleW / 2, kopEndY + 3.1);
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
-  doc.setTextColor(80, 96, 90);
+  doc.setFont('times', 'normal');
+  doc.setFontSize(9.5);
+  doc.setTextColor(...PURE_BLACK);
   doc.text(
     `${periodLabel}   |   Total Tercatat: ${documents.length} dokumen   |   Dicetak: ${formatIndonesianDate(
       new Date().toISOString().slice(0, 10)
     )}`,
     148.5,
-    kopEndY + 6,
+    kopEndY + 7.5,
     { align: 'center' }
   );
 
-  const rows = buildAgendaRows(documents, state);
-
   autoTable(doc, {
-    startY: kopEndY + 9,
-    head: [['No', 'Nomor Surat', 'Tanggal', 'Arah', 'Jenis', 'Judul / Perihal', 'Pihak Terkait', 'Status']],
+    startY: kopEndY + 11,
+    head: [['No', 'Nomor Surat / Agenda', 'Tanggal', 'Arah', 'Jenis', 'Judul / Perihal', 'Pihak Terkait', 'Status']],
     body:
       rows.length > 0
-        ? rows.map((r) => [
-            String(r.no),
-            r.documentNumber,
-            r.documentDate,
-            r.directionLabel,
-            r.kindLabel,
-            r.titleAndSubject,
-            r.counterpart,
-            r.statusLabel,
-          ])
+        ? rows.map((r, idx) => {
+            const rawDoc = documents[idx];
+            const numCell =
+              rawDoc?.direction === 'INCOMING' && rawDoc.incomingAgendaNumber
+                ? `${r.documentNumber}\n(Agenda: ${rawDoc.incomingAgendaNumber})`
+                : r.documentNumber;
+            return [
+              String(r.no),
+              numCell,
+              r.documentDate,
+              r.directionLabel,
+              r.kindLabel,
+              r.titleAndSubject,
+              r.counterpart,
+              r.statusLabel,
+            ];
+          })
         : [['—', 'Belum ada dokumen pada filter aktif', '', '', '', '', '', '']],
     theme: 'grid',
     styles: {
-      font: 'helvetica',
-      fontSize: 8.2,
-      cellPadding: 2.6,
-      textColor: [20, 35, 31],
-      lineColor: [210, 221, 215],
-      lineWidth: 0.2,
+      font: 'times',
+      fontSize: 9.2,
+      cellPadding: 2.4,
+      textColor: PURE_BLACK,
+      lineColor: [34, 34, 34],
+      lineWidth: 0.22,
       valign: 'top',
     },
     headStyles: {
-      fillColor: [18, 64, 55],
-      textColor: [255, 255, 255],
+      fillColor: [242, 242, 242],
+      textColor: PURE_BLACK,
       fontStyle: 'bold',
-      fontSize: 8.2,
-    },
-    alternateRowStyles: {
-      fillColor: [248, 250, 249],
+      fontSize: 9.2,
+      lineColor: [34, 34, 34],
+      lineWidth: 0.25,
     },
     columnStyles: {
       0: { cellWidth: 10, halign: 'center' },
-      1: { cellWidth: 42 },
+      1: { cellWidth: 44 },
       2: { cellWidth: 26 },
       3: { cellWidth: 24 },
-      4: { cellWidth: 28 },
+      4: { cellWidth: 26 },
       5: { cellWidth: 74 },
       6: { cellWidth: 42 },
       7: { cellWidth: 23 },
@@ -211,17 +223,34 @@ export function exportAgendaRegisterPdf(
   });
 
   const finalY = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? 150;
-  const sigY = finalY + 12 > 180 ? 180 : finalY + 12;
-  const city = state.settings.city?.trim() || 'Madrasah';
+  let sigY = finalY + 10;
+  if (sigY > 175) {
+    doc.addPage();
+    sigY = 24;
+  }
+  const city = state.settings.city?.trim() || 'Depok';
+  const headTitle = state.settings.headmasterTitle?.trim() || 'Kepala Madrasah';
   const headmaster = state.settings.headmasterName?.trim() || 'Kepala Madrasah';
+  const headNip = state.settings.headmasterNip?.trim() || '';
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.8);
-  doc.setTextColor(35, 50, 45);
-  doc.text(`${city}, ${formatIndonesianDate(new Date().toISOString().slice(0, 10))}`, 220, sigY);
-  doc.text('Mengetahui, Kepala Madrasah', 220, sigY + 5);
-  doc.setFont('helvetica', 'bold');
-  doc.text(headmaster, 220, sigY + 19);
+  const sigX = 205;
+  doc.setFont('times', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(...PURE_BLACK);
+  doc.text(`${city}, ${formatIndonesianDate(new Date().toISOString().slice(0, 10))}`, sigX, sigY);
+  doc.text(`Mengetahui,\n${headTitle},`, sigX, sigY + 5);
+  const nameY = sigY + 25;
+  doc.setFont('times', 'bold');
+  doc.text(headmaster, sigX, nameY);
+  if (!headNip) {
+    const nw = doc.getTextWidth(headmaster);
+    doc.setDrawColor(...PURE_BLACK);
+    doc.setLineWidth(0.28);
+    doc.line(sigX, nameY + 0.9, sigX + nw, nameY + 0.9);
+  } else {
+    doc.setFont('times', 'normal');
+    doc.text(`NIP. ${headNip}`, sigX, nameY + 5);
+  }
 
   const fileName = `Buku_Agenda_Persuratan_${schoolName.replace(/[^A-Za-z0-9]+/g, '_')}_${new Date()
     .toISOString()

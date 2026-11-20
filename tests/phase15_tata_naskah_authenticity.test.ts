@@ -266,10 +266,11 @@ describe('Phase 15: Tahap 1 + Tahap 2 — Zero-Bug Logic & Tata Naskah Dinas Kem
     expect(plainText).toContain('DAFTAR PEMBAGIAN TUGAS MENGAJAR GURU');
     expect(studio.content.content.some((n) => n.type === 'pageBreak')).toBe(true);
 
-    // Real resolved subjects from ScheduleVersion (not hardcoded generic placeholder)
+    // Real resolved subjects from ScheduleVersion (not hardcoded generic placeholder), and zero technical fingerprint leak
     expect(plainText).not.toContain('Sesuai jadwal terverifikasi');
+    expect(plainText).not.toContain('Kode Validasi:');
     if (demo.history[0]?.fingerprint) {
-      expect(plainText).toContain(demo.history[0].fingerprint);
+      expect(plainText).not.toContain(demo.history[0].fingerprint);
     }
   });
 

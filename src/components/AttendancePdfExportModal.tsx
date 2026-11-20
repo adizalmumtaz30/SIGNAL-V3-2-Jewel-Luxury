@@ -314,8 +314,8 @@ export function AttendancePdfExportModal({
         ? '297 × 210 mm'
         : '210 × 297 mm'
       : orientation === 'landscape'
-      ? '330 × 210 mm'
-      : '210 × 330 mm';
+      ? '330 × 215 mm'
+      : '215 × 330 mm';
 
   const paperLabel = paperSize === 'a4' ? 'A4 Standar' : 'F4 / Folio Kemenag';
 
@@ -738,7 +738,7 @@ export function AttendancePdfExportModal({
                           {
                             id: 'f4' as const,
                             title: 'Kertas F4 / Folio',
-                            sub: '210 × 330 mm · Standar Kemenag',
+                            sub: '215 × 330 mm · Standar Kemenag',
                           },
                         ]
                       ).map((opt) => {

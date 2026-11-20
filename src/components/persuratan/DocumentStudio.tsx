@@ -47,6 +47,7 @@ import {
   Rows,
   Save,
   Settings2,
+  ShieldCheck,
   Slash,
   Split,
   SplitSquareHorizontal,
@@ -112,11 +113,29 @@ import {
   attachFileToDocumentInState,
   removeAttachmentFromDocumentInState,
 } from '../../domain/persuratan/archive/archiveEngine';
+import {
+  buildStudioSnippetNodes,
+  evaluateTataNaskahAuthenticity,
+  type StudioTataNaskahSnippetId,
+} from '../../domain/persuratan/studio/tataNaskahHelpers';
+import { formatIndonesianDate } from '../../domain/persuratan/selectors';
 import { FinalizationSlideDrawer } from './FinalizationSlideDrawer';
 import './DocumentStudio.css';
 
 interface StudioSlashCommandItem {
-  id: 'table' | 'logo' | 'pagebreak' | 'hr' | 'heading' | 'list';
+  id:
+    | 'table'
+    | 'logo'
+    | 'pagebreak'
+    | 'hr'
+    | 'heading'
+    | 'list'
+    | 'ttd'
+    | 'ttdganda'
+    | 'tembusan'
+    | 'identitas'
+    | 'lampiran'
+    | 'salam';
   command: string;
   label: string;
   description: string;
@@ -124,6 +143,12 @@ interface StudioSlashCommandItem {
 
 const SLASH_COMMANDS: StudioSlashCommandItem[] = [
   { id: 'table', command: '/tabel', label: 'Tabel 3×3', description: 'Sisipkan tabel baru dengan baris header' },
+  { id: 'identitas', command: '/identitas', label: 'Blok Identitas / Rincian', description: 'Sisipkan blok rincian titik dua lurus tanpa kotak (borderless)' },
+  { id: 'ttd', command: '/ttd', label: 'Blok Tanda Tangan', description: 'Sisipkan pengesahan Kepala Madrasah di kolom kanan' },
+  { id: 'ttdganda', command: '/ttdganda', label: 'Tanda Tangan Ganda', description: 'Sisipkan blok 2 penandatangan (kiri & kanan)' },
+  { id: 'tembusan', command: '/tembusan', label: 'Blok Tembusan', description: 'Sisipkan daftar tembusan bernomor standar dinas' },
+  { id: 'lampiran', command: '/lampiran', label: 'Halaman Lampiran', description: 'Sisipkan pemisah halaman dan tajuk Lampiran resmi' },
+  { id: 'salam', command: '/salam', label: 'Salam Pembuka & Penutup', description: 'Sisipkan Assalamu’alaikum & Wassalamu’alaikum' },
   { id: 'logo', command: '/logo', label: 'Logo / Gambar', description: 'Sisipkan logo madrasah atau gambar' },
   { id: 'pagebreak', command: '/halaman', label: 'Pemisah Halaman', description: 'Pindah ke halaman baru (Page Break)' },
   { id: 'hr', command: '/garis', label: 'Garis Pembatas', description: 'Sisipkan garis horizontal pemisah' },
@@ -178,6 +203,40 @@ export interface DocumentStudioProps {
   onNotify?: (message: string, type?: 'success' | 'info' | 'warning' | 'error') => void;
 }
 
+function renderStaticInlineNodes(nodes: TipTapJSONNode[] | undefined) {
+  if (!nodes || nodes.length === 0) return null;
+  return nodes.map((child, idx) => {
+    if (child.type === 'hardBreak') return <br key={idx} />;
+    if (child.type !== 'text') return null;
+    const text = child.text ?? '';
+    const marks = new Set((child.marks ?? []).map((m) => m.type));
+    let el: React.ReactNode = text;
+    if (marks.has('underline')) el = <u>{el}</u>;
+    if (marks.has('italic')) el = <em>{el}</em>;
+    if (marks.has('bold')) el = <strong>{el}</strong>;
+    return <span key={idx}>{el}</span>;
+  });
+}
+
+function getStaticStudioTableColWidth(layout: string, colIdx: number): string | undefined {
+  if (layout === 'meta') {
+    if (colIdx === 0) return '28%';
+    if (colIdx === 1) return '4%';
+    if (colIdx === 2) return '68%';
+  }
+  if (layout === 'letter_header') {
+    if (colIdx === 0) return '15%';
+    if (colIdx === 1) return '3%';
+    if (colIdx === 2) return '49%';
+    if (colIdx === 3) return '33%';
+  }
+  if (layout === 'signature') {
+    if (colIdx === 0) return '52%';
+    if (colIdx === 1) return '48%';
+  }
+  return undefined;
+}
+
 function renderStaticPreviewNodes(nodes: TipTapJSONNode[]) {
   return nodes.map((node, idx) => {
     const align =
@@ -216,20 +275,20 @@ function renderStaticPreviewNodes(nodes: TipTapJSONNode[]) {
       if (lvl === 1) {
         return (
           <h1 key={idx} style={{ textAlign: align }}>
-            {text}
+            {renderStaticInlineNodes(node.content)}
           </h1>
         );
       }
       if (lvl === 3) {
         return (
           <h3 key={idx} style={{ textAlign: align }}>
-            {text}
+            {renderStaticInlineNodes(node.content)}
           </h3>
         );
       }
       return (
         <h2 key={idx} style={{ textAlign: align }}>
-          {text}
+          {renderStaticInlineNodes(node.content)}
         </h2>
       );
     }
@@ -242,10 +301,9 @@ function renderStaticPreviewNodes(nodes: TipTapJSONNode[]) {
         <TagName key={idx}>
           {(node.content ?? []).map((li, liIdx) => (
             <li key={liIdx}>
-              {(li.content ?? [])
-                .flatMap((p) => p.content ?? [])
-                .map((t) => t.text ?? '')
-                .join('')}
+              {(li.content ?? []).map((p, pIdx) => (
+                <span key={pIdx}>{renderStaticInlineNodes(p.content)}</span>
+              ))}
             </li>
           ))}
         </TagName>
@@ -253,8 +311,20 @@ function renderStaticPreviewNodes(nodes: TipTapJSONNode[]) {
     }
     if (node.type === 'table') {
       const repeatHdr = node.attrs?.repeatHeader !== false;
+      const rawLayout =
+        typeof node.attrs?.tableLayout === 'string' ? node.attrs.tableLayout : 'grid';
+      const isBorderless =
+        rawLayout === 'borderless' ||
+        rawLayout === 'meta' ||
+        rawLayout === 'letter_header' ||
+        rawLayout === 'signature';
+
       return (
-        <table key={idx} data-repeat-header={repeatHdr ? 'true' : 'false'}>
+        <table
+          key={idx}
+          data-table-layout={rawLayout}
+          data-repeat-header={repeatHdr ? 'true' : 'false'}
+        >
           <tbody>
             {(node.content ?? []).map((row, rIdx) => {
               const rowHeight =
@@ -277,18 +347,42 @@ function renderStaticPreviewNodes(nodes: TipTapJSONNode[]) {
                       cell.attrs?.verticalAlign === 'middle' || cell.attrs?.verticalAlign === 'bottom'
                         ? cell.attrs.verticalAlign
                         : undefined;
-                    const cellText = (cell.content ?? [])
-                      .flatMap((p) => p.content ?? [])
-                      .map((t) => t.text ?? '')
-                      .join(' ');
+                    const cellAlign =
+                      (cell.content?.[0]?.attrs?.textAlign as
+                        | 'left'
+                        | 'center'
+                        | 'right'
+                        | 'justify'
+                        | undefined) ??
+                      (rawLayout === 'letter_header' && cIdx === 3
+                        ? 'right'
+                        : (rawLayout === 'meta' || rawLayout === 'letter_header') && cIdx === 1
+                          ? 'center'
+                          : undefined);
                     return (
                       <CellTag
                         key={cIdx}
                         colSpan={colSpan}
                         rowSpan={rowSpan}
-                        style={vAlign ? { verticalAlign: vAlign } : undefined}
+                        style={{
+                          ...(isBorderless
+                            ? { width: getStaticStudioTableColWidth(rawLayout, cIdx) }
+                            : {}),
+                          ...(vAlign ? { verticalAlign: vAlign } : {}),
+                          ...(cellAlign ? { textAlign: cellAlign } : {}),
+                        }}
                       >
-                        {cellText}
+                        {(cell.content ?? []).map((p, pIdx) => {
+                          const isEmpty = !p.content || p.content.length === 0;
+                          return (
+                            <p
+                              key={pIdx}
+                              style={isEmpty ? { minHeight: '1.15em', margin: 0 } : { margin: 0 }}
+                            >
+                              {isEmpty ? '\u00A0' : renderStaticInlineNodes(p.content)}
+                            </p>
+                          );
+                        })}
                       </CellTag>
                     );
                   })}
@@ -299,9 +393,10 @@ function renderStaticPreviewNodes(nodes: TipTapJSONNode[]) {
         </table>
       );
     }
+    const isEmptyPara = !text;
     return (
-      <p key={idx} style={{ textAlign: align }}>
-        {text || '\u00A0'}
+      <p key={idx} style={{ textAlign: align, ...(isEmptyPara ? { minHeight: '1.15em' } : {}) }}>
+        {isEmptyPara ? '\u00A0' : renderStaticInlineNodes(node.content)}
       </p>
     );
   });
@@ -371,9 +466,20 @@ export function DocumentStudio({
     return {
       includeKop: initialGeneration.includeKopSurat,
       schoolName: overrides.schoolName ?? state.settings.schoolName,
+      city: overrides.city ?? state.settings.city ?? 'Depok',
+      signatoryTitle: pickStr('signatoryTitle') ?? 'Kepala Madrasah',
+      signatoryName: pickStr('signatoryName') ?? state.settings.headmasterName ?? 'Kepala Madrasah',
+      signatoryNip: pickStr('signatoryNip') ?? state.settings.headmasterNip ?? '',
       overrides,
     };
-  }, [draft.sourceSnapshots, initialGeneration.includeKopSurat, state.settings.schoolName]);
+  }, [
+    draft.sourceSnapshots,
+    initialGeneration.includeKopSurat,
+    state.settings.schoolName,
+    state.settings.city,
+    state.settings.headmasterName,
+    state.settings.headmasterNip,
+  ]);
 
   const normalizeCanvasContent = useCallback(
     (rawContent: TipTapJSONContent): TipTapJSONContent => {
@@ -770,6 +876,45 @@ export function DocumentStudio({
     );
   }, [slashState]);
 
+  const handleInsertTataNaskahSnippet = useCallback(
+    (snippetId: StudioTataNaskahSnippetId, opts?: { appendAtEnd?: boolean }) => {
+      const nodes = buildStudioSnippetNodes(snippetId, {
+        schoolName: studioKopMeta.schoolName,
+        city: studioKopMeta.city,
+        dateText: formatIndonesianDate(draft.documentDate),
+        headTitle: studioKopMeta.signatoryTitle,
+        headName: studioKopMeta.signatoryName,
+        headNip: studioKopMeta.signatoryNip,
+        documentKind: draft.templateSnapshot.documentKind,
+      });
+      if (editor) {
+        if (opts?.appendAtEnd) {
+          editor.chain().focus('end').insertContent(nodes).run();
+        } else {
+          editor.chain().focus().insertContent(nodes).run();
+        }
+      } else {
+        setDocJson((prev) => ({
+          ...prev,
+          content: [...(prev.content ?? []), ...nodes],
+        }));
+        setSaveError(null);
+      }
+      onNotify?.('Elemen Tata Naskah Dinas berhasil disisipkan ke naskah.', 'success');
+    },
+    [
+      editor,
+      studioKopMeta.schoolName,
+      studioKopMeta.city,
+      studioKopMeta.signatoryTitle,
+      studioKopMeta.signatoryName,
+      studioKopMeta.signatoryNip,
+      draft.documentDate,
+      draft.templateSnapshot.documentKind,
+      onNotify,
+    ]
+  );
+
   const executeSlashCommand = useCallback(
     (cmdId: StudioSlashCommandItem['id']) => {
       const current = slashStateRef.current;
@@ -791,9 +936,18 @@ export function DocumentStudio({
         editor.chain().focus().toggleHeading({ level: 2 }).run();
       } else if (cmdId === 'list') {
         editor.chain().focus().toggleOrderedList().run();
+      } else if (
+        cmdId === 'ttd' ||
+        cmdId === 'ttdganda' ||
+        cmdId === 'tembusan' ||
+        cmdId === 'identitas' ||
+        cmdId === 'lampiran' ||
+        cmdId === 'salam'
+      ) {
+        handleInsertTataNaskahSnippet(cmdId);
       }
     },
-    [editor]
+    [editor, handleInsertTataNaskahSnippet]
   );
 
   executeSlashRef.current = executeSlashCommand;
@@ -839,6 +993,16 @@ export function DocumentStudio({
   const isDemoSnapshot = useMemo(
     () => (draft.sourceSnapshots ?? []).some((s) => s.isDemoData),
     [draft.sourceSnapshots]
+  );
+  const authenticityReport = useMemo(
+    () =>
+      evaluateTataNaskahAuthenticity({
+        content: docJson,
+        includeKopSurat: studioKopMeta.includeKop,
+        draft,
+        signatoryName: studioKopMeta.signatoryName,
+      }),
+    [docJson, studioKopMeta.includeKop, studioKopMeta.signatoryName, draft]
   );
 
   const paperDims = useMemo(
@@ -1809,6 +1973,91 @@ export function DocumentStudio({
                     <span>Garis Pembatas</span>
                     <kbd>/garis</kbd>
                   </button>
+                  <hr className="s04-popover-divider" />
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="s04-popover-item"
+                    onMouseDown={preserveFocusMouseDown}
+                    onClick={() => {
+                      handleInsertTataNaskahSnippet('identitas');
+                      setOpenToolMenu(null);
+                    }}
+                  >
+                    <TableProperties size={14} aria-hidden="true" />
+                    <span>Blok Identitas / Rincian</span>
+                    <kbd>/identitas</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="s04-popover-item"
+                    onMouseDown={preserveFocusMouseDown}
+                    onClick={() => {
+                      handleInsertTataNaskahSnippet('salam');
+                      setOpenToolMenu(null);
+                    }}
+                  >
+                    <FileText size={14} aria-hidden="true" />
+                    <span>Salam Pembuka &amp; Penutup</span>
+                    <kbd>/salam</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="s04-popover-item"
+                    onMouseDown={preserveFocusMouseDown}
+                    onClick={() => {
+                      handleInsertTataNaskahSnippet('ttd');
+                      setOpenToolMenu(null);
+                    }}
+                  >
+                    <ShieldCheck size={14} aria-hidden="true" />
+                    <span>Blok Tanda Tangan</span>
+                    <kbd>/ttd</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="s04-popover-item"
+                    onMouseDown={preserveFocusMouseDown}
+                    onClick={() => {
+                      handleInsertTataNaskahSnippet('ttdganda');
+                      setOpenToolMenu(null);
+                    }}
+                  >
+                    <ShieldCheck size={14} aria-hidden="true" />
+                    <span>Tanda Tangan Ganda</span>
+                    <kbd>/ttdganda</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="s04-popover-item"
+                    onMouseDown={preserveFocusMouseDown}
+                    onClick={() => {
+                      handleInsertTataNaskahSnippet('tembusan');
+                      setOpenToolMenu(null);
+                    }}
+                  >
+                    <ListOrdered size={14} aria-hidden="true" />
+                    <span>Blok Tembusan</span>
+                    <kbd>/tembusan</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="s04-popover-item"
+                    onMouseDown={preserveFocusMouseDown}
+                    onClick={() => {
+                      handleInsertTataNaskahSnippet('lampiran');
+                      setOpenToolMenu(null);
+                    }}
+                  >
+                    <SplitSquareHorizontal size={14} aria-hidden="true" />
+                    <span>Halaman Lampiran</span>
+                    <kbd>/lampiran</kbd>
+                  </button>
                 </div>
               )}
             </div>
@@ -2472,6 +2721,58 @@ export function DocumentStudio({
                     </div>
                   )}
 
+                  {/* Audit Autentisitas Tata Naskah Dinas (Deterministik) */}
+                  <section className="s04-audit-box" aria-label="Audit Tata Naskah Dinas">
+                    <div className="s04-audit-head">
+                      <span className="s04-audit-title">
+                        <ShieldCheck size={14} aria-hidden="true" />
+                        <span>Audit Tata Naskah Dinas</span>
+                      </span>
+                      <span
+                        className={`s04-audit-score s5-tnum ${
+                          authenticityReport.passedCount === authenticityReport.totalCount
+                            ? 'is-ok'
+                            : 'is-warn'
+                        }`}
+                      >
+                        {authenticityReport.passedCount}/{authenticityReport.totalCount} lolos
+                      </span>
+                    </div>
+                    <ul className="s04-audit-list">
+                      {authenticityReport.items.map((item) => (
+                        <li
+                          key={item.id}
+                          className={`s04-audit-item ${item.passed ? 'is-ok' : 'is-warn'}`}
+                        >
+                          <span className="s04-audit-icon" aria-hidden="true">
+                            {item.passed ? (
+                              <CheckCircle2 size={13} />
+                            ) : (
+                              <AlertTriangle size={13} />
+                            )}
+                          </span>
+                          <div className="s04-audit-body">
+                            <strong>{item.label}</strong>
+                            <span>{item.detail}</span>
+                            {!item.passed && item.fixSnippet && (
+                              <button
+                                type="button"
+                                className="s04-audit-fix-btn"
+                                onClick={() =>
+                                  handleInsertTataNaskahSnippet(item.fixSnippet!, {
+                                    appendAtEnd: true,
+                                  })
+                                }
+                              >
+                                Sisipkan Blok TTD
+                              </button>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+
                   <div className="s04-drawer-reset-box">
                     <button
                       type="button"
@@ -2577,7 +2878,7 @@ export function DocumentStudio({
                       }
                     >
                       <option value="a4">A4 (210 × 297 mm)</option>
-                      <option value="f4">F4 / Folio (210 × 330 mm)</option>
+                      <option value="f4">F4 / Folio (215 × 330 mm)</option>
                     </select>
                   </div>
 

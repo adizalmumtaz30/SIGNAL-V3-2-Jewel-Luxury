@@ -33,6 +33,7 @@ import {
   type DeleteDraftTarget,
   type DuplicateDraftTarget,
 } from '../../domain/persuratan/intake/draftEngine';
+import { cloneOfficialDocumentToNewDraft } from '../../domain/persuratan/archive/archiveEngine';
 import './TemplateGallery.css';
 
 export type PersuratanSubView =
@@ -392,6 +393,39 @@ export function PersuratanWorkspace({
     }
   };
 
+  const handleCloneOfficialToNewDraft = async (
+    documentId: string,
+    versionId?: string | null
+  ) => {
+    try {
+      const cloned = cloneOfficialDocumentToNewDraft({
+        state,
+        documentId,
+        versionId: versionId ?? null,
+      });
+      await persistStateUnified(cloned.state);
+      setS01Page(1);
+      onNotify?.(
+        `Draft baru "${cloned.draft.title}" dibuat dari salinan dokumen resmi dan siap disunting.`,
+        'success'
+      );
+      executeTransition({
+        targetView: 'studio',
+        targetTemplateId: cloned.draft.templateId,
+        targetDraftId: cloned.draft.id,
+        targetDocumentId: cloned.documentRecord.id,
+        targetVersionId: null,
+        bumpStudioSession: true,
+      });
+    } catch (error) {
+      const msg =
+        error instanceof Error
+          ? error.message
+          : 'Gagal membuat draft baru dari dokumen resmi.';
+      onNotify?.(msg, 'error');
+    }
+  };
+
   const activeStepIndex =
     subView === 'center'
       ? 1
@@ -525,6 +559,7 @@ export function PersuratanWorkspace({
           onOpenPreview={handleOpenPreview}
           onOpenArchiveDetail={handleOpenArchiveDetail}
           onDuplicateDraft={(target) => handleDuplicateDraft(target)}
+          onCloneOfficial={handleCloneOfficialToNewDraft}
           onDeleteDraft={(target) => handleDeleteDraft(target)}
           controlledFilters={s01Filters}
           onControlledFiltersChange={setS01Filters}
@@ -686,6 +721,7 @@ export function PersuratanWorkspace({
           }}
           onDeleteDraft={(target) => handleDeleteDraft(target, { redirectToCenter: true })}
           onSaveAsTemplate={(docId) => handleOpenTemplateManager(docId)}
+          onCloneSimilar={handleCloneOfficialToNewDraft}
           onNotify={onNotify}
         />
       )}

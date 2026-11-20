@@ -76,14 +76,14 @@ export type PaperSize = 'a4' | 'f4';
 /**
  * Returns exact dimensions in millimeters for supported paper sizes:
  * - A4: 210 x 297 mm
- * - F4 / Folio (Indonesia standard): 210 x 330 mm
+ * - F4 / Folio (Indonesia standard): 215 x 330 mm
  */
 export function getPaperDimensions(
   paperSize: PaperSize = 'a4',
   orientation: 'landscape' | 'portrait' = 'landscape',
 ): [number, number] {
   if (paperSize === 'f4') {
-    return orientation === 'landscape' ? [330, 210] : [210, 330];
+    return orientation === 'landscape' ? [330, 215] : [215, 330];
   }
   return orientation === 'landscape' ? [297, 210] : [210, 297];
 }

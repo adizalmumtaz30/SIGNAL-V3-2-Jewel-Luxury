@@ -6,7 +6,11 @@ import {
 } from '../../kopIdentity';
 import { SYSTEM_DOCUMENT_TEMPLATES } from '../templates/registry';
 import { extractPlainTextAndTokens, validateStudioPageSettings } from './contentValidation';
-import { formatBeritaAcaraOpeningDate } from './tataNaskahHelpers';
+import {
+  buildDelegatedSignatureTable,
+  formatBeritaAcaraOpeningDate,
+  type SignatoryDelegationMode,
+} from './tataNaskahHelpers';
 import type {
   DocumentStudioPageSettings,
   LegacyTemplateResolution,
@@ -116,6 +120,8 @@ interface FrozenKopSnapshot {
   signatoryTitle?: string | null;
   signatoryName?: string | null;
   signatoryNip?: string | null;
+  curriculumLeaderTitle?: string | null;
+  curriculumLeaderName?: string | null;
 }
 
 interface FrozenTeacherSnapshot {
@@ -923,6 +929,69 @@ function buildSignatureNodes(
   const dateText = formatIndonesianLongDate(draft.documentDate) ?? draft.documentDate;
   const titimangsa = `${city}, ${dateText}`;
 
+  const delegationModeRaw = strOrNull(draft.fieldValues?.penandatangan_mode);
+  const delegationMode: SignatoryDelegationMode =
+    delegationModeRaw === 'an' || delegationModeRaw === 'plt' ? delegationModeRaw : 'direct';
+  const targetsHeadmaster =
+    block.rightName.includes('NAMA_KEPALA_MADRASAH') ||
+    block.rightTitle.includes('JABATAN_KEPALA_MADRASAH');
+
+  if (delegationMode !== 'direct' && targetsHeadmaster) {
+    const headTitle = strOrNull(kop.signatoryTitle) ?? 'Kepala Madrasah';
+    const headName = strOrNull(kop.signatoryName) ?? 'Kepala Madrasah';
+    const headNip = strOrNull(kop.signatoryNip) ?? '';
+    const customDelTitle = strOrNull(draft.fieldValues?.penandatangan_delegasi_jabatan);
+    const customDelName = strOrNull(draft.fieldValues?.penandatangan_delegasi_nama);
+    const delegateTitle =
+      customDelTitle ??
+      strOrNull(kop.curriculumLeaderTitle) ??
+      'Wakil Kepala Bidang Kurikulum';
+    const delegateName =
+      customDelName ??
+      (delegationMode === 'an'
+        ? strOrNull(kop.curriculumLeaderName) ?? headName
+        : strOrNull(kop.curriculumLeaderName) ?? headName);
+
+    const leftTitle = block.leftTitle
+      ? interpolateTokens(block.leftTitle, aliasMap, resolvedSet, unresolvedSet)
+      : undefined;
+    const leftName = block.leftTitle
+      ? interpolateTokens(block.leftName ?? '', aliasMap, resolvedSet, unresolvedSet)
+      : undefined;
+
+    const customDelNip = strOrNull(draft.fieldValues?.penandatangan_delegasi_nip);
+    const delegatedTable = buildDelegatedSignatureTable({
+      mode: delegationMode,
+      city,
+      dateText,
+      headTitle,
+      headName,
+      headNip,
+      delegateTitle,
+      delegateName,
+      delegateNip: customDelNip ?? (customDelName ? '' : undefined),
+      omitTitimangsa: options?.omitTitimangsa,
+      ditetapkanStyle: options?.ditetapkanStyle,
+      leftTitle,
+      leftName,
+    });
+
+    const out: TipTapJSONNode[] = [createParagraphNode(''), delegatedTable];
+    if (options?.tembusan && options.tembusan.length > 0) {
+      out.push(createParagraphNode(''));
+      out.push(createParagraphNode('Tembusan:', { bold: true }));
+      out.push({
+        type: 'orderedList',
+        attrs: { start: 1 },
+        content: options.tembusan.map((t) => ({
+          type: 'listItem',
+          content: [createParagraphNode(t)],
+        })),
+      });
+    }
+    return out;
+  }
+
   const rawRightTitle = interpolateTokens(block.rightTitle, aliasMap, resolvedSet, unresolvedSet);
   const rightTitle = rawRightTitle.endsWith(',') ? rawRightTitle : `${rawRightTitle},`;
   const rightName = interpolateTokens(block.rightName, aliasMap, resolvedSet, unresolvedSet);
@@ -1255,14 +1324,6 @@ function buildSpecializedAuthenticNodes(params: {
     }
 
     nodes.push(...buildSignatureNodes(sigBlock, draft, aliasMap, resolvedSet, unresolvedSet));
-    if (scheduleVer?.fingerprint) {
-      nodes.push(
-        createParagraphNode(
-          `Ref. Arsip Jadwal Resmi: ${scheduleVer.label} · Kode Validasi: ${scheduleVer.fingerprint}`,
-          { italic: true }
-        )
-      );
-    }
     return nodes;
   }
 
@@ -1822,7 +1883,9 @@ function buildSpecializedAuthenticNodes(params: {
     );
 
     if (baseTplId === 'SYS-TPL-14') {
-      const classSnap = findSnapshot(draft, 'master.class.selected');
+      const classSnap =
+        findSnapshot(draft, 'master.classes.selected') ??
+        findSnapshot(draft, 'master.class.selected');
       const cls = (classSnap?.capturedValue ?? null) as { name?: string | null } | null;
       const namaSiswa = strOrNull(fv.nama_siswa) ?? '-';
       const nisn = strOrNull(fv.nisn) ?? '-';
@@ -2086,7 +2149,9 @@ function buildSpecializedAuthenticNodes(params: {
     }
 
     // SYS-TPL-18: Berita Acara Pelaksanaan Ujian
-    const subjectSnap = findSnapshot(draft, 'master.subject.selected');
+    const subjectSnap =
+      findSnapshot(draft, 'master.subjects.selected') ??
+      findSnapshot(draft, 'master.subject.selected');
     const subj = (subjectSnap?.capturedValue ?? null) as { name?: string | null } | null;
     const namaUjian = strOrNull(fv.nama_ujian) ?? 'Asesmen / Ujian Madrasah';
     const mapelName = strOrNull(subj?.name) ?? strOrNull(fv.mapel) ?? '-';
@@ -2131,6 +2196,519 @@ function buildSpecializedAuthenticNodes(params: {
           leftName: '( Nama Pengawas II )',
           rightTitle: 'Pengawas Ruang I,',
           rightName: '( Nama Pengawas I )',
+        },
+        draft,
+        aliasMap,
+        resolvedSet,
+        unresolvedSet
+      )
+    );
+    return nodes;
+  }
+
+  // =========================================================================
+  // 12. SYS-TPL-06: SURAT TUGAS PENGAWAS / PANITIA UJIAN (ADAPTIF 1 vs N GURU)
+  // =========================================================================
+  if (baseTplId === 'SYS-TPL-06') {
+    const jenisUjian = strOrNull(fv.jenis_ujian) ?? 'Asesmen / Ujian Madrasah';
+    const periodeUjian =
+      formatIndonesianDateRange(strOrNull(fv.periode_ujian_mulai), strOrNull(fv.periode_ujian_selesai)) ??
+      dateText;
+
+    const nodes: TipTapJSONNode[] = [];
+    nodes.push(createHeadingNode('SURAT TUGAS PENGAWAS UJIAN', 1, 'center', true));
+    nodes.push(
+      createParagraphNode(
+        interpolateTokens('Nomor : {{NOMOR_SURAT}}', aliasMap, resolvedSet, unresolvedSet),
+        { align: 'center' }
+      )
+    );
+    nodes.push(createParagraphNode(''));
+    nodes.push(
+      createParagraphNode(
+        `Yang bertanda tangan di bawah ini, ${strOrNull(kop.signatoryTitle) ?? 'Kepala Madrasah'} ${schoolName}, dalam rangka pelaksanaan ${jenisUjian} Tahun Ajaran ${academicYear} Semester ${semester}, dengan ini menugaskan kepada:`,
+        { align: 'justify' }
+      )
+    );
+
+    if (teachers.length === 1) {
+      const t = teachers[0];
+      nodes.push(
+        buildBorderlessMetaTable([
+          { label: 'Nama Pendidik', value: t.name },
+          { label: 'Jabatan / Peran', value: t.roleTitle || 'Pengawas Ruang Ujian' },
+          { label: 'Ruang / Tugas', value: 'Pengawas Ruang 01' },
+          { label: 'Periode Ujian', value: periodeUjian },
+        ])
+      );
+    } else if (teachers.length > 1) {
+      nodes.push(
+        buildTableNode(
+          ['No', 'Nama Pengawas', 'Peran / Tugas', 'Ruang / Rombel', 'Periode'],
+          teachers.map((t, idx) => [
+            String(idx + 1),
+            t.name,
+            t.roleTitle || 'Pengawas Ruang',
+            `Ruang ${String(idx + 1).padStart(2, '0')}`,
+            periodeUjian,
+          ])
+        )
+      );
+    } else {
+      nodes.push(
+        buildBorderlessMetaTable([
+          { label: 'Jenis Ujian / Asesmen', value: jenisUjian },
+          { label: 'Periode Pelaksanaan', value: periodeUjian },
+          { label: 'Tempat', value: schoolName },
+        ])
+      );
+    }
+
+    nodes.push(
+      createParagraphNode(
+        `Untuk melaksanakan tugas pengawasan ruang dan ketertiban pelaksanaan ${jenisUjian} pada tanggal ${periodeUjian} bertempat di ${schoolName} sesuai jadwal pengawasan yang telah ditetapkan.`,
+        { align: 'justify' }
+      )
+    );
+    nodes.push(
+      createParagraphNode(
+        'Demikian surat tugas ini dibuat untuk dilaksanakan dengan penuh rasa tanggung jawab, dan melaporkan hasilnya setelah selesai bertugas.',
+        { align: 'justify' }
+      )
+    );
+    nodes.push(...buildSignatureNodes(sigBlock, draft, aliasMap, resolvedSet, unresolvedSet));
+    return nodes;
+  }
+
+  // =========================================================================
+  // 13. SYS-TPL-09: SURAT PEMBERITAHUAN / PENGUMUMAN RESMI
+  // =========================================================================
+  if (baseTplId === 'SYS-TPL-09') {
+    const sasaran = strOrNull(fv.sasaran) ?? `Seluruh Warga ${schoolName}`;
+    const topik = strOrNull(fv.topik) ?? draft.subject;
+    const poinList = splitOperatorLines(strOrNull(fv.rincian), [
+      'Pelaksanaan kegiatan mengikuti jadwal resmi madrasah yang berlaku.',
+    ]);
+
+    const nodes: TipTapJSONNode[] = [];
+    nodes.push(createHeadingNode('PENGUMUMAN', 1, 'center', true));
+    nodes.push(
+      createParagraphNode(
+        interpolateTokens('Nomor : {{NOMOR_SURAT}}', aliasMap, resolvedSet, unresolvedSet),
+        { align: 'center' }
+      )
+    );
+    nodes.push(createParagraphNode(''));
+    nodes.push(
+      createRichParagraphNode(
+        [
+          { text: 'Tentang: ', bold: true },
+          { text: topik, bold: true },
+        ],
+        { align: 'center' }
+      )
+    );
+    nodes.push(createParagraphNode(''));
+    nodes.push(
+      createRichParagraphNode([{ text: 'Assalamu’alaikum warahmatullahi wabarakatuh.', italic: true }])
+    );
+    nodes.push(
+      createParagraphNode(
+        `Diberitahukan dengan hormat kepada ${sasaran} di lingkungan ${schoolName} Tahun Ajaran ${academicYear} Semester ${semester}, sehubungan dengan ${topik}, disampaikan ketentuan sebagai berikut:`,
+        { align: 'justify' }
+      )
+    );
+    nodes.push({
+      type: 'orderedList',
+      attrs: { start: 1 },
+      content: poinList.map((item) => ({
+        type: 'listItem',
+        content: [createParagraphNode(item, { align: 'justify' })],
+      })),
+    });
+    nodes.push(
+      createParagraphNode(
+        'Demikian pengumuman ini disampaikan agar diketahui dan dilaksanakan sebagaimana mestinya. Atas perhatian dan kerja samanya diucapkan terima kasih.',
+        { align: 'justify' }
+      )
+    );
+    nodes.push(
+      createRichParagraphNode([{ text: 'Wassalamu’alaikum warahmatullahi wabarakatuh.', italic: true }])
+    );
+    nodes.push(...buildSignatureNodes(sigBlock, draft, aliasMap, resolvedSet, unresolvedSet));
+    return nodes;
+  }
+
+  // =========================================================================
+  // 14. SYS-TPL-15: SURAT REKOMENDASI RESMI KEPALA MADRASAH
+  // =========================================================================
+  if (baseTplId === 'SYS-TPL-15') {
+    const subjek = strOrNull(fv.subjek_rekomendasi) ?? 'Pendidik / Peserta Didik Madrasah';
+    const tujuanProgram = strOrNull(fv.tujuan_program) ?? 'Program Pendidikan / Kemitraan';
+    const dasarPertimbangan =
+      strOrNull(fv.dasar_pertimbangan) ??
+      'Yang bersangkutan memiliki dedikasi, integritas, serta rekam jejak kinerja yang baik di lingkungan madrasah.';
+
+    const nodes: TipTapJSONNode[] = [];
+    nodes.push(createHeadingNode('SURAT REKOMENDASI', 1, 'center', true));
+    nodes.push(
+      createParagraphNode(
+        interpolateTokens('Nomor : {{NOMOR_SURAT}}', aliasMap, resolvedSet, unresolvedSet),
+        { align: 'center' }
+      )
+    );
+    nodes.push(createParagraphNode(''));
+    nodes.push(createParagraphNode('Yang bertanda tangan di bawah ini:', { align: 'justify' }));
+    nodes.push(
+      buildBorderlessMetaTable([
+        { label: 'Nama', value: strOrNull(kop.signatoryName) ?? 'Kepala Madrasah' },
+        { label: 'Jabatan', value: `${strOrNull(kop.signatoryTitle) ?? 'Kepala Madrasah'} ${schoolName}` },
+        { label: 'Alamat Madrasah', value: strOrNull(kop.address) ?? city },
+      ])
+    );
+    nodes.push(createParagraphNode('Dengan ini memberikan rekomendasi kepada:', { align: 'justify' }));
+    nodes.push(
+      buildBorderlessMetaTable([
+        { label: 'Nama / Identitas', value: subjek },
+        { label: 'Asal Satuan Pendidikan', value: schoolName },
+        { label: 'Tujuan / Program', value: tujuanProgram },
+      ])
+    );
+    nodes.push(createParagraphNode(dasarPertimbangan, { align: 'justify' }));
+    nodes.push(
+      createParagraphNode(
+        'Demikian surat rekomendasi ini diberikan untuk dapat dipergunakan sebagaimana mestinya dalam pengajuan program dimaksud.',
+        { align: 'justify' }
+      )
+    );
+    nodes.push(...buildSignatureNodes(sigBlock, draft, aliasMap, resolvedSet, unresolvedSet));
+    return nodes;
+  }
+
+  // =========================================================================
+  // 15. SYS-TPL-19: NOTULA RAPAT DINAS MADRASAH
+  // =========================================================================
+  if (baseTplId === 'SYS-TPL-19') {
+    const judulRapat = strOrNull(fv.judul_rapat) ?? draft.subject;
+    const pimpinanNotulis = strOrNull(fv.pimpinan_notulis) ?? `${strOrNull(kop.signatoryTitle) ?? 'Kepala Madrasah'} / Sekretaris`;
+    const bahasanItems = splitOperatorLines(strOrNull(fv.ringkasan_bahasan), [
+      'Pembahasan agenda rapat sesuai program kerja madrasah',
+    ]);
+
+    const nodes: TipTapJSONNode[] = [];
+    nodes.push(createHeadingNode('NOTULA RAPAT', 1, 'center', true));
+    nodes.push(
+      createParagraphNode(
+        interpolateTokens('Nomor Arsip : {{NOMOR_NOTULA}}', aliasMap, resolvedSet, unresolvedSet),
+        { align: 'center' }
+      )
+    );
+    nodes.push(createParagraphNode(''));
+    nodes.push(
+      buildBorderlessMetaTable([
+        { label: 'Agenda Rapat', value: judulRapat },
+        { label: 'Hari / Tanggal', value: dateText },
+        { label: 'Tempat', value: `Ruang Rapat ${schoolName}` },
+        { label: 'Pimpinan / Notulis', value: pimpinanNotulis },
+      ])
+    );
+    nodes.push(createHeadingNode('I. JALANNYA RAPAT & POKOK PEMBAHASAN', 2, 'left'));
+    nodes.push(
+      createParagraphNode(
+        `Rapat dibuka secara resmi dan membahas agenda "${judulRapat}" bersama unsur pimpinan, dewan guru, dan tenaga kependidikan ${schoolName}.`,
+        { align: 'justify' }
+      )
+    );
+    nodes.push(createHeadingNode('II. KESIMPULAN & RENCANA TINDAK LANJUT', 2, 'left'));
+    nodes.push(
+      buildTableNode(
+        ['No', 'Pokok Bahasan / Tindak Lanjut', 'Penanggung Jawab', 'Target Waktu'],
+        bahasanItems.map((item, idx) => [
+          String(idx + 1),
+          item,
+          'Unit / Panitia Terkait',
+          'Sesuai jadwal madrasah',
+        ])
+      )
+    );
+    nodes.push(
+      ...buildSignatureNodes(
+        {
+          type: 'signature',
+          leftTitle: 'Notulis Rapat,',
+          leftName: '( Nama Notulis )',
+          rightTitle: 'Mengetahui,\n{{JABATAN_KEPALA_MADRASAH}}',
+          rightName: '{{NAMA_KEPALA_MADRASAH}}',
+          rightIdLabel: '{{NIP_KEPALA_MADRASAH}}',
+        },
+        draft,
+        aliasMap,
+        resolvedSet,
+        unresolvedSet
+      )
+    );
+    return nodes;
+  }
+
+  // =========================================================================
+  // 16. SYS-TPL-20: LAPORAN PELAKSANAAN KEGIATAN MADRASAH
+  // =========================================================================
+  if (baseTplId === 'SYS-TPL-20') {
+    const namaKegiatan = strOrNull(fv.nama_kegiatan) ?? draft.title;
+    const pelaksanaan = strOrNull(fv.pelaksanaan) ?? `${dateText} di ${schoolName}`;
+    const capaianItems = splitOperatorLines(strOrNull(fv.capaian), [
+      'Kegiatan terlaksana sesuai rencana program kerja madrasah',
+    ]);
+
+    const nodes: TipTapJSONNode[] = [];
+    nodes.push(createHeadingNode('LAPORAN PELAKSANAAN KEGIATAN', 1, 'center', true));
+    nodes.push(
+      createParagraphNode(
+        interpolateTokens('Nomor : {{NOMOR_LAPORAN}}', aliasMap, resolvedSet, unresolvedSet),
+        { align: 'center' }
+      )
+    );
+    nodes.push(createParagraphNode(''));
+    nodes.push(createHeadingNode('I. PENDAHULUAN', 2, 'left'));
+    nodes.push(
+      createParagraphNode(
+        `Laporan ini disusun sebagai bentuk pertanggungjawaban pelaksanaan kegiatan "${namaKegiatan}" di lingkungan ${schoolName} Tahun Ajaran ${academicYear} Semester ${semester}.`,
+        { align: 'justify' }
+      )
+    );
+    nodes.push(createHeadingNode('II. PELAKSANAAN KEGIATAN', 2, 'left'));
+    nodes.push(
+      buildBorderlessMetaTable([
+        { label: 'Nama Kegiatan', value: namaKegiatan },
+        { label: 'Waktu, Lokasi & Sasaran', value: pelaksanaan },
+        { label: 'Penyelenggara', value: schoolName },
+      ])
+    );
+    nodes.push(createHeadingNode('III. HASIL CAPAIAN, KENDALA & EVALUASI', 2, 'left'));
+    nodes.push(
+      buildTableNode(
+        ['No', 'Aspek / Uraian Capaian', 'Realisasi', 'Catatan Evaluasi'],
+        capaianItems.map((item, idx) => [
+          String(idx + 1),
+          item,
+          'Terlaksana',
+          'Berjalan tertib dan lancar',
+        ])
+      )
+    );
+    nodes.push(createHeadingNode('IV. PENUTUP', 2, 'left'));
+    nodes.push(
+      createParagraphNode(
+        'Demikian laporan pelaksanaan kegiatan ini disampaikan sebagai bahan evaluasi dan arsip resmi madrasah.',
+        { align: 'justify' }
+      )
+    );
+    nodes.push(
+      ...buildSignatureNodes(
+        {
+          type: 'signature',
+          leftTitle: 'Ketua Pelaksana / Penyusun,',
+          leftName: '( Nama Penyusun )',
+          rightTitle: 'Mengetahui,\n{{JABATAN_KEPALA_MADRASAH}}',
+          rightName: '{{NAMA_KEPALA_MADRASAH}}',
+          rightIdLabel: '{{NIP_KEPALA_MADRASAH}}',
+        },
+        draft,
+        aliasMap,
+        resolvedSet,
+        unresolvedSet
+      )
+    );
+    return nodes;
+  }
+
+  // =========================================================================
+  // 17. SYS-TPL-21: LAPORAN HASIL PELATIHAN / PERJALANAN DINAS
+  // =========================================================================
+  if (baseTplId === 'SYS-TPL-21') {
+    const pelaksana = teachers[0];
+    const namaPelaksana = pelaksana?.name ?? strOrNull(fv.pelaksana) ?? 'Pendidik / Pegawai Madrasah';
+    const jabatanPelaksana = pelaksana?.roleTitle || 'Pendidik / Tenaga Kependidikan';
+    const nomorSt = strOrNull(fv.nomor_surat_tugas) ?? '-';
+    const materiLines = splitOperatorLines(strOrNull(fv.ringkasan_materi), [
+      'Penyampaian pokok materi kegiatan dan rencana tindak lanjut di madrasah.',
+    ]);
+
+    const nodes: TipTapJSONNode[] = [];
+    nodes.push(createHeadingNode('LAPORAN HASIL PELATIHAN / PERJALANAN DINAS', 1, 'center', true));
+    nodes.push(
+      createParagraphNode(
+        interpolateTokens('Nomor Arsip : {{NOMOR_LAPORAN}}', aliasMap, resolvedSet, unresolvedSet),
+        { align: 'center' }
+      )
+    );
+    nodes.push(createParagraphNode(''));
+    nodes.push(
+      buildBorderlessMetaTable([
+        { label: 'Nama Pelaksana', value: namaPelaksana },
+        { label: 'Jabatan / Peran', value: jabatanPelaksana },
+        { label: 'Unit Kerja', value: schoolName },
+        { label: 'Dasar Penugasan', value: `Surat Tugas Nomor ${nomorSt}` },
+        { label: 'Tanggal Laporan', value: dateText },
+      ])
+    );
+    nodes.push(createHeadingNode('I. RINGKASAN MATERI & HASIL KEGIATAN', 2, 'left'));
+    nodes.push({
+      type: 'orderedList',
+      attrs: { start: 1 },
+      content: materiLines.map((line) => ({
+        type: 'listItem',
+        content: [createParagraphNode(line, { align: 'justify' })],
+      })),
+    });
+    nodes.push(createHeadingNode('II. RENCANA IMPLEMENTASI & DISEMINASI', 2, 'left'));
+    nodes.push(
+      createParagraphNode(
+        `Hasil kegiatan tersebut akan didiseminasikan kepada rekan sejawat dewan guru serta diimplementasikan secara bertahap pada pembelajaran di ${schoolName} Tahun Ajaran ${academicYear}.`,
+        { align: 'justify' }
+      )
+    );
+    nodes.push(
+      createParagraphNode(
+        'Demikian laporan hasil pelaksanaan tugas ini disampaikan untuk dapat dipergunakan sebagai bahan pertimbangan dan arsip madrasah.',
+        { align: 'justify' }
+      )
+    );
+    nodes.push(
+      ...buildSignatureNodes(
+        {
+          type: 'signature',
+          leftTitle: 'Mengetahui,\n{{JABATAN_KEPALA_MADRASAH}}',
+          leftName: '{{NAMA_KEPALA_MADRASAH}}',
+          rightTitle: 'Pelapor,',
+          rightName: namaPelaksana,
+        },
+        draft,
+        aliasMap,
+        resolvedSet,
+        unresolvedSet
+      )
+    );
+    return nodes;
+  }
+
+  // =========================================================================
+  // 18. SYS-TPL-22: LAPORAN PELAKSANAAN UJIAN / ASESMEN MADRASAH
+  // =========================================================================
+  if (baseTplId === 'SYS-TPL-22') {
+    const jenisUjian = strOrNull(fv.jenis_ujian) ?? `Asesmen / Ujian Madrasah Tahun Ajaran ${academicYear}`;
+    const rekapLines = splitOperatorLines(strOrNull(fv.rekap_kelas), [
+      'Seluruh Rombel Kelas VII, VIII, dan IX',
+    ]);
+    const evaluasi =
+      strOrNull(fv.evaluasi) ??
+      'Pelaksanaan ujian berlangsung tertib, aman, dan lancar sesuai tata tertib pengawas ruang.';
+
+    const nodes: TipTapJSONNode[] = [];
+    nodes.push(createHeadingNode('LAPORAN PELAKSANAAN UJIAN MADRASAH', 1, 'center', true));
+    nodes.push(
+      createParagraphNode(
+        interpolateTokens('Nomor : {{NOMOR_LAPORAN}}', aliasMap, resolvedSet, unresolvedSet),
+        { align: 'center' }
+      )
+    );
+    nodes.push(createParagraphNode(''));
+    nodes.push(createHeadingNode('I. PENDAHULUAN', 2, 'left'));
+    nodes.push(
+      createParagraphNode(
+        `Sebagai bentuk pertanggungjawaban panitia pelaksana ${jenisUjian} pada ${schoolName} Tahun Ajaran ${academicYear} Semester ${semester}, bersama ini disampaikan laporan pelaksanaan ujian sebagai berikut:`,
+        { align: 'justify' }
+      )
+    );
+    nodes.push(createHeadingNode('II. REKAPITULASI PESERTA PER ROMBEL', 2, 'left'));
+    nodes.push(
+      buildTableNode(
+        ['No', 'Tingkat / Rombel', 'Jumlah Peserta', 'Hadir (%)', 'Keterangan'],
+        rekapLines.map((line, idx) => [
+          String(idx + 1),
+          line,
+          'Sesuai daftar peserta',
+          '100%',
+          'Tertib dan lancar',
+        ])
+      )
+    );
+    nodes.push(createHeadingNode('III. EVALUASI & REKOMENDASI', 2, 'left'));
+    nodes.push(createParagraphNode(evaluasi, { align: 'justify' }));
+    nodes.push(
+      createParagraphNode(
+        'Demikian laporan pelaksanaan ujian ini dibuat dengan sebenarnya untuk digunakan sebagaimana mestinya.',
+        { align: 'justify' }
+      )
+    );
+    nodes.push(
+      ...buildSignatureNodes(
+        {
+          type: 'signature',
+          leftTitle: 'Ketua Panitia Ujian,',
+          leftName: '( Nama Ketua Panitia )',
+          rightTitle: 'Mengetahui,\n{{JABATAN_KEPALA_MADRASAH}}',
+          rightName: '{{NAMA_KEPALA_MADRASAH}}',
+          rightIdLabel: '{{NIP_KEPALA_MADRASAH}}',
+        },
+        draft,
+        aliasMap,
+        resolvedSet,
+        unresolvedSet
+      )
+    );
+    return nodes;
+  }
+
+  // =========================================================================
+  // 19. SYS-TPL-29: SURAT PERNYATAAN RESMI
+  // =========================================================================
+  if (baseTplId === 'SYS-TPL-29') {
+    const pihakMenyatakan =
+      strOrNull(fv.pihak_menyatakan) ?? (strOrNull(kop.signatoryName) ?? 'Penanggung Jawab Madrasah');
+    const keperluan = strOrNull(fv.keperluan_pernyataan) ?? 'kelengkapan administrasi madrasah';
+    const butirList = splitOperatorLines(strOrNull(fv.isi_pernyataan), [
+      'Seluruh data dan dokumen yang disampaikan adalah benar serta dapat dipertanggungjawabkan.',
+    ]);
+
+    const nodes: TipTapJSONNode[] = [];
+    nodes.push(createHeadingNode('SURAT PERNYATAAN', 1, 'center', true));
+    nodes.push(
+      createParagraphNode(
+        interpolateTokens('Nomor : {{NOMOR_SURAT}}', aliasMap, resolvedSet, unresolvedSet),
+        { align: 'center' }
+      )
+    );
+    nodes.push(createParagraphNode(''));
+    nodes.push(createParagraphNode('Yang bertanda tangan di bawah ini:', { align: 'justify' }));
+    nodes.push(
+      buildBorderlessMetaTable([
+        { label: 'Nama / Identitas', value: pihakMenyatakan },
+        { label: 'Satuan Pendidikan', value: schoolName },
+        { label: 'Keperluan', value: keperluan },
+      ])
+    );
+    nodes.push(createParagraphNode('Dengan ini menyatakan dengan sesungguhnya bahwa:', { align: 'justify' }));
+    nodes.push({
+      type: 'orderedList',
+      attrs: { start: 1 },
+      content: butirList.map((item) => ({
+        type: 'listItem',
+        content: [createParagraphNode(item, { align: 'justify' })],
+      })),
+    });
+    nodes.push(
+      createParagraphNode(
+        `Demikian surat pernyataan ini dibuat dengan sebenarnya dalam keadaan sadar untuk keperluan ${keperluan}, dan apabila di kemudian hari pernyataan ini tidak benar saya bersedia menerima sanksi sesuai ketentuan yang berlaku.`,
+        { align: 'justify' }
+      )
+    );
+    nodes.push(
+      ...buildSignatureNodes(
+        {
+          type: 'signature',
+          rightTitle: 'Yang Menyatakan,',
+          rightName: pihakMenyatakan,
         },
         draft,
         aliasMap,

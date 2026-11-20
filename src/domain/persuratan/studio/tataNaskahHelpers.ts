@@ -163,11 +163,14 @@ export function buildDelegatedSignatureTable(params: DelegatedSignatureParams): 
   const isPlt = params.mode === 'plt';
 
   const signerName =
-    isAn && params.delegateName?.trim()
+    (isAn || isPlt) && params.delegateName?.trim()
       ? params.delegateName.trim()
       : params.headName.trim() || 'Kepala Madrasah';
 
-  const rawNip = isAn ? params.delegateNip?.trim() ?? '' : params.headNip?.trim() ?? '';
+  const rawNip =
+    isAn || isPlt
+      ? (params.delegateNip !== undefined ? params.delegateNip?.trim() ?? '' : '')
+      : params.headNip?.trim() ?? '';
   const formattedNip =
     rawNip && !/^NIP\.?/i.test(rawNip) && !/^NPK\.?/i.test(rawNip)
       ? `NIP. ${rawNip}`

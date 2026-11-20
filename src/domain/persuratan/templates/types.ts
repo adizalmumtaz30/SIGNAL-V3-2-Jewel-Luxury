@@ -55,6 +55,7 @@ export type TemplatePreviewBlock =
   | {
       type: 'paragraph';
       text: string;
+      align?: 'left' | 'center' | 'right' | 'justify';
     }
   | {
       type: 'list';

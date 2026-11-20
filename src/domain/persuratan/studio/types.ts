@@ -86,7 +86,7 @@ export const PAPER_DIMENSIONS_MM: Record<
   { widthMm: number; heightMm: number; label: string }
 > = {
   a4: { widthMm: 210, heightMm: 297, label: 'A4 (210 × 297 mm)' },
-  f4: { widthMm: 210, heightMm: 330, label: 'F4 / Folio (210 × 330 mm)' },
+  f4: { widthMm: 215, heightMm: 330, label: 'F4 / Folio (215 × 330 mm)' },
 };
 
 export const STUDIO_MARGIN_MIN_MM = 5;

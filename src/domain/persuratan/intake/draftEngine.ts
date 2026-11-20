@@ -78,7 +78,13 @@ export function createInitialIntakeFormValues(
         initial.documentTitle = v;
       } else if (k === 'documentDate' && typeof v === 'string' && v.trim()) {
         initial.documentDate = v;
-      } else if (k in initial) {
+      } else if (
+        k in initial ||
+        k === 'penandatangan_mode' ||
+        k === 'penandatangan_delegasi_jabatan' ||
+        k === 'penandatangan_delegasi_nama' ||
+        k === 'penandatangan_delegasi_nip'
+      ) {
         initial[k] = deepClone(v);
       }
     }
@@ -212,6 +218,8 @@ export function buildSourceSnapshots(
       signatoryTitle: autoData.kop.signatoryTitle,
       signatoryName: autoData.kop.signatoryName || null,
       signatoryNip: autoData.kop.signatoryNip || null,
+      curriculumLeaderTitle: autoData.kop.curriculumLeaderTitle || null,
+      curriculumLeaderName: autoData.kop.curriculumLeaderName || null,
     }),
     capturedAt,
     isDemoData: autoData.isDemoData,
@@ -455,6 +463,36 @@ export function saveIntakeDraftToState(
     }
     cleanFieldValues[ctrl.key] = deepClone(values[ctrl.key] ?? '');
     fieldProvenance[ctrl.key] = ctrl.provenance;
+  }
+
+  if (
+    values.penandatangan_mode === 'direct' ||
+    values.penandatangan_mode === 'an' ||
+    values.penandatangan_mode === 'plt'
+  ) {
+    cleanFieldValues.penandatangan_mode = values.penandatangan_mode;
+    fieldProvenance.penandatangan_mode = 'OPERATOR_INPUT';
+  }
+  if (
+    typeof values.penandatangan_delegasi_jabatan === 'string' &&
+    values.penandatangan_delegasi_jabatan.trim()
+  ) {
+    cleanFieldValues.penandatangan_delegasi_jabatan = values.penandatangan_delegasi_jabatan.trim();
+    fieldProvenance.penandatangan_delegasi_jabatan = 'OPERATOR_INPUT';
+  }
+  if (
+    typeof values.penandatangan_delegasi_nama === 'string' &&
+    values.penandatangan_delegasi_nama.trim()
+  ) {
+    cleanFieldValues.penandatangan_delegasi_nama = values.penandatangan_delegasi_nama.trim();
+    fieldProvenance.penandatangan_delegasi_nama = 'OPERATOR_INPUT';
+  }
+  if (
+    typeof values.penandatangan_delegasi_nip === 'string' &&
+    values.penandatangan_delegasi_nip.trim()
+  ) {
+    cleanFieldValues.penandatangan_delegasi_nip = values.penandatangan_delegasi_nip.trim();
+    fieldProvenance.penandatangan_delegasi_nip = 'OPERATOR_INPUT';
   }
 
   const matchedScheduleVer = meta.scheduleVersionId

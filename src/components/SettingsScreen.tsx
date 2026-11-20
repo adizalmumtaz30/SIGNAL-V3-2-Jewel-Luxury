@@ -2292,7 +2292,7 @@ export function SettingsScreen({
                     id="num-madrasah-code"
                     value={numberingMadrasahCode}
                     onChange={(e) => setNumberingMadrasahCode(e.target.value)}
-                    placeholder="MTs.CN"
+                    placeholder="MTs.DAH"
                   />
                 </div>
                 <div className="s5-form-field">
