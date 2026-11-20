@@ -2,8 +2,12 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
+  Award,
+  Briefcase,
+  Calendar,
   CheckCircle2,
   Copy,
+  FilePenLine,
   FileText,
   Info,
   Lock,
@@ -48,6 +52,24 @@ export interface TemplateGalleryProps {
   onUseTemplate?: (template: DocumentTemplate) => void;
   onOpenTemplateManager?: () => void;
   onNotify?: (message: string, type?: 'success' | 'info' | 'warning' | 'error') => void;
+}
+
+function getPopularCategoryIcon(category: TemplateCategory) {
+  switch (category) {
+    case 'KETERANGAN':
+      return <Award size={15} aria-hidden="true" />;
+    case 'PENUGASAN':
+      return <Briefcase size={15} aria-hidden="true" />;
+    case 'NOTULA_LAPORAN':
+      return <Calendar size={15} aria-hidden="true" />;
+    case 'BERITA_ACARA':
+      return <CheckCircle2 size={15} aria-hidden="true" />;
+    case 'KORESPONDENSI':
+      return <FileText size={15} aria-hidden="true" />;
+    case 'ADMINISTRASI':
+    default:
+      return <FilePenLine size={15} aria-hidden="true" />;
+  }
 }
 
 function renderTextWithTokens(text: string) {
@@ -438,10 +460,15 @@ export function TemplateGallery({
                 onClick={() => handleUseTemplate(tpl)}
               >
                 <div className="s02-popular-card-top">
-                  <span className="s02-popular-name">{shortLabel}</span>
+                  <span className="s02-popular-icon" aria-hidden="true">
+                    {getPopularCategoryIcon(tpl.category)}
+                  </span>
                   <ArrowRight size={14} className="s02-popular-arrow" aria-hidden="true" />
                 </div>
-                <span className="s02-popular-hint">{hint}</span>
+                <div className="s02-popular-body">
+                  <span className="s02-popular-name">{shortLabel}</span>
+                  <span className="s02-popular-hint">{hint}</span>
+                </div>
               </button>
             ))}
           </div>
@@ -586,9 +613,11 @@ export function TemplateGallery({
                         <div className="s02-card-kicker">
                           <span className="s02-code-tag">{tpl.code}</span>
                           <span>{getCategoryLabel(tpl.category)}</span>
-                          <span>· v{tpl.version}</span>
+                          <span aria-hidden="true">·</span>
+                          <span className="s5-tnum">v{tpl.version}</span>
+                          <span aria-hidden="true">·</span>
                           <span className={`s02-source-label ${isMadrasah ? 'is-madrasah' : ''}`}>
-                            {isMadrasah ? 'Salinan Madrasah' : 'Bawaan SIGNAL (Baca-Saja)'}
+                            {isMadrasah ? 'Salinan Madrasah' : 'Bawaan SIGNAL'}
                           </span>
                         </div>
                         <button
@@ -604,6 +633,7 @@ export function TemplateGallery({
                         type="button"
                         className={`s02-icon-btn ${isFavorite ? 'is-fav' : ''}`}
                         aria-pressed={isFavorite}
+                        data-tooltip={isFavorite ? 'Hapus dari favorit' : 'Tandai favorit'}
                         aria-label={
                           isFavorite
                             ? `Hapus ${tpl.name} dari favorit`
@@ -638,6 +668,7 @@ export function TemplateGallery({
                         <button
                           type="button"
                           className="s02-icon-btn"
+                          data-tooltip={isMadrasah ? 'Duplikasi template madrasah' : 'Salin ke koleksi madrasah'}
                           onClick={(e) => openCloneModal(tpl, e.currentTarget)}
                         >
                           <Copy size={13} aria-hidden="true" />
@@ -713,7 +744,7 @@ export function TemplateGallery({
               </div>
 
               {/* Compact Paper Layout Preview */}
-              <div className="s02-paper-stage is-scrollable">
+              <div className="s02-paper-stage p5-paper-stage-bg is-scrollable">
                 <div className="s02-paper-sheet" aria-label="Simulasi tata letak halaman dokumen">
                   {previewTemplate.documentHeader.includeKopSurat && (
                     <div className="s02-paper-kop">

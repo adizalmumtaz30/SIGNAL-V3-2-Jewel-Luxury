@@ -27,21 +27,41 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  padding: 24px 26px 18px;
-  border-bottom: 1px solid rgba(11, 41, 35, 0.07);
+  padding: 22px 26px 18px;
+  border-bottom: 1px solid rgba(11, 41, 35, 0.08);
+  background: linear-gradient(180deg, #fcfdfb 0%, #ffffff 100%);
+}
+
+.bim-head-title-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.bim-head-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: #edf4f0;
+  border: 1px solid rgba(197, 160, 89, 0.4);
+  color: #124037;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .bim-title {
   margin: 0;
   font-family: var(--font-serif);
-  font-size: 21px;
+  font-size: 20.5px;
   font-weight: 700;
   color: #0b241f;
 }
 
 .bim-subtitle {
-  margin: 4px 0 0;
-  font-size: 13px;
+  margin: 3px 0 0;
+  font-size: 12.75px;
   color: #5a6e67;
 }
 
@@ -56,6 +76,12 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.bim-close-btn:hover {
+  background: #f4f7f5;
+  color: #0b241f;
 }
 
 .bim-body {
@@ -64,7 +90,35 @@
   padding: 20px 26px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
+}
+
+.bim-step-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bim-step-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.25px;
+  font-weight: 700;
+  color: #113b33;
+}
+
+.bim-step-num {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: #0b2923;
+  color: #e5c378;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .bim-segment {
@@ -73,7 +127,8 @@
   gap: 4px;
   padding: 4px;
   border-radius: 12px;
-  background: #f2f5f3;
+  background: #eef3f0;
+  border: 0.75px solid rgba(18, 64, 55, 0.08);
 }
 
 .bim-seg-btn {
@@ -89,6 +144,7 @@
   font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
 }
 
 .bim-seg-btn.is-active {
@@ -110,7 +166,22 @@
   gap: 8px;
 }
 
+.bim-search-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+}
+
+.bim-search-icon {
+  position: absolute;
+  left: 11px;
+  color: #6b7f78;
+  pointer-events: none;
+}
+
 .bim-input {
+  width: 100%;
   flex: 1 1 auto;
   height: 38px;
   padding: 0 12px;
@@ -119,6 +190,10 @@
   background: #fcfdfc;
   font-size: 13px;
   color: #0f201c;
+}
+
+.bim-input.has-icon {
+  padding-left: 34px;
 }
 
 .bim-mini-btn {

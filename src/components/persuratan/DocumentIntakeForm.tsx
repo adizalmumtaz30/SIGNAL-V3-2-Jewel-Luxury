@@ -1212,7 +1212,7 @@ export function DocumentIntakeForm({
             <span>{getCategoryLabel(template.category)}</span>
             <span aria-hidden="true">·</span>
             <span className={isMadrasahTpl ? 's03-meta-madrasah' : 's03-meta-system'}>
-              {isMadrasahTpl ? 'Template Madrasah' : 'Bawaan SIGNAL (Baca-Saja)'}
+              {isMadrasahTpl ? 'Template Madrasah' : 'Bawaan SIGNAL'}
             </span>
           </div>
           <h1 className="s03-title">{template.name}</h1>
@@ -1226,9 +1226,10 @@ export function DocumentIntakeForm({
             <button
               type="button"
               className="s03-btn-secondary"
-              style={{ height: '36px' }}
+              style={{ height: '38px' }}
               onClick={() => setIsBatchModalOpen(true)}
-              title="Buat banyak surat sekaligus dengan format identik (Mail Merge)"
+              data-tooltip="Buat banyak surat sekaligus dengan format identik"
+              data-tooltip-pos="bottom"
             >
               <FileStack size={14} aria-hidden="true" />
               <span>Terbitkan Massal</span>
@@ -1352,14 +1353,18 @@ export function DocumentIntakeForm({
             </div>
 
             {template.legalNotice && (
-              <div className="s03-banner is-warning" role="note" style={{ padding: '10px 13px' }}>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-                  <Info size={16} style={{ flexShrink: 0, marginTop: '2px' }} aria-hidden="true" />
-                  <div>
-                    <strong>Catatan Tata Naskah &amp; Kewenangan:</strong> {template.legalNotice}
-                  </div>
+              <details className="p5-luxury-disclosure s03-legal-disclosure">
+                <summary>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', color: '#855318' }}>
+                    <Info size={14} aria-hidden="true" />
+                    <span>Catatan Tata Naskah &amp; Kewenangan</span>
+                  </span>
+                  <ChevronDown size={15} className="p5-disclosure-caret" aria-hidden="true" />
+                </summary>
+                <div className="p5-disclosure-body" style={{ fontSize: '12.25px', color: '#5b4118', lineHeight: 1.5 }}>
+                  {template.legalNotice}
                 </div>
-              </div>
+              </details>
             )}
 
             <div className="s03-fields-grid">
@@ -1973,7 +1978,7 @@ export function DocumentIntakeForm({
             )}
             <button
               type="button"
-              className="s03-btn-secondary"
+              className="s03-btn-ghost"
               onClick={onBackToTemplates}
             >
               <ArrowLeft size={15} aria-hidden="true" />
@@ -1982,7 +1987,7 @@ export function DocumentIntakeForm({
             {onOpenStudio && (
               <button
                 type="button"
-                className="s03-btn-secondary"
+                className="s03-btn-ghost"
                 onClick={() => void commitIntakeDraft('save_only')}
               >
                 <Save size={15} aria-hidden="true" />

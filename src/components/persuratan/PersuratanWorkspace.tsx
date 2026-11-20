@@ -34,6 +34,7 @@ import {
   type DuplicateDraftTarget,
 } from '../../domain/persuratan/intake/draftEngine';
 import { cloneOfficialDocumentToNewDraft } from '../../domain/persuratan/archive/archiveEngine';
+import './PersuratanLuxuryPrimitives.css';
 import './TemplateGallery.css';
 
 export type PersuratanSubView =
@@ -546,6 +547,7 @@ export function PersuratanWorkspace({
       </nav>
       )}
 
+      <div key={subView} className="p5-view-stage">
       {subView === 'center' && (
         <CorrespondenceCenter
           state={state}
@@ -756,6 +758,7 @@ export function PersuratanWorkspace({
           </button>
         </div>
       )}
+      </div>
 
       {/* Warning Modal when Clicking "Edit S03" on a Draft with Existing S04 Studio Content */}
       {pendingEditS03WarningDraft && (

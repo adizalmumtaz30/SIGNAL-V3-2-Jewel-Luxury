@@ -1654,7 +1654,8 @@ table.s5-figma-table tbody td.s5-checkbox-col {
   align-items: center !important;
   justify-content: space-between !important;
   gap: 14px !important;
-  transition: transform 0.18s var(--s5-spring-fast), box-shadow 0.18s var(--s5-spring-fast), border-color 0.18s ease !important;
+  transition: box-shadow 0.18s var(--s5-spring-fast), border-color 0.18s ease !important;
+  will-change: transform;
 }
 
 .s5-att-kpi-card::after {
@@ -1670,7 +1671,6 @@ table.s5-figma-table tbody td.s5-checkbox-col {
 }
 
 .s5-att-kpi-card:hover {
-  transform: translateY(-2px) !important;
   box-shadow: var(--s5-shadow-card) !important;
   border-color: rgba(197, 160, 89, 0.55) !important;
 }

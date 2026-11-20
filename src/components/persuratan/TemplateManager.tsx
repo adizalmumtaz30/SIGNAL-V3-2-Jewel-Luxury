@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 import {
+  AlertTriangle,
   ArrowLeft,
   CheckCircle2,
+  ChevronDown,
   Copy,
   Edit3,
   FilePlus2,
@@ -9,10 +11,10 @@ import {
   Lock,
   Plus,
   Power,
+  Search,
   ShieldCheck,
   Sparkles,
   Trash2,
-  AlertTriangle,
 } from 'lucide-react';
 import type { AppState } from '../../domain/types';
 import type { DocumentKind } from '../../domain/persuratan/types';
@@ -373,6 +375,7 @@ export function TemplateManager({
   const systemCount = allTemplates.filter((t) => t.source === 'SYSTEM').length;
   const madrasahCount = allTemplates.filter((t) => t.source !== 'SYSTEM').length;
   const inactiveCount = allTemplates.filter((t) => t.status === 'ARCHIVED').length;
+  const isStudioExpanded = editorMode !== 'inspect';
 
   return (
     <section className="s07-shell" aria-label="S07 Template Manager Madrasah">
@@ -384,29 +387,37 @@ export function TemplateManager({
           </p>
         </div>
         <div className="s07-header-actions">
-          <button
-            type="button"
-            className="s02-btn-secondary"
-            onClick={() => setIsNumberingModalOpen(true)}
-            title="Atur format nomor surat madrasah"
-          >
-            <Hash size={14} aria-hidden="true" />
-            <span>Format Nomor Surat</span>
-          </button>
-          {(state.documents?.length ?? 0) > 0 && (
+          <div className="s01-utility-dock" role="group" aria-label="Utilitas format dan ekstraksi template">
             <button
               type="button"
-              className="s02-btn-secondary"
-              onClick={() => {
-                setSourceDocId(sourceDocId || state.documents?.[0]?.id || '');
-                setFromDocName('');
-                setEditorMode('from-doc');
-              }}
+              className="s01-utility-btn"
+              onClick={() => setIsNumberingModalOpen(true)}
+              data-tooltip="Atur pola nomor surat resmi"
+              data-tooltip-pos="bottom"
             >
-              <ShieldCheck size={14} aria-hidden="true" />
-              <span>Ekstrak dari Dokumen</span>
+              <Hash size={14} aria-hidden="true" />
+              <span>Format Nomor Surat</span>
             </button>
-          )}
+            {(state.documents?.length ?? 0) > 0 && (
+              <>
+                <span className="s01-utility-sep" aria-hidden="true" />
+                <button
+                  type="button"
+                  className="s01-utility-btn"
+                  data-tooltip="Ekstrak pola dari arsip dokumen dengan sanitasi PII"
+                  data-tooltip-pos="bottom"
+                  onClick={() => {
+                    setSourceDocId(sourceDocId || state.documents?.[0]?.id || '');
+                    setFromDocName('');
+                    setEditorMode('from-doc');
+                  }}
+                >
+                  <ShieldCheck size={14} aria-hidden="true" />
+                  <span>Ekstrak dari Dokumen</span>
+                </button>
+              </>
+            )}
+          </div>
           <button type="button" className="s02-btn-secondary" onClick={onBackToGallery}>
             <ArrowLeft size={14} aria-hidden="true" />
             <span>Galeri</span>
@@ -418,19 +429,22 @@ export function TemplateManager({
         </div>
       </header>
 
-      <div className="s07-workbench">
-        {/* Left List */}
+      <div className={`s07-workbench ${isStudioExpanded ? 'is-studio-expanded' : ''}`}>
+        {/* Left List (Hidden in Expanded Studio Focus Mode so Editor gets full canvas) */}
+        {!isStudioExpanded && (
         <div className="s07-panel">
           <div className="s07-filter-bar">
-            <input
-              type="search"
-              className="s07-input"
-              style={{ flex: '1 1 220px' }}
-              placeholder="Cari kode, nama, atau kategori template…"
-              aria-label="Cari template di Template Manager"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+            <div className="s07-search-wrap">
+              <Search size={14} className="s07-search-icon" aria-hidden="true" />
+              <input
+                type="search"
+                className="s07-input has-icon"
+                placeholder="Cari kode, nama, atau kategori template…"
+                aria-label="Cari template di Template Manager"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
             <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }} role="tablist" aria-label="Filter Sumber Template">
               {(
                 [
@@ -530,13 +544,34 @@ export function TemplateManager({
             )}
           </div>
         </div>
+        )}
 
-        {/* Right Inspector / Editor / Extract Panel */}
-        <aside className="s07-panel" aria-label="Editor dan Pratinjau Template S07">
+        {/* Right Inspector / Full-Canvas Studio Panel */}
+        <aside className={`s07-panel ${isStudioExpanded ? 's07-studio-surface p5-view-stage' : ''}`} aria-label="Editor dan Pratinjau Template S07">
+          {isStudioExpanded && (
+            <div className="s07-studio-topbar">
+              <button
+                type="button"
+                className="s02-btn-secondary"
+                onClick={() => setEditorMode('inspect')}
+              >
+                <ArrowLeft size={14} aria-hidden="true" />
+                <span>Kembali ke Daftar Template</span>
+              </button>
+              <span className="s07-studio-mode-badge">
+                {editorMode === 'create'
+                  ? 'Mode Studio · Template Baru'
+                  : editorMode === 'edit'
+                  ? `Mode Studio · Sunting ${selectedTemplate?.code ?? ''}`
+                  : 'Mode Studio · Ekstrak Dokumen'}
+              </span>
+            </div>
+          )}
+
           {editorMode === 'from-doc' && (
-            <form onSubmit={(e) => void handleCreateFromDocument(e)} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <h2 style={{ margin: 0, fontSize: '15px', color: '#0b2923', display: 'flex', alignItems: 'center', gap: '7px' }}>
-                <ShieldCheck size={16} />
+            <form onSubmit={(e) => void handleCreateFromDocument(e)} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <h2 className="s07-studio-heading">
+                <ShieldCheck size={18} aria-hidden="true" />
                 <span>Buat Template dari Dokumen (Sanitasi PII)</span>
               </h2>
               <div className="s07-validation-box">
@@ -597,13 +632,16 @@ export function TemplateManager({
           )}
 
           {(editorMode === 'create' || editorMode === 'edit') && (
-            <form onSubmit={(e) => void handleSaveTemplateForm(e)} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <h2 style={{ margin: 0, fontSize: '15px', color: '#0b2923' }}>
-                {editorMode === 'create' ? 'Buat Template Madrasah Baru' : `Sunting Template: ${selectedTemplate?.code}`}
+            <form onSubmit={(e) => void handleSaveTemplateForm(e)} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <h2 className="s07-studio-heading">
+                <Edit3 size={17} aria-hidden="true" />
+                <span>
+                  {editorMode === 'create' ? 'Buat Template Madrasah Baru' : `Sunting Template: ${selectedTemplate?.code}`}
+                </span>
               </h2>
 
               <div className="s07-form-grid">
-                <div className="s07-field is-full">
+                <div className="s07-field is-span-2">
                   <label htmlFor="s07-name">Nama Template *</label>
                   <input
                     id="s07-name"
@@ -730,79 +768,88 @@ export function TemplateManager({
                 </div>
               </div>
 
-              {/* Field Required/Optional Builder */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <strong style={{ fontSize: '12px', color: '#0b2923' }}>
-                    Field Wajib &amp; Opsional ({formFields.length})
-                  </strong>
-                  <button
-                    type="button"
-                    className="s02-icon-btn"
-                    onClick={() =>
-                      setFormFields((prev) => [
-                        ...prev,
-                        {
-                          key: `field_${prev.length + 1}`,
-                          label: `Isian ${prev.length + 1}`,
-                          kind: 'OPERATOR_INPUT',
-                          required: false,
-                        },
-                      ])
-                    }
-                  >
-                    <Plus size={12} /> Tambah Field
-                  </button>
-                </div>
-                {formFields.map((f, idx) => (
-                  <div key={idx} className="s07-field-editor-row">
-                    <input
-                      type="text"
-                      className="s07-input"
-                      aria-label={`Kunci field ${idx + 1}`}
-                      value={f.key}
-                      onChange={(e) =>
-                        setFormFields((prev) =>
-                          prev.map((item, i) => (i === idx ? { ...item, key: e.target.value } : item))
-                        )
-                      }
-                    />
-                    <input
-                      type="text"
-                      className="s07-input"
-                      aria-label={`Label field ${idx + 1}`}
-                      value={f.label}
-                      onChange={(e) =>
-                        setFormFields((prev) =>
-                          prev.map((item, i) => (i === idx ? { ...item, label: e.target.value } : item))
-                        )
-                      }
-                    />
-                    <label style={{ fontSize: '11.5px', display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
-                      <input
-                        type="checkbox"
-                        checked={f.required}
-                        onChange={(e) =>
-                          setFormFields((prev) =>
-                            prev.map((item, i) =>
-                              i === idx ? { ...item, required: e.target.checked } : item
-                            )
-                          )
-                        }
-                      />
-                      Wajib
-                    </label>
+              {/* Field Required/Optional Builder (Collapsible Luxury Disclosure) */}
+              <details className="p5-luxury-disclosure">
+                <summary>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                    <span>Field Wajib &amp; Opsional ({formFields.length})</span>
+                    <span className="nfm-kinds-count s5-tnum">Konfigurasi Isian Form</span>
+                  </span>
+                  <ChevronDown size={15} className="p5-disclosure-caret" aria-hidden="true" />
+                </summary>
+                <div className="p5-disclosure-body" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '11.5px', color: '#526861' }}>
+                      Tentukan daftar field yang harus diisi operator saat membuat surat dari template ini.
+                    </span>
                     <button
                       type="button"
                       className="s02-icon-btn"
-                      aria-label={`Hapus field ${f.label}`}
-                      onClick={() => setFormFields((prev) => prev.filter((_, i) => i !== idx))}
+                      onClick={() =>
+                        setFormFields((prev) => [
+                          ...prev,
+                          {
+                            key: `field_${prev.length + 1}`,
+                            label: `Isian ${prev.length + 1}`,
+                            kind: 'OPERATOR_INPUT',
+                            required: false,
+                          },
+                        ])
+                      }
                     >
-                      <Trash2 size={12} />
+                      <Plus size={12} /> Tambah Field
                     </button>
                   </div>
-                ))}
-              </div>
+                  {formFields.map((f, idx) => (
+                    <div key={idx} className="s07-field-editor-row">
+                      <input
+                        type="text"
+                        className="s07-input"
+                        aria-label={`Kunci field ${idx + 1}`}
+                        value={f.key}
+                        onChange={(e) =>
+                          setFormFields((prev) =>
+                            prev.map((item, i) => (i === idx ? { ...item, key: e.target.value } : item))
+                          )
+                        }
+                      />
+                      <input
+                        type="text"
+                        className="s07-input"
+                        aria-label={`Label field ${idx + 1}`}
+                        value={f.label}
+                        onChange={(e) =>
+                          setFormFields((prev) =>
+                            prev.map((item, i) => (i === idx ? { ...item, label: e.target.value } : item))
+                          )
+                        }
+                      />
+                      <label style={{ fontSize: '11.5px', display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+                        <input
+                          type="checkbox"
+                          checked={f.required}
+                          onChange={(e) =>
+                            setFormFields((prev) =>
+                              prev.map((item, i) =>
+                                i === idx ? { ...item, required: e.target.checked } : item
+                              )
+                            )
+                          }
+                        />
+                        Wajib
+                      </label>
+                      <button
+                        type="button"
+                        className="s02-icon-btn"
+                        aria-label={`Hapus field ${f.label}`}
+                        onClick={() => setFormFields((prev) => prev.filter((_, i) => i !== idx))}
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </details>
 
               {/* Live Validation Summary */}
               {draftValidation && (
@@ -926,7 +973,7 @@ export function TemplateManager({
               })()}
 
               {/* Compact Paper Preview */}
-              <div className="s02-paper-stage is-scrollable">
+              <div className="s02-paper-stage p5-paper-stage-bg is-scrollable">
                 <div className="s02-paper-sheet">
                   {selectedTemplate.documentHeader.includeKopSurat && (
                     <div className="s02-paper-kop">

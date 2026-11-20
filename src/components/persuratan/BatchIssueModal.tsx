@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CheckCircle2, FileStack, Users, X } from 'lucide-react';
+import { CheckCircle2, FileStack, Search, Users, X } from 'lucide-react';
 import type { AppState } from '../../domain/types';
 import type { DocumentTemplate } from '../../domain/persuratan/templates/types';
 import type { IntakeFormValues } from '../../domain/persuratan/intake/types';
@@ -153,19 +153,24 @@ export function BatchIssueModal({
       }}
     >
       <div
-        className="bim-dialog"
+        className="bim-dialog p5-modal-pop"
         role="dialog"
         aria-modal="true"
         aria-labelledby="bim-modal-title"
       >
         <header className="bim-head">
-          <div>
-            <h2 id="bim-modal-title" className="bim-title">
-              Terbitkan Surat Massal
-            </h2>
-            <p className="bim-subtitle">
-              {template.name} · Satu format untuk banyak penerima sekaligus
-            </p>
+          <div className="bim-head-title-wrap">
+            <span className="bim-head-badge" aria-hidden="true">
+              <FileStack size={18} />
+            </span>
+            <div>
+              <h2 id="bim-modal-title" className="bim-title">
+                Terbitkan Surat Massal
+              </h2>
+              <p className="bim-subtitle">
+                {template.name} · Satu format untuk banyak penerima sekaligus
+              </p>
+            </div>
           </div>
           <button
             type="button"
@@ -178,47 +183,56 @@ export function BatchIssueModal({
         </header>
 
         <div className="bim-body">
-          {/* Source Selector */}
-          <div className="bim-segment" role="tablist" aria-label="Sumber penerima surat massal">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={sourceMode === 'teachers'}
-              className={`bim-seg-btn ${sourceMode === 'teachers' ? 'is-active' : ''}`}
-              onClick={() => setSourceMode('teachers')}
-            >
-              <Users size={14} aria-hidden="true" />
-              <span>Dari Daftar Guru ({selectedTeacherIds.length})</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={sourceMode === 'manual'}
-              className={`bim-seg-btn ${sourceMode === 'manual' ? 'is-active' : ''}`}
-              onClick={() => setSourceMode('manual')}
-            >
-              <FileStack size={14} aria-hidden="true" />
-              <span>Tempel Daftar Nama (Siswa / Penerima)</span>
-            </button>
-          </div>
+          <div className="bim-step-block">
+            <div className="bim-step-label">
+              <span className="bim-step-num s5-tnum">1</span>
+              <span>Sumber Daftar Penerima</span>
+            </div>
 
-          {sourceMode === 'teachers' ? (
-            <div className="bim-teacher-panel">
-              <div className="bim-teacher-bar">
-                <input
-                  type="search"
-                  className="bim-input"
-                  placeholder="Cari nama guru..."
-                  value={teacherSearch}
-                  onChange={(e) => setTeacherSearch(e.target.value)}
-                />
-                <button
-                  type="button"
-                  className="bim-mini-btn"
-                  onClick={() => setSelectedTeacherIds(filteredTeachers.map((t) => t.id))}
-                >
-                  Pilih Semua
-                </button>
+            {/* Source Selector */}
+            <div className="bim-segment" role="tablist" aria-label="Sumber penerima surat massal">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={sourceMode === 'teachers'}
+                className={`bim-seg-btn ${sourceMode === 'teachers' ? 'is-active' : ''}`}
+                onClick={() => setSourceMode('teachers')}
+              >
+                <Users size={14} aria-hidden="true" />
+                <span>Dari Daftar Guru ({selectedTeacherIds.length})</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={sourceMode === 'manual'}
+                className={`bim-seg-btn ${sourceMode === 'manual' ? 'is-active' : ''}`}
+                onClick={() => setSourceMode('manual')}
+              >
+                <FileStack size={14} aria-hidden="true" />
+                <span>Tempel Daftar Nama (Siswa / Penerima)</span>
+              </button>
+            </div>
+
+            {sourceMode === 'teachers' ? (
+              <div className="bim-teacher-panel">
+                <div className="bim-teacher-bar">
+                  <div className="bim-search-wrap">
+                    <Search size={14} className="bim-search-icon" aria-hidden="true" />
+                    <input
+                      type="search"
+                      className="bim-input has-icon"
+                      placeholder="Cari nama guru..."
+                      value={teacherSearch}
+                      onChange={(e) => setTeacherSearch(e.target.value)}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="bim-mini-btn"
+                    onClick={() => setSelectedTeacherIds(filteredTeachers.map((t) => t.id))}
+                  >
+                    Pilih Semua
+                  </button>
                 {selectedTeacherIds.length > 0 && (
                   <button
                     type="button"
@@ -266,27 +280,34 @@ export function BatchIssueModal({
               />
             </div>
           )}
+          </div>
 
           {/* Output Mode */}
-          <div className="bim-mode-grid">
-            <button
-              type="button"
-              className={`bim-mode-card ${issueMode === 'draft' ? 'is-active' : ''}`}
-              onClick={() => setIssueMode('draft')}
-            >
-              <strong>Simpan sebagai Paket Draft</strong>
-              <span>Dapat ditinjau ulang sebelum diberi nomor resmi.</span>
-            </button>
-            <button
-              type="button"
-              className={`bim-mode-card ${issueMode === 'finalize' ? 'is-active' : ''}`}
-              onClick={() => setIssueMode('finalize')}
-            >
-              <strong>Sahkan &amp; Nomor Berurutan Otomatis</strong>
-              <span className="s5-tnum">
-                Mulai dari {sampleStartNumber.suggestedNumber}
-              </span>
-            </button>
+          <div className="bim-step-block">
+            <div className="bim-step-label">
+              <span className="bim-step-num s5-tnum">2</span>
+              <span>Mode Penerbitan Surat</span>
+            </div>
+            <div className="bim-mode-grid">
+              <button
+                type="button"
+                className={`bim-mode-card ${issueMode === 'draft' ? 'is-active' : ''}`}
+                onClick={() => setIssueMode('draft')}
+              >
+                <strong>Simpan sebagai Paket Draft</strong>
+                <span>Dapat ditinjau ulang sebelum diberi nomor resmi.</span>
+              </button>
+              <button
+                type="button"
+                className={`bim-mode-card ${issueMode === 'finalize' ? 'is-active' : ''}`}
+                onClick={() => setIssueMode('finalize')}
+              >
+                <strong>Sahkan &amp; Nomor Berurutan Otomatis</strong>
+                <span className="s5-tnum">
+                  Mulai dari {sampleStartNumber.suggestedNumber}
+                </span>
+              </button>
+            </div>
           </div>
 
           {issueMode === 'finalize' && isDemoMode && (

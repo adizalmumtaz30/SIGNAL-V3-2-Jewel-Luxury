@@ -32,6 +32,7 @@ import {
 } from '../domain/scheduleSources';
 import { exportScheduleTeacherPDF } from '../utils/pdfExport';
 import { MadrasahTeacherAvatar } from './MadrasahTeacherAvatar';
+import { KpiAnimatedNumber, KpiMotionCard } from './KpiMotion';
 
 export interface WorkloadDashboardProps {
   state: AppState;
@@ -542,7 +543,7 @@ export function WorkloadDashboard({
 
       {/* Metric Cards Grid */}
       <div className="stat-grid" style={{ marginTop: '16px' }}>
-        <div className="stat-card tone-teal">
+        <KpiMotionCard className="stat-card tone-teal" index={0}>
           <div className="stat-top">
             <span>
               {sourceMode === 'REQUIREMENTS'
@@ -556,14 +557,16 @@ export function WorkloadDashboard({
             </div>
           </div>
           <div className="stat-value-row">
-            <strong>{totalScheduledJP}</strong>
+            <strong>
+              <KpiAnimatedNumber value={totalScheduledJP} />
+            </strong>
             <span className="stat-unit">JP</span>
           </div>
           <div className="stat-sub">Setara {totalAstroHours} jam dinding nyata</div>
           <div className="stat-accent" />
-        </div>
+        </KpiMotionCard>
 
-        <div className="stat-card tone-sand">
+        <KpiMotionCard className="stat-card tone-sand" index={1}>
           <div className="stat-top">
             <span>Rata-Rata per Guru</span>
             <div className="stat-icon">
@@ -571,14 +574,16 @@ export function WorkloadDashboard({
             </div>
           </div>
           <div className="stat-value-row">
-            <strong>{avgJPPerTeacher}</strong>
+            <strong>
+              <KpiAnimatedNumber value={avgJPPerTeacher} />
+            </strong>
             <span className="stat-unit">JP / guru</span>
           </div>
           <div className="stat-sub">Dari {activeTeachers.length} guru pengampu aktif</div>
           <div className="stat-accent" />
-        </div>
+        </KpiMotionCard>
 
-        <div className="stat-card tone-blue">
+        <KpiMotionCard className="stat-card tone-blue" index={2}>
           <div className="stat-top">
             <span>Beban Standar (≥24 JP)</span>
             <div className="stat-icon">
@@ -586,7 +591,9 @@ export function WorkloadDashboard({
             </div>
           </div>
           <div className="stat-value-row">
-            <strong>{standardLoadCount}</strong>
+            <strong>
+              <KpiAnimatedNumber value={standardLoadCount} />
+            </strong>
             <span className="stat-unit">/ {activeTeachers.length} guru</span>
           </div>
           <div className="stat-sub">
@@ -595,9 +602,9 @@ export function WorkloadDashboard({
               : 'Standar beban kerja guru'}
           </div>
           <div className="stat-accent" />
-        </div>
+        </KpiMotionCard>
 
-        <div className={`stat-card ${overloadedTeachersCount > 0 ? 'tone-rose' : 'tone-teal'}`}>
+        <KpiMotionCard className={`stat-card ${overloadedTeachersCount > 0 ? 'tone-rose' : 'tone-teal'}`} index={3}>
           <div className="stat-top">
             <span>Kesesuaian Beban</span>
             <div className="stat-icon">
@@ -605,13 +612,21 @@ export function WorkloadDashboard({
             </div>
           </div>
           <div className="stat-value-row">
-            <strong>{overloadedTeachersCount === 0 ? 'Optimal' : `${overloadedTeachersCount} Overload`}</strong>
+            <strong>
+              {overloadedTeachersCount === 0 ? (
+                'Optimal'
+              ) : (
+                <>
+                  <KpiAnimatedNumber value={overloadedTeachersCount} /> Overload
+                </>
+              )}
+            </strong>
           </div>
           <div className="stat-sub">
             {unassignedTeachersCount > 0 ? `${unassignedTeachersCount} guru belum memiliki jam` : 'Seluruh guru dalam batas wajar'}
           </div>
           <div className="stat-accent" />
-        </div>
+        </KpiMotionCard>
       </div>
 
       {/* Filter and Search Bar */}

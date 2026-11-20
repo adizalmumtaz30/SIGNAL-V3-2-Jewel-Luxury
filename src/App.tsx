@@ -99,6 +99,7 @@ import { CommandPaletteModal } from './components/CommandPaletteModal';
 import { TimeMachineDrawer } from './components/TimeMachineDrawer';
 import { InspectorSlideDrawer, type InspectorTarget } from './components/InspectorSlideDrawer';
 import { TeacherAssignmentDrawer } from './components/TeacherAssignmentDrawer';
+import { KpiAnimatedNumber, KpiMotionCard } from './components/KpiMotion';
 import type { PersuratanLaunchRequest } from './domain/persuratan/types';
 import {
   buildSkTeachingLaunchPayload,
@@ -4279,36 +4280,52 @@ function GeneratorScreen({
 
       {/* Solver & Capacity KPI Metrics */}
       <div className="generator-metrics">
-        <div>
+        <KpiMotionCard index={0}>
           <span>TARGET ALOKASI JP</span>
-          <strong>{allJP} JP</strong>
+          <strong>
+            <KpiAnimatedNumber value={allJP} suffix=" JP" />
+          </strong>
           <small>{state.requirements.length} Mata Pelajaran Siswa</small>
-        </div>
-        <div>
+        </KpiMotionCard>
+        <KpiMotionCard index={1}>
           <span>KAPASITAS SLOT MURNI</span>
           <strong>
-            {state.settings.activeDays.reduce((sum, day) => sum + teachingPeriodsForDay(state.slots, day).length, 0) *
-              state.classes.filter((c) => c.isActive).length}{' '}
-            JP
+            <KpiAnimatedNumber
+              value={
+                state.settings.activeDays.reduce((sum, day) => sum + teachingPeriodsForDay(state.slots, day).length, 0) *
+                state.classes.filter((c) => c.isActive).length
+              }
+              suffix=" JP"
+            />
           </strong>
           <small>{state.classes.filter((c) => c.isActive).length} Rombel KBM Terdaftar</small>
-        </div>
-        <div>
+        </KpiMotionCard>
+        <KpiMotionCard index={2}>
           <span>KANDIDAT TERSIMPAN</span>
-          <strong>{state.candidates.length}</strong>
+          <strong>
+            <KpiAnimatedNumber value={state.candidates.length} />
+          </strong>
           <small>Variasi Solusi Teruji</small>
-        </div>
-        <div>
+        </KpiMotionCard>
+        <KpiMotionCard index={3}>
           <span>STATUS SOLVER</span>
           <strong
             style={{
               color: isGenerating ? '#1f6850' : result?.status === 'SUCCESS' ? '#1f6850' : '#876123',
             }}
           >
-            {isGenerating ? 'Mencari...' : result?.status === 'SUCCESS' ? '100% Lolos' : result ? statuses[result.status].label : 'Siap Dijalankan'}
+            {isGenerating ? (
+              'Mencari...'
+            ) : result?.status === 'SUCCESS' ? (
+              <KpiAnimatedNumber value={100} suffix="% Lolos" />
+            ) : result ? (
+              statuses[result.status].label
+            ) : (
+              'Siap Dijalankan'
+            )}
           </strong>
           <small>Constraint Engine Deterministik</small>
-        </div>
+        </KpiMotionCard>
       </div>
 
       {/* Combinatorial Solver Radar Feedback */}
@@ -6093,44 +6110,54 @@ function RequirementsScreen({
 
       {/* Real-Time Requirements & Capacity KPI Grid */}
       <div className="requirements-metric-grid">
-        <div className="req-metric">
+        <KpiMotionCard className="req-metric" index={0}>
           <div className="req-metric-mark">
             <BookOpen size={18} />
           </div>
           <div className="req-metric-copy">
             <span>TOTAL KEBUTUHAN</span>
-            <strong>{totalJP} JP</strong>
+            <strong>
+              <KpiAnimatedNumber value={totalJP} suffix=" JP" />
+            </strong>
             <small>{state.requirements.length} Alokasi Mapel Terdata</small>
           </div>
-        </div>
+        </KpiMotionCard>
 
-        <div className="req-metric">
+        <KpiMotionCard className="req-metric" index={1}>
           <div className="req-metric-mark blue">
             <Clock size={18} />
           </div>
           <div className="req-metric-copy">
             <span>KAPASITAS KBM</span>
-            <strong>{totalWeeklySlots * state.classes.filter((c) => c.isActive).length} JP</strong>
+            <strong>
+              <KpiAnimatedNumber value={totalWeeklySlots * state.classes.filter((c) => c.isActive).length} suffix=" JP" />
+            </strong>
             <small>{totalWeeklySlots} JP per Rombel / Pekan</small>
           </div>
-        </div>
+        </KpiMotionCard>
 
-        <div className="req-metric">
+        <KpiMotionCard className="req-metric" index={2}>
           <div className="req-metric-mark amber">
             <TrendingUp size={18} />
           </div>
           <div className="req-metric-copy">
             <span>KESEIMBANGAN ALOKASI</span>
             <strong
-            style={{
-              color: totalJP === totalWeeklySlots * state.classes.filter((c) => c.isActive).length ? '#1f6850' : '#b24c3d',
-            }}
-          >
-            {totalJP === totalWeeklySlots * state.classes.filter((c) => c.isActive).length
-              ? '100% Pas'
-              : totalJP > totalWeeklySlots * state.classes.filter((c) => c.isActive).length
-              ? `Surplus +${totalJP - totalWeeklySlots * state.classes.filter((c) => c.isActive).length} JP`
-              : `Kurang ${totalWeeklySlots * state.classes.filter((c) => c.isActive).length - totalJP} JP`}
+              style={{
+                color: totalJP === totalWeeklySlots * state.classes.filter((c) => c.isActive).length ? '#1f6850' : '#b24c3d',
+              }}
+            >
+              {totalJP === totalWeeklySlots * state.classes.filter((c) => c.isActive).length ? (
+                <KpiAnimatedNumber value={100} suffix="% Pas" />
+              ) : totalJP > totalWeeklySlots * state.classes.filter((c) => c.isActive).length ? (
+                <>
+                  Surplus +<KpiAnimatedNumber value={totalJP - totalWeeklySlots * state.classes.filter((c) => c.isActive).length} suffix=" JP" />
+                </>
+              ) : (
+                <>
+                  Kurang <KpiAnimatedNumber value={totalWeeklySlots * state.classes.filter((c) => c.isActive).length - totalJP} suffix=" JP" />
+                </>
+              )}
             </strong>
             <small>
               {totalJP === totalWeeklySlots * state.classes.filter((c) => c.isActive).length
@@ -6138,16 +6165,16 @@ function RequirementsScreen({
                 : 'Perlu diselaraskan dengan JP KBM'}
             </small>
           </div>
-        </div>
+        </KpiMotionCard>
 
-        <div className="req-metric">
+        <KpiMotionCard className="req-metric" index={3}>
           <div className="req-metric-mark violet">
             <CheckCircle2 size={18} />
           </div>
           <div className="req-metric-copy">
             <span>ROMBEL TUNTAS</span>
             <strong>
-              {classCapacityStats.filter((c) => c.isExact).length} / {classCapacityStats.length}
+              <KpiAnimatedNumber value={classCapacityStats.filter((c) => c.isExact).length} /> / {classCapacityStats.length}
             </strong>
             <small>
               {classCapacityStats.filter((c) => !c.isExact).length === 0
@@ -6155,7 +6182,7 @@ function RequirementsScreen({
                 : `${classCapacityStats.filter((c) => !c.isExact).length} rombel butuh penyesuaian`}
             </small>
           </div>
-        </div>
+        </KpiMotionCard>
       </div>
 
       {/* Live Issue Context Notice (Calm & Compact) */}
@@ -6532,44 +6559,49 @@ function ValidationScreen({
 
       {/* Real-Time Compliance & Audit KPI Grid */}
       <div className="validation-summary-grid">
-        <div>
+        <KpiMotionCard index={0}>
           <div className="validation-summary-icon teal">
             <ShieldCheck size={20} />
           </div>
           <div>
             <span>SKOR KEPATUHAN</span>
             <strong>
-              {Math.max(0, Math.min(100, 100 - hardErrors.length * 25 - (combined.length - hardErrors.length) * 5))}%
+              <KpiAnimatedNumber
+                value={Math.max(0, Math.min(100, 100 - hardErrors.length * 25 - (combined.length - hardErrors.length) * 5))}
+                suffix="%"
+              />
             </strong>
             <small>{hardErrors.length === 0 ? 'Lolos Semua Aturan' : `${hardErrors.length} Pelanggaran Wajib`}</small>
           </div>
-        </div>
+        </KpiMotionCard>
 
-        <div>
+        <KpiMotionCard index={1}>
           <div className="validation-summary-icon error">
             <XCircle size={20} />
           </div>
           <div>
             <span>KONFLIK KERAS</span>
-            <strong style={{ color: hardErrors.length > 0 ? '#b42318' : '#1f6850' }}>{hardErrors.length}</strong>
+            <strong style={{ color: hardErrors.length > 0 ? '#b42318' : '#1f6850' }}>
+              <KpiAnimatedNumber value={hardErrors.length} />
+            </strong>
             <small>{hardErrors.length === 0 ? 'Nihil Bentrok' : 'Wajib Diselesaikan'}</small>
           </div>
-        </div>
+        </KpiMotionCard>
 
-        <div>
+        <KpiMotionCard index={2}>
           <div className="validation-summary-icon warning">
             <AlertTriangle size={20} />
           </div>
           <div>
             <span>PERINGATAN LEMAH</span>
             <strong style={{ color: combined.length - hardErrors.length > 0 ? '#876123' : '#1f6850' }}>
-              {combined.length - hardErrors.length}
+              <KpiAnimatedNumber value={combined.length - hardErrors.length} />
             </strong>
             <small>Saran Distribusi &amp; Beban</small>
           </div>
-        </div>
+        </KpiMotionCard>
 
-        <div>
+        <KpiMotionCard index={3}>
           <div className="validation-summary-icon info">
             <CheckCircle2 size={20} />
           </div>
@@ -6580,7 +6612,7 @@ function ValidationScreen({
             </strong>
             <small>{hardErrors.length === 0 ? 'Jadwal Siap Edar' : 'Selesaikan Konflik'}</small>
           </div>
-        </div>
+        </KpiMotionCard>
       </div>
 
       {/* AI Conflict Helper Integration */}

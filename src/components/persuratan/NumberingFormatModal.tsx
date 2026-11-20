@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, Hash, RotateCcw, X } from 'lucide-react';
+import { Check, ChevronDown, Hash, RotateCcw, Sparkles, X } from 'lucide-react';
 import type { AppState } from '../../domain/types';
 import type {
   DocumentKind,
@@ -13,6 +13,7 @@ import {
   computeNextSequentialNumber,
   normalizeDocumentNumberingConfig,
 } from '../../domain/persuratan/finalization/numberingEngine';
+import { AtelierPlaqueFiligree } from './PersuratanLuxuryPrimitives';
 import './NumberingFormatModal.css';
 
 export interface NumberingFormatModalProps {
@@ -182,19 +183,24 @@ export function NumberingFormatModal({
       }}
     >
       <div
-        className="nfm-dialog"
+        className="nfm-dialog p5-modal-pop"
         role="dialog"
         aria-modal="true"
         aria-labelledby="nfm-modal-title"
       >
         <header className="nfm-head">
-          <div>
-            <h2 id="nfm-modal-title" className="nfm-title">
-              Format Penomoran Surat
-            </h2>
-            <p className="nfm-subtitle">
-              Sesuaikan pola nomor surat resmi sesuai tata naskah madrasah.
-            </p>
+          <div className="nfm-head-title-wrap">
+            <span className="nfm-head-badge" aria-hidden="true">
+              <Hash size={17} />
+            </span>
+            <div>
+              <h2 id="nfm-modal-title" className="nfm-title">
+                Format Penomoran Surat
+              </h2>
+              <p className="nfm-subtitle">
+                Sesuaikan pola nomor surat resmi sesuai tata naskah madrasah.
+              </p>
+            </div>
           </div>
           <button
             type="button"
@@ -207,9 +213,16 @@ export function NumberingFormatModal({
         </header>
 
         <div className="nfm-body">
-          {/* Live Result Preview */}
-          <div className="nfm-preview-strip" aria-live="polite">
-            <span className="nfm-preview-label">Pratinjau Nomor Berikutnya ({DOCUMENT_KIND_LABELS[previewKind]})</span>
+          {/* Sovereign Obsidian Emerald Live Plaque */}
+          <div className="nfm-preview-strip p5-obsidian-plaque" aria-live="polite">
+            <AtelierPlaqueFiligree />
+            <div className="nfm-preview-top">
+              <span className="nfm-preview-label">
+                <Sparkles size={12} aria-hidden="true" />
+                Pratinjau Nomor Berikutnya · {DOCUMENT_KIND_LABELS[previewKind]}
+              </span>
+              <span className="nfm-preview-pill">Otomatis</span>
+            </div>
             <strong className="nfm-preview-value s5-tnum">{livePreview.suggestedNumber}</strong>
           </div>
 
@@ -296,6 +309,7 @@ export function NumberingFormatModal({
                   <button
                     key={p.label}
                     type="button"
+                    data-tooltip={`Terapkan pola ${p.label}`}
                     className={`nfm-preset-btn ${formatPattern === p.pattern ? 'is-active' : ''}`}
                     onClick={() => setFormatPattern(p.pattern)}
                   >
@@ -316,6 +330,7 @@ export function NumberingFormatModal({
                 <button
                   key={t.token}
                   type="button"
+                  data-tooltip={`Sisipkan variabel ${t.token}`}
                   className="nfm-token-btn"
                   onClick={() =>
                     setFormatPattern((prev) =>
@@ -329,32 +344,38 @@ export function NumberingFormatModal({
             </div>
           </div>
 
-          {/* Classification Codes per Document Kind */}
-          <div className="nfm-kinds-block">
-            <div className="nfm-kinds-head">
-              <Hash size={14} aria-hidden="true" />
-              <span>Kode Klasifikasi per Jenis Surat</span>
+          {/* Classification Codes per Document Kind (Collapsible Disclosure) */}
+          <details className="p5-luxury-disclosure nfm-kinds-disclosure">
+            <summary>
+              <span className="nfm-kinds-head">
+                <Hash size={14} aria-hidden="true" />
+                <span>Kode Klasifikasi per Jenis Surat</span>
+                <span className="nfm-kinds-count s5-tnum">{EDITABLE_KINDS.length} jenis</span>
+              </span>
+              <ChevronDown size={15} className="p5-disclosure-caret" aria-hidden="true" />
+            </summary>
+            <div className="p5-disclosure-body">
+              <div className="nfm-kinds-grid">
+                {EDITABLE_KINDS.map((kind) => (
+                  <div key={kind} className="nfm-kind-item">
+                    <label htmlFor={`nfm-kind-${kind}`}>{DOCUMENT_KIND_LABELS[kind]}</label>
+                    <input
+                      id={`nfm-kind-${kind}`}
+                      type="text"
+                      className="nfm-input nfm-input-sm nfm-mono"
+                      value={kindCodes[kind] ?? DEFAULT_KIND_CODES[kind]}
+                      onChange={(e) =>
+                        setKindCodes((prev) => ({
+                          ...prev,
+                          [kind]: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="nfm-kinds-grid">
-              {EDITABLE_KINDS.map((kind) => (
-                <div key={kind} className="nfm-kind-item">
-                  <label htmlFor={`nfm-kind-${kind}`}>{DOCUMENT_KIND_LABELS[kind]}</label>
-                  <input
-                    id={`nfm-kind-${kind}`}
-                    type="text"
-                    className="nfm-input nfm-input-sm nfm-mono"
-                    value={kindCodes[kind] ?? DEFAULT_KIND_CODES[kind]}
-                    onChange={(e) =>
-                      setKindCodes((prev) => ({
-                        ...prev,
-                        [kind]: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
+          </details>
         </div>
 
         <footer className="nfm-foot">
