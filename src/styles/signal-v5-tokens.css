@@ -1638,47 +1638,151 @@ table.s5-figma-table tbody td.s5-checkbox-col {
 
 .s5-att-kpi-grid {
   display: grid !important;
-  grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)) !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   gap: 14px !important;
 }
 
 .s5-att-kpi-card {
   position: relative !important;
+  isolation: isolate !important;
   overflow: hidden !important;
-  background: linear-gradient(180deg, #FFFFFF 0%, #FCFDFB 100%) !important;
-  border: 0.75px solid #D5E0DA !important;
-  border-radius: 14px !important;
-  padding: 15px 18px !important;
-  box-shadow: var(--s5-shadow-resting), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
   display: flex !important;
   align-items: center !important;
-  justify-content: space-between !important;
+  justify-content: flex-start !important;
   gap: 14px !important;
-  transition: box-shadow 0.18s var(--s5-spring-fast), border-color 0.18s ease !important;
+  min-height: 105px !important;
+  padding: 16px !important;
+  border: 1px solid rgba(179, 154, 104, 0.4) !important;
+  border-radius: 13px !important;
+  box-shadow:
+    0 7px 16px rgba(27, 42, 34, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+  font-family: var(--font-sans) !important;
+  text-align: left !important;
+  transition:
+    transform 160ms var(--s5-spring-fast),
+    box-shadow 160ms var(--s5-spring-fast),
+    border-color 160ms ease !important;
   will-change: transform;
 }
 
 .s5-att-kpi-card::after {
   content: "" !important;
   position: absolute !important;
-  top: 0 !important;
-  left: 16px !important;
-  right: 16px !important;
-  height: 1.5px !important;
-  background: linear-gradient(90deg, transparent, rgba(197, 160, 89, 0.35), transparent) !important;
-  opacity: 0 !important;
-  transition: opacity 0.18s ease !important;
+  z-index: -1 !important;
+  top: auto !important;
+  left: auto !important;
+  width: 90px !important;
+  height: 90px !important;
+  right: -30px !important;
+  bottom: -42px !important;
+  background: transparent !important;
+  border: 1px solid rgba(255, 255, 255, 0.19) !important;
+  border-radius: 50% !important;
+  box-shadow: 0 0 0 9px rgba(255, 255, 255, 0.03) !important;
+  opacity: 1 !important;
+  pointer-events: none !important;
+}
+
+.s5-att-kpi-card:nth-child(1) {
+  background: linear-gradient(145deg, #285F4D, #173D32) !important;
+}
+
+.s5-att-kpi-card:nth-child(2) {
+  background: linear-gradient(145deg, #62496B, #3C2A46) !important;
+}
+
+.s5-att-kpi-card:nth-child(3),
+.s5-att-kpi-card.tone-gold {
+  background: linear-gradient(145deg, #EAD8AC, #C4A66C) !important;
+  border-color: rgba(128, 98, 45, 0.35) !important;
+}
+
+.s5-att-kpi-card:nth-child(4),
+.s5-att-kpi-card.tone-slate {
+  background: linear-gradient(145deg, #3B5D7D, #263D58) !important;
+}
+
+.s5-att-kpi-card:nth-child(3)::after,
+.s5-att-kpi-card.tone-gold::after {
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 0 0 9px rgba(255, 255, 255, 0.07) !important;
 }
 
 .s5-att-kpi-card:hover {
-  box-shadow: var(--s5-shadow-card) !important;
-  border-color: rgba(197, 160, 89, 0.55) !important;
+  border-color: rgba(229, 201, 122, 0.78) !important;
+  box-shadow:
+    0 11px 22px rgba(27, 42, 34, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
 }
 
-.s5-att-kpi-card:hover::after {
-  opacity: 1 !important;
+.s5-att-kpi-card.tone-gold:hover,
+.s5-att-kpi-card:nth-child(3):hover {
+  border-color: rgba(116, 85, 29, 0.55) !important;
 }
 
+.s5-att-kpi-jewel-icon {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 50% !important;
+  display: grid !important;
+  place-items: center !important;
+  flex-shrink: 0 !important;
+  border: 1px solid rgba(229, 201, 122, 0.5) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #F0D99A !important;
+  transition: transform 160ms var(--s5-spring-fast) !important;
+}
+
+.s5-att-kpi-card:hover .s5-att-kpi-jewel-icon {
+  transform: scale(1.06);
+}
+
+.s5-att-kpi-card:nth-child(3) .s5-att-kpi-jewel-icon,
+.s5-att-kpi-card.tone-gold .s5-att-kpi-jewel-icon {
+  border-color: rgba(128, 98, 45, 0.32) !important;
+  background: rgba(255, 255, 255, 0.38) !important;
+  color: #74551D !important;
+}
+
+.s5-att-kpi-jewel-ring {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 50% !important;
+  display: grid !important;
+  place-items: center !important;
+  flex-shrink: 0 !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  transition: transform 160ms var(--s5-spring-fast) !important;
+}
+
+.s5-att-kpi-card:nth-child(3) .s5-att-kpi-jewel-ring,
+.s5-att-kpi-card.tone-gold .s5-att-kpi-jewel-ring {
+  background: rgba(255, 255, 255, 0.34) !important;
+}
+
+.s5-att-kpi-card:hover .s5-att-kpi-jewel-ring {
+  transform: scale(1.06);
+}
+
+.s5-att-kpi-body {
+  min-width: 0 !important;
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+}
+
+.s5-att-kpi-head {
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  margin-bottom: 2px !important;
+}
+
+/* Kept for inline alert/summary badges inside AttendanceScreen workspace */
 .s5-att-kpi-icon {
   width: 42px !important;
   height: 42px !important;
@@ -1713,27 +1817,67 @@ table.s5-figma-table tbody td.s5-checkbox-col {
 }
 
 .s5-att-kpi-label {
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  letter-spacing: 0.04em !important;
+  display: block !important;
+  font-size: 10.5px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.05em !important;
   text-transform: uppercase !important;
-  color: var(--s5-ink-tertiary) !important;
-  margin-bottom: 4px !important;
+  color: #FFF9EA !important;
+  opacity: 0.92 !important;
+  margin-bottom: 0 !important;
 }
 
 .s5-att-kpi-value {
+  display: block !important;
   font-family: var(--font-sans) !important;
+  font-variant-numeric: tabular-nums lining-nums !important;
+  font-feature-settings: "tnum" 1, "cv02" 1 !important;
   font-size: 24px !important;
   font-weight: 700 !important;
-  line-height: 1.1 !important;
-  letter-spacing: -0.02em !important;
-  color: var(--s5-emerald-obsidian) !important;
+  line-height: 1.2 !important;
+  letter-spacing: -0.025em !important;
+  color: #FFF9EA !important;
+}
+
+.s5-att-kpi-denom {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: rgba(255, 249, 234, 0.74) !important;
 }
 
 .s5-att-kpi-sub {
-  font-size: 12px !important;
-  color: var(--s5-ink-tertiary) !important;
-  margin-top: 3px !important;
+  display: block !important;
+  font-size: 11px !important;
+  line-height: 1.3 !important;
+  color: #FFF9EA !important;
+  opacity: 0.82 !important;
+  margin-top: 0 !important;
+}
+
+.s5-att-kpi-card:nth-child(3) .s5-att-kpi-label,
+.s5-att-kpi-card:nth-child(3) .s5-att-kpi-value,
+.s5-att-kpi-card:nth-child(3) .s5-att-kpi-sub,
+.s5-att-kpi-card.tone-gold .s5-att-kpi-label,
+.s5-att-kpi-card.tone-gold .s5-att-kpi-value,
+.s5-att-kpi-card.tone-gold .s5-att-kpi-sub {
+  color: #173D32 !important;
+}
+
+.s5-att-kpi-card:nth-child(3) .s5-att-kpi-denom,
+.s5-att-kpi-card.tone-gold .s5-att-kpi-denom {
+  color: rgba(23, 61, 50, 0.68) !important;
+}
+
+@media (max-width: 1100px) {
+  .s5-att-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 680px) {
+  .s5-att-kpi-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 /* Main Workspace Surface inside Presensi Guru */

@@ -1,3 +1,5 @@
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { createDemoState } from '../src/domain/seed';
 import {
@@ -8,6 +10,7 @@ import {
 } from '../src/domain/attendanceRecap';
 import { computeEffectiveAttendanceDates } from '../src/domain/indonesianHolidays';
 import { exportAttendanceRecapPDF } from '../src/utils/pdfExport';
+import { AttendanceScreen } from '../src/components/AttendanceScreen';
 import type { AttendanceRecord, Teacher } from '../src/domain/types';
 
 describe('Rekap Kehadiran Guru & Input Massal (Anti-Penalti 96% Palsu)', () => {
@@ -274,6 +277,29 @@ describe('Rekap Kehadiran Guru & Input Massal (Anti-Penalti 96% Palsu)', () => {
     expect(row2.monthlyBreakdown['2026-07']?.rate).toBe(50);
     expect(row2.monthlyBreakdown['2026-08']?.rate).toBe(100);
     expect(row2.monthlyBreakdown['2026-09']?.hasData).toBe(false);
+  });
+
+  it('merender kartu KPI Presensi Guru dengan model kartu permata yang seragam dengan Persuratan & Arsip', () => {
+    const state = createDemoState();
+    const html = renderToStaticMarkup(
+      createElement(AttendanceScreen, {
+        state,
+        onUpdateState: () => {},
+        onNotify: () => {},
+      }),
+    );
+
+    expect(html).toContain('s5-att-kpi-grid');
+    expect(html).toContain('s5-att-kpi-card stat-card');
+    expect(html).toContain('tone-gold');
+    expect(html).toContain('tone-slate');
+    expect(html).toContain('s5-att-kpi-jewel-icon');
+    expect(html).toContain('s5-att-kpi-jewel-ring');
+    expect(html).toContain('s5-att-kpi-body');
+    expect(html).toContain('Guru Hadir Hari Ini');
+    expect(html).toContain('Tingkat Kehadiran');
+    expect(html).toContain('Dinas Luar / Izin / Sakit');
+    expect(html).toContain('Tanpa Keterangan (Alpa)');
   });
 });
 
