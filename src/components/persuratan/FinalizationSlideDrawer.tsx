@@ -659,46 +659,47 @@ export function FinalizationSlideDrawer({
           <div className="fsd-freeze-note" role="note">
             <LockKeyhole size={15} style={{ flexShrink: 0, marginTop: '1px' }} aria-hidden="true" />
             <span>
-              Pengesahan akan membekukan naskah, snapshot sumber, dan PDF resmi terverifikasi
-              SHA-256 sebagai arsip baca-saja. Perubahan di kemudian hari dapat dilakukan melalui
-              fitur <strong>Buat Revisi</strong>.
+              Pengesahan akan mengunci naskah, data rujukan saat terbit, dan berkas PDF resmi
+              sebagai arsip baca-saja. Perubahan di kemudian hari tetap aman melalui fitur{' '}
+              <strong>Buat Revisi</strong>.
             </span>
           </div>
         </div>
 
         <footer className="fsd-foot">
-          <button
-            type="button"
-            className="fsd-primary-btn"
-            disabled={!canFinalizeNow || isSubmitting}
-            onClick={() => void handleFinalize('archive')}
-          >
-            <FileCheck2 size={16} aria-hidden="true" />
-            <span>
-              {isSubmitting ? 'Mengesahkan & Menerbitkan PDF…' : 'Sahkan & Terbitkan PDF Resmi'}
-            </span>
-          </button>
-
+          <div className="fsd-foot-caption">Pilih hasil akhir penerbitan resmi:</div>
           <div className="fsd-quick-actions">
             <button
               type="button"
-              className="fsd-secondary-action-btn"
+              className="fsd-primary-btn"
               disabled={!canFinalizeNow || isSubmitting}
               onClick={() => void handleFinalize('download')}
             >
-              <Download size={14} aria-hidden="true" />
-              <span>Terbitkan &amp; Unduh PDF</span>
+              <Download size={15} aria-hidden="true" />
+              <span>{isSubmitting ? 'Menerbitkan…' : 'Terbitkan & Unduh PDF'}</span>
             </button>
             <button
               type="button"
-              className="fsd-secondary-action-btn"
+              className="fsd-primary-outline-btn"
               disabled={!canFinalizeNow || isSubmitting}
               onClick={() => void handleFinalize('print')}
             >
-              <Printer size={14} aria-hidden="true" />
+              <Printer size={15} aria-hidden="true" />
               <span>Terbitkan &amp; Cetak</span>
             </button>
           </div>
+
+          <button
+            type="button"
+            className="fsd-archive-only-btn"
+            disabled={!canFinalizeNow || isSubmitting}
+            onClick={() => void handleFinalize('archive')}
+          >
+            <FileCheck2 size={14} aria-hidden="true" />
+            <span>
+              {isSubmitting ? 'Mengesahkan & Menerbitkan PDF…' : 'Sahkan & Terbitkan PDF Resmi (Buka Arsip)'}
+            </span>
+          </button>
 
           <div className="fsd-foot-secondary">
             <button
@@ -719,7 +720,7 @@ export function FinalizationSlideDrawer({
                   onOpenFullPreview();
                 }}
               >
-                Pratinjau layar penuh &rarr;
+                Buka Pratinjau Cetak Penuh &rarr;
               </button>
             )}
           </div>

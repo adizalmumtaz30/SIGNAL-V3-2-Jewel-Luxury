@@ -313,19 +313,29 @@
   gap: 8px;
 }
 
+.fsd-foot-caption {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #4c635d;
+}
+
 .fsd-primary-btn {
   width: 100%;
-  height: 44px;
+  height: 42px;
+  padding: 0 12px;
   border-radius: 10px;
   border: 1px solid rgba(197, 160, 89, 0.72);
   background: #124037;
   color: #ffffff;
-  font-size: 13.5px;
+  font-size: 12.75px;
   font-weight: 700;
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   cursor: pointer;
   transition: background-color 140ms ease;
 }
@@ -335,6 +345,34 @@
 }
 
 .fsd-primary-btn:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.fsd-primary-outline-btn {
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid #124037;
+  background: #ffffff;
+  color: #0b2923;
+  font-size: 12.75px;
+  font-weight: 700;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.fsd-primary-outline-btn:hover:not(:disabled) {
+  background: #edf5f1;
+}
+
+.fsd-primary-outline-btn:disabled {
   opacity: 0.48;
   cursor: not-allowed;
 }
@@ -366,15 +404,16 @@
   gap: 8px;
 }
 
-.fsd-secondary-action-btn {
+.fsd-archive-only-btn {
+  width: 100%;
   height: 36px;
-  padding: 0 10px;
+  padding: 0 12px;
   border-radius: 9px;
-  border: 1px solid #c5d6ce;
-  background: #ffffff;
-  color: var(--s5-emerald-obsidian, #0b2923);
+  border: 1px solid #cddbd4;
+  background: #f3f7f5;
+  color: var(--s5-emerald-primary, #124037);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -384,12 +423,12 @@
   transition: background-color 140ms ease, border-color 140ms ease;
 }
 
-.fsd-secondary-action-btn:hover:not(:disabled) {
-  background: #eef5f2;
-  border-color: #124037;
+.fsd-archive-only-btn:hover:not(:disabled) {
+  background: #e6f0ec;
+  border-color: #9cb6ac;
 }
 
-.fsd-secondary-action-btn:disabled {
+.fsd-archive-only-btn:disabled {
   opacity: 0.48;
   cursor: not-allowed;
 }

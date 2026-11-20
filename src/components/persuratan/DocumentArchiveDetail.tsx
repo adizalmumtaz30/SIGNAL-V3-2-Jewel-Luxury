@@ -449,7 +449,7 @@ export function DocumentArchiveDetail({
       onNotify?.(
         resolved.fromCache
           ? `PDF final "${resolved.fileName}" diunduh dari arsip terverifikasi.`
-          : `PDF final "${resolved.fileName}" direkonstruksi dari snapshot versi ${activeVersion.versionNumber} dan diunduh.`,
+          : `Berkas PDF resmi "${resolved.fileName}" siap diunduh.`,
         resolved.fromCache ? 'success' : 'info'
       );
     } catch (err) {
@@ -563,7 +563,7 @@ export function DocumentArchiveDetail({
       });
       await onPersistState(res.state);
       onNotify?.(
-        `Lampiran "${res.attachment.fileName}" (${formatBytesReadable(res.attachment.sizeBytes)}) lolos validasi magic bytes & disimpan.`,
+        `Lampiran "${res.attachment.fileName}" (${formatBytesReadable(res.attachment.sizeBytes)}) terverifikasi & disimpan.`,
         'success'
       );
     } catch (err) {
@@ -580,7 +580,7 @@ export function DocumentArchiveDetail({
     try {
       const found = await getBinaryBlob(att.storageKey);
       if (!found) {
-        onNotify?.('Blob lampiran tidak ditemukan di penyimpanan lokal browser ini.', 'warning');
+        onNotify?.('Berkas lampiran tidak ditemukan di penyimpanan perangkat ini.', 'warning');
         return;
       }
       triggerBinaryDownload(found.bytes, att.fileName, att.mimeType);
@@ -599,7 +599,7 @@ export function DocumentArchiveDetail({
     }
     const found = await getBinaryBlob(att.storageKey);
     if (!found) {
-      onNotify?.('Blob gambar lampiran tidak ditemukan di penyimpanan lokal.', 'warning');
+      onNotify?.('Berkas gambar lampiran tidak ditemukan di penyimpanan perangkat ini.', 'warning');
       return;
     }
     if (rasterPreview?.url) URL.revokeObjectURL(rasterPreview.url);
@@ -627,7 +627,7 @@ export function DocumentArchiveDetail({
   };
 
   return (
-    <section className="s06-shell" aria-label="S06 Detail Dokumen dan Arsip Digital">
+    <section className="s06-shell" aria-label="Detail Dokumen dan Arsip Digital">
       {/* Top Action Bar */}
       <header className="s06-topbar">
         <div className="s06-topbar-left">
@@ -883,7 +883,7 @@ export function DocumentArchiveDetail({
                 <FileText size={15} aria-hidden="true" />
                 <span>
                   {activeVersion
-                    ? `Snapshot Naskah Resmi v${activeVersion.versionNumber} (Baca-Saja)`
+                    ? `Naskah Resmi Versi ${activeVersion.versionNumber} (Terkunci)`
                     : 'Pratinjau Naskah Draft'}
                 </span>
               </h2>
@@ -1093,7 +1093,7 @@ export function DocumentArchiveDetail({
                 </div>
               ) : (
                 <div className="s01-notice-box">
-                  Naskah Document Studio belum tersimpan untuk dokumen ini. Buka S04 untuk menyunting isi naskah.
+                  Naskah surat belum disusun di editor. Buka Editor Naskah untuk mulai menulis.
                 </div>
               )}
             </>
@@ -1103,11 +1103,11 @@ export function DocumentArchiveDetail({
             <>
               <h2>
                 <Database size={15} aria-hidden="true" />
-                <span>Metadata Administrasi &amp; Jejak Snapshot Sumber</span>
+                <span>Informasi Administrasi &amp; Data Rujukan</span>
               </h2>
               <dl className="s06-meta-dl">
                 <div className="s06-meta-item">
-                  <dt>ID Dokumen</dt>
+                  <dt>Referensi Arsip</dt>
                   <dd style={{ fontFamily: 'var(--font-mono)' }}>{doc.id}</dd>
                 </div>
                 <div className="s06-meta-item">
@@ -1143,22 +1143,24 @@ export function DocumentArchiveDetail({
                   <dd>{[doc.counterpartName, ...relatedTeachers].filter(Boolean).join(' · ') || '—'}</dd>
                 </div>
                 <div className="s06-meta-item">
-                  <dt>Rujukan ScheduleVersion</dt>
-                  <dd style={{ fontFamily: 'var(--font-mono)' }}>
-                    {activeVersion?.scheduleVersionId ?? doc.scheduleVersionId ?? 'Tidak terkait jadwal'}
+                  <dt>Rujukan Jadwal Resmi</dt>
+                  <dd>
+                    {activeVersion?.scheduleVersionId || doc.scheduleVersionId
+                      ? 'Terikat Jadwal Resmi Terbit'
+                      : 'Tidak terkait jadwal'}
                   </dd>
                 </div>
                 {activeVersion && (
                   <>
                     <div className="s06-meta-item is-wide">
-                      <dt>Checksum SHA-256 PDF Final</dt>
+                      <dt>Kode Verifikasi Digital</dt>
                       <dd style={{ fontFamily: 'var(--font-mono)', fontSize: '11.5px' }}>
                         {activeVersion.pdfChecksum}
                       </dd>
                     </div>
                     <div className="s06-meta-item">
                       <dt>Disahkan Pada</dt>
-                      <dd className="s5-tnum">{activeVersion.finalizedAt}</dd>
+                      <dd className="s5-tnum">{formatIndonesianDate(activeVersion.finalizedAt.slice(0, 10))}</dd>
                     </div>
                     <div className="s06-meta-item">
                       <dt>Ukuran &amp; Halaman PDF</dt>
@@ -1172,11 +1174,11 @@ export function DocumentArchiveDetail({
 
               <h2 style={{ marginTop: '6px' }}>
                 <ShieldCheck size={15} aria-hidden="true" />
-                <span>Daftar Snapshot Sumber Data ({sourceSnapshots.length})</span>
+                <span>Daftar Data Rujukan Terkait ({sourceSnapshots.length})</span>
               </h2>
               {sourceSnapshots.length === 0 ? (
                 <p style={{ margin: 0, fontSize: '12.5px', color: '#526861' }}>
-                  Belum ada catatan snapshot sumber data pada dokumen ini.
+                  Belum ada catatan data rujukan pada dokumen ini.
                 </p>
               ) : (
                 <div className="s06-attachment-list">
@@ -1185,8 +1187,8 @@ export function DocumentArchiveDetail({
                       <div className="s06-attachment-info">
                         <strong>{snap.sourceLabel}</strong>
                         <small>
-                          Kunci: <code>{snap.sourceKey}</code> · Status: {snap.status} · Diambil:{' '}
-                          <span className="s5-tnum">{snap.capturedAt}</span>
+                          Status: {snap.status} · Tercatat:{' '}
+                          <span className="s5-tnum">{formatIndonesianDate(snap.capturedAt.slice(0, 10))}</span>
                         </small>
                       </div>
                       <span className="s02-code-tag">
@@ -1203,7 +1205,7 @@ export function DocumentArchiveDetail({
             <>
               <h2>
                 <Paperclip size={15} aria-hidden="true" />
-                <span>Lampiran Dokumen (Validasi Magic Bytes &amp; Blob Store)</span>
+                <span>Lampiran Dokumen Resmi</span>
               </h2>
 
               <div className="s06-upload-box">
@@ -1212,7 +1214,7 @@ export function DocumentArchiveDetail({
                     Tambahkan Lampiran Resmi (PDF, PNG, JPG, WEBP, DOCX · maks. 10 MB)
                   </strong>
                   <small style={{ fontSize: '11.5px', color: '#4c635d' }}>
-                    Ekstensi, MIME type, ukuran, dan magic bytes biner diverifikasi otomatis. HTML/SVG/skrip aktif ditolak.
+                    Format berkas dan keaslian isi diperiksa otomatis demi keamanan arsip madrasah.
                   </small>
                 </div>
                 <label className="s02-btn-primary" style={{ cursor: 'pointer' }}>
@@ -1274,8 +1276,7 @@ export function DocumentArchiveDetail({
                       <div className="s06-attachment-info">
                         <strong>{att.fileName}</strong>
                         <small className="s5-tnum">
-                          {att.mimeType} · {formatBytesReadable(att.sizeBytes)} · SHA-256:{' '}
-                          <code>{att.sha256.slice(0, 12)}…</code>
+                          {formatBytesReadable(att.sizeBytes)} · Terverifikasi
                           {att.isLocked ? ' · Terkunci (Resmi)' : ' · Draft'}
                         </small>
                       </div>
@@ -1326,7 +1327,7 @@ export function DocumentArchiveDetail({
               </h2>
               {!versionChain || versionChain.versions.length === 0 ? (
                 <p style={{ margin: 0, fontSize: '12.5px', color: '#526861' }}>
-                  Dokumen ini belum memiliki versi resmi yang disahkan. Selesaikan dan sahkan dokumen melalui S05.
+                  Dokumen ini belum memiliki versi resmi yang disahkan. Buka Pratinjau &amp; Sahkan untuk menerbitkan versi resmi.
                 </p>
               ) : (
                 <div className="s06-attachment-list">
@@ -1346,7 +1347,7 @@ export function DocumentArchiveDetail({
                             Versi {ver.versionNumber} · {ver.documentNumber} ({ver.status})
                           </strong>
                           <small className="s5-tnum">
-                            Disahkan: {ver.finalizedAt} · PDF SHA-256: <code>{ver.pdfChecksum.slice(0, 14)}…</code>
+                            Disahkan: {formatIndonesianDate(ver.finalizedAt.slice(0, 10))} · {ver.pdfPageCount} hal · Terverifikasi
                             {ver.revisionReason ? ` · Alasan: ${ver.revisionReason}` : ''}
                           </small>
                         </div>

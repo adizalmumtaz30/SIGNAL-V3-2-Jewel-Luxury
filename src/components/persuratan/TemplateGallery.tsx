@@ -606,6 +606,7 @@ export function TemplateGallery({
                   <article
                     key={tpl.id}
                     className={`s02-template-card ${isSelected ? 'is-selected' : ''}`}
+                    onClick={() => handleSelectPreview(tpl)}
                     onDoubleClick={() => handleUseTemplate(tpl)}
                   >
                     <div className="s02-card-top">
@@ -623,7 +624,10 @@ export function TemplateGallery({
                         <button
                           type="button"
                           className="s02-card-title-btn"
-                          onClick={() => handleSelectPreview(tpl)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectPreview(tpl);
+                          }}
                         >
                           {tpl.name}
                         </button>
@@ -639,7 +643,10 @@ export function TemplateGallery({
                             ? `Hapus ${tpl.name} dari favorit`
                             : `Tandai ${tpl.name} sebagai favorit`
                         }
-                        onClick={() => handleToggleFavorite(tpl.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleFavorite(tpl.id);
+                        }}
                       >
                         <Star size={14} fill={isFavorite ? '#C5A059' : 'none'} aria-hidden="true" />
                         <span>{isFavorite ? 'Favorit' : 'Tandai'}</span>
@@ -649,31 +656,21 @@ export function TemplateGallery({
                     <p className="s02-card-desc is-clamped">{tpl.description}</p>
 
                     <div className="s02-card-actions">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                         <button
                           type="button"
                           className="s02-card-use-btn"
-                          onClick={() => handleUseTemplate(tpl)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUseTemplate(tpl);
+                          }}
                         >
                           <span>Pakai</span>
                           <ArrowRight size={13} aria-hidden="true" />
                         </button>
-                        <button
-                          type="button"
-                          className={`s02-icon-btn ${isSelected ? 'is-previewing' : ''}`}
-                          onClick={() => handleSelectPreview(tpl)}
-                        >
-                          <span>{isSelected ? 'Dipratinjau' : 'Pratinjau'}</span>
-                        </button>
-                        <button
-                          type="button"
-                          className="s02-icon-btn"
-                          data-tooltip={isMadrasah ? 'Duplikasi template madrasah' : 'Salin ke koleksi madrasah'}
-                          onClick={(e) => openCloneModal(tpl, e.currentTarget)}
-                        >
-                          <Copy size={13} aria-hidden="true" />
-                          <span>{isMadrasah ? 'Duplikasi' : 'Kloning'}</span>
-                        </button>
+                        {isSelected && (
+                          <span className="s02-previewing-hint">Dipratinjau di kanan</span>
+                        )}
                       </div>
                       <span className="s02-paper-spec-tag s5-tnum">
                         {tpl.initialPageSettings.paperSize.toUpperCase()} ·{' '}

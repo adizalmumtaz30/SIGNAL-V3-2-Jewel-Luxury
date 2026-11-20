@@ -262,10 +262,36 @@ export function DocumentIntakeForm({
   const [pendingAttachments, setPendingAttachments] = useState<File[]>([]);
   const [isDragOverDropzone, setIsDragOverDropzone] = useState<boolean>(false);
   const [isUploadingAttachment, setIsUploadingAttachment] = useState<boolean>(false);
+  const [showQuickIdentityFix, setShowQuickIdentityFix] = useState<boolean>(false);
+  const [quickSchoolName, setQuickSchoolName] = useState<string>(state.settings.schoolName ?? '');
+  const [quickAddress, setQuickAddress] = useState<string>(state.settings.address ?? '');
+  const [quickCity, setQuickCity] = useState<string>(state.settings.city ?? '');
+  const [quickHeadmasterName, setQuickHeadmasterName] = useState<string>(
+    state.settings.headmasterName ?? ''
+  );
+  const [quickHeadmasterNip, setQuickHeadmasterNip] = useState<string>(
+    state.settings.headmasterNip ?? ''
+  );
+  const [quickIdentityError, setQuickIdentityError] = useState<string | null>(null);
+  const [isSavingQuickIdentity, setIsSavingQuickIdentity] = useState<boolean>(false);
 
   const errorSummaryRef = useRef<HTMLDivElement | null>(null);
   const deleteCancelBtnRef = useRef<HTMLButtonElement | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    setQuickSchoolName(state.settings.schoolName ?? '');
+    setQuickAddress(state.settings.address ?? '');
+    setQuickCity(state.settings.city ?? '');
+    setQuickHeadmasterName(state.settings.headmasterName ?? '');
+    setQuickHeadmasterNip(state.settings.headmasterNip ?? '');
+  }, [
+    state.settings.schoolName,
+    state.settings.address,
+    state.settings.city,
+    state.settings.headmasterName,
+    state.settings.headmasterNip,
+  ]);
 
   useEffect(() => {
     if (isDeleteConfirmOpen) {
@@ -352,6 +378,47 @@ export function DocumentIntakeForm({
       onNotify?.(`Lampiran "${res.removed.fileName}" dihapus dari draft.`, 'info');
     } catch (err) {
       onNotify?.(err instanceof Error ? err.message : 'Gagal menghapus lampiran.', 'error');
+    }
+  };
+
+  const handleQuickSaveIdentityIntake = async () => {
+    if (!onPersistState) return;
+    const cleanSchool = quickSchoolName.trim();
+    const cleanAddress = quickAddress.trim();
+    const cleanCity = quickCity.trim();
+    const cleanHeadmaster = quickHeadmasterName.trim();
+    const cleanNip = quickHeadmasterNip.trim();
+
+    if (!cleanSchool || !cleanAddress || !cleanCity || cleanHeadmaster.length < 2) {
+      setQuickIdentityError(
+        'Lengkapi Nama Madrasah, Alamat, Kota/Kabupaten, dan Nama Kepala Madrasah terlebih dahulu.'
+      );
+      return;
+    }
+
+    setIsSavingQuickIdentity(true);
+    setQuickIdentityError(null);
+    try {
+      const nextSettings = {
+        ...state.settings,
+        schoolName: cleanSchool,
+        address: cleanAddress,
+        city: cleanCity,
+        headmasterName: cleanHeadmaster,
+        headmasterNip: cleanNip,
+      };
+      await onPersistState({
+        ...state,
+        settings: nextSettings,
+      });
+      setShowQuickIdentityFix(false);
+      onNotify?.('Identitas madrasah & penandatangan tersimpan. Kop surat siap dicetak.', 'success');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Gagal menyimpan identitas madrasah.';
+      setQuickIdentityError(msg);
+      onNotify?.(msg, 'error');
+    } finally {
+      setIsSavingQuickIdentity(false);
     }
   };
 
@@ -843,9 +910,9 @@ export function DocumentIntakeForm({
           >
             <option value="">
               {autoData.verifiedScheduleVersions.length === 0
-                ? '— Belum ada ScheduleVersion terbit yang sah —'
+                ? '— Belum ada Jadwal Resmi Terbit yang sah —'
                 : ctrl.required
-                ? '— Pilih ScheduleVersion Resmi Terverifikasi —'
+                ? '— Pilih Versi Jadwal Resmi Terverifikasi —'
                 : '— Tanpa rujukan versi jadwal —'}
             </option>
             {autoData.verifiedScheduleVersions.map((ver) => (
@@ -857,12 +924,12 @@ export function DocumentIntakeForm({
 
           {autoData.hasLooseActiveScheduleWithoutVersion && (
             <div className="s03-helper" style={{ color: '#6b4914', fontWeight: 600 }}>
-              Catatan: Terdapat jadwal kerja aktif tanpa ScheduleVersion resmi di riwayat publikasi. Sesuai aturan audit, jadwal kerja dan draft belum dapat dipilih sebagai dasar SK.
+              Catatan: Terdapat jadwal kerja aktif yang belum diterbitkan sebagai versi resmi. Terbitkan jadwal terlebih dahulu di menu Jadwal sebelum menjadikannya dasar SK.
             </div>
           )}
           {autoData.invalidScheduleVersionCount > 0 && (
             <div className="s03-helper" style={{ color: '#8f2219', fontWeight: 600 }}>
-              {autoData.invalidScheduleVersionCount} versi jadwal di riwayat gagal verifikasi fingerprint/jumlah entri sehingga disembunyikan dari dasar SK resmi.
+              {autoData.invalidScheduleVersionCount} versi jadwal lama terdeteksi tidak utuh sehingga disembunyikan dari dasar SK resmi.
             </div>
           )}
           {ctrl.helperText && <div className="s03-helper">{ctrl.helperText}</div>}
@@ -888,9 +955,8 @@ export function DocumentIntakeForm({
               {selectedScheduleVersion ? (
                 <>
                   <div>
-                    <strong>Sumber Terverifikasi:</strong> {selectedScheduleVersion.label} (ID:{' '}
-                    <code>{selectedScheduleVersion.id}</code> · Fingerprint:{' '}
-                    <code>{selectedScheduleVersion.fingerprint}</code>)
+                    <strong>Sumber Jadwal Terverifikasi:</strong> {selectedScheduleVersion.label} ·{' '}
+                    <span style={{ color: '#1b5e43', fontWeight: 700 }}>Tervalidasi Utuh</span>
                   </div>
                   <div className="s5-tnum">
                     <strong>Periode Tercatat:</strong> {selectedScheduleVersion.academicYearText} ·{' '}
@@ -901,7 +967,7 @@ export function DocumentIntakeForm({
                 </>
               ) : (
                 <div style={{ color: '#8f2219', fontWeight: 600 }}>
-                  Belum ada ScheduleVersion terverifikasi yang dipilih. Pilih versi jadwal resmi di atas terlebih dahulu.
+                  Belum ada versi jadwal resmi yang dipilih. Pilih versi jadwal terbit di atas terlebih dahulu.
                 </div>
               )}
             </div>
@@ -1222,6 +1288,17 @@ export function DocumentIntakeForm({
         </div>
 
         <div className="s03-header-actions">
+          {activeDraftId && onDeleteDraft && (
+            <button
+              type="button"
+              className="s03-btn-danger-outline"
+              style={{ height: '38px' }}
+              onClick={() => setIsDeleteConfirmOpen(true)}
+            >
+              <Trash2 size={14} aria-hidden="true" />
+              <span>Hapus Draft</span>
+            </button>
+          )}
           {onPersistState && (
             <button
               type="button"
@@ -1235,7 +1312,12 @@ export function DocumentIntakeForm({
               <span>Terbitkan Massal</span>
             </button>
           )}
-          <button type="button" className="s02-back-btn" onClick={onBackToTemplates}>
+          <button
+            type="button"
+            className="s02-back-btn"
+            onClick={onBackToTemplates}
+            title="Kembali ke Template"
+          >
             <ArrowLeft size={14} aria-hidden="true" />
             <span>Ganti Template</span>
           </button>
@@ -1266,12 +1348,9 @@ export function DocumentIntakeForm({
           <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
             <CheckCircle2 size={18} style={{ color: '#124037', flexShrink: 0, marginTop: '2px' }} aria-hidden="true" />
             <div>
-              <strong>
-                Data surat berhasil disimpan secara lokal dengan ID dokumen{' '}
-                <code>{savedBanner.documentId}</code>
-              </strong>
+              <strong>Draft data surat tersimpan aman secara lokal</strong>
               <div>
-                Status dokumen: <strong>Draft (Belum Bernomor)</strong> · Snapshot data sumber dibekukan agar tidak berubah otomatis saat Data Master diperbarui.
+                Status: <strong>Draft (Belum Bernomor)</strong> · Data sumber dibekukan agar isi surat tetap konsisten meski Data Master diperbarui.
               </div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
                 {onOpenStudio && (
@@ -1291,11 +1370,7 @@ export function DocumentIntakeForm({
                 )}
                 <button type="button" className="s03-mini-btn" onClick={onOpenCenter}>
                   <FileText size={13} aria-hidden="true" />
-                  <span>Lihat di Pusat Persuratan</span>
-                </button>
-                <button type="button" className="s03-mini-btn" onClick={onBackToTemplates}>
-                  <ArrowLeft size={13} aria-hidden="true" />
-                  <span>Kembali ke Galeri Template</span>
+                  <span>Lihat di Arsip &amp; Surat</span>
                 </button>
               </div>
             </div>
@@ -1366,6 +1441,172 @@ export function DocumentIntakeForm({
                 </div>
               </details>
             )}
+
+            {/* Proactive Readiness Guard: Identitas & Penandatangan Madrasah sebelum terblokir saat pengesahan */}
+            {!autoData.kop.isComplete &&
+              !(schema.baseTemplateId === 'SYS-TPL-30' && values.tampilkan_kop === 'Tidak') && (
+                <div className="s03-readiness-card" role="region" aria-label="Kesiapan Identitas Madrasah">
+                  <div className="s03-readiness-head">
+                    <div className="s03-readiness-copy">
+                      <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '2px', color: '#9a6618' }} aria-hidden="true" />
+                      <div>
+                        <strong>Identitas &amp; Penandatangan Madrasah belum lengkap</strong>
+                        <span>
+                          Dibutuhkan pada kop surat &amp; tanda tangan resmi saat pengesahan dokumen.
+                        </span>
+                      </div>
+                    </div>
+                    {onPersistState && (
+                      <button
+                        type="button"
+                        className="s03-mini-btn"
+                        onClick={() => setShowQuickIdentityFix((v) => !v)}
+                      >
+                        {showQuickIdentityFix ? 'Tutup Isian Cepat' : 'Lengkapi Identitas Sekarang'}
+                      </button>
+                    )}
+                  </div>
+
+                  {showQuickIdentityFix && onPersistState && (
+                    <div className="s03-readiness-form">
+                      {quickIdentityError && (
+                        <div className="s03-field-error" role="alert">
+                          <AlertCircle size={13} aria-hidden="true" />
+                          <span>{quickIdentityError}</span>
+                        </div>
+                      )}
+                      <div className="s03-fields-grid">
+                        <div className="s03-field">
+                          <label htmlFor="s03-qf-school" className="s03-label">
+                            <span>Nama Madrasah *</span>
+                          </label>
+                          <input
+                            id="s03-qf-school"
+                            type="text"
+                            className="s03-input"
+                            value={quickSchoolName}
+                            onChange={(e) => setQuickSchoolName(e.target.value)}
+                            placeholder="Contoh: MTs Negeri 1 Bandung"
+                          />
+                        </div>
+                        <div className="s03-field">
+                          <label htmlFor="s03-qf-city" className="s03-label">
+                            <span>Kota / Kabupaten *</span>
+                          </label>
+                          <input
+                            id="s03-qf-city"
+                            type="text"
+                            className="s03-input"
+                            value={quickCity}
+                            onChange={(e) => setQuickCity(e.target.value)}
+                            placeholder="Contoh: Bandung"
+                          />
+                        </div>
+                        <div className="s03-field is-full">
+                          <label htmlFor="s03-qf-address" className="s03-label">
+                            <span>Alamat Lengkap Madrasah *</span>
+                          </label>
+                          <input
+                            id="s03-qf-address"
+                            type="text"
+                            className="s03-input"
+                            value={quickAddress}
+                            onChange={(e) => setQuickAddress(e.target.value)}
+                            placeholder="Jl. Pendidikan No. 10"
+                          />
+                        </div>
+                        <div className="s03-field">
+                          <label htmlFor="s03-qf-headmaster" className="s03-label">
+                            <span>Nama Kepala Madrasah *</span>
+                          </label>
+                          <input
+                            id="s03-qf-headmaster"
+                            type="text"
+                            className="s03-input"
+                            value={quickHeadmasterName}
+                            onChange={(e) => setQuickHeadmasterName(e.target.value)}
+                            placeholder="Drs. H. Ahmad Fauzi, M.Pd."
+                          />
+                        </div>
+                        <div className="s03-field">
+                          <label htmlFor="s03-qf-nip" className="s03-label">
+                            <span>NIP / NPK Kepala Madrasah</span>
+                            <span className="s03-opt-tag">Opsional</span>
+                          </label>
+                          <input
+                            id="s03-qf-nip"
+                            type="text"
+                            className="s03-input"
+                            value={quickHeadmasterNip}
+                            onChange={(e) => setQuickHeadmasterNip(e.target.value)}
+                            placeholder="197201012000031002"
+                          />
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                        <button
+                          type="button"
+                          className="s03-mini-btn"
+                          disabled={isSavingQuickIdentity}
+                          onClick={() => setShowQuickIdentityFix(false)}
+                        >
+                          Batal
+                        </button>
+                        <button
+                          type="button"
+                          className="s03-btn-primary"
+                          style={{ height: '36px', padding: '0 14px', fontSize: '12.5px' }}
+                          disabled={isSavingQuickIdentity}
+                          onClick={() => void handleQuickSaveIdentityIntake()}
+                        >
+                          {isSavingQuickIdentity ? 'Menyimpan…' : 'Simpan Identitas Madrasah'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+            {/* Proactive Readiness Guard: Jadwal Resmi belum terbit pada template SK Mengajar */}
+            {schema.controls.some((c) => c.controlType === 'schedule_version' && c.required) &&
+              autoData.verifiedScheduleVersions.length === 0 && (
+                <div className="s03-readiness-card is-blocker" role="region" aria-label="Kesiapan Jadwal Resmi">
+                  <div className="s03-readiness-head">
+                    <div className="s03-readiness-copy">
+                      <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '2px', color: '#8f2d24' }} aria-hidden="true" />
+                      <div>
+                        <strong>Belum ada Versi Jadwal Resmi yang diterbitkan</strong>
+                        <span>
+                          Template ini memuat daftar pembagian jam mengajar dari jadwal resmi. Terbitkan jadwal terlebih dahulu di menu Jadwal sebelum mengesahkan dokumen ini.
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            {/* Proactive Readiness Guard: Data Guru Aktif kosong pada template berbasis guru */}
+            {schema.controls.some(
+              (c) =>
+                (c.controlType === 'teacher_multi_select' ||
+                  c.controlType === 'teacher_single_select') &&
+                c.required
+            ) &&
+              activeTeachers.length === 0 && (
+                <div className="s03-readiness-card is-blocker" role="region" aria-label="Kesiapan Data Guru">
+                  <div className="s03-readiness-head">
+                    <div className="s03-readiness-copy">
+                      <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '2px', color: '#8f2d24' }} aria-hidden="true" />
+                      <div>
+                        <strong>Data Guru Aktif belum tersedia</strong>
+                        <span>
+                          Tambahkan minimal satu guru aktif pada Data Master sebelum memilih peserta surat ini.
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
             <div className="s03-fields-grid">
               {/* Metadata Dasar Dokumen (S01 linkage) */}
@@ -1669,6 +1910,22 @@ export function DocumentIntakeForm({
 
             {sideTab === 'preview' && (
               <div className="s03-live-preview-card" role="region" aria-label="Pratinjau miniatur surat resmi">
+                <div className="s03-composer-switch" role="group" aria-label="Mode penyusunan naskah">
+                  <span className="s03-composer-pill is-active">Form Terstruktur</span>
+                  {onOpenStudio ? (
+                    <button
+                      type="button"
+                      className="s03-composer-pill"
+                      onClick={() => void commitIntakeDraft('open_studio')}
+                      title="Buka kanvas Editor Naskah untuk menyunting bebas tata letak"
+                    >
+                      <span>Kanvas Naskah · Sunting Bebas &rarr;</span>
+                    </button>
+                  ) : (
+                    <span className="s03-composer-pill is-disabled">Sunting Bebas</span>
+                  )}
+                </div>
+
                 <div className="s03-live-preview-head s5-tnum">
                   <span>
                     {template.initialPageSettings.paperSize.toUpperCase()} ·{' '}
@@ -1931,7 +2188,7 @@ export function DocumentIntakeForm({
               </dl>
 
               <div className="s03-snapshot-note">
-                Nilai sumber dibekukan menjadi snapshot saat disimpan agar isi surat tetap konsisten meski Data Master berubah.
+                Data rujukan disimpan utuh pada draf agar isi surat tetap konsisten meski Data Master berubah.
               </div>
             </div>
           </aside>
@@ -1966,24 +2223,6 @@ export function DocumentIntakeForm({
           </div>
 
           <div className="s03-action-buttons">
-            {activeDraftId && onDeleteDraft && (
-              <button
-                type="button"
-                className="s03-btn-danger-outline"
-                onClick={() => setIsDeleteConfirmOpen(true)}
-              >
-                <Trash2 size={14} aria-hidden="true" />
-                <span>Hapus Draft</span>
-              </button>
-            )}
-            <button
-              type="button"
-              className="s03-btn-ghost"
-              onClick={onBackToTemplates}
-            >
-              <ArrowLeft size={15} aria-hidden="true" />
-              <span>Kembali ke Template</span>
-            </button>
             {onOpenStudio && (
               <button
                 type="button"
@@ -2120,7 +2359,7 @@ export function DocumentIntakeForm({
                 </div>
                 <div>
                   <h2 id="s03-delete-draft-title">Hapus Draft Dokumen Ini?</h2>
-                  <p>Draft S03 dan naskah S04 terkait akan dihapus dari penyimpanan lokal.</p>
+                  <p>Isian data surat dan naskah yang tersimpan pada draft ini akan dihapus dari perangkat.</p>
                 </div>
               </div>
               <button

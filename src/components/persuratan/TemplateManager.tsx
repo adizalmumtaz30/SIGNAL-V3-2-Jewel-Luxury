@@ -316,7 +316,7 @@ export function TemplateManager({
       onNotify?.(
         res.template.status === 'ACTIVE'
           ? `Template "${tpl.name}" diaktifkan kembali.`
-          : `Template "${tpl.name}" dinonaktifkan dari Galeri S02 (dokumen lama tetap utuh).`,
+          : `Template "${tpl.name}" dinonaktifkan dari Galeri Template (dokumen lama tetap utuh).`,
         'info'
       );
     } catch (err) {
@@ -334,7 +334,7 @@ export function TemplateManager({
       setSelectedId('SYS-TPL-01');
       setEditorMode('inspect');
       onNotify?.(
-        `Template madrasah "${res.deletedName}" dihapus. Dokumen yang pernah dibuat tetap aman karena memakai snapshot mandiri.`,
+        `Template madrasah "${res.deletedName}" dihapus. Arsip dokumen lama tetap utuh dan dapat dibuka kembali.`,
         'info'
       );
     } catch (err) {
@@ -378,9 +378,12 @@ export function TemplateManager({
   const isStudioExpanded = editorMode !== 'inspect';
 
   return (
-    <section className="s07-shell" aria-label="S07 Template Manager Madrasah">
+    <section className="s07-shell" aria-label="Template Manager Madrasah">
       <header className="s07-header">
         <div>
+          <div className="s05-kicker" style={{ marginBottom: '2px' }}>
+            PENGATURAN TEMPLATE · FORMAT NASKAH
+          </div>
           <h1 className="s5-page-title">Kelola Template Madrasah</h1>
           <p className="s5-page-subtitle">
             {systemCount} template bawaan &amp; {madrasahCount} template khusus madrasah. Perubahan tidak memengaruhi arsip lama.
@@ -547,7 +550,7 @@ export function TemplateManager({
         )}
 
         {/* Right Inspector / Full-Canvas Studio Panel */}
-        <aside className={`s07-panel ${isStudioExpanded ? 's07-studio-surface p5-view-stage' : ''}`} aria-label="Editor dan Pratinjau Template S07">
+        <aside className={`s07-panel ${isStudioExpanded ? 's07-studio-surface p5-view-stage' : ''}`} aria-label="Editor dan Pratinjau Pengaturan Template">
           {isStudioExpanded && (
             <div className="s07-studio-topbar">
               <button
@@ -920,7 +923,7 @@ export function TemplateManager({
                     onClick={() => onUseTemplate(selectedTemplate)}
                   >
                     <Sparkles size={14} />
-                    <span>Gunakan di S03</span>
+                    <span>Pakai Template Ini</span>
                   </button>
                 )}
                 <button

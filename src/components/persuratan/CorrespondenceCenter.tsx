@@ -108,6 +108,7 @@ export interface CorrespondenceCenterProps {
   controlledPageSize?: number;
   onControlledPageSizeChange?: (next: number) => void;
   onPersistState?: (nextState: AppState) => Promise<void>;
+  onOpenSettings?: () => void;
   onNotify?: (message: string, kind?: 'success' | 'info' | 'warning' | 'error') => void;
 }
 
@@ -216,7 +217,7 @@ function renderDrawerTemplateSnapshotPreview(
   const header = intake.templateSnapshot?.documentHeader;
   const blocks = intake.templateSnapshot?.previewBlocks ?? [];
   return (
-    <div className="s01-drawer-paper-sheet" aria-label="Pratinjau ringkas struktur template S03">
+    <div className="s01-drawer-paper-sheet" aria-label="Pratinjau ringkas struktur template">
       {header?.includeKopSurat && (
         <div className="s01-mini-kop">
           <OfficialKopSuratPreview settings={settings} variant="mini" />
@@ -296,6 +297,7 @@ export function CorrespondenceCenter({
   controlledPageSize,
   onControlledPageSizeChange,
   onPersistState,
+  onOpenSettings,
   onNotify,
 }: CorrespondenceCenterProps) {
   const documents = useMemo(() => state.documents ?? [], [state.documents]);
@@ -936,6 +938,26 @@ export function CorrespondenceCenter({
         </div>
       )}
 
+      {(!state.settings.schoolName?.trim() || !state.settings.headmasterName?.trim()) && (
+        <div className="s01-alert-banner is-warning" role="region" aria-label="Kesiapan Identitas Madrasah">
+          <div className="s01-alert-main">
+            <AlertTriangle size={18} aria-hidden="true" />
+            <div>
+              <strong>Kop Surat &amp; Nama Kepala Madrasah belum lengkap</strong>
+              <p>
+                Lengkapi identitas madrasah dan penandatangan sebelum menerbitkan surat dinas resmi agar KOP dan pengesahan tampil sempurna.
+              </p>
+            </div>
+          </div>
+          {onOpenSettings && (
+            <button type="button" className="s01-btn-secondary" onClick={onOpenSettings}>
+              <SlidersHorizontal size={14} aria-hidden="true" />
+              <span>Lengkapi Identitas</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* 4 Clickable Jewel KPI Tiles (Aligned with Validasi & Konflik Jadwal) */}
       <div className="s01-stats-grid" role="region" aria-label="Ringkasan statistik persuratan">
         <KpiMotionCard
@@ -1413,35 +1435,25 @@ export function CorrespondenceCenter({
                               doc.status === 'ARCHIVED' ||
                               doc.status === 'REVISED') &&
                             (onOpenArchiveDetail || onOpenPreview) ? (
-                              <>
-                                <button
-                                  type="button"
-                                  className="s5-dock-btn primary"
-                                  onClick={() => {
-                                    setOpenMenuDocId(null);
-                                    if (onOpenArchiveDetail) {
-                                      onOpenArchiveDetail(doc.id, doc.currentVersionId ?? null);
-                                    } else if (onOpenPreview) {
-                                      onOpenPreview({
-                                        documentId: doc.id,
-                                        draftId: linkedIntake?.id ?? null,
-                                        versionId: doc.currentVersionId ?? null,
-                                      });
-                                    }
-                                  }}
-                                >
-                                  <CheckCircle2 size={13} aria-hidden="true" />
-                                  <span>Buka Arsip &amp; PDF</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  className="s5-dock-btn"
-                                  onClick={(e) => openDetailModal(doc, e.currentTarget)}
-                                >
-                                  <Eye size={13} aria-hidden="true" />
-                                  <span>Ringkasan</span>
-                                </button>
-                              </>
+                              <button
+                                type="button"
+                                className="s5-dock-btn primary"
+                                onClick={() => {
+                                  setOpenMenuDocId(null);
+                                  if (onOpenArchiveDetail) {
+                                    onOpenArchiveDetail(doc.id, doc.currentVersionId ?? null);
+                                  } else if (onOpenPreview) {
+                                    onOpenPreview({
+                                      documentId: doc.id,
+                                      draftId: linkedIntake?.id ?? null,
+                                      versionId: doc.currentVersionId ?? null,
+                                    });
+                                  }
+                                }}
+                              >
+                                <CheckCircle2 size={13} aria-hidden="true" />
+                                <span>Buka Arsip &amp; PDF</span>
+                              </button>
                             ) : linkedIntake && onOpenStudio ? (
                               <>
                                 <button
@@ -2019,7 +2031,7 @@ export function CorrespondenceCenter({
                   </div>
                   <div style={{ minWidth: 0 }}>
                     <div className="s01-drawer-kicker">
-                      INSPEKTOR DOKUMEN · {inspectedDoc.id}
+                      INSPEKTOR DOKUMEN · {DOCUMENT_KIND_LABELS[inspectedDoc.documentType]}
                     </div>
                     <h2 id="s01-detail-drawer-title" className="s01-drawer-title">
                       {inspectedDoc.title}
@@ -2052,12 +2064,12 @@ export function CorrespondenceCenter({
                   <div className="s01-drawer-preview-box">
                     <div className="s01-drawer-preview-label">
                       {inspectedHasStudio
-                        ? 'Pratinjau Mini Naskah S04 (Baca-Saja)'
-                        : 'Pratinjau Mini Snapshot Template S03 (Baca-Saja)'}
+                        ? 'Pratinjau Mini Naskah (Baca-Saja)'
+                        : 'Pratinjau Mini Template (Baca-Saja)'}
                     </div>
                     <div className="s01-drawer-paper-stage">
                       {inspectedHasStudio && inspectedLinkedIntake.studio?.content ? (
-                        <div className="s01-drawer-paper-sheet" aria-label="Pratinjau mini isi naskah S04">
+                        <div className="s01-drawer-paper-sheet" aria-label="Pratinjau mini isi naskah">
                           {inspectedLinkedIntake.templateSnapshot?.documentHeader?.includeKopSurat && (
                             <div className="s01-mini-kop">
                               <OfficialKopSuratPreview settings={state.settings} variant="mini" />
@@ -2081,8 +2093,8 @@ export function CorrespondenceCenter({
 
                 <dl className="s01-meta-grid">
                   <div className="s01-meta-item">
-                    <dt>ID Dokumen</dt>
-                    <dd style={{ fontFamily: 'var(--font-mono)' }}>{inspectedDoc.id}</dd>
+                    <dt>Terakhir Diperbarui</dt>
+                    <dd className="s5-tnum">{formatIndonesianDate(inspectedDoc.updatedAt.slice(0, 10))}</dd>
                   </div>
                   <div className="s01-meta-item">
                     <dt>Nomor Surat</dt>
@@ -2146,7 +2158,7 @@ export function CorrespondenceCenter({
                 <div className="s01-notice-box">
                   {inspectedDoc.intakeDraftId ? (
                     <>
-                      Draft surat tersimpan lokal beserta snapshot data sumber. Anda dapat melanjutkan penyuntingan naskah, mengesahkan dokumen resmi, atau mengelola lampiran di ruang arsip.
+                      Draft surat tersimpan lokal beserta data rujukan surat. Anda dapat melanjutkan penyuntingan naskah, mengesahkan dokumen resmi, atau mengelola lampiran di ruang arsip.
                     </>
                   ) : (
                     <>
@@ -2311,9 +2323,8 @@ export function CorrespondenceCenter({
             </div>
             <div className="s01-modal-body">
               <p style={{ margin: 0 }}>
-                Draft <strong>{pendingDeleteDoc.title}</strong> (<code>{pendingDeleteDoc.id}</code>) beserta
-                isian Data Awal (S03) dan naskah Document Studio (S04) terkait akan dihapus permanen dari
-                penyimpanan lokal. Data Master dan jadwal resmi tidak terpengaruh.
+                Draft <strong>{pendingDeleteDoc.title}</strong> beserta isian data surat dan naskah yang tersimpan
+                akan dihapus permanen dari perangkat ini. Data Master dan jadwal resmi tidak terpengaruh.
               </p>
             </div>
             <div className="s01-modal-foot">

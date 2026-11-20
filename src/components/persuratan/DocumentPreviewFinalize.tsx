@@ -650,7 +650,9 @@ export function DocumentPreviewFinalize({
     }
   };
 
-  const handleConfirmFinalize = async () => {
+  const handleConfirmFinalize = async (
+    postAction: 'archive' | 'download' | 'print' = 'archive'
+  ) => {
     if (!effectiveDraft || !baseContent || !canExecuteFinalization) return;
     setIsSubmitting(true);
     setActionError(null);
@@ -665,9 +667,19 @@ export function DocumentPreviewFinalize({
         demoAcknowledged,
       });
       await onPersistState(result.state);
+      const safeFileName = `${result.documentVersion.documentNumber.replace(/[^A-Za-z0-9._-]+/g, '_')}.pdf`;
+      if (postAction === 'download') {
+        triggerPdfBytesDownload(result.pdfBytes, safeFileName);
+      } else if (postAction === 'print') {
+        triggerPdfBytesPrint(result.pdfBytes);
+      }
       setIsConfirmModalOpen(false);
       onNotify?.(
-        `Dokumen "${result.documentRecord.title}" resmi disahkan dengan Nomor ${result.documentVersion.documentNumber}.`,
+        postAction === 'download'
+          ? `Dokumen "${result.documentRecord.title}" resmi disahkan (${result.documentVersion.documentNumber}) dan PDF langsung diunduh.`
+          : postAction === 'print'
+            ? `Dokumen "${result.documentRecord.title}" resmi disahkan (${result.documentVersion.documentNumber}). Dialog cetak dibuka…`
+            : `Dokumen "${result.documentRecord.title}" resmi disahkan dengan Nomor ${result.documentVersion.documentNumber}.`,
         'success'
       );
       onFinalizedToArchive?.(result.documentRecord.id, result.documentVersion.id);
@@ -693,7 +705,7 @@ export function DocumentPreviewFinalize({
           existing.bytes,
           `${resolvedVersion.documentNumber.replace(/[^A-Za-z0-9._-]+/g, '_')}.pdf`
         );
-        onNotify?.('Mengunduh berkas PDF final terverifikasi SHA-256.', 'success');
+        onNotify?.('Mengunduh berkas PDF resmi terverifikasi.', 'success');
         return;
       }
       // Deterministik render ulang dari snapshot immutable bila sesi browser baru
@@ -719,7 +731,7 @@ export function DocumentPreviewFinalize({
         rendered.pdfBytes,
         `${resolvedVersion.documentNumber.replace(/[^A-Za-z0-9._-]+/g, '_')}.pdf`
       );
-      onNotify?.('PDF final direkonstruksi dari snapshot resmi dan siap diunduh.', 'success');
+      onNotify?.('Berkas PDF resmi siap diunduh.', 'success');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Gagal menyiapkan unduhan PDF final.';
       setActionError(msg);
@@ -739,7 +751,7 @@ export function DocumentPreviewFinalize({
       );
       if (existing) {
         triggerPdfBytesPrint(existing.bytes);
-        onNotify?.('Membuka dialog cetak PDF resmi terverifikasi…', 'info');
+        onNotify?.('Membuka dialog cetak PDF resmi…', 'info');
         return;
       }
       const rendered = await renderOfficialDocumentPdf({
@@ -761,7 +773,7 @@ export function DocumentPreviewFinalize({
         bytes: rendered.pdfBytes,
       });
       triggerPdfBytesPrint(rendered.pdfBytes);
-      onNotify?.('Membuka dialog cetak PDF resmi dari snapshot terverifikasi…', 'info');
+      onNotify?.('Membuka dialog cetak PDF resmi…', 'info');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Gagal menyiapkan cetak PDF final.';
       setActionError(msg);
@@ -785,7 +797,7 @@ export function DocumentPreviewFinalize({
       setIsRevisionModalOpen(false);
       setRevisionReason('');
       onNotify?.(
-        `Versi revisi v${created.revisionDocument.versionNumber} dibuat sebagai Draft baru. Dokumen final lama tetap aman read-only.`,
+        `Versi revisi v${created.revisionDocument.versionNumber} dibuat sebagai draft baru. Dokumen resmi lama tetap aman.`,
         'success'
       );
       onOpenRevisionInStudio?.(created.revisionDraft.id);
@@ -854,8 +866,7 @@ export function DocumentPreviewFinalize({
             {resolvedVersion && (
               <>
                 {' '}
-                · PDF {resolvedVersion.pdfPageCount} hal · SHA-256:{' '}
-                <code>{resolvedVersion.pdfChecksum.slice(0, 12)}…</code>
+                · PDF {resolvedVersion.pdfPageCount} halaman · Terverifikasi Resmi
               </>
             )}
           </div>
@@ -888,25 +899,27 @@ export function DocumentPreviewFinalize({
                 <RotateCcw size={14} aria-hidden="true" />
                 <span>Buat Revisi Baru</span>
               </button>
-              <button
-                type="button"
-                className="s02-btn-secondary"
-                disabled={isSubmitting}
-                onClick={() => void handlePrintFinalPdf()}
-                aria-label="Cetak langsung PDF resmi"
-              >
-                <Printer size={14} aria-hidden="true" />
-                <span>Cetak</span>
-              </button>
-              <button
-                type="button"
-                className="s02-btn-primary"
-                disabled={isSubmitting}
-                onClick={() => void handleDownloadFinalPdf()}
-              >
-                <Download size={14} aria-hidden="true" />
-                <span>Unduh PDF Final</span>
-              </button>
+              <div className="s05-split-cta-group" role="group" aria-label="Aksi penerbitan dokumen resmi">
+                <button
+                  type="button"
+                  className="s02-btn-primary"
+                  disabled={isSubmitting}
+                  onClick={() => void handleDownloadFinalPdf()}
+                >
+                  <Download size={14} aria-hidden="true" />
+                  <span>Unduh PDF Final</span>
+                </button>
+                <button
+                  type="button"
+                  className="s05-btn-outline-emerald"
+                  disabled={isSubmitting}
+                  onClick={() => void handlePrintFinalPdf()}
+                  aria-label="Cetak langsung PDF resmi"
+                >
+                  <Printer size={14} aria-hidden="true" />
+                  <span>Cetak</span>
+                </button>
+              </div>
             </>
           )}
 
@@ -935,15 +948,15 @@ export function DocumentPreviewFinalize({
         <div className="s05-paper-stage">
           <div className="s05-paper-caption s5-tnum">
             <span>
-              Pratinjau Read-Only ({pageSettings.paperSize.toUpperCase()}{' '}
+              Pratinjau Cetak ({pageSettings.paperSize.toUpperCase()}{' '}
               {pageSettings.orientation === 'portrait' ? 'Portrait' : 'Landscape'} · Margin{' '}
               {pageSettings.marginsMm.top}/{pageSettings.marginsMm.right}/
               {pageSettings.marginsMm.bottom}/{pageSettings.marginsMm.left} mm)
             </span>
             <span>
               {isLockedFinal
-                ? 'Dokumen Final Read-Only · Snapshot Terkunci'
-                : 'Simulasi Tampilan S05 sebelum Cetak PDF Resmi'}
+                ? 'Dokumen Resmi Terkunci (Baca-Saja)'
+                : 'Pratinjau Kertas Penuh sebelum Pengesahan'}
             </span>
           </div>
 
@@ -951,7 +964,7 @@ export function DocumentPreviewFinalize({
             className={`s05-paper-sheet ${
               pageSettings.orientation === 'landscape' ? 'is-landscape' : ''
             }`}
-            aria-label="Kanvas pratinjau dokumen read-only S05"
+            aria-label="Kanvas pratinjau dokumen resmi baca-saja"
             style={{
               padding: `${pageSettings.marginsMm.top}mm ${pageSettings.marginsMm.right}mm ${pageSettings.marginsMm.bottom}mm ${pageSettings.marginsMm.left}mm`,
             }}
@@ -1015,7 +1028,7 @@ export function DocumentPreviewFinalize({
         </div>
 
         {/* Right Rail: Checklist, Numbering, Finalize & Version History */}
-        <aside className="s05-rail" aria-label="Panel pemeriksaan dan pengesahan S05">
+        <aside className="s05-rail" aria-label="Panel pemeriksaan dan pengesahan dokumen">
           {/* Card 1: Numbering */}
           <div className="s05-card">
             <div className="s05-card-head">
@@ -1284,16 +1297,19 @@ export function DocumentPreviewFinalize({
             </div>
           )}
 
-          {/* Source Snapshots & Capture Timestamps */}
+          {/* Source Snapshots & Capture Timestamps (Collapsible to avoid clutter) */}
           {((resolvedVersion?.sourceSnapshots ?? effectiveDraft?.sourceSnapshots)?.length ?? 0) > 0 && (
-            <div className="s05-card">
-              <div className="s05-card-head">
+            <details className="s05-card s05-disclosure">
+              <summary className="s05-card-head s05-disclosure-summary">
                 <h2>
                   <ShieldCheck size={16} aria-hidden="true" />
                   <span>Sumber Data &amp; Snapshot</span>
                 </h2>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                <span className="s5-tnum" style={{ fontSize: '11.5px', fontWeight: 700, color: '#4c655d' }}>
+                  {(resolvedVersion?.sourceSnapshots ?? effectiveDraft?.sourceSnapshots ?? []).length} sumber
+                </span>
+              </summary>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '7px', marginTop: '4px' }}>
                 {(resolvedVersion?.sourceSnapshots ?? effectiveDraft?.sourceSnapshots ?? []).map(
                   (snap, idx) => (
                     <div
@@ -1310,8 +1326,8 @@ export function DocumentPreviewFinalize({
                     >
                       <strong style={{ color: '#0b2923' }}>{snap.sourceLabel}</strong>
                       <span style={{ color: '#4c655d' }}>
-                        {snap.provenance} · {snap.status}
-                        {snap.sourceIdentity ? ` · ${snap.sourceIdentity}` : ''}
+                        {snap.provenance === 'AUTO_SYSTEM' ? 'Otomatis Sistem' : 'Isian Operator'} ·{' '}
+                        {snap.status === 'VERIFIED' ? 'Terverifikasi' : snap.status}
                       </span>
                       <span className="s5-tnum" style={{ color: '#5c756d', fontSize: '11px' }}>
                         Diambil: {snap.capturedAt ? snap.capturedAt.replace('T', ' ').slice(0, 19) : '—'}
@@ -1320,7 +1336,7 @@ export function DocumentPreviewFinalize({
                   )
                 )}
               </div>
-            </div>
+            </details>
           )}
 
           {/* Card 3: Version History */}
@@ -1397,8 +1413,8 @@ export function DocumentPreviewFinalize({
                   <LockKeyhole size={19} />
                 </div>
                 <div>
-                  <h2 id="s05-finalize-confirm-title">Konfirmasi Finalisasi &amp; Pengesahan Resmi</h2>
-                  <p>Setelah disahkan, dokumen terkunci read-only dan berkas PDF final disimpan.</p>
+                  <h2 id="s05-finalize-confirm-title">Konfirmasi Pengesahan &amp; Penerbitan Resmi</h2>
+                  <p>Setelah disahkan, naskah dikunci sebagai arsip resmi dan berkas PDF final disimpan.</p>
                 </div>
               </div>
               <button
@@ -1430,12 +1446,12 @@ export function DocumentPreviewFinalize({
                 {numberValidation.normalized}
               </div>
               <p style={{ margin: 0, fontSize: '12.5px', color: '#49615b' }}>
-                Snapshot naskah, snapshot Data Master/Jadwal, dan berkas PDF final terverifikasi SHA-256
-                akan dibekukan sebagai versi resmi v{resolvedDoc?.versionNumber ?? 1}. Perubahan di masa
-                mendatang hanya dapat dilakukan melalui fitur Buat Revisi Non-Destruktif.
+                Naskah, data rujukan madrasah, dan berkas PDF resmi akan dikunci sebagai versi resmi
+                v{resolvedDoc?.versionNumber ?? 1}. Perubahan di masa mendatang hanya dapat dilakukan
+                melalui fitur Buat Revisi.
               </p>
             </div>
-            <div className="s01-modal-foot">
+            <div className="s01-modal-foot s05-confirm-split-foot">
               <button
                 type="button"
                 className="s02-btn-secondary"
@@ -1445,14 +1461,32 @@ export function DocumentPreviewFinalize({
                 Batal
               </button>
               <button
+                type="button"
+                className="s02-btn-secondary"
+                disabled={isSubmitting}
+                onClick={() => void handleConfirmFinalize('archive')}
+              >
+                <FileCheck2 size={14} aria-hidden="true" />
+                <span>Sahkan &amp; Buka Arsip</span>
+              </button>
+              <button
+                type="button"
+                className="s05-btn-outline-emerald"
+                disabled={isSubmitting}
+                onClick={() => void handleConfirmFinalize('print')}
+              >
+                <Printer size={14} aria-hidden="true" />
+                <span>Terbitkan &amp; Cetak</span>
+              </button>
+              <button
                 ref={confirmFinalizeBtnRef}
                 type="button"
                 className="s02-btn-primary"
                 disabled={isSubmitting}
-                onClick={() => void handleConfirmFinalize()}
+                onClick={() => void handleConfirmFinalize('download')}
               >
-                <FileCheck2 size={14} aria-hidden="true" />
-                <span>{isSubmitting ? 'Mengesahkan & Membuat PDF…' : 'Sahkan & Simpan Final'}</span>
+                <Download size={14} aria-hidden="true" />
+                <span>{isSubmitting ? 'Menerbitkan…' : 'Terbitkan & Unduh PDF'}</span>
               </button>
             </div>
           </div>

@@ -1467,6 +1467,18 @@ export function DocumentStudio({
         </div>
 
         <div className="s04-header-badges">
+          <div className="s04-composer-switch" role="group" aria-label="Mode penyusunan naskah">
+            <button
+              type="button"
+              className="s04-composer-pill"
+              onClick={onBackToIntake}
+              title="Kembali ke mode Form Terstruktur untuk mengisi data utama"
+            >
+              <span>Form Terstruktur</span>
+            </button>
+            <span className="s04-composer-pill is-active">Kanvas Naskah Bebas</span>
+          </div>
+
           <span
             className={`s04-status-badge s5-tnum ${statusBadgeClass}`}
             role="status"
@@ -2403,7 +2415,7 @@ export function DocumentStudio({
               {editor ? (
                 <EditorContent editor={editor} />
               ) : (
-                <div className="s04-prosemirror" aria-label="Pratinjau naskah awal Document Studio S04">
+                <div className="s04-prosemirror" aria-label="Pratinjau naskah awal editor">
                   {renderStaticPreviewNodes(docJson.content)}
                 </div>
               )}
@@ -2612,17 +2624,11 @@ export function DocumentStudio({
 
                   <dl className="s04-dl">
                     <div className="s04-dl-item">
-                      <dt>ID Draft &amp; Dokumen</dt>
-                      <dd style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '11.5px' }}>
-                        {draft.id} · {draft.documentId}
-                      </dd>
-                    </div>
-                    <div className="s04-dl-item">
                       <dt>Nomor Resmi</dt>
                       <dd>Belum Bernomor (diterbitkan saat pengesahan)</dd>
                     </div>
                     <div className="s04-dl-item">
-                      <dt>Template Asal (Snapshot Beku)</dt>
+                      <dt>Template Sumber</dt>
                       <dd>
                         {draft.templateSnapshot.code} — {draft.templateSnapshot.name} (v
                         {draft.templateSnapshot.version})
@@ -2635,16 +2641,11 @@ export function DocumentStudio({
                     {draft.scheduleVersionId && (
                       <div className="s04-dl-item">
                         <dt>Jadwal Resmi Terikat</dt>
-                        <dd className="s5-tnum">
-                          {draft.scheduleVersionId}
-                          {draft.scheduleVersionFingerprint
-                            ? ` (${draft.scheduleVersionFingerprint})`
-                            : ''}
-                        </dd>
+                        <dd className="s5-tnum">Terverifikasi Resmi</dd>
                       </div>
                     )}
                     <div className="s04-dl-item">
-                      <dt>Status Studio &amp; Penyimpanan</dt>
+                      <dt>Status Penyimpanan</dt>
                       <dd>
                         {hasSavedStudio || lastSavedAt
                           ? `Draft tersimpan (${statusBadgeText})`
@@ -2790,8 +2791,8 @@ export function DocumentStudio({
               {drawerTab === 'snapshots' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <p style={{ margin: 0, color: '#4f6b63', fontSize: '12px' }}>
-                    Naskah S04 membaca snapshot beku dari S03. Perubahan Data Master setelah draft
-                    disimpan tidak mengubah isi surat ini secara diam-diam.
+                    Kanvas ini membaca salinan data yang terkunci saat draf dibuat. Perubahan Data
+                    Master setelah draf disimpan tidak mengubah isi surat secara diam-diam.
                   </p>
 
                   <button
@@ -2843,7 +2844,7 @@ export function DocumentStudio({
                   ) : (
                     <>
                       <p style={{ margin: 0, color: '#4f6b63', fontSize: '12px' }}>
-                        Klik token di bawah untuk menyorot lokasinya di naskah, kecuali placeholder nomor resmi yang akan diisi saat Finalisasi S05.
+                        Klik token di bawah untuk menyorot lokasinya di naskah, kecuali placeholder nomor resmi yang akan diisi otomatis saat pengesahan dokumen.
                       </p>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                         {textStats.unresolvedTokens.map((tok) => (
@@ -3042,7 +3043,7 @@ export function DocumentStudio({
                           })
                         }
                       />
-                      <span>Ulangi header tabel pada halaman berikutnya (PDF S05)</span>
+                      <span>Ulangi header tabel pada halaman berikutnya saat dicetak</span>
                     </label>
                   </div>
 
@@ -3050,9 +3051,8 @@ export function DocumentStudio({
                     <Info size={13} aria-hidden="true" style={{ flexShrink: 0, marginTop: '2px' }} />
                     <span>
                       Kanvas editor menampilkan estimasi jumlah halaman (<code>~{estimatedPages} hal</code>)
-                      berdasarkan tinggi konten CSS serta penanda <em>Page Break</em> manual. Penomoran
-                      halaman eksak dan pengulangan header tabel antar-halaman dirender deterministik oleh
-                      mesin PDF pada tahap S05.
+                      berdasarkan tata letak serta pemisah halaman manual. Penomoran halaman eksak dan
+                      pengulangan header tabel disusun presisi saat berkas PDF resmi diterbitkan.
                     </span>
                   </div>
 
@@ -3068,7 +3068,7 @@ export function DocumentStudio({
         )}
       </div>
 
-      {/* Footer Action Bar */}
+      {/* Footer Action Bar (Utility & Navigation Only — Primary CTA lives cleanly in Top Header) */}
       <footer className="s04-footer-bar">
         <div className="s04-footer-note">
           <Info size={14} aria-hidden="true" />
@@ -3121,17 +3121,6 @@ export function DocumentStudio({
               <span>Pratinjau Layar Penuh</span>
             </button>
           )}
-          {onPersistState && onFinalizedToArchive && (
-            <button
-              type="button"
-              className="s02-btn-primary"
-              disabled={isSaving}
-              onClick={() => void handleOpenExpressFinalize()}
-            >
-              <FileCheck2 size={14} aria-hidden="true" />
-              <span>Sahkan &amp; Terbitkan &rarr;</span>
-            </button>
-          )}
         </div>
       </footer>
 
@@ -3181,7 +3170,7 @@ export function DocumentStudio({
                 </div>
                 <div>
                   <h2 id="s04-delete-draft-title">Hapus Draft Dokumen Ini?</h2>
-                  <p>Naskah Document Studio (S04) dan Data Awal (S03) terkait akan dihapus.</p>
+                  <p>Naskah surat dan isian data terkait akan dihapus dari penyimpanan lokal.</p>
                 </div>
               </div>
               <button
@@ -3452,9 +3441,9 @@ export function DocumentStudio({
                   <GitCompare size={19} />
                 </div>
                 <div>
-                  <h2 id="s04-diff-modal-title">Perbandingan Snapshot Sumber vs Data Terkini</h2>
+                  <h2 id="s04-diff-modal-title">Perbandingan Data Tersimpan vs Data Terkini</h2>
                   <p>
-                    Suntingan manual pada naskah S04 tetap aman dan tidak akan tertimpa otomatis.
+                    Suntingan manual pada naskah tetap aman dan tidak akan tertimpa otomatis.
                   </p>
                 </div>
               </div>
@@ -3471,14 +3460,14 @@ export function DocumentStudio({
             <div className="s01-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '55vh', overflowY: 'auto' }}>
               {sourceDiff.items.length === 0 ? (
                 <p style={{ margin: 0, color: '#4f6b63' }}>
-                  Dokumen ini tidak memiliki data snapshot terikat untuk dibandingkan.
+                  Dokumen ini tidak memiliki data rujukan terikat untuk dibandingkan.
                 </p>
               ) : (
                 <table className="s04-diff-table">
                   <thead>
                     <tr>
                       <th>Sumber &amp; Field</th>
-                      <th>Snapshot Draft</th>
+                      <th>Data Tersimpan di Draft</th>
                       <th>Data Sistem Saat Ini</th>
                       <th>Status</th>
                     </tr>
@@ -3509,7 +3498,7 @@ export function DocumentStudio({
 
               {sourceDiff.changedSourceKeys.length > 0 && (
                 <div className="s04-diff-adopt-box">
-                  <strong>Pilih kelompok snapshot yang ingin disegarkan ke metadata draft:</strong>
+                  <strong>Pilih kelompok data rujukan yang ingin disegarkan ke draf:</strong>
                   <div className="s04-checkbox-stack">
                     {sourceDiff.changedSourceKeys.map((key) => {
                       const label =
@@ -3517,7 +3506,7 @@ export function DocumentStudio({
                           ? 'Identitas Madrasah & Penandatangan'
                           : key === 'master.teachers.selected'
                           ? 'Daftar Data Master Guru Terpilih'
-                          : 'Versi Jadwal Terbit Resmi (ScheduleVersion)';
+                          : 'Versi Jadwal Resmi Terbit';
                       const checked = selectedDiffKeys.includes(key);
                       return (
                         <label key={key} className="s04-checkbox-row">

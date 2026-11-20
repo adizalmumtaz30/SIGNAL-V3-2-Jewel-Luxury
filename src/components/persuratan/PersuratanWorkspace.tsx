@@ -2,10 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   Archive,
-  FileCheck2,
-  FileEdit,
+  Check,
   FileStack,
-  FileText,
   Inbox,
   SlidersHorizontal,
 } from 'lucide-react';
@@ -125,8 +123,6 @@ export function PersuratanWorkspace({
   const [dirtySource, setDirtySource] = useState<PersuratanDirtySource>(null);
   const [isStudioFocusMode, setIsStudioFocusMode] = useState<boolean>(false);
   const [pendingTransition, setPendingTransition] = useState<PendingTransition | null>(null);
-  const [pendingEditS03WarningDraft, setPendingEditS03WarningDraft] =
-    useState<DocumentIntakeDraft | null>(null);
   const stayOnScreenBtnRef = useRef<HTMLButtonElement | null>(null);
   const handledLaunchNonceRef = useRef<number | null>(launchRequest?.nonce ?? null);
 
@@ -264,10 +260,6 @@ export function PersuratanWorkspace({
     const found = (state.intakeDrafts ?? []).find((d) => d.id === draftId);
     if (!found) {
       onNotify?.('Draft data surat tidak ditemukan di workspace.', 'warning');
-      return;
-    }
-    if (found.studio?.editorStatus === 'IN_PROGRESS' && found.studio.content) {
-      setPendingEditS03WarningDraft(found);
       return;
     }
     openIntakeForDraft(found);
@@ -440,110 +432,132 @@ export function PersuratanWorkspace({
       ? 5
       : 6;
 
+  const isCreationFlow = subView === 'intake' || subView === 'studio' || subView === 'preview';
+  const customTemplatesCount = (state.customTemplates ?? []).length;
+
   return (
     <div className="p5-persuratan-shell">
       {!(subView === 'studio' && isStudioFocusMode) && (
       <nav className="s02-subnav-bar" aria-label="Navigasi Modul Persuratan dan Arsip">
-        <div className="s02-subnav-tabs" role="tablist" aria-label="Area kerja Persuratan">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={subView === 'center'}
-            className={`s02-subnav-tab ${subView === 'center' ? 'is-active' : ''}`}
-            onClick={() => requestSubViewChange('center')}
-          >
-            <Inbox size={15} aria-hidden="true" />
-            <span>Arsip &amp; Surat</span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={subView === 'templates'}
-            className={`s02-subnav-tab ${subView === 'templates' ? 'is-active' : ''}`}
-            onClick={() => requestSubViewChange('templates')}
-          >
-            <FileStack size={15} aria-hidden="true" />
-            <span>Galeri Template</span>
-            <span className="s02-subnav-count s5-tnum">{allTemplates.length}</span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={subView === 'template-manager'}
-            className={`s02-subnav-tab ${subView === 'template-manager' ? 'is-active' : ''}`}
-            onClick={() => handleOpenTemplateManager(null)}
-          >
-            <SlidersHorizontal size={15} aria-hidden="true" />
-            <span>Kelola Template</span>
-            {(state.customTemplates ?? []).length > 0 && (
-              <span className="s02-subnav-count s5-tnum">{(state.customTemplates ?? []).length}</span>
+        <div className="s02-subnav-left">
+          <div className="s02-subnav-tabs" role="tablist" aria-label="Area kerja Persuratan">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={subView === 'center'}
+              className={`s02-subnav-tab ${subView === 'center' ? 'is-active' : ''}`}
+              onClick={() => requestSubViewChange('center')}
+            >
+              <Inbox size={15} aria-hidden="true" />
+              <span>Arsip &amp; Surat</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={subView === 'templates'}
+              className={`s02-subnav-tab ${
+                subView === 'templates' ? 'is-active' : ''
+              }`}
+              onClick={() => requestSubViewChange('templates')}
+            >
+              <FileStack size={15} aria-hidden="true" />
+              <span>Galeri Template</span>
+              <span className="s02-subnav-count s5-tnum">{allTemplates.length}</span>
+            </button>
+            {subView === 'detail' && (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={true}
+                className="s02-subnav-tab is-active"
+                onClick={() => requestSubViewChange('detail')}
+              >
+                <Archive size={15} aria-hidden="true" />
+                <span>Detail &amp; Arsip</span>
+              </button>
             )}
-          </button>
-          {subView === 'intake' && (
+          </div>
+        </div>
+
+        <div className="s02-subnav-right">
+          {isCreationFlow ? (
+            <ol className="p5-step-trail s5-tnum" aria-label="Alur pembuatan dokumen">
+              <li className={activeStepIndex > 3 ? 'is-done' : activeStepIndex === 3 ? 'is-current' : ''}>
+                {activeDraft && subView !== 'intake' ? (
+                  <button
+                    type="button"
+                    className="p5-step-btn"
+                    onClick={() => openIntakeForDraft(activeDraft)}
+                    title="Kembali ke isian data & parameter surat"
+                  >
+                    <Check size={12} aria-hidden="true" />
+                    <span>1. Data Surat</span>
+                  </button>
+                ) : (
+                  <span className="p5-step-label">
+                    {activeStepIndex > 3 && <Check size={12} aria-hidden="true" />}
+                    <span>1. Data Surat</span>
+                  </span>
+                )}
+              </li>
+              <li aria-hidden="true" className="p5-step-sep">/</li>
+              <li className={activeStepIndex > 4 ? 'is-done' : activeStepIndex === 4 ? 'is-current' : ''}>
+                {activeDraft && subView !== 'studio' ? (
+                  <button
+                    type="button"
+                    className="p5-step-btn"
+                    onClick={() => handleOpenStudio(activeDraft.id)}
+                    title="Buka Editor Naskah"
+                  >
+                    {activeStepIndex > 4 && <Check size={12} aria-hidden="true" />}
+                    <span>2. Editor Naskah</span>
+                  </button>
+                ) : (
+                  <span className="p5-step-label">
+                    {activeStepIndex > 4 && <Check size={12} aria-hidden="true" />}
+                    <span>2. Editor Naskah</span>
+                  </span>
+                )}
+              </li>
+              <li aria-hidden="true" className="p5-step-sep">/</li>
+              <li className={activeStepIndex >= 5 ? 'is-current' : ''}>
+                {activeDraft && subView !== 'preview' ? (
+                  <button
+                    type="button"
+                    className="p5-step-btn"
+                    onClick={() =>
+                      handleOpenPreview({
+                        documentId: activeDraft.documentId,
+                        draftId: activeDraft.id,
+                        versionId: null,
+                      })
+                    }
+                    title="Buka pratinjau penuh & pengesahan"
+                  >
+                    <span>3. Pratinjau &amp; Sahkan</span>
+                  </button>
+                ) : (
+                  <span className="p5-step-label">
+                    <span>3. Pratinjau &amp; Sahkan</span>
+                  </span>
+                )}
+              </li>
+            </ol>
+          ) : (
             <button
               type="button"
-              role="tab"
-              aria-selected={true}
-              className="s02-subnav-tab is-active"
-              onClick={() => requestSubViewChange('intake')}
+              className={`s02-subnav-util-btn ${subView === 'template-manager' ? 'is-active' : ''}`}
+              onClick={() => handleOpenTemplateManager(null)}
+              title="Kelola template khusus madrasah"
             >
-              <FileEdit size={15} aria-hidden="true" />
-              <span>Isian Konteks</span>
-            </button>
-          )}
-          {subView === 'studio' && (
-            <button
-              type="button"
-              role="tab"
-              aria-selected={true}
-              className="s02-subnav-tab is-active"
-              onClick={() => requestSubViewChange('studio')}
-            >
-              <FileText size={15} aria-hidden="true" />
-              <span>Editor Naskah</span>
-            </button>
-          )}
-          {subView === 'preview' && (
-            <button
-              type="button"
-              role="tab"
-              aria-selected={true}
-              className="s02-subnav-tab is-active"
-              onClick={() => requestSubViewChange('preview')}
-            >
-              <FileCheck2 size={15} aria-hidden="true" />
-              <span>Pratinjau &amp; Sahkan</span>
-            </button>
-          )}
-          {subView === 'detail' && (
-            <button
-              type="button"
-              role="tab"
-              aria-selected={true}
-              className="s02-subnav-tab is-active"
-              onClick={() => requestSubViewChange('detail')}
-            >
-              <Archive size={15} aria-hidden="true" />
-              <span>Detail &amp; Arsip</span>
+              <SlidersHorizontal size={14} aria-hidden="true" />
+              <span>Kelola Template</span>
+              {customTemplatesCount > 0 && (
+                <span className="s02-subnav-count s5-tnum">{customTemplatesCount}</span>
+              )}
             </button>
           )}
         </div>
-
-        {(subView === 'intake' || subView === 'studio' || subView === 'preview') && (
-          <ol className="p5-step-trail s5-tnum" aria-label="Alur pembuatan dokumen">
-            <li className={activeStepIndex > 3 ? 'is-done' : activeStepIndex === 3 ? 'is-current' : ''}>
-              <span>1. Data Surat</span>
-            </li>
-            <li aria-hidden="true" className="p5-step-sep">/</li>
-            <li className={activeStepIndex > 4 ? 'is-done' : activeStepIndex === 4 ? 'is-current' : ''}>
-              <span>2. Editor Naskah</span>
-            </li>
-            <li aria-hidden="true" className="p5-step-sep">/</li>
-            <li className={activeStepIndex >= 5 ? 'is-current' : ''}>
-              <span>3. Pratinjau &amp; Sahkan</span>
-            </li>
-          </ol>
-        )}
       </nav>
       )}
 
@@ -556,6 +570,7 @@ export function PersuratanWorkspace({
           onPersistState={persistStateUnified}
           onNotify={onNotify}
           onOpenTemplateGallery={() => requestSubViewChange('templates')}
+          onOpenSettings={onNavigateToSettings}
           onEditIntakeDraft={handleEditExistingIntakeDraft}
           onOpenStudio={handleOpenStudio}
           onOpenPreview={handleOpenPreview}
@@ -744,9 +759,9 @@ export function PersuratanWorkspace({
       )}
 
       {subView === 'studio' && !activeDraft && (
-        <div className="s04-banner is-warning" role="region" aria-label="Draft Document Studio tidak ditemukan">
+        <div className="s04-banner is-warning" role="region" aria-label="Draft Editor Naskah tidak ditemukan">
           <div>
-            Draft data awal S03 tidak ditemukan atau belum dipilih. Kembali ke Pusat Persuratan untuk
+            Draft data surat tidak ditemukan atau belum dipilih. Kembali ke Arsip &amp; Surat untuk
             memilih draft yang tersedia.
           </div>
           <button
@@ -754,90 +769,13 @@ export function PersuratanWorkspace({
             className="s02-btn-primary"
             onClick={() => requestSubViewChange('center')}
           >
-            Kembali ke Pusat Persuratan
+            Kembali ke Arsip &amp; Surat
           </button>
         </div>
       )}
       </div>
 
-      {/* Warning Modal when Clicking "Edit S03" on a Draft with Existing S04 Studio Content */}
-      {pendingEditS03WarningDraft && (
-        <div
-          className="s01-modal-scrim"
-          role="presentation"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setPendingEditS03WarningDraft(null);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') {
-              e.stopPropagation();
-              setPendingEditS03WarningDraft(null);
-            }
-          }}
-        >
-          <div
-            className="s01-modal-panel"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="s03-s04-warning-title"
-          >
-            <div className="s01-modal-head">
-              <div className="s01-modal-title-wrap">
-                <div className="s01-modal-icon" aria-hidden="true">
-                  <AlertTriangle size={20} />
-                </div>
-                <div>
-                  <h2 id="s03-s04-warning-title">Naskah Surat Sudah Tersusun</h2>
-                  <p>Draft ini sudah memiliki naskah yang sedang disunting di Editor Naskah.</p>
-                </div>
-              </div>
-            </div>
-            <div className="s01-modal-body">
-              <p style={{ margin: 0 }}>
-                Mengubah data surat akan memperbarui snapshot sumber, sementara naskah yang sudah Anda
-                tulis tetap dipertahankan (tidak tertimpa otomatis). Saat membuka editor kembali, Anda
-                dapat memilih tetap memakai naskah lama atau menyusun ulang dari data baru.
-              </p>
-            </div>
-            <div
-              className="s01-modal-foot"
-              style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap' }}
-            >
-              <button
-                type="button"
-                className="s02-btn-secondary"
-                onClick={() => setPendingEditS03WarningDraft(null)}
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                className="s02-btn-secondary"
-                onClick={() => {
-                  const target = pendingEditS03WarningDraft;
-                  setPendingEditS03WarningDraft(null);
-                  handleOpenStudio(target.id);
-                }}
-              >
-                Lanjutkan ke Naskah
-              </button>
-              <button
-                type="button"
-                className="s02-btn-primary"
-                onClick={() => {
-                  const target = pendingEditS03WarningDraft;
-                  setPendingEditS03WarningDraft(null);
-                  openIntakeForDraft(target);
-                }}
-              >
-                Ubah Data Surat (Naskah Aman)
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Unsaved S03/S04 Changes Guard Modal */}
+      {/* Unsaved Form / Editor Changes Guard Modal (Safe Emerald Stay CTA + Quiet Danger Leave) */}
       {pendingTransition && (
         <div
           className="s01-modal-scrim"
@@ -880,24 +818,16 @@ export function PersuratanWorkspace({
             <div className="s01-modal-body">
               <p style={{ margin: 0 }}>
                 Jika Anda keluar sekarang, perubahan yang belum disimpan tidak akan tersimpan ke
-                penyimpanan lokal. Lanjutkan keluar tanpa menyimpan?
+                penyimpanan lokal.
               </p>
             </div>
             <div
               className="s01-modal-foot"
-              style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}
+              style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap' }}
             >
               <button
-                ref={stayOnScreenBtnRef}
                 type="button"
-                className="s02-btn-secondary"
-                onClick={() => setPendingTransition(null)}
-              >
-                {dirtySource === 'studio' ? 'Lanjutkan Menyunting Naskah' : 'Lanjutkan Mengisi Form'}
-              </button>
-              <button
-                type="button"
-                className="s02-btn-primary"
+                className="s02-btn-danger-outline"
                 onClick={() => {
                   const target = pendingTransition;
                   setPendingTransition(null);
@@ -905,6 +835,14 @@ export function PersuratanWorkspace({
                 }}
               >
                 Keluar Tanpa Simpan
+              </button>
+              <button
+                ref={stayOnScreenBtnRef}
+                type="button"
+                className="s02-btn-primary"
+                onClick={() => setPendingTransition(null)}
+              >
+                {dirtySource === 'studio' ? 'Lanjutkan Menyunting Naskah' : 'Lanjutkan Mengisi Form'}
               </button>
             </div>
           </div>
