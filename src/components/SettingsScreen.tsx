@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import type { ActivityType, AppState, Day, PeriodDefinition } from '../domain/types';
 import { DAYS } from '../domain/types';
+import { MotionModalDialog } from './KpiMotion';
 import {
   clockToMinutes,
   createDefaultPeriodDefinitions,
@@ -2645,14 +2646,12 @@ export function SettingsScreen({
 
       {/* In-App Reset Workspace Confirmation Modal */}
       {resetModalOpen && (
-        <div
-          className="modal-scrim"
-          role="presentation"
-          onMouseDown={(e) => {
+        <MotionModalDialog
+          ariaLabel="Konfirmasi Reset Workspace"
+          onBackdropMouseDown={(e) => {
             if (e.target === e.currentTarget) setResetModalOpen(false);
           }}
         >
-          <div className="modal-panel" role="dialog" aria-modal="true" aria-label="Konfirmasi Reset Workspace">
             <div className="modal-head">
               <div className="modal-title-icon" style={{ background: '#FBEAE8', color: '#A63A2E' }}>
                 <AlertTriangle size={20} />
@@ -2702,8 +2701,7 @@ export function SettingsScreen({
                 </button>
               </div>
             </div>
-          </div>
-        </div>
+        </MotionModalDialog>
       )}
       {/* Fixed Viewport Row Insert-Below Menu (never clipped by table scroll) */}
       {insertMenuState && (

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import type { AppState, ValidationIssue, ValidationReport } from '../domain/types';
 import { AiConflictHelper } from './AiConflictHelper';
+import { MotionModalDialog } from './KpiMotion';
 
 interface QuickValidationModalProps {
   state: AppState;
@@ -108,14 +109,11 @@ export function QuickValidationModal({
   if (!isOpen) return null;
 
   return (
-    <div className="modal-scrim" role="presentation" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div
-        className="modal-panel"
-        style={{ maxWidth: '820px', width: '92vw', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Laporan Pemeriksaan Cepat Jadwal"
-      >
+    <MotionModalDialog
+      ariaLabel="Laporan Pemeriksaan Cepat Jadwal"
+      panelStyle={{ maxWidth: '820px', width: '92vw', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}
+      onBackdropMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
         {/* Modal Head */}
         <div className="modal-head" style={{ borderBottom: '1px solid #e7e5da', paddingBottom: '14px' }}>
           <div className="modal-title-icon" style={{ background: statusType === 'PASS' ? '#e9f5ee' : statusType === 'FAIL' ? '#fdf0ee' : '#fdf8ec' }}>
@@ -317,7 +315,6 @@ export function QuickValidationModal({
             Tutup Laporan
           </button>
         </div>
-      </div>
-    </div>
+    </MotionModalDialog>
   );
 }

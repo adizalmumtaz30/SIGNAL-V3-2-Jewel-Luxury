@@ -1569,17 +1569,7 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
           </p>
         </div>
 
-        <div
-          className="page-actions"
-          style={{
-            position: 'relative',
-            zIndex: 1,
-            display: 'flex',
-            gap: '10px',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-          }}
-        >
+        <div className="page-actions" style={{ position: 'relative', zIndex: 1 }}>
           <button
             type="button"
             className="button button-secondary"
@@ -1588,7 +1578,6 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
               setHolidayPage(1);
             }}
             data-s5-tooltip="Lihat daftar otomatis Tanggal Merah 2025–2028 & Kaldik Kemenag"
-            style={{ height: '40px', padding: '0 15px', borderRadius: '10px' }}
           >
             <CalendarCheck2 size={15} />
             <span>Kalender Kemenag</span>
@@ -1598,7 +1587,6 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
             className="button button-primary"
             onClick={() => setPdfModalOpen(true)}
             data-s5-tooltip="Cetak laporan resmi rekap kehadiran A4 / F4"
-            style={{ height: '40px', padding: '0 18px', borderRadius: '10px', fontSize: '12.5px' }}
           >
             <Download size={15} />
             <span>Ekspor PDF Resmi</span>

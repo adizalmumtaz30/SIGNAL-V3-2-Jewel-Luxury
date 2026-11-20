@@ -20,6 +20,7 @@ import type {
 import { teachingPeriodsForDay } from '../domain/time';
 import { COMMON_TEACHER_POSITIONS } from '../utils/madrasahLogo';
 import { MadrasahTeacherAvatar, detectTeacherGender } from './MadrasahTeacherAvatar';
+import { MotionModalDialog } from './KpiMotion';
 
 export type EntityKind = 'class' | 'teacher' | 'subject' | 'requirement';
 
@@ -270,18 +271,11 @@ export function EntityEditModal({
   };
 
   return (
-    <div
-      className="modal-scrim"
-      role="presentation"
-      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    <MotionModalDialog
+      ariaLabel={getTitle()}
+      panelStyle={{ maxWidth: '560px', width: '92vw' }}
+      onBackdropMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div
-        className="modal-panel"
-        style={{ maxWidth: '560px', width: '92vw' }}
-        role="dialog"
-        aria-modal="true"
-        aria-label={getTitle()}
-      >
         {/* Header */}
         <div className="modal-head">
           <div className="modal-title-icon" style={{ background: '#eef5f2' }}>
@@ -863,7 +857,6 @@ export function EntityEditModal({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </MotionModalDialog>
   );
 }

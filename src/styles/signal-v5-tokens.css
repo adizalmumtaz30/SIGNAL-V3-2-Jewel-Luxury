@@ -5077,3 +5077,639 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
     transition: none !important;
   }
 }
+
+/* ==========================================================================
+   23. FIGMA-PRO UNIFIED SOVEREIGN ATELIER BUTTON ARCHITECTURE
+   Eliminates legacy pill clutter, harmonizes heights/radii/gaps/bevels,
+   and establishes strict spatial discipline across every action cluster.
+   ========================================================================== */
+
+/* 23.1 Action Containers & Button Group Spacing */
+.hero .actions,
+.overview-focal-actions {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 12px !important;
+  margin-top: 18px !important;
+}
+
+.page-heading-actions,
+.page-actions,
+.schedule-toolbar-actions,
+.version-actions,
+.s5-admin-persuratan-actions,
+.s5-settings-header-actions {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+}
+
+.schedule-toolbar-actions {
+  margin-left: auto !important;
+}
+
+.modal-actions,
+.inline-form-actions,
+.requirement-form-actions {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+}
+
+.modal-actions {
+  margin-top: 6px !important;
+  padding-top: 14px !important;
+  border-top: 1px solid #E4ECE7 !important;
+}
+
+.inline-form-actions {
+  margin-top: 12px !important;
+  padding-top: 12px !important;
+  border-top: 1px dashed #D7E2DC !important;
+}
+
+/* 23.2 Unified Base Button Geometry & Optical Centering */
+.btn,
+.button,
+.primary-btn,
+.outline-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 16px !important;
+  border-radius: 10px !important;
+  font-family: var(--font-sans) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.005em !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  user-select: none !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  transition:
+    transform 160ms var(--s5-spring-fast),
+    background 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 180ms ease,
+    color 150ms ease !important;
+}
+
+.btn svg,
+.button svg,
+.btn-icon {
+  flex-shrink: 0 !important;
+}
+
+.btn-label {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  white-space: nowrap !important;
+  line-height: 1.15 !important;
+}
+
+/* Size Scale */
+.button-sm,
+.btn.sm {
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 0 12px !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+  gap: 6px !important;
+}
+
+.button-lg,
+.btn.lg {
+  height: 44px !important;
+  min-height: 44px !important;
+  padding: 0 22px !important;
+  border-radius: 11px !important;
+  font-size: 13.5px !important;
+  gap: 9px !important;
+}
+
+/* 23.3 Hierarchical Surface Variants */
+
+/* Primary — Sovereign Emerald with Burnished Gold Hairline & Specular Bevel */
+.btn.primary,
+.button-primary,
+.primary-btn {
+  background: linear-gradient(135deg, #164D42 0%, #0E362D 100%) !important;
+  color: #FFFFFF !important;
+  border: 1px solid rgba(197, 160, 89, 0.48) !important;
+  box-shadow:
+    0 2px 6px rgba(11, 41, 35, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
+}
+
+.btn.primary:hover:not(:disabled),
+.button-primary:hover:not(:disabled),
+.primary-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1B5D4F 0%, #124237 100%) !important;
+  border-color: rgba(214, 179, 106, 0.72) !important;
+  box-shadow:
+    0 6px 16px rgba(11, 41, 35, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24) !important;
+  transform: translateY(-1px) !important;
+  filter: none !important;
+}
+
+/* Secondary — Ceramic White with Crisp Stone Border & Subtle Inset Bevel */
+.btn.secondary,
+.button-secondary,
+.outline-btn {
+  background: #FFFFFF !important;
+  color: #163830 !important;
+  border: 1px solid #C9D7D0 !important;
+  box-shadow:
+    0 1px 2px rgba(15, 42, 35, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+}
+
+.btn.secondary:hover:not(:disabled),
+.button-secondary:hover:not(:disabled),
+.outline-btn:hover:not(:disabled) {
+  background: #F5F9F7 !important;
+  color: #0D3028 !important;
+  border-color: rgba(197, 160, 89, 0.75) !important;
+  box-shadow:
+    0 4px 12px rgba(15, 42, 35, 0.08),
+    inset 0 1px 0 #FFFFFF !important;
+  transform: translateY(-1px) !important;
+}
+
+.button-secondary.is-active,
+.btn.secondary.is-active {
+  background: #E8F2EE !important;
+  color: #103A31 !important;
+  border-color: #164C41 !important;
+  box-shadow: 0 0 0 2px rgba(18, 64, 55, 0.1) !important;
+}
+
+/* Quiet / Ghost — Zero Resting Clutter, Tactile Mist Hover */
+.btn.quiet,
+.button-quiet {
+  background: transparent !important;
+  color: #466059 !important;
+  border: 1px solid transparent !important;
+  box-shadow: none !important;
+}
+
+.btn.quiet:hover:not(:disabled),
+.button-quiet:hover:not(:disabled) {
+  background: #ECF2EE !important;
+  color: #0F2F28 !important;
+  border-color: #D6E2DC !important;
+  transform: none !important;
+}
+
+/* Danger — Porcelain Rose with Sharp Crimson Ink */
+.btn.danger,
+.button-danger {
+  background: #FEF2F0 !important;
+  color: #992A20 !important;
+  border: 1px solid #F3C2BC !important;
+  box-shadow: 0 1px 2px rgba(153, 42, 32, 0.05) !important;
+}
+
+.btn.danger:hover:not(:disabled),
+.button-danger:hover:not(:disabled) {
+  background: #FCE3DF !important;
+  color: #7E1E16 !important;
+  border-color: #E89E96 !important;
+  box-shadow: 0 4px 10px rgba(153, 42, 32, 0.12) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Gold Hero / Sovereign Accent CTA */
+.btn.gold {
+  height: 42px !important;
+  min-height: 42px !important;
+  padding: 0 20px !important;
+  background: linear-gradient(135deg, #EED28E 0%, #C5A059 100%) !important;
+  color: #0D2D26 !important;
+  font-weight: 700 !important;
+  border: 1px solid rgba(255, 245, 214, 0.65) !important;
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55) !important;
+}
+
+.btn.gold:hover:not(:disabled) {
+  background: linear-gradient(135deg, #F4DA9B 0%, #CFA960 100%) !important;
+  color: #08231D !important;
+  border-color: rgba(255, 249, 232, 0.85) !important;
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+  transform: translateY(-1px) !important;
+  filter: none !important;
+}
+
+/* Hero Glass Secondary (Beranda & Dark Surfaces) */
+.btn.hero-ghost,
+.button-hero-ghost,
+.hero .actions .btn:not(.gold) {
+  height: 42px !important;
+  min-height: 42px !important;
+  padding: 0 18px !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #FFFDF7 !important;
+  border: 1px solid rgba(229, 195, 120, 0.36) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
+}
+
+.btn.hero-ghost:hover:not(:disabled),
+.button-hero-ghost:hover:not(:disabled),
+.hero .actions .btn:not(.gold):hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border-color: rgba(229, 195, 120, 0.68) !important;
+  color: #FFFFFF !important;
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Master Hero Action Harmonization (Aligning with Sovereign Emerald & Gold) */
+.master-hero-primary-btn {
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 16px !important;
+  border-radius: 10px !important;
+  background: linear-gradient(135deg, #EED28E 0%, #C5A059 100%) !important;
+  color: #0D2D26 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  border: 1px solid rgba(255, 245, 214, 0.65) !important;
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+  white-space: nowrap !important;
+}
+
+.master-hero-primary-btn .hero-kbd-badge {
+  background: rgba(11, 41, 35, 0.16) !important;
+  color: #0B2923 !important;
+  border-color: rgba(11, 41, 35, 0.24) !important;
+}
+
+.master-hero-primary-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #F4DA9B 0%, #CFA960 100%) !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28) !important;
+  filter: none !important;
+}
+
+.master-hero-secondary-btn {
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 15px !important;
+  border-radius: 10px !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #FFFDF7 !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  border: 1px solid rgba(229, 195, 120, 0.34) !important;
+  white-space: nowrap !important;
+}
+
+.master-hero-secondary-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border-color: rgba(229, 195, 120, 0.65) !important;
+}
+
+/* Obsidian Sidebar / Card CTA Harmonization */
+.s5-btn-obsidian-gold,
+.s5-btn-obsidian-ghost {
+  border-radius: 10px !important;
+  white-space: nowrap !important;
+}
+
+/* Interactive Status Pill -> Crisp Architectural Badge on Toolbar */
+.interactive-status-badge {
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 0 13px !important;
+  border-radius: 9px !important;
+  font-family: var(--font-sans) !important;
+  font-size: 12px !important;
+  white-space: nowrap !important;
+}
+
+.schedule-view-switcher {
+  height: 38px !important;
+  padding: 3px !important;
+  border-radius: 10px !important;
+  background: #ECF2EE !important;
+  border: 1px solid #D5E0DA !important;
+  gap: 3px !important;
+}
+
+.view-switch-btn {
+  height: 30px !important;
+  padding: 0 13px !important;
+  border-radius: 7px !important;
+  font-size: 12.5px !important;
+}
+
+/* Tactile Press, Disabled & Keyboard Focus Rings Across All Controls */
+.btn:active:not(:disabled),
+.button:active:not(:disabled),
+.primary-btn:active:not(:disabled),
+.outline-btn:active:not(:disabled),
+.master-hero-primary-btn:active:not(:disabled),
+.master-hero-secondary-btn:active:not(:disabled),
+.s5-btn-obsidian-gold:active:not(:disabled),
+.s5-btn-obsidian-ghost:active:not(:disabled),
+.interactive-status-badge:active:not(:disabled) {
+  transform: translateY(0) scale(0.985) !important;
+}
+
+.btn:disabled,
+.button:disabled,
+.primary-btn:disabled,
+.outline-btn:disabled {
+  opacity: 0.46 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+.btn:focus-visible,
+.button:focus-visible,
+.primary-btn:focus-visible,
+.outline-btn:focus-visible,
+.view-switch-btn:focus-visible,
+.interactive-status-badge:focus-visible,
+.master-hero-primary-btn:focus-visible,
+.master-hero-secondary-btn:focus-visible,
+.s5-btn-obsidian-gold:focus-visible,
+.s5-btn-obsidian-ghost:focus-visible,
+.icon-button:focus-visible,
+.table-row-action:focus-visible {
+  outline: 2px solid #C5A059 !important;
+  outline-offset: 2px !important;
+}
+
+/* Icon Buttons & Table Row Micro-Actions */
+.icon-button,
+.table-row-action {
+  border-radius: 8px !important;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    transform 150ms ease !important;
+}
+
+.icon-button:hover:not(:disabled),
+.table-row-action:hover:not(:disabled) {
+  border-color: rgba(197, 160, 89, 0.65) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .button,
+  .primary-btn,
+  .outline-btn,
+  .master-hero-primary-btn,
+  .master-hero-secondary-btn,
+  .interactive-status-badge,
+  .view-switch-btn,
+  .icon-button,
+  .table-row-action {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* ==========================================================================
+   24. UNIFIED FILTER DROPDOWNS, SEARCH BOXES, MICRO-CONTROLS & SPRING MODALS
+   Aligns Jadwal, Data Master, Workload, Attendance, & Persuratan filters
+   to 38px height, 10px squircle radius, #C9D7D0 border, and #C5A059 focus ring.
+   ========================================================================== */
+
+/* 24.1 Unified Select & Filter Bar Controls (38px height, 10px radius) */
+.master-filter-select,
+.select-with-icon select,
+.s01-select,
+.s02-select,
+.toolbar-card select {
+  height: 38px !important;
+  min-height: 38px !important;
+  border-radius: 10px !important;
+  border: 1px solid #C9D7D0 !important;
+  background-color: #FFFFFF !important;
+  color: #163830 !important;
+  font-family: var(--font-sans) !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 1px 2px rgba(15, 42, 35, 0.04) !important;
+  transition:
+    border-color 150ms ease,
+    box-shadow 160ms ease,
+    background-color 150ms ease !important;
+}
+
+.master-filter-select,
+.s01-select,
+.s02-select,
+.toolbar-card select:not(.select-with-icon select) {
+  padding: 0 12px !important;
+}
+
+.select-with-icon select {
+  padding: 0 30px 0 32px !important;
+}
+
+.master-filter-select:hover,
+.select-with-icon select:hover,
+.s01-select:hover,
+.s02-select:hover,
+.toolbar-card select:hover {
+  border-color: #A7BEB3 !important;
+  background-color: #FAFDFB !important;
+}
+
+.master-filter-select:focus,
+.master-filter-select:focus-visible,
+.select-with-icon select:focus,
+.select-with-icon select:focus-visible,
+.s01-select:focus,
+.s01-select:focus-visible,
+.s02-select:focus,
+.s02-select:focus-visible,
+.toolbar-card select:focus,
+.toolbar-card select:focus-visible {
+  outline: none !important;
+  border-color: #C5A059 !important;
+  box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.2) !important;
+  background-color: #FFFFFF !important;
+}
+
+/* 24.2 Unified Search Inputs (Data Master, Persuratan, Workload, Attendance) */
+.master-toolbar-search-wrap .table-search,
+.table-search,
+.s01-input:not(textarea),
+.s02-search-input {
+  height: 38px !important;
+  min-height: 38px !important;
+  border-radius: 10px !important;
+  border: 1px solid #C9D7D0 !important;
+  background-color: #FFFFFF !important;
+  color: #163830 !important;
+  box-shadow: 0 1px 2px rgba(15, 42, 35, 0.04) !important;
+  transition:
+    border-color 150ms ease,
+    box-shadow 160ms ease,
+    background-color 150ms ease !important;
+}
+
+.master-toolbar-search-wrap .table-search input,
+.table-search input {
+  height: 100% !important;
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  font-size: 12.5px !important;
+}
+
+.master-toolbar-search-wrap .table-search:focus-within,
+.table-search:focus-within,
+.s01-input:focus,
+.s01-input:focus-visible,
+.s02-search-input:focus,
+.s02-search-input:focus-visible {
+  outline: none !important;
+  border-color: #C5A059 !important;
+  box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.2) !important;
+  background-color: #FFFFFF !important;
+}
+
+/* 24.3 Refined Small Secondary Controls on Schedule Matrix & Toolbar */
+.matrix-reset-filter-btn {
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 0 11px !important;
+  border-radius: 8px !important;
+  background: #FFF7F5 !important;
+  color: #9A2B20 !important;
+  border: 1px solid #EDC4BF !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 1px 2px rgba(154, 43, 32, 0.05) !important;
+}
+
+.matrix-reset-filter-btn:hover:not(:disabled) {
+  background: #FCE6E2 !important;
+  color: #7D1E15 !important;
+  border-color: #DC9890 !important;
+  transform: translateY(-1px) !important;
+}
+
+.class-stats .jp-counter {
+  display: inline-flex !important;
+  align-items: center !important;
+  height: 28px !important;
+  padding: 0 10px !important;
+  border-radius: 8px !important;
+  border: 1px solid #C9D7D0 !important;
+  background: #FFFFFF !important;
+  color: #163830 !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums !important;
+  white-space: nowrap !important;
+}
+
+.editor-shortcut-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  height: 28px !important;
+  padding: 0 10px !important;
+  border-radius: 8px !important;
+  border: 1px solid #C9D7D0 !important;
+  background: #FFFFFF !important;
+  color: #163830 !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+  box-shadow: 0 1px 2px rgba(15, 42, 35, 0.04) !important;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    transform 150ms ease,
+    box-shadow 150ms ease !important;
+}
+
+.editor-shortcut-btn:hover:not(:disabled) {
+  background: #14453B !important;
+  color: #FFFFFF !important;
+  border-color: rgba(197, 160, 89, 0.65) !important;
+  box-shadow: 0 3px 8px rgba(11, 41, 35, 0.16) !important;
+  transform: translateY(-1px) !important;
+}
+
+.editor-shortcut-btn:focus-visible {
+  outline: 2px solid #C5A059 !important;
+  outline-offset: 2px !important;
+}
+
+/* 24.4 Popover & Modal Spring Polish (Framer Motion takes over schedule popovers) */
+.schedule-export-menu-dropdown,
+.view-options-popover {
+  animation: none !important;
+}
+
+@keyframes s5ModalScrimFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes s5ModalSpringIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.965);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.s01-modal-scrim,
+.s5-palette-overlay {
+  animation: s5ModalScrimFade 180ms ease-out !important;
+}
+
+.s01-modal-panel,
+.s5-palette-modal {
+  animation: s5ModalSpringIn 240ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .s01-modal-scrim,
+  .s5-palette-overlay,
+  .s01-modal-panel,
+  .s5-palette-modal {
+    animation: none !important;
+  }
+}
+

@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import type { AppState } from '../domain/types';
+import { MotionModalDialog } from './KpiMotion';
 import {
   computeRangeAttendanceRecap,
   enumerateMonthsInRange,
@@ -443,19 +444,13 @@ export function AttendancePdfExportModal({
   };
 
   return (
-    <div
-      className="modal-scrim"
-      role="presentation"
-      onMouseDown={(e) => {
+    <MotionModalDialog
+      panelClassName="modal-panel s5-export-studio-panel"
+      ariaLabel="Ekspor Rekapitulasi Presensi Guru"
+      onBackdropMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div
-        className="modal-panel s5-export-studio-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Ekspor Rekapitulasi Presensi Guru"
-      >
         {/* Header */}
         <div
           className="modal-head"
@@ -1689,7 +1684,6 @@ export function AttendancePdfExportModal({
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </MotionModalDialog>
   );
 }

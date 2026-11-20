@@ -99,7 +99,14 @@ import { CommandPaletteModal } from './components/CommandPaletteModal';
 import { TimeMachineDrawer } from './components/TimeMachineDrawer';
 import { InspectorSlideDrawer, type InspectorTarget } from './components/InspectorSlideDrawer';
 import { TeacherAssignmentDrawer } from './components/TeacherAssignmentDrawer';
-import { KpiAnimatedNumber, KpiMotionCard } from './components/KpiMotion';
+import {
+  KpiAnimatedNumber,
+  KpiMotionCard,
+  MotionModalDialog,
+  MotionPageTransition,
+  MotionPopover,
+  MotionStaggerItem,
+} from './components/KpiMotion';
 import type { PersuratanLaunchRequest } from './domain/persuratan/types';
 import {
   buildSkTeachingLaunchPayload,
@@ -1342,6 +1349,7 @@ export default function App() {
               </div>
             )}
 
+            <MotionPageTransition screenKey={screen}>
             {/* SCREEN 1: BERANDA RINGKAS (OPERATOR WORKSPACE) */}
             {screen === 'overview' && (
               <OperatorOverviewScreen
@@ -1536,6 +1544,7 @@ export default function App() {
                 }}
               />
             )}
+            </MotionPageTransition>
           </div>
 
           <footer className="app-footer">
@@ -2000,7 +2009,7 @@ function PageHeading({ kicker, title, description, actions }: { kicker: string; 
         </div>
         {description && <p className="s5-page-subtitle">{description}</p>}
       </div>
-      {actions && <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>{actions}</div>}
+      {actions && <div className="page-heading-actions">{actions}</div>}
     </div>
   );
 }
@@ -2091,16 +2100,17 @@ function EmptyState({ icon: Icon = CircleHelp, title, description, action }: { i
 
 function Modal({ title, subtitle, icon: Icon, children, onClose }: { title: string; subtitle: string; icon: LucideIcon; children: ReactNode; onClose: () => void }) {
   return (
-    <div className="modal-scrim" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal-panel" role="dialog" aria-modal="true" aria-label={title}>
-        <div className="modal-head">
-          <div className="modal-title-icon"><Icon size={20} /></div>
-          <div><h2>{title}</h2><p>{subtitle}</p></div>
-          <button className="icon-button" onClick={onClose} aria-label="Tutup dialog"><X size={17} /></button>
-        </div>
-        {children}
+    <MotionModalDialog
+      ariaLabel={title}
+      onBackdropMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="modal-head">
+        <div className="modal-title-icon"><Icon size={20} /></div>
+        <div><h2>{title}</h2><p>{subtitle}</p></div>
+        <button className="icon-button" onClick={onClose} aria-label="Tutup dialog"><X size={17} /></button>
       </div>
-    </div>
+      {children}
+    </MotionModalDialog>
   );
 }
 
@@ -2273,35 +2283,36 @@ export function OperatorOverviewScreen({
               ? `Ditemukan pelanggaran aturan KBM atau bentrok guru. Tinjau daftar konflik sebelum menerbitkan jadwal.`
               : `Tetapkan kebutuhan JP per rombel terlebih dahulu, lalu jalankan penyusunan otomatis.`}
           </p>
-          <div className="actions" style={{ marginTop: '16px' }}>
+          <div className="actions">
             {totalErrors > 0 ? (
               <>
                 <button type="button" className="btn gold" onClick={() => onNavigate('validation')}>
-                  Periksa Konflik &rarr;
+                  <span>Periksa Konflik</span>
+                  <span aria-hidden="true">&rarr;</span>
                 </button>
                 <button
                   type="button"
-                  className="btn"
-                  style={{ background: 'rgba(255,255,255,0.12)', color: '#fff', borderColor: 'rgba(255,255,255,0.22)' }}
+                  className="btn hero-ghost"
                   onClick={onGenerate}
                   disabled={isGenerating}
                 >
-                  {isGenerating ? 'Menyusun…' : 'Susun Ulang Otomatis'}
+                  <WandSparkles size={15} />
+                  <span>{isGenerating ? 'Menyusun…' : 'Susun Ulang Otomatis'}</span>
                 </button>
               </>
             ) : (
               <>
                 <button type="button" className="btn gold" onClick={() => onNavigate('schedule')}>
-                  Buka Matriks Jadwal &rarr;
+                  <span>Buka Matriks Jadwal</span>
+                  <span aria-hidden="true">&rarr;</span>
                 </button>
                 <button
                   type="button"
-                  className="btn"
-                  style={{ background: 'rgba(255,255,255,0.12)', color: '#fff', borderColor: 'rgba(255,255,255,0.22)' }}
+                  className="btn hero-ghost"
                   onClick={onOpenPdfModal}
                 >
-                  <FileText size={14} />
-                  Cetak Dokumen PDF
+                  <FileText size={15} />
+                  <span>Cetak Dokumen PDF</span>
                 </button>
               </>
             )}
@@ -2351,29 +2362,57 @@ export function OperatorOverviewScreen({
 
       {/* 2. 4-KPI JEWEL METRIC STRIP */}
       <div className="stats">
-        <div className="stat" onClick={() => onNavigate('master')} style={{ cursor: 'pointer', '--accent': '#B39A68' } as React.CSSProperties}>
+        <KpiMotionCard
+          className="stat stat-card"
+          index={0}
+          onClick={() => onNavigate('master')}
+          style={{ cursor: 'pointer', '--accent': '#B39A68' } as React.CSSProperties}
+        >
           <div className="label">ROMBEL AKTIF</div>
-          <div className="value">{classCount}</div>
+          <div className="value s5-tnum">
+            <KpiAnimatedNumber value={classCount} />
+          </div>
           <div className="foot">Seluruh kelas terdaftar</div>
-        </div>
+        </KpiMotionCard>
 
-        <div className="stat" onClick={() => onNavigate('schedule')} style={{ cursor: 'pointer', '--accent': '#2D8066' } as React.CSSProperties}>
+        <KpiMotionCard
+          className="stat stat-card"
+          index={1}
+          onClick={() => onNavigate('schedule')}
+          style={{ cursor: 'pointer', '--accent': '#2D8066' } as React.CSSProperties}
+        >
           <div className="label">ALOKASI KBM</div>
-          <div className="value">{capacityPercent}%</div>
+          <div className="value s5-tnum">
+            <KpiAnimatedNumber value={capacityPercent} suffix="%" />
+          </div>
           <div className="foot">{occupiedSlots} / {totalWeeklyCapacity} JP terjadwal</div>
-        </div>
+        </KpiMotionCard>
 
-        <div className="stat" onClick={() => onOpenValidationModal()} style={{ cursor: 'pointer', '--accent': '#334F70' } as React.CSSProperties}>
+        <KpiMotionCard
+          className="stat stat-card"
+          index={2}
+          onClick={() => onOpenValidationModal()}
+          style={{ cursor: 'pointer', '--accent': '#334F70' } as React.CSSProperties}
+        >
           <div className="label">KONFLIK KERAS</div>
-          <div className="value">{totalErrors}</div>
+          <div className="value s5-tnum">
+            <KpiAnimatedNumber value={totalErrors} />
+          </div>
           <div className="foot">{totalErrors === 0 ? 'Bebas bentrok aturan wajib' : 'Klik untuk tinjau bentrok'}</div>
-        </div>
+        </KpiMotionCard>
 
-        <div className="stat" onClick={() => onNavigate('workload')} style={{ cursor: 'pointer', '--accent': '#927D98' } as React.CSSProperties}>
+        <KpiMotionCard
+          className="stat stat-card"
+          index={3}
+          onClick={() => onNavigate('workload')}
+          style={{ cursor: 'pointer', '--accent': '#927D98' } as React.CSSProperties}
+        >
           <div className="label">DEWAN GURU AKTIF</div>
-          <div className="value">{teacherCount}</div>
+          <div className="value s5-tnum">
+            <KpiAnimatedNumber value={teacherCount} />
+          </div>
           <div className="foot">Rata-rata {avgTeacherJP} JP / guru</div>
-        </div>
+        </KpiMotionCard>
       </div>
 
       {/* 3. UNIFIED FULL-WIDTH BENTO SPLIT: DIRECT-LAUNCH ROMBEL TABLE + OBSIDIAN WORKFLOW */}
@@ -3041,7 +3080,7 @@ function ScheduleScreen({
         title="Jadwal Pelajaran"
         description="Tinjau matriks jadwal seluruh madrasah sekaligus atau kelola detail alokasi per kelas dengan validator deterministik."
         actions={
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div className="page-heading-actions">
             {lastMove && (
               <Button variant="secondary" icon={Undo2} onClick={onUndoMove} title="Batalkan perpindahan terakhir">
                 Urungkan
@@ -3057,38 +3096,36 @@ function ScheduleScreen({
               >
                 Ekspor <ChevronDown size={14} style={{ marginLeft: 2, transform: exportMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
               </Button>
-              {exportMenuOpen && (
-                <div className="schedule-export-menu-dropdown">
-                  <button
-                    type="button"
-                    className="export-dropdown-item"
-                    onClick={() => {
-                      setExportMenuOpen(false);
-                      onOpenPdfModal();
-                    }}
-                  >
-                    <FileText size={16} style={{ color: '#166534', flexShrink: 0 }} />
-                    <div>
-                      <div className="export-item-title">Cetak &amp; Ekspor PDF</div>
-                      <div className="export-item-desc">Jadwal Induk, Semua Kelas A4, Per Kelas &amp; Per Guru</div>
-                    </div>
-                  </button>
-                  <button
-                    type="button"
-                    className="export-dropdown-item"
-                    onClick={() => {
-                      setExportMenuOpen(false);
-                      onExportCSV();
-                    }}
-                  >
-                    <FileSpreadsheet size={16} style={{ color: '#0f766e', flexShrink: 0 }} />
-                    <div>
-                      <div className="export-item-title">Unduh Data CSV</div>
-                      <div className="export-item-desc">Format spreadsheet (.csv) siap olah</div>
-                    </div>
-                  </button>
-                </div>
-              )}
+              <MotionPopover isOpen={exportMenuOpen} className="schedule-export-menu-dropdown">
+                <button
+                  type="button"
+                  className="export-dropdown-item"
+                  onClick={() => {
+                    setExportMenuOpen(false);
+                    onOpenPdfModal();
+                  }}
+                >
+                  <FileText size={16} style={{ color: '#166534', flexShrink: 0 }} />
+                  <div>
+                    <div className="export-item-title">Cetak &amp; Ekspor PDF</div>
+                    <div className="export-item-desc">Jadwal Induk, Semua Kelas A4, Per Kelas &amp; Per Guru</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  className="export-dropdown-item"
+                  onClick={() => {
+                    setExportMenuOpen(false);
+                    onExportCSV();
+                  }}
+                >
+                  <FileSpreadsheet size={16} style={{ color: '#0f766e', flexShrink: 0 }} />
+                  <div>
+                    <div className="export-item-title">Unduh Data CSV</div>
+                    <div className="export-item-desc">Format spreadsheet (.csv) siap olah</div>
+                  </div>
+                </button>
+              </MotionPopover>
             </div>
             {onLaunchTeachingSk && (() => {
               const skBasis = getOfficialScheduleBasisStatus(state);
@@ -3188,38 +3225,28 @@ function ScheduleScreen({
           <span className="status-badge-action">Audit &amp; Detail ↗</span>
         </button>
 
-        <div className="toolbar-spacer" />
+        {/* Consolidated Right-Side Toolbar Actions: Tampilan + Terbitkan Jadwal */}
+        <div className="schedule-toolbar-actions">
+          {/* Consolidated Tampilan & Kerapatan Popover */}
+          <div style={{ position: 'relative' }} ref={viewOptionsRef}>
+            <button
+              type="button"
+              className={`button button-secondary ${viewOptionsOpen ? 'is-active' : ''}`}
+              onClick={() => setViewOptionsOpen((v) => !v)}
+              title="Sesuaikan kerapatan baris, zoom, dan warna jadwal"
+            >
+              <SlidersHorizontal size={14} />
+              <span>Tampilan</span>
+              <ChevronDown
+                size={13}
+                style={{
+                  transform: viewOptionsOpen ? 'rotate(180deg)' : 'none',
+                  transition: 'transform 0.15s',
+                }}
+              />
+            </button>
 
-        {/* Consolidated Tampilan & Kerapatan Popover */}
-        <div style={{ position: 'relative' }} ref={viewOptionsRef}>
-          <button
-            type="button"
-            className={`button button-secondary ${viewOptionsOpen ? 'is-active' : ''}`}
-            style={{
-              height: '34px',
-              padding: '0 12px',
-              fontSize: '12px',
-              fontWeight: 600,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
-            onClick={() => setViewOptionsOpen((v) => !v)}
-            title="Sesuaikan kerapatan baris, zoom, dan warna jadwal"
-          >
-            <SlidersHorizontal size={14} />
-            <span>Tampilan</span>
-            <ChevronDown
-              size={12}
-              style={{
-                transform: viewOptionsOpen ? 'rotate(180deg)' : 'none',
-                transition: 'transform 0.15s',
-              }}
-            />
-          </button>
-
-          {viewOptionsOpen && (
-            <div className="view-options-popover">
+            <MotionPopover isOpen={viewOptionsOpen} className="view-options-popover">
               <div>
                 <div className="view-popover-title">Kerapatan Baris Tabel</div>
                 <div
@@ -3335,12 +3362,9 @@ function ScheduleScreen({
                   </div>
                 </>
               )}
-            </div>
-          )}
-        </div>
+            </MotionPopover>
+          </div>
 
-        {/* Main Primary Action: Terbitkan Jadwal */}
-        <div className="schedule-toolbar-actions">
           <Button onClick={onPublish} disabled={!hasEntries || !report.valid}>
             <Check size={15} /> Terbitkan Jadwal
           </Button>
@@ -3427,23 +3451,16 @@ function ScheduleScreen({
               {(filterLevel !== 'all' || filterRombelRow !== 'all' || filterTeacherId || filterSubjectId) && (
                 <button
                   type="button"
+                  className="button button-sm matrix-reset-filter-btn"
                   onClick={() => {
                     setFilterLevel('all');
                     setFilterRombelRow('all');
                     setFilterTeacherId('');
                     setFilterSubjectId('');
                   }}
-                  style={{
-                    border: 0,
-                    background: 'transparent',
-                    color: '#b24c3d',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    textDecoration: 'underline',
-                  }}
                 >
-                  Reset Filter
+                  <RotateCcw size={13} />
+                  <span>Reset Filter</span>
                 </button>
               )}
             </div>
@@ -4751,7 +4768,7 @@ function MasterScreen({
       {/* 2026 Executive Glass Metric Cards */}
       <div className="master-prestige-metric-grid" role="region" aria-label="Ringkasan Statistik Master">
         {/* Card 1: Teachers */}
-        <div className="prestige-metric-card">
+        <KpiMotionCard className="prestige-metric-card stat-card" index={0}>
           <div className="prestige-card-top">
             <div className="prestige-icon-badge emerald">
               <Users size={18} />
@@ -4760,7 +4777,9 @@ function MasterScreen({
           </div>
           <div>
             <div className="prestige-val-row">
-              <span className="prestige-val">{activeTeachers.length}</span>
+              <span className="prestige-val s5-tnum">
+                <KpiAnimatedNumber value={activeTeachers.length} />
+              </span>
               <span className="prestige-subval">/ {state.teachers.length} terdata</span>
             </div>
             <span className="prestige-card-lbl">Dewan Asatidz &amp; Guru</span>
@@ -4778,10 +4797,10 @@ function MasterScreen({
               }}
             />
           </div>
-        </div>
+        </KpiMotionCard>
 
         {/* Card 2: Classes */}
-        <div className="prestige-metric-card">
+        <KpiMotionCard className="prestige-metric-card stat-card" index={1}>
           <div className="prestige-card-top">
             <div className="prestige-icon-badge teal">
               <GraduationCap size={18} />
@@ -4790,7 +4809,9 @@ function MasterScreen({
           </div>
           <div>
             <div className="prestige-val-row">
-              <span className="prestige-val">{activeClasses.length}</span>
+              <span className="prestige-val s5-tnum">
+                <KpiAnimatedNumber value={activeClasses.length} />
+              </span>
               <span className="prestige-subval">Rombel Aktif</span>
             </div>
             <span className="prestige-card-lbl">Rombongan Belajar</span>
@@ -4808,10 +4829,10 @@ function MasterScreen({
               }}
             />
           </div>
-        </div>
+        </KpiMotionCard>
 
         {/* Card 3: Subjects */}
-        <div className="prestige-metric-card">
+        <KpiMotionCard className="prestige-metric-card stat-card" index={2}>
           <div className="prestige-card-top">
             <div className="prestige-icon-badge amber">
               <BookOpen size={18} />
@@ -4820,7 +4841,9 @@ function MasterScreen({
           </div>
           <div>
             <div className="prestige-val-row">
-              <span className="prestige-val">{activeSubjects.length}</span>
+              <span className="prestige-val s5-tnum">
+                <KpiAnimatedNumber value={activeSubjects.length} />
+              </span>
               <span className="prestige-subval">Mapel Aktif</span>
             </div>
             <span className="prestige-card-lbl">Struktur Kurikulum</span>
@@ -4840,10 +4863,10 @@ function MasterScreen({
               }}
             />
           </div>
-        </div>
+        </KpiMotionCard>
 
         {/* Card 4: Integrity */}
-        <div className="prestige-metric-card">
+        <KpiMotionCard className="prestige-metric-card stat-card" index={3}>
           <div className="prestige-card-top">
             <div className="prestige-icon-badge jade">
               <ShieldCheck size={18} />
@@ -4861,8 +4884,8 @@ function MasterScreen({
           </div>
           <div>
             <div className="prestige-val-row">
-              <span className="prestige-val" style={{ color: integrityScore === 100 ? '#166534' : '#0e2e26' }}>
-                {integrityScore}%
+              <span className="prestige-val s5-tnum" style={{ color: integrityScore === 100 ? '#166534' : '#0e2e26' }}>
+                <KpiAnimatedNumber value={integrityScore} suffix="%" />
               </span>
               <span className="prestige-subval">Skor Kesiapan</span>
             </div>
@@ -4887,7 +4910,7 @@ function MasterScreen({
               }}
             />
           </div>
-        </div>
+        </KpiMotionCard>
       </div>
 
       <Card
@@ -6645,9 +6668,10 @@ function ValidationScreen({
         </div>
       ) : (
         <div className="issue-list" style={{ marginTop: '16px' }}>
-          {combined.map((issue) => (
-            <div
+          {combined.map((issue, idx) => (
+            <MotionStaggerItem
               key={issue.id}
+              index={idx}
               className="s5-smart-swap-card"
               style={{
                 borderColor: issue.severity === 'error' ? 'rgba(143, 45, 36, 0.4)' : 'rgba(197, 160, 89, 0.5)',
@@ -6686,24 +6710,12 @@ function ValidationScreen({
               </div>
               {onNavigate && (
                 <div style={{ flexShrink: 0 }}>
-                  <button
-                    type="button"
-                    className="button button-sm"
-                    style={{
-                      background: 'var(--s5-emerald-subtle)',
-                      color: 'var(--s5-emerald-primary)',
-                      borderColor: '#CCD8D2',
-                      fontSize: '11.5px',
-                      fontWeight: 700,
-                      whiteSpace: 'nowrap',
-                    }}
-                    onClick={() => onNavigate('schedule')}
-                  >
+                  <Button variant="secondary" size="sm" onClick={() => onNavigate('schedule')}>
                     Atasi di Jadwal &rarr;
-                  </button>
+                  </Button>
                 </div>
               )}
-            </div>
+            </MotionStaggerItem>
           ))}
         </div>
       )}
@@ -6726,7 +6738,7 @@ function HistoryScreen({ state, onRestore, onNavigate }: { state: AppState; onRe
 
       <div className="version-timeline">
         {state.history.map((version, idx) => (
-          <div key={version.id} className="version-row">
+          <MotionStaggerItem key={version.id} index={idx} className="version-row">
             <div className="timeline-track">
               <div className={`timeline-dot ${idx === 0 ? 'current' : ''}`}>{idx === 0 ? <Check size={13} /> : <span />}</div>
             </div>
@@ -6746,7 +6758,7 @@ function HistoryScreen({ state, onRestore, onNavigate }: { state: AppState; onRe
                 <span><CalendarDays size={13} /> {version.entryCount} Penempatan</span>
               </div>
             </div>
-          </div>
+          </MotionStaggerItem>
         ))}
       </div>
     </>
@@ -6784,7 +6796,7 @@ function BackupScreen({
       />
 
       <div className="s5-backup-bento-grid">
-        <div className="backup-action-card">
+        <KpiMotionCard index={0} className="backup-action-card">
           <div className="backup-action-icon json"><FileCheck2 size={21} /></div>
           <div className="backup-action-copy">
             <div className="backup-action-kicker">FULL WORKSPACE SNAPSHOT</div>
@@ -6792,9 +6804,9 @@ function BackupScreen({
             <p>Cadangkan seluruh data master, alokasi kebutuhan, presensi, hari libur, dan jadwal ke file aman.</p>
             <Button icon={Download} onClick={onBackup}>Download Backup JSON</Button>
           </div>
-        </div>
+        </KpiMotionCard>
 
-        <div className="backup-action-card">
+        <KpiMotionCard index={1} className="backup-action-card">
           <div className="backup-action-icon csv"><FileSpreadsheet size={21} /></div>
           <div className="backup-action-copy">
             <div className="backup-action-kicker">SPREADSHEET EXPORT</div>
@@ -6802,9 +6814,9 @@ function BackupScreen({
             <p>Ekspor susunan jadwal ke format tabel CSV untuk dibuka di Microsoft Excel atau Google Sheets.</p>
             <Button variant="secondary" icon={FileSpreadsheet} onClick={onExportCSV}>Ekspor CSV</Button>
           </div>
-        </div>
+        </KpiMotionCard>
 
-        <div className="backup-action-card">
+        <KpiMotionCard index={2} className="backup-action-card">
           <div className="backup-action-icon json"><Upload size={21} /></div>
           <div className="backup-action-copy">
             <div className="backup-action-kicker">RESTORE FROM BACKUP</div>
@@ -6823,7 +6835,7 @@ function BackupScreen({
               />
             </label>
           </div>
-        </div>
+        </KpiMotionCard>
       </div>
     </>
   );

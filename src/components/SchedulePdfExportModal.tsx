@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import type { AppState } from '../domain/types';
+import { MotionModalDialog } from './KpiMotion';
 import {
   buildRightSignerTitle,
   exportAllClassesSinglePageA4PDF,
@@ -430,19 +431,13 @@ export function SchedulePdfExportModal({
   ];
 
   return (
-    <div
-      className="modal-scrim"
-      role="presentation"
-      onMouseDown={(e) => {
+    <MotionModalDialog
+      panelClassName="modal-panel s5-export-studio-panel"
+      ariaLabel="Studio Ekspor PDF Jadwal Pelajaran Resmi"
+      onBackdropMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div
-        className="modal-panel s5-export-studio-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Studio Ekspor PDF Jadwal Pelajaran Resmi"
-      >
         {/* Modal Header */}
         <div
           className="modal-head"
@@ -1390,7 +1385,6 @@ export function SchedulePdfExportModal({
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </MotionModalDialog>
   );
 }
