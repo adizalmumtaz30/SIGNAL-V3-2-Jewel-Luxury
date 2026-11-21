@@ -357,7 +357,7 @@ export function TemplateGallery({
     setCloneSource(null);
     setCloneError(null);
     onNotify?.(
-      `Salinan "${cloned.name}" berhasil dibuat di Template Madrasah. Template bawaan SIGNAL tetap utuh.`,
+      `Salinan "${cloned.name}" berhasil dibuat di Template Madrasah. Template bawaan SAKALA tetap utuh.`,
       'success'
     );
   };
@@ -379,11 +379,11 @@ export function TemplateGallery({
     },
     MADRASAH: {
       title: 'Belum ada Template Madrasah',
-      desc: 'Template bawaan SIGNAL bersifat baca-saja. Klik "Kloning" pada template mana saja untuk membuat salinan khusus madrasah.',
+      desc: 'Template bawaan SAKALA bersifat baca-saja. Klik "Kloning" pada template mana saja untuk membuat salinan khusus madrasah.',
     },
     SYSTEM: {
       title: 'Tidak ada template bawaan yang cocok',
-      desc: 'Coba bersihkan filter pencarian untuk melihat 30 template bawaan SIGNAL.',
+      desc: 'Coba bersihkan filter pencarian untuk melihat 30 template bawaan SAKALA.',
     },
   };
 
@@ -527,7 +527,7 @@ export function TemplateGallery({
             })}
           </div>
           <span style={{ fontSize: '11.5px', color: '#5c726b' }}>
-            Bawaan SIGNAL bersifat baca-saja · Salinan Madrasah independen
+            Bawaan SAKALA bersifat baca-saja · Salinan Madrasah independen
           </span>
         </div>
       </div>
@@ -618,7 +618,7 @@ export function TemplateGallery({
                           <span className="s5-tnum">v{tpl.version}</span>
                           <span aria-hidden="true">·</span>
                           <span className={`s02-source-label ${isMadrasah ? 'is-madrasah' : ''}`}>
-                            {isMadrasah ? 'Salinan Madrasah' : 'Bawaan SIGNAL'}
+                            {isMadrasah ? 'Salinan Madrasah' : 'Bawaan SAKALA'}
                           </span>
                         </div>
                         <button
@@ -847,7 +847,7 @@ export function TemplateGallery({
                 </div>
                 <div>
                   <h2 id="s02-clone-modal-title">Kloning Template ke Koleksi Madrasah</h2>
-                  <p>Template bawaan SIGNAL tetap baca-saja; salinan baru berdiri independen.</p>
+                  <p>Template bawaan SAKALA tetap baca-saja; salinan baru berdiri independen.</p>
                 </div>
               </div>
               <button

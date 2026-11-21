@@ -212,7 +212,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
         id: 'act-time-machine',
         category: 'Aksi Cepat',
         title: 'Buka Time Machine Vault (Riwayat Pulih)',
-        subtitle: 'Pulihkan data dari snapshot atau berkas cadangan .signal',
+        subtitle: 'Pulihkan data dari snapshot atau berkas cadangan .sakala / .signal',
         icon: <Clock size={16} color="#C5A059" aria-hidden="true" />,
         action: () => {
           onClose();
@@ -270,7 +270,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
         id: `tpl-${tpl.id}`,
         category: 'Template Surat',
         title: tpl.name,
-        subtitle: `${tpl.code} · ${tpl.source === 'SYSTEM' ? 'Bawaan SIGNAL' : 'Template Madrasah'} · ${tpl.initialPageSettings.paperSize.toUpperCase()}`,
+        subtitle: `${tpl.code} · ${tpl.source === 'SYSTEM' ? 'Bawaan SAKALA' : 'Template Madrasah'} · ${tpl.initialPageSettings.paperSize.toUpperCase()}`,
         searchTokens: `${tpl.code} ${tpl.description} ${tpl.purpose} ${tpl.category}`,
         icon: <FilePlus2 size={15} color="#124037" aria-hidden="true" />,
         action: () =>
@@ -552,7 +552,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
             </span>
           </div>
           <span aria-live="polite" className="s5-tnum">
-            {filteredItems.length} hasil · SIGNAL Command
+            {filteredItems.length} hasil · SAKALA Command
           </span>
         </div>
       </div>

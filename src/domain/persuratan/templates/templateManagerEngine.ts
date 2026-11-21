@@ -273,7 +273,7 @@ export function updateCustomTemplateInState(
 ): { state: AppState; template: DocumentTemplate; validation: TemplateValidationReport } {
   if (SYSTEM_ID_SET.has(templateId)) {
     throw new Error(
-      'Template bawaan SIGNAL bersifat baca-saja dan tidak dapat diubah. Kloning ke Template Madrasah terlebih dahulu.'
+      'Template bawaan SAKALA bersifat baca-saja dan tidak dapat diubah. Kloning ke Template Madrasah terlebih dahulu.'
     );
   }
 
@@ -351,7 +351,7 @@ export function toggleCustomTemplateStatusInState(
   timestamp: string = new Date().toISOString()
 ): { state: AppState; template: DocumentTemplate } {
   if (SYSTEM_ID_SET.has(templateId)) {
-    throw new Error('Template bawaan SIGNAL tidak dapat dinonaktifkan atau diubah.');
+    throw new Error('Template bawaan SAKALA tidak dapat dinonaktifkan atau diubah.');
   }
   const existingCustom = state.customTemplates ?? [];
   const current = existingCustom.find((t) => t.id === templateId);
@@ -378,7 +378,7 @@ export function deleteCustomTemplateInState(
   templateId: string
 ): { state: AppState; deletedName: string } {
   if (SYSTEM_ID_SET.has(templateId)) {
-    throw new Error('Template bawaan SIGNAL bersifat permanen dan tidak dapat dihapus.');
+    throw new Error('Template bawaan SAKALA bersifat permanen dan tidak dapat dihapus.');
   }
   const existingCustom = state.customTemplates ?? [];
   const target = existingCustom.find((t) => t.id === templateId);

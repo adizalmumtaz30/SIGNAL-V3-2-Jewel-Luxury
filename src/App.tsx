@@ -14,6 +14,7 @@ import {
   Clock,
   Clock3,
   Copy,
+  Database,
   Download,
   Edit2,
   FileCheck2,
@@ -21,7 +22,6 @@ import {
   FileText,
   Filter,
   GraduationCap,
-  HardDrive,
   History,
   Home,
   Info,
@@ -99,6 +99,7 @@ import { CommandPaletteModal } from './components/CommandPaletteModal';
 import { TimeMachineDrawer } from './components/TimeMachineDrawer';
 import { InspectorSlideDrawer, type InspectorTarget } from './components/InspectorSlideDrawer';
 import { TeacherAssignmentDrawer } from './components/TeacherAssignmentDrawer';
+import { SovereignSidebar, type SovereignSidebarGroup } from './components/SovereignSidebar';
 import {
   KpiAnimatedNumber,
   KpiMotionCard,
@@ -131,7 +132,7 @@ type ScreenId =
   | 'backup'
   | 'settings';
 
-const DatabaseIcon: LucideIcon = Activity;
+const DatabaseIcon: LucideIcon = Database;
 
 interface NavGroup {
   sectionTitle: string;
@@ -140,22 +141,27 @@ interface NavGroup {
 
 const navGroups: NavGroup[] = [
   {
-    sectionTitle: 'OPERASIONAL UTAMA',
+    sectionTitle: 'PERENCANAAN & MASTER',
     items: [
       { id: 'overview', label: 'Beranda', icon: Home },
-      { id: 'schedule', label: 'Jadwal Pelajaran', icon: CalendarDays },
       { id: 'master', label: 'Data Master', icon: DatabaseIcon },
       { id: 'requirements', label: 'Kebutuhan & Alokasi', icon: BookOpen },
       { id: 'generator', label: 'Generator Jadwal', icon: WandSparkles },
-      { id: 'validation', label: 'Validasi & Konflik', icon: ShieldCheck },
-      { id: 'workload', label: 'Beban Guru', icon: Users },
-      { id: 'attendance', label: 'Presensi Guru', icon: UserCheck },
-      { id: 'persuratan', label: 'Persuratan & Arsip', icon: Archive },
     ],
   },
   {
-    sectionTitle: 'SISTEM & CADANGAN',
+    sectionTitle: 'OPERASIONAL & VALIDASI',
     items: [
+      { id: 'schedule', label: 'Jadwal Pelajaran', icon: CalendarDays },
+      { id: 'validation', label: 'Validasi & Konflik', icon: ShieldCheck },
+      { id: 'workload', label: 'Beban Guru', icon: Users },
+      { id: 'attendance', label: 'Presensi Guru', icon: UserCheck },
+    ],
+  },
+  {
+    sectionTitle: 'TATA NASKAH & SISTEM',
+    items: [
+      { id: 'persuratan', label: 'Persuratan & Arsip', icon: Archive },
       { id: 'history', label: 'Riwayat & Backup', icon: History },
       { id: 'settings', label: 'Pengaturan', icon: Settings2 },
     ],
@@ -195,7 +201,7 @@ function titleForScreen(screen: ScreenId) {
     backup: 'Ekspor & Cadangan Data',
     settings: 'Pengaturan Workspace',
   };
-  return titles[screen] || 'SIGNAL';
+  return titles[screen] || 'SAKALA';
 }
 
 function formatShortDate(dateString: string) {
@@ -305,6 +311,17 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!sidebarOpen) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSidebarOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [sidebarOpen]);
+
+  useEffect(() => {
     let mounted = true;
     loadAppState().then((loaded) => {
       if (!mounted) return;
@@ -328,7 +345,7 @@ export default function App() {
         setStorageError(null);
       })
       .catch((error) => {
-        console.error('Could not persist SIGNAL data:', error);
+        console.error('Could not persist SAKALA data:', error);
         const msg =
           'Penyimpanan lokal browser (IndexedDB) gagal atau tidak tersedia. Segera ekspor backup sebelum menutup.';
         setStorageError(msg);
@@ -349,7 +366,7 @@ export default function App() {
         notify('Penyimpanan lokal berhasil dipulihkan dan disinkronkan.', 'success');
       })
       .catch((error) => {
-        console.error('Retry persist SIGNAL data failed:', error);
+        console.error('Retry persist SAKALA data failed:', error);
         setStorageError(
           'Penyimpanan lokal browser (IndexedDB) masih gagal diakses. Segera ekspor backup sebelum menutup.'
         );
@@ -755,7 +772,7 @@ export default function App() {
       entryCount: entries.length,
       entries: entries.map((entry) => ({ ...entry })),
       fingerprint: buildScheduleFingerprint(entries),
-      validatorVersion: 'SIGNAL-validator/1.0.0',
+      validatorVersion: 'SAKALA-validator/1.0.0',
       academicYear: workspace.settings.academicYear,
       semester: workspace.settings.semester,
     };
@@ -900,7 +917,7 @@ export default function App() {
       }
       downloadTextFile(
         '\uFEFF' + rows.map((row) => row.map((cell) => csvCell(cell)).join(',')).join('\r\n'),
-        `SIGNAL-master-kelas-terpilih-${dateStamp}.csv`,
+        `SAKALA-master-kelas-terpilih-${dateStamp}.csv`,
         'text/csv;charset=utf-8'
       );
       notify(`${selected.length} data kelas terpilih berhasil diekspor ke CSV.`, 'success');
@@ -927,7 +944,7 @@ export default function App() {
       }
       downloadTextFile(
         '\uFEFF' + rows.map((row) => row.map((cell) => csvCell(cell)).join(',')).join('\r\n'),
-        `SIGNAL-master-guru-terpilih-${dateStamp}.csv`,
+        `SAKALA-master-guru-terpilih-${dateStamp}.csv`,
         'text/csv;charset=utf-8'
       );
       notify(`${selected.length} data dewan guru terpilih berhasil diekspor ke CSV.`, 'success');
@@ -948,7 +965,7 @@ export default function App() {
     }
     downloadTextFile(
       '\uFEFF' + rows.map((row) => row.map((cell) => csvCell(cell)).join(',')).join('\r\n'),
-      `SIGNAL-master-mapel-terpilih-${dateStamp}.csv`,
+      `SAKALA-master-mapel-terpilih-${dateStamp}.csv`,
       'text/csv;charset=utf-8'
     );
     notify(`${selected.length} data mata pelajaran terpilih berhasil diekspor ke CSV.`, 'success');
@@ -1157,14 +1174,14 @@ export default function App() {
         getSubject(workspace, entry.subjectId)?.name ?? entry.subjectId, getTeacher(workspace, entry.teacherId)?.name ?? entry.teacherId,
       ]);
     }
-    downloadTextFile(rows.map((row) => row.map((cell) => csvCell(cell)).join(',')).join('\r\n'), `SIGNAL-jadwal-${workspace.settings.academicYear.replace('/', '-')}.csv`);
+    downloadTextFile(rows.map((row) => row.map((cell) => csvCell(cell)).join(',')).join('\r\n'), `SAKALA-jadwal-${workspace.settings.academicYear.replace('/', '-')}.csv`);
     notify('CSV jadwal berhasil diunduh.', 'success');
   };
 
   const exportJSONSchedule = () => {
     if (!workspace) return;
     const content = JSON.stringify({
-      format: 'SIGNAL-SCHEDULE',
+      format: 'SAKALA-SCHEDULE',
       exportedAt: new Date().toISOString(),
       settings: workspace.settings,
       classes: workspace.classes,
@@ -1173,7 +1190,7 @@ export default function App() {
       entries: currentEntries,
       validation: report,
     }, null, 2);
-    downloadTextFile(content, `SIGNAL-jadwal-${workspace.settings.academicYear.replace('/', '-')}.json`, 'application/json');
+    downloadTextFile(content, `SAKALA-jadwal-${workspace.settings.academicYear.replace('/', '-')}.json`, 'application/json');
     notify('Ekspor jadwal JSON siap.', 'success');
   };
 
@@ -1191,81 +1208,59 @@ export default function App() {
 
   const currentTitle = titleForScreen(screen);
   const selectedClassObj = getClass(workspace, selectedClass) ?? workspace.classes[0];
+  const effectiveCollapsed = sidebarCollapsed && !sidebarOpen;
+  const documentCount = (workspace.documents ?? []).length;
+  const activeScheduleCount = workspace.activeSchedule?.length ?? 0;
+  const scheduleReady = Boolean(
+    activeScheduleCount > 0 && (!report || report.hardErrorCount === 0)
+  );
+  const sidebarGroups: SovereignSidebarGroup[] = navGroups.map((group) => ({
+    sectionTitle: group.sectionTitle,
+    items: group.items.map((item) => ({
+      id: item.id,
+      label: item.label,
+      icon: item.icon,
+      badgeCount: item.id === 'validation' ? report?.hardErrorCount ?? 0 : undefined,
+      statusHint:
+        item.id === 'schedule'
+          ? scheduleReady
+            ? `${activeScheduleCount} slot aktif`
+            : `${activeScheduleCount} slot draft`
+          : item.id === 'persuratan'
+            ? `${documentCount} dokumen`
+            : item.id === 'history'
+              ? `${workspace.history.length} versi tersimpan`
+              : undefined,
+    })),
+  }));
 
   return (
     <div className="app-shell">
-      <div className={`sidebar-backdrop ${sidebarOpen ? 'is-visible' : ''}`} onClick={() => setSidebarOpen(false)} />
-      <aside className={`sidebar ${sidebarOpen ? 'is-open' : ''} ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-        <div className="sakala-brand" onClick={() => navigate('overview')} title="SIGNAL — Smart Islamic School Scheduler">
-          <div className="v3-brandmark"><img src="/signal-mark.svg" alt="" /></div>
-          {!sidebarCollapsed && (
-            <div className="sakala-brand-info">
-              <h2 className="sakala-brand-title">SIGNAL</h2>
-              <span className="sakala-brand-subtitle">MADRASAH OPERATIONS</span>
-            </div>
-          )}
-          <button
-            type="button"
-            className="sidebar-collapse-toggle"
-            aria-label={sidebarCollapsed ? 'Perluas menu' : 'Perkecil menu'}
-            onClick={(e) => { e.stopPropagation(); setSidebarCollapsed(!sidebarCollapsed); }}
-            title={sidebarCollapsed ? 'Perluas Sidebar' : 'Perkecil Sidebar'}
-          >
-            {sidebarCollapsed ? <ChevronRight size={13} /> : <ChevronRight size={13} style={{ transform: 'rotate(180deg)' }} />}
-          </button>
-        </div>
+      <SovereignSidebar
+        activeScreen={screen}
+        navGroups={sidebarGroups}
+        sidebarOpen={sidebarOpen}
+        sidebarCollapsed={sidebarCollapsed}
+        schoolName={workspace.settings.schoolName || 'Madrasah'}
+        academicYear={workspace.settings.academicYear}
+        semester={workspace.settings.semester}
+        historyCount={workspace.history.length}
+        documentCount={documentCount}
+        scheduleReady={scheduleReady}
+        onNavigate={(id) => navigate(id as ScreenId)}
+        onToggleCollapse={() => setSidebarCollapsed((c) => !c)}
+        onCloseMobile={() => setSidebarOpen(false)}
+        onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+        onClickVault={() => {
+          navigate('history');
+          notify(
+            `Vault lokal aktif · ${workspace.history.length} versi jadwal & ${documentCount} arsip tersimpan aman di browser.`,
+            'success'
+          );
+        }}
+      />
 
-        <nav className="sakala-nav" aria-label="Navigasi alur kerja">
-          {navGroups.map((group) => (
-            <div key={group.sectionTitle} className="sakala-nav-group">
-              {!sidebarCollapsed && (
-                <div className="sakala-nav-section-title">{group.sectionTitle}</div>
-              )}
-              {group.items.map((item) => (
-                <button
-                  key={item.id}
-                  className={`sakala-nav-item ${screen === item.id ? 'active' : ''}`}
-                  onClick={() => navigate(item.id)}
-                  aria-current={screen === item.id ? 'page' : undefined}
-                  title={item.label}
-                >
-                  <item.icon className="icon" strokeWidth={screen === item.id ? 2.2 : 1.8} />
-                  {!sidebarCollapsed && <span>{item.label}</span>}
-                  {item.id === 'validation' && report && report.hardErrorCount > 0 && (
-                    <span className="sakala-nav-badge">{report.hardErrorCount}</span>
-                  )}
-                </button>
-              ))}
-            </div>
-          ))}
-        </nav>
-
-        {/* Minimal Quiet Status Footer */}
-        <div className={`sidebar-status-footer ${sidebarCollapsed ? 'is-collapsed' : ''}`}>
-          <div className="sidebar-status-indicator" title="Penyimpanan lokal aktif di browser ini (Local First)">
-            <HardDrive size={14} className="s5-sidebar-db-icon" aria-hidden="true" />
-            {!sidebarCollapsed && (
-              <div className="sidebar-status-text">
-                <span className="sidebar-status-label">Lokal Aktif</span>
-                <span className="sidebar-status-meta">TA {workspace.settings.academicYear}</span>
-              </div>
-            )}
-          </div>
-          {!sidebarCollapsed && (
-            <button
-              type="button"
-              className="sidebar-quick-settings-btn"
-              onClick={() => navigate('settings')}
-              title="Buka Pengaturan"
-              aria-label="Pengaturan"
-            >
-              <Settings2 size={14} />
-            </button>
-          )}
-        </div>
-      </aside>
-
-      <main className={`main-shell ${sidebarCollapsed ? "main-shell-expanded" : ""}`}>
+      <main className={`main-shell ${effectiveCollapsed ? 'main-shell-expanded' : ''}`}>
         <header className="sakala-topbar">
           <div className="sakala-header-greeting s5-topbar-left">
             <button
@@ -1549,7 +1544,7 @@ export default function App() {
 
           <footer className="app-footer">
             <div className="s5-footer-left">
-              <span>© 2026 SIGNAL Academic Studio</span>
+              <span>© 2026 SAKALA Academic Studio</span>
               <span className="s5-footer-sep" aria-hidden="true">·</span>
               <span>Sistem Informasi Penjadwalan &amp; Presensi Madrasah</span>
             </div>
@@ -1990,9 +1985,9 @@ export default function App() {
 function LoadingScreen() {
   return (
     <div className="loading-screen">
-      <div className="loading-emblem"><img src="/signal-mark.svg" alt="" /></div>
+      <div className="loading-emblem"><img src="/sakala-mark.png" alt="Logo SAKALA" /></div>
       <div className="loading-line" />
-      <h1>SIGNAL</h1>
+      <h1>SAKALA</h1>
       <p>Menyiapkan ruang kerja madrasah Anda…</p>
     </div>
   );
@@ -2684,7 +2679,7 @@ export function OperatorOverviewScreen({
             <span className="s5-admin-metric-label">Template Madrasah</span>
             <span className="s5-admin-metric-value s5-tnum">{customTemplatesCount}</span>
             <span className="s5-admin-metric-sub">
-              + 30 template resmi bawaan SIGNAL
+              + 30 template resmi bawaan SAKALA
             </span>
           </button>
         </div>

@@ -1278,7 +1278,7 @@ export function DocumentIntakeForm({
             <span>{getCategoryLabel(template.category)}</span>
             <span aria-hidden="true">·</span>
             <span className={isMadrasahTpl ? 's03-meta-madrasah' : 's03-meta-system'}>
-              {isMadrasahTpl ? 'Template Madrasah' : 'Bawaan SIGNAL'}
+              {isMadrasahTpl ? 'Template Madrasah' : 'Bawaan SAKALA'}
             </span>
           </div>
           <h1 className="s03-title">{template.name}</h1>

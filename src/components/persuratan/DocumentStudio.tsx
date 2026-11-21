@@ -2986,7 +2986,7 @@ export function DocumentStudio({
                       id="s04-footer-text"
                       type="text"
                       maxLength={160}
-                      placeholder="Contoh: Dokumen Resmi Madrasah · SIGNAL"
+                      placeholder="Contoh: Dokumen Resmi Madrasah · SAKALA"
                       value={pageSettings.footerText ?? ''}
                       onChange={(e) =>
                         handleApplyPageSettings({

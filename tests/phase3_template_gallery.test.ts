@@ -281,7 +281,7 @@ describe('Tahap 3A — Galeri Template S02 & Katalog 30 Template', () => {
     expect(galleryHtml).toContain('Penugasan &amp; Keputusan');
     expect(galleryHtml).toContain('Korespondensi');
     expect(galleryHtml).toContain('Template Madrasah');
-    expect(galleryHtml).toContain('Bawaan SIGNAL');
+    expect(galleryHtml).toContain('Bawaan SAKALA');
     expect(galleryHtml).toContain('Gunakan Template');
     expect(galleryHtml).not.toContain('s02-future-btn');
     expect(galleryHtml).not.toContain('Impor DOCX');
@@ -301,6 +301,6 @@ describe('Tahap 3A — Galeri Template S02 & Katalog 30 Template', () => {
 
     // Pastikan App shell merender aman dan hanya memiliki tepat 1 menu sidebar Persuratan & Arsip
     const appHtml = renderToStaticMarkup(createElement(App));
-    expect(appHtml).toContain('SIGNAL');
+    expect(appHtml).toContain('SAKALA');
   });
 });

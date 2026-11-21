@@ -152,7 +152,7 @@ export const TimeMachineDrawer: React.FC<TimeMachineDrawerProps> = ({
   const handleExportFile = async () => {
     try {
       await exportSignalFile(currentState);
-      onNotify('Berkas cadangan .signal (ber-checksum SHA-256) berhasil diunduh.', 'success');
+      onNotify('Berkas cadangan .sakala (ber-checksum SHA-256) berhasil diunduh.', 'success');
     } catch (err) {
       onNotify('Gagal mengekspor berkas cadangan.', 'error');
     }
@@ -310,7 +310,7 @@ export const TimeMachineDrawer: React.FC<TimeMachineDrawerProps> = ({
             </span>
           </div>
 
-          {/* Action Ribbon: New Milestone + Export .signal + Import */}
+          {/* Action Ribbon: New Milestone + Export .sakala + Import */}
           <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
             <button
               onClick={() => setIsCreating(!isCreating)}
@@ -335,7 +335,7 @@ export const TimeMachineDrawer: React.FC<TimeMachineDrawerProps> = ({
             </button>
             <button
               onClick={handleExportFile}
-              title="Unduh Berkas Cadangan Terverifikasi SHA-256 .signal"
+              title="Unduh Berkas Cadangan Terverifikasi SHA-256 .sakala"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -351,11 +351,11 @@ export const TimeMachineDrawer: React.FC<TimeMachineDrawerProps> = ({
               }}
             >
               <Download size={14} />
-              <span>Ekspor .signal</span>
+              <span>Ekspor .sakala</span>
             </button>
             <button
               onClick={() => fileInputRef.current?.click()}
-              title="Pulihkan dari Berkas .signal atau .json"
+              title="Pulihkan dari Berkas .sakala, .signal, atau .json"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -377,7 +377,7 @@ export const TimeMachineDrawer: React.FC<TimeMachineDrawerProps> = ({
               type="file"
               ref={fileInputRef}
               onChange={handleFileChange}
-              accept=".signal,.json"
+              accept=".sakala,.signal,.json"
               style={{ display: 'none' }}
             />
           </div>

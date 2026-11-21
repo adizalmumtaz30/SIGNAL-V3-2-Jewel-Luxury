@@ -271,7 +271,7 @@ export function createDemoState(): AppState {
         entryCount: genResult.candidate.entries.length,
         entries: genResult.candidate.entries,
         fingerprint: buildScheduleFingerprint(genResult.candidate.entries),
-        validatorVersion: 'SIGNAL-validator/1.0.0',
+        validatorVersion: 'SAKALA-validator/1.0.0',
         academicYear: settings.academicYear,
         semester: settings.semester,
       },

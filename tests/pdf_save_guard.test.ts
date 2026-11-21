@@ -63,11 +63,11 @@ describe('Pengaman Sentral Ekspor PDF Vitest (Tanpa Penulisan Disk)', () => {
 
     expect(saveSpy).toHaveBeenCalledTimes(6);
     const savedNames = saveSpy.mock.calls.map((c) => String(c[0] ?? ''));
-    expect(savedNames.some((n) => n.includes(`SIGNAL_Jadwal_Semua_Kelas_A4_${marker}.pdf`))).toBe(true);
-    expect(savedNames.some((n) => n.includes(`SIGNAL_Jadwal_Mingguan_Kelas_${marker}_A4.pdf`))).toBe(true);
-    expect(savedNames.some((n) => n.includes(`SIGNAL_Jadwal_Mingguan_Semua_Kelas_A4_${marker}.pdf`))).toBe(true);
-    expect(savedNames.some((n) => n.includes(`SIGNAL_Jadwal_Guru_${marker}.pdf`))).toBe(true);
-    expect(savedNames.some((n) => n.includes('SIGNAL_Rekap_Presensi_Guru_A4_'))).toBe(true);
+    expect(savedNames.some((n) => n.includes(`SAKALA_Jadwal_Semua_Kelas_A4_${marker}.pdf`))).toBe(true);
+    expect(savedNames.some((n) => n.includes(`SAKALA_Jadwal_Mingguan_Kelas_${marker}_A4.pdf`))).toBe(true);
+    expect(savedNames.some((n) => n.includes(`SAKALA_Jadwal_Mingguan_Semua_Kelas_A4_${marker}.pdf`))).toBe(true);
+    expect(savedNames.some((n) => n.includes(`SAKALA_Jadwal_Guru_${marker}.pdf`))).toBe(true);
+    expect(savedNames.some((n) => n.includes('SAKALA_Rekap_Presensi_Guru_A4_'))).toBe(true);
 
     const rootAfter = fs.readdirSync(process.cwd());
     const createdPdfs = rootAfter.filter((f) => !rootBefore.has(f) && f.endsWith('.pdf'));

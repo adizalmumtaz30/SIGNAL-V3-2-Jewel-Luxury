@@ -1146,7 +1146,7 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
         entry.notes || '-',
       ]);
     });
-    downloadAttendanceCsv(rows, `SIGNAL-presensi-harian-${currentDate}-terpilih.csv`);
+    downloadAttendanceCsv(rows, `SAKALA-presensi-harian-${currentDate}-terpilih.csv`);
     onNotify(`${selectedList.length} data presensi harian terpilih berhasil diekspor ke CSV.`, 'success');
   };
 
@@ -1247,7 +1247,7 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
       ]);
     }
     const safeCode = selectedTeacherObj?.code || 'guru';
-    downloadAttendanceCsv(rows, `SIGNAL-ledger-${safeCode}-${currentMonth}-terpilih.csv`);
+    downloadAttendanceCsv(rows, `SAKALA-ledger-${safeCode}-${currentMonth}-terpilih.csv`);
     onNotify(`${rowsSelected.length} baris riwayat presensi terpilih berhasil diekspor ke CSV.`, 'success');
   };
 
@@ -1336,7 +1336,7 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
     const periodSlug = recapSummaryAll.isMultiMonth
       ? `${recapSummaryAll.startMonth}_sd_${recapSummaryAll.endMonth}`
       : currentMonth;
-    downloadAttendanceCsv(rows, `SIGNAL-rekap-presensi-${periodSlug}-terpilih.csv`);
+    downloadAttendanceCsv(rows, `SAKALA-rekap-presensi-${periodSlug}-terpilih.csv`);
     onNotify(`${rowsSelected.length} data rekap pendidik terpilih berhasil diekspor ke CSV.`, 'success');
   };
 
@@ -1426,7 +1426,7 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
     for (const h of selectedList) {
       rows.push([h.date, formatLocalDate(h.date), h.name]);
     }
-    downloadAttendanceCsv(rows, `SIGNAL-hari-libur-terpilih-${catalogYear}.csv`);
+    downloadAttendanceCsv(rows, `SAKALA-hari-libur-terpilih-${catalogYear}.csv`);
     onNotify(`${selectedList.length} hari libur terpilih berhasil diekspor ke CSV.`, 'success');
   };
 

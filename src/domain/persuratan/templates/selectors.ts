@@ -26,7 +26,7 @@ export const TEMPLATE_COLLECTION_TABS: Array<{ id: TemplateCollection; label: st
   { id: 'FAVORITES', label: 'Favorit' },
   { id: 'RECENT', label: 'Terakhir Dipakai' },
   { id: 'MADRASAH', label: 'Template Madrasah' },
-  { id: 'SYSTEM', label: 'Bawaan SIGNAL' },
+  { id: 'SYSTEM', label: 'Bawaan SAKALA' },
 ];
 
 export const VALID_TEMPLATE_CATEGORIES = new Set<TemplateCategory>(

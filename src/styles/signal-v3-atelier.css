@@ -181,10 +181,6 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   flex-shrink: 0;
 }
 
-.sakala-brand-logo {
-  display: none;
-}
-
 .sakala-brand-title {
   font-family: var(--serif);
   font-size: 19px;
@@ -203,11 +199,6 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   color: var(--gold2);
   font-weight: 700;
   margin-top: 2px;
-}
-
-.sidebar-toggle-btn {
-  color: #b5c9bd !important;
-  cursor: pointer;
 }
 
 /* Nav Groups */
@@ -279,24 +270,6 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   font-weight: 800;
   padding: 1px 6px;
   border-radius: 999px;
-}
-
-.side-foot {
-  margin-top: auto;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-  padding: 14px 8px 0;
-  color: #a8beb2;
-  font-size: 9.5px;
-  letter-spacing: 0.08em;
-  line-height: 1.4;
-}
-
-.side-foot b {
-  color: var(--gold2);
-  display: block;
-  font-family: var(--serif);
-  font-size: 11px;
-  letter-spacing: 0.12em;
 }
 
 /* Main Shell */

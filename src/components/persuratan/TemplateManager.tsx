@@ -207,7 +207,7 @@ export function TemplateManager({
   const openEditForm = (tpl: DocumentTemplate) => {
     if (tpl.source === 'SYSTEM' || tpl.isReadOnly) {
       onNotify?.(
-        'Template bawaan SIGNAL bersifat baca-saja. Klik "Kloning ke Madrasah" untuk membuat salinan yang dapat diedit.',
+        'Template bawaan SAKALA bersifat baca-saja. Klik "Kloning ke Madrasah" untuk membuat salinan yang dapat diedit.',
         'info'
       );
       return;
@@ -475,7 +475,7 @@ export function TemplateManager({
             {filteredList.length === 0 ? (
               <div className="s02-empty-box">
                 <h3>Tidak ada template pada tampilan ini</h3>
-                <p>Buat template khusus madrasah baru atau kloning salah satu dari 30 template bawaan SIGNAL.</p>
+                <p>Buat template khusus madrasah baru atau kloning salah satu dari 30 template bawaan SAKALA.</p>
               </div>
             ) : (
               filteredList.map((tpl) => {
@@ -902,7 +902,7 @@ export function TemplateManager({
                 <span style={{ fontSize: '11.5px', color: '#4b635d', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                   {selectedTemplate.source === 'SYSTEM' ? (
                     <>
-                      <Lock size={12} /> Bawaan SIGNAL (Aman/Baca-Saja)
+                      <Lock size={12} /> Bawaan SAKALA (Aman/Baca-Saja)
                     </>
                   ) : (
                     `Madrasah · v${selectedTemplate.version} · ${selectedTemplate.status}`

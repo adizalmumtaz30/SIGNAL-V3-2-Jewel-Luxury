@@ -356,7 +356,7 @@ describe('Tahap 2 — Pusat Persuratan & Arsip (S01)', () => {
 
   it('10. Shell App merender aman dan S01 tidak memutasi documents maupun memunculkan draft palsu', () => {
     const appHtml = renderToStaticMarkup(createElement(App));
-    expect(appHtml).toContain('SIGNAL');
+    expect(appHtml).toContain('SAKALA');
 
     const emptyState = createEmptyState();
     const snapshotBefore = JSON.stringify(emptyState.documents);

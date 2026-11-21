@@ -73,7 +73,7 @@ export function AiConflictHelper({
       setErrorMessage(
         err instanceof Error
           ? err.message
-          : 'Asisten AI sementara tidak dapat merespons. Sistem deterministik SIGNAL tetap berjalan normal.'
+          : 'Asisten AI sementara tidak dapat merespons. Sistem deterministik SAKALA tetap berjalan normal.'
       );
     } finally {
       setLoading(false);
@@ -179,7 +179,7 @@ export function AiConflictHelper({
         AI membantu menerjemahkan bentrok yang rumit menjadi langkah aksi konkret.
         <strong style={{ color: '#173637' }}>
           {' '}
-          Keputusan akhir tetap diverifikasi oleh validator deterministik SIGNAL.
+          Keputusan akhir tetap diverifikasi oleh validator deterministik SAKALA.
         </strong>
       </p>
 

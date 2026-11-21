@@ -478,6 +478,6 @@ describe('Tahap 4 — Form Data Awal / Context Form (S03)', () => {
     expect(intakeHtml).toContain('Isian Konteks');
     expect(intakeHtml).toContain('Ganti Template');
     const appHtml = renderToStaticMarkup(createElement(App));
-    expect(appHtml).toContain('SIGNAL');
+    expect(appHtml).toContain('SAKALA');
   });
 });

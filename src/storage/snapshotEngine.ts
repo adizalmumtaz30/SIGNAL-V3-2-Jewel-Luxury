@@ -287,7 +287,7 @@ export async function exportSignalFile(state: AppState, dbOverride?: SignalDbLik
   const a = document.createElement('a');
   const dateStr = new Date().toISOString().slice(0, 10);
   a.href = url;
-  a.download = `SIGNAL-V5-MADRASAH-${dateStr}.signal`;
+  a.download = `SAKALA-V5-MADRASAH-${dateStr}.sakala`;
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -304,22 +304,22 @@ export async function parseSignalContent(text: string): Promise<BackupParseResul
   try {
     parsedRaw = JSON.parse(text);
   } catch {
-    throw new Error('Berkas cadangan bukan JSON/.signal yang valid atau rusak.');
+    throw new Error('Berkas cadangan bukan JSON/.sakala yang valid atau rusak.');
   }
 
   if (!isPlainObject(parsedRaw)) {
     throw new Error('Struktur berkas cadangan tidak valid.');
   }
 
-  // Case 1: Official .signal container
+  // Case 1: Official .sakala / .signal container
   if (parsedRaw.signature === 'SIGNAL-V5-SEAL') {
     if (!isPlainObject(parsedRaw.data) || !isPlainObject(parsedRaw.data.state)) {
-      throw new Error('Struktur amplop .signal tidak lengkap atau rusak.');
+      throw new Error('Struktur amplop cadangan SAKALA tidak lengkap atau rusak.');
     }
 
     const formatVersionRaw = parsedRaw.formatVersion;
     if (formatVersionRaw !== undefined && formatVersionRaw !== 1 && formatVersionRaw !== 2) {
-      throw new Error('Versi format arsip .signal tidak dikenali oleh aplikasi ini.');
+      throw new Error('Versi format arsip cadangan SAKALA tidak dikenali oleh aplikasi ini.');
     }
     const formatVersion = typeof formatVersionRaw === 'number' ? formatVersionRaw : 1;
 
@@ -333,29 +333,29 @@ export async function parseSignalContent(text: string): Promise<BackupParseResul
 
     if (formatVersion >= 2) {
       if (!isSha256Hex(checksum)) {
-        throw new Error('Berkas .signal versi terbaru wajib memiliki checksum SHA-256 yang valid.');
+        throw new Error('Berkas cadangan SAKALA versi terbaru wajib memiliki checksum SHA-256 yang valid.');
       }
       if (checksum.toLowerCase() !== expectedCanonical) {
-        throw new Error('Verifikasi SHA-256 gagal: berkas .signal telah diubah atau rusak.');
+        throw new Error('Verifikasi SHA-256 gagal: berkas cadangan telah diubah atau rusak.');
       }
     } else if (hasChecksumKey) {
       if (!isSha256Hex(checksum)) {
-        throw new Error('Format checksum SHA-256 pada berkas .signal tidak valid.');
+        throw new Error('Format checksum SHA-256 pada berkas cadangan tidak valid.');
       }
       const lower = checksum.toLowerCase();
       if (lower !== expectedCanonical && lower !== expectedLegacy) {
-        throw new Error('Verifikasi SHA-256 gagal: berkas .signal telah diubah atau rusak.');
+        throw new Error('Verifikasi SHA-256 gagal: berkas cadangan telah diubah atau rusak.');
       }
     } else {
       verification = 'legacy_unverified';
       warnings.push(
-        'Berkas .signal format lama ini tidak menyertakan checksum SHA-256 sehingga integritasnya tidak dapat diverifikasi (legacy/unverified).'
+        'Berkas cadangan format lama ini tidak menyertakan checksum SHA-256 sehingga integritasnya tidak dapat diverifikasi (legacy/unverified).'
       );
     }
 
     const schemaVersion = parsedRaw.data.state.schemaVersion;
     if (schemaVersion !== undefined && schemaVersion !== 1 && schemaVersion !== 2) {
-      throw new Error('Versi skema data di dalam berkas .signal tidak didukung oleh aplikasi ini.');
+      throw new Error('Versi skema data di dalam berkas cadangan tidak didukung oleh aplikasi ini.');
     }
 
     validateAppStateStructure(parsedRaw.data.state);
@@ -382,7 +382,7 @@ export async function parseSignalContent(text: string): Promise<BackupParseResul
   }
 
   throw new Error(
-    'Format berkas tidak dikenali sebagai arsip cadangan resmi SIGNAL (.signal atau SIGNAL-LOCAL-BACKUP).'
+    'Format berkas tidak dikenali sebagai arsip cadangan resmi SAKALA (.sakala, .signal, atau JSON backup).'
   );
 }
 

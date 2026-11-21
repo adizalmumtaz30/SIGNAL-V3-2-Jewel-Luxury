@@ -575,6 +575,6 @@ describe('Tahap 5 — S04 Document Studio / Editor Dokumen Bergaya Word', () => 
 
     // App shell tetap utuh
     const appHtml = renderToStaticMarkup(createElement(App));
-    expect(appHtml).toContain('SIGNAL');
+    expect(appHtml).toContain('SAKALA');
   });
 });

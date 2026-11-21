@@ -16,7 +16,7 @@ import {
 } from './madrasahLogo';
 import { groupClassesForMasterMatrix } from './matrixGrouping';
 
-// Color palette matching SIGNAL branding
+// Color palette matching SAKALA branding
 const TEAL = [11, 52, 53] as [number, number, number]; // #0b3435
 const TEAL_LIGHT = [235, 244, 240] as [number, number, number];
 const GOLD = [188, 148, 94] as [number, number, number]; // #bc945e
@@ -381,7 +381,7 @@ function addDocHeader(
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
-  doc.text('SIGNAL · SISTEM PENJADWALAN & PRESENSI', 14, 11);
+  doc.text('SAKALA · SISTEM PENJADWALAN & PRESENSI', 14, 11);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
@@ -1226,7 +1226,7 @@ export function exportScheduleClassPDF(
 
   const cleanName = cls.name.replace(/[^a-zA-Z0-9]/g, '_');
   const paperSuffix = paperSize.toUpperCase();
-  doc.save(`SIGNAL_Jadwal_Mingguan_Kelas_${cleanName}_${paperSuffix}.pdf`);
+  doc.save(`SAKALA_Jadwal_Mingguan_Kelas_${cleanName}_${paperSuffix}.pdf`);
 }
 
 /**
@@ -1251,7 +1251,7 @@ export function exportAllClassesWeeklyPDF(
 
   const cleanYear = (options?.academicYear || state.settings.academicYear).replace(/[^a-zA-Z0-9]/g, '_');
   const paperSuffix = paperSize.toUpperCase();
-  doc.save(`SIGNAL_Jadwal_Mingguan_Semua_Kelas_${paperSuffix}_${cleanYear}.pdf`);
+  doc.save(`SAKALA_Jadwal_Mingguan_Semua_Kelas_${paperSuffix}_${cleanYear}.pdf`);
 }
 
 export interface AllClassesSinglePagePdfOptions extends Partial<OfficialDocCustomTexts> {
@@ -1859,7 +1859,7 @@ export function exportAllClassesSinglePageA4PDF(
 
   const cleanYear = academicYear.replace(/[^a-zA-Z0-9]/g, '_');
   const paperSuffix = paperSize.toUpperCase();
-  doc.save(`SIGNAL_Jadwal_Semua_Kelas_${paperSuffix}_${cleanYear}.pdf`);
+  doc.save(`SAKALA_Jadwal_Semua_Kelas_${paperSuffix}_${cleanYear}.pdf`);
 }
 
 /**
@@ -2081,7 +2081,7 @@ export function exportScheduleTeacherPDF(
 
   const cleanName = teacher.name.replace(/[^a-zA-Z0-9]/g, '_');
   if (!options?.skipSave) {
-    doc.save(`SIGNAL_Jadwal_Guru_${cleanName}.pdf`);
+    doc.save(`SAKALA_Jadwal_Guru_${cleanName}.pdf`);
   }
   return doc;
 }
@@ -2576,6 +2576,6 @@ export function exportAttendanceRecapPDF(
 
   const cleanPeriodFile = periodLabel.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '');
   const paperSuffix = paperSize.toUpperCase();
-  doc.save(`SIGNAL_Rekap_Presensi_Guru_${paperSuffix}_${cleanPeriodFile}.pdf`);
+  doc.save(`SAKALA_Rekap_Presensi_Guru_${paperSuffix}_${cleanPeriodFile}.pdf`);
 }
 
