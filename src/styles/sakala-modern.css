@@ -195,7 +195,7 @@ html, body {
 .sakala-brand-title {
   font-family: 'Manrope', 'Montserrat', sans-serif;
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--text-title);
   margin: 0;
@@ -203,7 +203,7 @@ html, body {
 }
 
 .sakala-brand-subtitle {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-muted);
   letter-spacing: 0.02em;
@@ -247,8 +247,8 @@ html, body {
 .sakala-nav-section-title {
   padding: 6px 14px 4px;
   font-family: 'Manrope', sans-serif;
-  font-size: 10.5px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -302,8 +302,8 @@ html, body {
 
 .sakala-nav-badge {
   margin-left: auto;
-  font-size: 10px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 700;
   background: #ef4444;
   color: #ffffff;
   padding: 2px 7px;
@@ -367,7 +367,7 @@ html, body {
 .sakala-header-greeting h1 {
   font-family: 'Manrope', 'Montserrat', sans-serif;
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text-title);
   margin: 0;
@@ -480,7 +480,7 @@ html, body {
   color: #ffffff;
   font-family: 'Manrope', sans-serif;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -559,7 +559,7 @@ html, body {
   align-items: center;
   gap: 6px;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--teal-primary);
@@ -569,7 +569,7 @@ html, body {
 .overview-focal-title {
   font-family: 'Manrope', 'Montserrat', sans-serif;
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text-title);
   margin: 0 0 6px;
   line-height: 1.25;
@@ -640,7 +640,7 @@ html, body {
 .overview-kpi-copy strong {
   font-family: 'Manrope', sans-serif;
   font-size: 20px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text-title);
   line-height: 1.2;
 }
@@ -740,7 +740,7 @@ html, body {
 .cp-card-title {
   font-family: 'Manrope', 'Montserrat', sans-serif;
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text-title);
   margin: 0;
 }
@@ -800,7 +800,7 @@ html, body {
 .cp-operational-status-left h4 {
   font-family: 'Manrope', sans-serif;
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text-title);
   margin: 0 0 2px;
 }
@@ -871,7 +871,7 @@ html, body {
 
 .cp-class-name {
   font-family: 'Manrope', sans-serif;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text-title);
 }
 
@@ -914,7 +914,7 @@ html, body {
 
 .cp-stat-num-col small {
   display: block;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -925,7 +925,7 @@ html, body {
 .cp-stat-num-col strong {
   font-family: 'Manrope', sans-serif;
   font-size: 17px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text-title);
 }
 
@@ -996,7 +996,7 @@ html, body {
 .cp-metric-data strong {
   font-family: 'Manrope', sans-serif;
   font-size: 20px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text-title);
 }
 
@@ -1012,8 +1012,8 @@ html, body {
 }
 
 .cp-action-banner-kicker {
-  font-size: 10px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #8ce1d8;
@@ -1023,7 +1023,7 @@ html, body {
 .cp-action-banner h3 {
   font-family: 'Manrope', 'Montserrat', sans-serif;
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 700;
   margin: 0 0 8px;
   line-height: 1.3;
 }
@@ -1044,7 +1044,7 @@ html, body {
   border: none;
   border-radius: var(--r-pill);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -1075,7 +1075,7 @@ html, body {
   font-family: 'Manrope', sans-serif;
   font-size: 11px;
   letter-spacing: 0.12em;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--teal-primary);
   text-transform: uppercase;
   display: flex;
@@ -1095,7 +1095,7 @@ html, body {
 .page-heading h1 {
   font-family: 'Manrope', 'Montserrat', sans-serif;
   font-size: 24px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text-title);
   line-height: 1.25;
@@ -1241,7 +1241,7 @@ table.matrix-table thead th {
   color: var(--text-title) !important;
   font-family: 'Manrope', sans-serif !important;
   font-size: 11.5px !important;
-  font-weight: 800 !important;
+  font-weight: 700 !important;
   padding: 12px 14px !important;
   border-bottom: 2px solid var(--cp-border) !important;
   border-right: 1px solid var(--cp-border-light) !important;
@@ -1283,7 +1283,7 @@ table.matrix-table tbody td {
 .slot-subject-title {
   font-family: 'Manrope', sans-serif;
   font-size: 12.5px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text-title);
   line-height: 1.25;
 }
@@ -1428,7 +1428,7 @@ textarea:focus {
 .modal-head h2 {
   font-family: 'Manrope', 'Montserrat', sans-serif;
   font-size: 17px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text-title);
   margin: 0;
 }
@@ -1546,7 +1546,7 @@ textarea:focus {
   background: var(--cp-canvas);
   border: 1px solid var(--cp-border);
   color: var(--text-title);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -1570,7 +1570,7 @@ textarea:focus {
   gap: 4px;
   padding: 2px 8px;
   border-radius: var(--r-pill);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
 }
 
@@ -1647,14 +1647,14 @@ textarea:focus {
 .card-heading h3 {
   font-family: 'Manrope', 'Montserrat', sans-serif;
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text-title);
   margin: 0;
 }
 
 .card-eyebrow {
-  font-size: 10.5px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--teal-primary);
@@ -1700,7 +1700,7 @@ textarea:focus {
 .segmented-tabs button.active {
   background: #ffffff;
   color: var(--teal-primary);
-  font-weight: 800;
+  font-weight: 700;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
@@ -1760,7 +1760,7 @@ table.data-table tbody tr:hover td {
   display: grid;
   place-items: center;
   font-family: 'Manrope', sans-serif;
-  font-weight: 800;
+  font-weight: 700;
   font-size: 12px;
   color: var(--teal-primary);
   flex-shrink: 0;
@@ -1901,7 +1901,7 @@ table.data-table tbody tr:hover td {
 .validation-banner h2 {
   font-family: 'Manrope', sans-serif;
   font-size: 17px;
-  font-weight: 800;
+  font-weight: 700;
   margin: 0 0 3px;
   color: var(--text-title);
 }
@@ -1921,15 +1921,15 @@ table.data-table tbody tr:hover td {
 .validation-banner-count strong {
   font-family: 'Manrope', sans-serif;
   font-size: 24px;
-  font-weight: 800;
+  font-weight: 700;
   display: block;
   line-height: 1;
   color: var(--text-title);
 }
 
 .validation-banner-count span {
-  font-size: 10px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--text-muted);
 }
@@ -1968,8 +1968,8 @@ table.data-table tbody tr:hover td {
 
 .validation-summary-grid span {
   display: block;
-  font-size: 10.5px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 700;
   letter-spacing: 0.05em;
   color: var(--text-muted);
   margin-bottom: 2px;
@@ -1978,7 +1978,7 @@ table.data-table tbody tr:hover td {
 .validation-summary-grid strong {
   font-family: 'Manrope', sans-serif;
   font-size: 20px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text-title);
   display: block;
 }
@@ -2050,7 +2050,7 @@ table.data-table tbody tr:hover td {
 }
 
 .issue-code {
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
   padding: 2px 6px;
   border-radius: var(--r-xs);
@@ -2092,7 +2092,7 @@ table.data-table tbody tr:hover td {
 .workload-hero-copy h2 {
   font-family: 'Manrope', sans-serif;
   font-size: 20px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text-title);
   margin: 0 0 6px;
 }
@@ -2147,7 +2147,7 @@ table.data-table tbody tr:hover td {
 .stat-value-row strong {
   font-family: 'Manrope', sans-serif;
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text-title);
 }
 
@@ -2226,8 +2226,8 @@ table.data-table tbody tr:hover td {
 }
 
 .version-kicker {
-  font-size: 10px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 700;
   letter-spacing: 0.1em;
   color: var(--teal-primary);
   text-transform: uppercase;
@@ -2236,7 +2236,7 @@ table.data-table tbody tr:hover td {
 .version-title-row h3 {
   font-family: 'Manrope', sans-serif;
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text-title);
   margin: 2px 0 0;
 }
@@ -2297,7 +2297,7 @@ table.data-table tbody tr:hover td {
 .backup-action-copy h3 {
   font-family: 'Manrope', sans-serif;
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text-title);
   margin: 4px 0 6px;
 }
@@ -2310,8 +2310,8 @@ table.data-table tbody tr:hover td {
 }
 
 .backup-action-kicker {
-  font-size: 10px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 700;
   letter-spacing: 0.1em;
   color: var(--teal-primary);
 }
@@ -2347,7 +2347,7 @@ table.data-table tbody tr:hover td {
 .restore-dropzone h3 {
   font-family: 'Manrope', sans-serif;
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
   margin: 0 0 4px;
   color: var(--text-title);
 }
@@ -2415,8 +2415,8 @@ table.data-table tbody tr:hover td {
 }
 
 .day-toggle span {
-  font-size: 10px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 700;
   color: var(--text-muted);
   letter-spacing: 0.05em;
 }
@@ -2424,7 +2424,7 @@ table.data-table tbody tr:hover td {
 .day-toggle strong {
   font-family: 'Manrope', sans-serif;
   font-size: 13.5px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text-title);
 }
 
@@ -2577,7 +2577,7 @@ table.data-table tbody tr:hover td {
 .empty-state h3 {
   font-family: 'Manrope', sans-serif;
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text-title);
   margin: 0 0 6px;
 }
@@ -2635,7 +2635,7 @@ table.data-table tbody tr:hover td {
 
 .generator-metrics span {
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -2644,7 +2644,7 @@ table.data-table tbody tr:hover td {
 .generator-metrics strong {
   font-family: 'Manrope', sans-serif;
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text-title);
   line-height: 1.2;
 }
@@ -2760,7 +2760,7 @@ table.data-table tbody tr:hover td {
 .settings-danger-card h3 {
   margin: 0;
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 700;
   color: #991b1b;
 }
 

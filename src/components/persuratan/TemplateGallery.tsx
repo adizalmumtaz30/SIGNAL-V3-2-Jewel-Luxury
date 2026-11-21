@@ -298,7 +298,7 @@ export function TemplateGallery({
     }
     setSelectedNotice(tpl);
     onNotify?.(
-      `Template "${tpl.name}" dipilih. Form Data Awal (S03) siap dibuka.`,
+      `Template "${tpl.name}" dipilih. Form Data Awal siap dibuka.`,
       'info'
     );
   };

@@ -510,10 +510,10 @@
 
 .s04-outline-level {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   padding: 1px 4px;
-  border-radius: 4px;
+  border-radius: 6px;
   background: #edf3f0;
   color: var(--s5-emerald-primary, #124037);
   flex-shrink: 0;
@@ -888,7 +888,7 @@
   background: var(--s5-status-warning-bg, #fdf4e7);
   border: 1px solid #e4c173;
   color: var(--s5-status-warning, #855318);
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 600;
 }
@@ -1078,7 +1078,7 @@
 }
 
 .s04-preset-btn span {
-  font-size: 10.25px;
+  font-size: 11px;
   color: var(--s5-ink-tertiary, #526861);
 }
 
@@ -1444,11 +1444,11 @@
 .s04-popover-item kbd {
   margin-left: auto;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   color: #6b817a;
   background: #f4f7f5;
   padding: 1px 5px;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 .s04-popover-divider {
@@ -1528,7 +1528,7 @@
 }
 
 .s04-slash-head {
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1568,11 +1568,11 @@
 
 .s04-slash-item kbd {
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   color: #124037;
   background: #eef5f2;
   padding: 2px 6px;
-  border-radius: 5px;
+  border-radius: 6px;
   flex-shrink: 0;
 }
 

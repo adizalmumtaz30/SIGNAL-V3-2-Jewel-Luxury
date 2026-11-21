@@ -93,13 +93,13 @@ import { QuickValidationModal } from './components/QuickValidationModal';
 import { SchedulePdfExportModal } from './components/SchedulePdfExportModal';
 import { EntityEditModal, type EntityEditTarget } from './components/EntityEditModal';
 import { AiConflictHelper } from './components/AiConflictHelper';
-import { InfoNotice } from './components/InfoNotice';
 import { MadrasahTeacherAvatar, detectTeacherGender } from './components/MadrasahTeacherAvatar';
 import { CommandPaletteModal } from './components/CommandPaletteModal';
 import { TimeMachineDrawer } from './components/TimeMachineDrawer';
 import { InspectorSlideDrawer, type InspectorTarget } from './components/InspectorSlideDrawer';
 import { TeacherAssignmentDrawer } from './components/TeacherAssignmentDrawer';
 import { SovereignSidebar, type SovereignSidebarGroup } from './components/SovereignSidebar';
+import { UnifiedPagination } from './components/UnifiedPagination';
 import {
   KpiAnimatedNumber,
   KpiMotionCard,
@@ -193,7 +193,7 @@ function titleForScreen(screen: ScreenId) {
     workload: 'Statistik Beban Guru',
     attendance: 'Presensi Guru',
     persuratan: 'Pusat Persuratan & Arsip',
-    generator: 'Schedule Generator',
+    generator: 'Penyusun Jadwal Otomatis',
     master: 'Data Master Madrasah',
     requirements: 'Kebutuhan & Alokasi JP',
     validation: 'Validasi & Kepatuhan Aturan',
@@ -455,7 +455,7 @@ export default function App() {
         notify(
           err instanceof Error
             ? err.message
-            : 'SK Mengajar hanya dapat dibuat dari ScheduleVersion terbit terverifikasi.',
+            : 'SK Mengajar hanya dapat dibuat dari Jadwal Terbit Resmi terverifikasi.',
           'warning'
         );
       }
@@ -477,7 +477,7 @@ export default function App() {
   const handleGenerate = () => {
     if (!workspace) return;
     setIsGenerating(true);
-    setLastGeneratorResult({ status: 'RUNNING', message: 'Menyiapkan constraint dan mencari susunan jadwal optimal…', nodes: 0 });
+    setLastGeneratorResult({ status: 'RUNNING', message: 'Menyiapkan aturan jadwal dan menyusun kombinasi optimal…', nodes: 0 });
 
     window.setTimeout(() => {
       const seed = (Date.now() ^ Math.floor(Math.random() * 0xffff)) >>> 0;
@@ -493,7 +493,7 @@ export default function App() {
           draft: result.candidate!.entries,
           dataMode: 'custom',
         }));
-        notify('Jadwal berhasil disusun dan lolos seluruh hard constraint.', 'success');
+        notify('Jadwal berhasil disusun dan bebas seluruh bentrok wajib.', 'success');
         setScreen('schedule');
       } else {
         notify(result.message, result.status === 'INVALID_INPUT' ? 'warning' : 'error');
@@ -1293,15 +1293,15 @@ export default function App() {
               <span className="s5-kbd-shortcut">Ctrl K</span>
             </button>
 
-            {/* Time Machine Vault Trigger */}
+            {/* Riwayat Versi & Cadangan Trigger */}
             <button
               className="s5-time-machine-btn s5-tooltip-bottom"
               onClick={() => setIsTimeMachineOpen(true)}
               type="button"
-              data-s5-tooltip="Riwayat snapshot & pemulihan jadwal"
+              data-s5-tooltip="Riwayat versi & pemulihan jadwal"
             >
               <Clock size={13} />
-              <span>Time Machine</span>
+              <span>Riwayat Versi</span>
             </button>
 
             <span className="s5-topbar-divider" aria-hidden="true" />
@@ -1322,8 +1322,8 @@ export default function App() {
               type="button"
               className="s5-admin-ring s5-tooltip-bottom"
               onClick={() => navigate('settings')}
-              data-s5-tooltip="Pengaturan Identitas Madrasah"
-              aria-label="Profil Administrator Madrasah"
+              data-s5-tooltip="Operator Madrasah · Pengaturan Identitas"
+              aria-label="Profil Operator Madrasah"
             >
               OP
             </button>
@@ -1551,7 +1551,7 @@ export default function App() {
             <div className="s5-footer-right">
               <span>Penyimpanan lokal aktif di browser</span>
               <span className="s5-footer-sep" aria-hidden="true">·</span>
-              <span>Built for clarity, designed for calm</span>
+              <span>Dirancang untuk ketertiban administrasi madrasah</span>
             </div>
           </footer>
         </div>
@@ -1827,9 +1827,9 @@ export default function App() {
           subtitle={
             screen === 'persuratan'
               ? persuratanDirtySource === 'studio'
-                ? 'Document Studio (S04) memiliki suntingan naskah yang belum disimpan sebagai draft.'
-                : 'Form Data Awal (S03) memiliki isian yang belum disimpan sebagai draft.'
-              : 'Pengaturan workspace memiliki suntingan yang belum diterapkan.'
+                ? 'Editor Naskah memiliki suntingan surat yang belum disimpan sebagai draf.'
+                : 'Formulir Data Awal memiliki isian yang belum disimpan sebagai draf.'
+              : 'Pengaturan ruang kerja memiliki suntingan yang belum diterapkan.'
           }
           icon={AlertTriangle}
           onClose={() => setPendingNavScreen(null)}
@@ -1838,8 +1838,8 @@ export default function App() {
             <p style={{ margin: 0, fontSize: '13.5px', lineHeight: 1.55, color: 'var(--s5-ink-secondary)' }}>
               {screen === 'persuratan'
                 ? persuratanDirtySource === 'studio'
-                  ? `Anda hendak berpindah ke menu ${titleForScreen(pendingNavScreen)}. Kembali ke Document Studio (S04) untuk menyimpan naskah draft, atau abaikan perubahan tersebut.`
-                  : `Anda hendak berpindah ke menu ${titleForScreen(pendingNavScreen)}. Kembali ke Form Data Awal untuk menyimpan draft, atau abaikan isian sementara tersebut.`
+                  ? `Anda hendak berpindah ke menu ${titleForScreen(pendingNavScreen)}. Kembali ke Editor Naskah untuk menyimpan draf, atau abaikan perubahan tersebut.`
+                  : `Anda hendak berpindah ke menu ${titleForScreen(pendingNavScreen)}. Kembali ke Formulir Data Awal untuk menyimpan draf, atau abaikan isian sementara tersebut.`
                 : `Anda hendak berpindah ke menu ${titleForScreen(pendingNavScreen)}. Simpan perubahan pengaturan terlebih dahulu atau abaikan agar perubahan dikembalikan seperti semula.`}
             </p>
             <div className="modal-actions" style={{ justifyContent: 'flex-end', flexWrap: 'wrap', gap: '8px' }}>
@@ -1850,7 +1850,7 @@ export default function App() {
               >
                 {screen === 'persuratan'
                   ? persuratanDirtySource === 'studio'
-                    ? 'Kembali ke Editor S04'
+                    ? 'Kembali ke Editor Naskah'
                     : 'Lanjutkan Mengisi Form'
                   : 'Tetap di Pengaturan'}
               </button>
@@ -1942,7 +1942,7 @@ export default function App() {
                 onClick={confirmApplyBackupRestore}
               >
                 {pendingBackupRestore.result.verification === 'legacy_unverified'
-                  ? 'Tetap Pulihkan (Unverified)'
+                  ? 'Tetap Pulihkan (Tanpa Verifikasi)'
                   : 'Pulihkan Sekarang'}
               </button>
             </div>
@@ -1995,17 +1995,14 @@ function LoadingScreen() {
 
 function PageHeading({ kicker, title, description, actions }: { kicker: string; title: string; description?: string; actions?: ReactNode }) {
   return (
-    <div className="s5-page-header">
-      <div>
+    <header className="s5-page-header">
+      <div className="s5-page-header-copy">
         <div className="s5-page-kicker">{kicker}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <h1 className="s5-page-title">{title}</h1>
-          {description && <InfoNotice text={description} />}
-        </div>
+        <h1 className="s5-page-title">{title}</h1>
         {description && <p className="s5-page-subtitle">{description}</p>}
       </div>
       {actions && <div className="page-heading-actions">{actions}</div>}
-    </div>
+    </header>
   );
 }
 
@@ -2106,70 +2103,6 @@ function Modal({ title, subtitle, icon: Icon, children, onClose }: { title: stri
       </div>
       {children}
     </MotionModalDialog>
-  );
-}
-
-function TablePagination({
-  totalItems,
-  page,
-  pageSize,
-  onPageChange,
-  onPageSizeChange,
-}: {
-  totalItems: number;
-  page: number;
-  pageSize: number;
-  onPageChange: (p: number) => void;
-  onPageSizeChange: (s: number) => void;
-}) {
-  const totalPages = pageSize === 0 ? 1 : Math.max(1, Math.ceil(totalItems / pageSize));
-  const from = totalItems === 0 ? 0 : pageSize === 0 ? 1 : (page - 1) * pageSize + 1;
-  const to = pageSize === 0 ? totalItems : Math.min(page * pageSize, totalItems);
-
-  return (
-    <div className="table-pagination">
-      <div className="pagination-left">
-        <span>Menampilkan <strong>{from}–{to}</strong> dari <strong>{totalItems}</strong> baris</span>
-        <div className="pagination-size-select">
-          <span>Baris:</span>
-          <select
-            className="page-select"
-            value={pageSize}
-            onChange={(e) => {
-              onPageSizeChange(Number(e.target.value));
-              onPageChange(1);
-            }}
-          >
-            <option value={10}>10</option>
-            <option value={20}>20</option>
-            <option value={25}>25</option>
-            <option value={50}>50</option>
-            <option value={0}>Semua</option>
-          </select>
-        </div>
-      </div>
-      <div className="pagination-right">
-        <button
-          className="page-btn"
-          disabled={page <= 1 || pageSize === 0}
-          onClick={() => onPageChange(page - 1)}
-          title="Halaman sebelumnya"
-        >
-          ‹
-        </button>
-        <span style={{ fontSize: '11.5px', fontWeight: 600, padding: '0 6px' }}>
-          Hal {page} / {totalPages}
-        </span>
-        <button
-          className="page-btn"
-          disabled={page >= totalPages || pageSize === 0}
-          onClick={() => onPageChange(page + 1)}
-          title="Halaman berikutnya"
-        >
-          ›
-        </button>
-      </div>
-    </div>
   );
 }
 
@@ -2336,14 +2269,14 @@ export function OperatorOverviewScreen({
               <span className="s5-tnum" style={{ fontSize: '20px', fontWeight: 700, color: '#FFFFFF', display: 'block', lineHeight: 1 }}>
                 {readiness}%
               </span>
-              <span style={{ fontSize: '10px', fontWeight: 600, color: 'rgba(255,255,255,0.78)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <span style={{ fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.78)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 KESIAPAN
               </span>
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
             <div style={{ fontSize: '11px', fontWeight: 600, color: '#E5C378', letterSpacing: '0.06em' }}>
-              AUDIT KBM DETERMINISTIK
+              KESIAPAN JADWAL MADRASAH
             </div>
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#FFFFFF' }}>
               {totalErrors === 0 ? 'Kepatuhan 100% Lolos' : `${totalErrors} Konflik Terdeteksi`}
@@ -2643,7 +2576,7 @@ export function OperatorOverviewScreen({
             <span className="s5-admin-metric-label">Draft Aktif</span>
             <span className="s5-admin-metric-value s5-tnum">{draftDocsCount}</span>
             <span className="s5-admin-metric-sub">
-              {draftDocsCount > 0 ? 'Siap dilanjutkan di Document Studio' : 'Belum ada draft berjalan'}
+              {draftDocsCount > 0 ? 'Siap dilanjutkan di Editor Naskah' : 'Belum ada draf berjalan'}
             </span>
           </button>
 
@@ -2655,7 +2588,7 @@ export function OperatorOverviewScreen({
             <span className="s5-admin-metric-label">Dokumen Final</span>
             <span className="s5-admin-metric-value s5-tnum">{finalDocsCount}</span>
             <span className="s5-admin-metric-sub">
-              {finalDocsCount > 0 ? 'Bernomor resmi & snapshot terkunci' : 'Belum ada dokumen disahkan'}
+              {finalDocsCount > 0 ? 'Bernomor resmi & salinan terkunci' : 'Belum ada dokumen disahkan'}
             </span>
           </button>
 
@@ -2684,7 +2617,7 @@ export function OperatorOverviewScreen({
           </button>
         </div>
 
-        {/* Status Kesiapan SK Pembagian Tugas Mengajar (Berdasarkan ScheduleVersion Resmi) */}
+        {/* Status Kesiapan SK Pembagian Tugas Mengajar */}
         <div className={`s5-admin-sk-strip ${skBasis.allowed ? '' : 'is-locked'}`}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
             {skBasis.allowed ? (
@@ -2694,7 +2627,7 @@ export function OperatorOverviewScreen({
             )}
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: '13px', fontWeight: 700, color: '#0B2923' }}>
-                SK Pembagian Tugas Mengajar (SYS-TPL-03)
+                SK Pembagian Tugas Mengajar
               </div>
               <div style={{ fontSize: '12px', color: '#4B635D' }}>
                 {skBasis.allowed
@@ -3071,9 +3004,9 @@ function ScheduleScreen({
   return (
     <>
       <PageHeading
-        kicker="SCHEDULE WORKSPACE"
+        kicker="MANAJEMEN JADWAL"
         title="Jadwal Pelajaran"
-        description="Tinjau matriks jadwal seluruh madrasah sekaligus atau kelola detail alokasi per kelas dengan validator deterministik."
+        description="Tinjau matriks jadwal seluruh madrasah sekaligus atau kelola detail alokasi per kelas dengan pemeriksaan bentrok otomatis."
         actions={
           <div className="page-heading-actions">
             {lastMove && (
@@ -3132,7 +3065,7 @@ function ScheduleScreen({
                   onClick={() => onLaunchTeachingSk(skBasis.selectedVersion?.version.id ?? null)}
                   title={
                     skBasis.allowed && skBasis.selectedVersion
-                      ? `Buat SK Pembagian Tugas Mengajar dari ScheduleVersion v${skBasis.selectedVersion.version.version}`
+                      ? `Buat SK Pembagian Tugas Mengajar dari Jadwal Resmi v${skBasis.selectedVersion.version.version}`
                       : skBasis.blockedReason ?? 'Terbitkan jadwal resmi terlebih dahulu sebelum membuat SK.'
                   }
                 >
@@ -3141,7 +3074,7 @@ function ScheduleScreen({
               );
             })()}
             <Button icon={WandSparkles} onClick={onGenerate} disabled={isGenerating}>
-              {isGenerating ? 'Menyusun…' : 'Generate Jadwal'}
+              {isGenerating ? 'Menyusun…' : 'Susun Jadwal Otomatis'}
             </Button>
           </div>
         }
@@ -3211,10 +3144,10 @@ function ScheduleScreen({
           <span className="status-badge-text">
             {state.draft
               ? report.valid
-                ? 'Draft Valid · Bebas Bentrok'
+                ? 'Draf Valid · Bebas Bentrok'
                 : `${report.hardErrorCount} Bentrok Perlu Diperbaiki`
               : published
-              ? `Published · v${state.history[0]?.version ?? '1'}`
+              ? `Terbit · v${state.history[0]?.version ?? '1'}`
               : 'Belum Dibuat'}
           </span>
           <span className="status-badge-action">Audit &amp; Detail ↗</span>
@@ -3956,7 +3889,7 @@ function ScheduleScreen({
                               className="period-heading non-kbm-heading"
                               title={`Non-KBM: ${tRow.defaultLabel} (${tRow.start} – ${tRow.end} WIB)`}
                             >
-                              <span style={{ fontSize: '10.5px', padding: '1px 6px', background: '#dcece3', color: '#114438', borderRadius: '4px', fontWeight: 700 }}>NON-KBM</span>
+                              <span style={{ fontSize: '11px', padding: '1px 6px', background: '#dcece3', color: '#114438', borderRadius: '4px', fontWeight: 700 }}>NON-KBM</span>
                               <small style={{ fontWeight: 600, color: '#1b564b', marginTop: '2px' }}>
                                 {tRow.start} – {tRow.end}
                               </small>
@@ -4280,12 +4213,12 @@ function GeneratorScreen({
   return (
     <>
       <PageHeading
-        kicker="DETERMINISTIC ENGINE"
-        title="Schedule Generator"
-        description={`Mesin pencarian otomatis yang mematuhi seluruh hard constraint alokasi (${allJP} JP total kebutuhan) dan ketersediaan guru.`}
+        kicker="MESIN PENYUSUNAN PRESISI"
+        title="Penyusun Jadwal Otomatis"
+        description={`Menyusun jadwal secara otomatis dengan mematuhi seluruh aturan wajib alokasi (${allJP} JP total kebutuhan) dan ketersediaan guru.`}
         actions={
           <Button icon={WandSparkles} onClick={onGenerate} disabled={isGenerating}>
-            {isGenerating ? 'Sedang mencari…' : 'Jalankan Generator'}
+            {isGenerating ? 'Sedang menyusun…' : 'Susun Jadwal Otomatis'}
           </Button>
         }
       />
@@ -4320,14 +4253,14 @@ function GeneratorScreen({
           <small>Variasi Solusi Teruji</small>
         </KpiMotionCard>
         <KpiMotionCard index={3}>
-          <span>STATUS SOLVER</span>
+          <span>STATUS PENYUSUNAN</span>
           <strong
             style={{
               color: isGenerating ? '#1f6850' : result?.status === 'SUCCESS' ? '#1f6850' : '#876123',
             }}
           >
             {isGenerating ? (
-              'Mencari...'
+              'Menyusun...'
             ) : result?.status === 'SUCCESS' ? (
               <KpiAnimatedNumber value={100} suffix="% Lolos" />
             ) : result ? (
@@ -4336,7 +4269,7 @@ function GeneratorScreen({
               'Siap Dijalankan'
             )}
           </strong>
-          <small>Constraint Engine Deterministik</small>
+          <small>Mesin Kepatuhan Aturan Jadwal</small>
         </KpiMotionCard>
       </div>
 
@@ -4349,21 +4282,21 @@ function GeneratorScreen({
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <strong style={{ fontSize: '13.5px', color: '#0B2923' }}>
-                Deterministic Backtracking Solver Sedang Bekerja
+                Mesin Penyusun Jadwal Sedang Bekerja
               </strong>
-              <span className="s5-tnum" style={{ fontSize: '11px', background: '#E1E8E4', padding: '2px 8px', borderRadius: '4px', fontWeight: 700, color: '#124037' }}>
-                Backtracking CSP · LRN Heuristics
+              <span className="s5-tnum" style={{ fontSize: '11px', background: '#E1E8E4', padding: '2px 8px', borderRadius: '4px', fontWeight: 600, color: '#124037' }}>
+                Pemeriksaan Otomatis
               </span>
             </div>
             <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#556663' }}>
-              Mengeksplorasi pohon kombinatorial ruang pencarian, memverifikasi ketersediaan hari guru, batasan beban harian, dan slot khusus madrasah tanpa bentrok.
+              Memeriksa kombinasi ruang jadwal, ketersediaan hari mengajar guru, batas beban harian, serta slot khusus madrasah bebas bentrok.
             </p>
           </div>
         </div>
       )}
 
       <div className="dashboard-grid generator-main-grid">
-        <Card eyebrow="CONSTRAINT SEARCH" title="Hasil Penyusunan Jadwal">
+        <Card eyebrow="PROSES PENYUSUNAN" title="Hasil Penyusunan Jadwal">
           <div className="result-status-top">
             <div className="result-status-icon">
               {isGenerating ? (
@@ -4377,25 +4310,25 @@ function GeneratorScreen({
               )}
             </div>
             <div>
-              <strong>{isGenerating ? 'Searching candidates…' : result ? statuses[result.status].label : 'Belum ada pencarian baru'}</strong>
+              <strong>{isGenerating ? 'Menyusun variasi jadwal…' : result ? statuses[result.status].label : 'Belum ada penyusunan baru'}</strong>
               <span>{isGenerating ? 'Memeriksa slot, alokasi, dan bentrok lintas kelas.' : result?.message ?? 'Klik tombol di atas untuk menyusun jadwal.'}</span>
             </div>
           </div>
 
           {result && (
             <div className="result-stats">
-              <div><span>Search nodes</span><strong>{result.nodes.toLocaleString('id-ID')}</strong></div>
+              <div><span>Kombinasi Diperiksa</span><strong>{result.nodes.toLocaleString('id-ID')}</strong></div>
               <div><span>Status</span><StatusPill status={statuses[result.status].tone}>{statuses[result.status].label}</StatusPill></div>
             </div>
           )}
 
           <div className="result-disclaimer">
             <ShieldCheck size={16} />
-            <span>Hasil berstatus <strong>SUCCESS</strong> lolos seluruh aturan validasi keras sebelum disimpan ke draft.</span>
+            <span>Hasil berstatus <strong>BERHASIL</strong> telah lolos seluruh aturan wajib bebas bentrok sebelum disimpan ke draf.</span>
           </div>
         </Card>
 
-        <Card eyebrow="CANDIDATE HISTORY" title="Kandidat Tersimpan">
+        <Card eyebrow="RIWAYAT KANDIDAT" title="Kandidat Tersimpan">
           {!state.candidates.length ? (
             <EmptyState icon={WandSparkles} title="Belum ada kandidat" description="Kandidat valid akan muncul di sini." />
           ) : (
@@ -4404,7 +4337,7 @@ function GeneratorScreen({
                 <thead>
                   <tr>
                     <th>Kandidat</th>
-                    <th>Coverage</th>
+                    <th>Ketercapaian</th>
                     <th>Skor</th>
                     <th>Aksi</th>
                   </tr>
@@ -4678,26 +4611,12 @@ function MasterScreen({
 
   return (
     <>
-      {/* 2026 Executive Prestige Hero Banner */}
-      <section className="master-prestige-hero" aria-label="Madrasah Master Data Executive Banner">
-        <svg className="master-hero-ornament" viewBox="0 0 200 200" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
-          <circle cx="100" cy="100" r="92" strokeDasharray="3 3" opacity="0.6" />
-          <circle cx="100" cy="100" r="70" />
-          <circle cx="100" cy="100" r="46" strokeDasharray="2 2" />
-          <rect x="35" y="35" width="130" height="130" transform="rotate(0 100 100)" />
-          <rect x="35" y="35" width="130" height="130" transform="rotate(45 100 100)" />
-          <rect x="52" y="52" width="96" height="96" transform="rotate(22.5 100 100)" opacity="0.5" />
-          <rect x="52" y="52" width="96" height="96" transform="rotate(67.5 100 100)" opacity="0.5" />
-          <polygon points="100,20 120,80 180,100 120,120 100,180 80,120 20,100 80,80" opacity="0.4" />
-        </svg>
-        <div className="master-hero-glow" aria-hidden="true" />
-        <div className="master-hero-shimmer" aria-hidden="true" />
-
+      {/* Tier 2 Porcelain Editorial Header */}
+      <section className="master-prestige-hero" aria-label="Header Data Master Madrasah">
         <div className="master-hero-content">
           <div className="master-hero-left">
             <div className="master-hero-kicker">
-              <Award size={13} className="hero-kicker-icon" />
-              <span>BASIS DATA MASTER · STANDAR EMIS &amp; SIMPATIKA</span>
+              <span className="s5-page-kicker-text">BASIS DATA MASTER · MANAJEMEN MADRASAH</span>
             </div>
             <h1 className="master-hero-title">Data Master Madrasah</h1>
             <p className="master-hero-desc">
@@ -4874,7 +4793,7 @@ function MasterScreen({
                 borderColor: integrityScore === 100 ? '#c2e5bc' : '#f9deab',
               }}
             >
-              {integrityScore === 100 ? 'Siap Generate' : 'Perlu Input'}
+              {integrityScore === 100 ? 'Siap Disusun' : 'Perlu Lengkapi'}
             </span>
           </div>
           <div>
@@ -4893,7 +4812,7 @@ function MasterScreen({
                 : `${missingTeachersInSubjects + classesWithoutRequirements} catatan kelengkapan`}
             </span>
             <span style={{ fontWeight: 700, color: integrityScore === 100 ? '#15803d' : '#b45309' }}>
-              {integrityScore === 100 ? '100% Valid' : 'Warning'}
+              {integrityScore === 100 ? '100% Valid' : 'Perlu Lengkapi'}
             </span>
           </div>
           <div className="prestige-spark-bar">
@@ -4962,7 +4881,7 @@ function MasterScreen({
                   onChange={(e) => onSearch(e.target.value)}
                   placeholder={`Cari ${activeTab === 'classes' ? 'nama kelas' : activeTab === 'teachers' ? 'guru / NIP / kode' : 'mata pelajaran'}…`}
                 />
-                {search && (
+                {search ? (
                   <button
                     type="button"
                     className="search-clear-btn"
@@ -4972,10 +4891,11 @@ function MasterScreen({
                   >
                     <X size={14} />
                   </button>
+                ) : (
+                  <span className="search-shortcut-hint" title="Tekan / untuk mencari di Data Master">
+                    /
+                  </span>
                 )}
-                <span className="search-shortcut-hint" title="Tekan / untuk mencari di Data Master">
-                  /
-                </span>
               </div>
             </div>
           </div>
@@ -5039,7 +4959,7 @@ function MasterScreen({
                 className={`master-filter-chip ${filterPreset === 'overload' ? 'active' : ''}`}
                 onClick={() => setFilterPreset(filterPreset === 'overload' ? 'all' : 'overload')}
               >
-                Overload (&gt;24 JP)
+                Beban Berlebih (&gt;24 JP)
               </button>
               <button
                 type="button"
@@ -5464,7 +5384,7 @@ function MasterScreen({
                             type="button"
                             className="s5-dock-btn primary"
                             onClick={() => (onInspectTeacher ? onInspectTeacher(t) : onEditTeacher(t))}
-                            title="Inspeksi data & jadwal pendidik (Laci Samping V5)"
+                            title="Lihat rincian data & jadwal guru"
                           >
                             <Pencil size={13} />
                             <span>Inspeksi</span>
@@ -5505,7 +5425,7 @@ function MasterScreen({
                                 }}
                               >
                                 <Edit2 size={13} />
-                                <span>Edit Lengkap (Modal)</span>
+                                <span>Edit Data Lengkap</span>
                               </button>
                               {onNavigate && (
                                 <button
@@ -5693,12 +5613,18 @@ function MasterScreen({
         )}
 
         {currentList.length > 0 && (
-          <TablePagination
+          <UnifiedPagination
             totalItems={currentList.length}
             page={page}
             pageSize={pageSize}
+            pageSizeOptions={[10, 20, 25, 50]}
+            allowShowAll
+            itemLabel={activeTab === 'classes' ? 'rombel' : activeTab === 'teachers' ? 'guru' : 'mapel'}
             onPageChange={setPage}
-            onPageSizeChange={setPageSize}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setPage(1);
+            }}
           />
         )}
       </Card>
@@ -5992,7 +5918,7 @@ function RequirementsScreen({
   return (
     <>
       <PageHeading
-        kicker="CURRICULUM PLANNING & MASTER VALIDATION"
+        kicker="PERENCANAAN KURIKULUM & VALIDASI"
         title="Kebutuhan &amp; Alokasi JP"
         description={`Tetapkan alokasi jam pelajaran mingguan untuk tiap kelas (${totalJP} JP terdaftar) dan pantau kepatuhan data master secara langsung.`}
         actions={
@@ -6021,7 +5947,7 @@ function RequirementsScreen({
         }
       />
 
-      {/* MODAL SALIN ALOKASI ROMBEL (TEMPLATE) */}
+      {/* MODAL SALIN ALOKASI ROMBEL */}
       {copyModalOpen && (
         <div className="s5-drawer-overlay" style={{ display: 'grid', placeItems: 'center' }}>
           <div
@@ -6038,7 +5964,7 @@ function RequirementsScreen({
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div>
                 <span style={{ fontSize: '11px', fontWeight: 600, color: '#C5A059', letterSpacing: '0.05em' }}>
-                  TEMPLATE COPY ENGINE
+                  SALIN ALOKASI PARALEL
                 </span>
                 <h3 style={{ margin: '2px 0 0', fontSize: '16px', fontWeight: 700, color: '#0B2923' }}>
                   Salin Alokasi Kurikulum Rombel
@@ -6355,51 +6281,50 @@ function RequirementsScreen({
       )}
 
       {/* 4. TOOLBAR & FILTER CONTROLS */}
-      <div className="toolbar-card" style={{ marginTop: '16px', marginBottom: '14px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '200px' }}>
-          <Search size={15} style={{ color: '#556663' }} />
+      <div className="toolbar-card" style={{ marginTop: '16px', marginBottom: '14px', gap: '12px', flexWrap: 'wrap' }}>
+        <div className="table-search s5-toolbar-search" style={{ flex: 1, minWidth: '220px' }}>
+          <Search size={15} />
           <input
             type="text"
+            aria-label="Cari kelas, mata pelajaran, atau guru"
             placeholder="Cari kelas, mapel, atau guru..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ border: 0, outline: 'none', background: 'transparent', width: '100%', fontSize: '12.5px' }}
           />
           {searchQuery && (
-            <button className="icon-button" onClick={() => setSearchQuery('')} style={{ height: '24px', width: '24px' }}>
-              <X size={13} />
+            <button
+              type="button"
+              className="search-clear-btn"
+              onClick={() => setSearchQuery('')}
+              aria-label="Hapus kata kunci"
+              title="Hapus pencarian"
+            >
+              <X size={14} />
             </button>
           )}
         </div>
 
-        <div className="toolbar-divider" />
+        <select
+          aria-label="Filter berdasarkan rombongan belajar"
+          className="s5-toolbar-select"
+          value={selectedClassFilter}
+          onChange={(e) => setSelectedClassFilter(e.target.value)}
+          style={{ minWidth: '190px' }}
+        >
+          <option value="ALL">Semua Rombel ({classCapacityStats.length})</option>
+          {classCapacityStats.map((c) => (
+            <option key={c.cls.id} value={c.cls.id}>
+              Kelas {c.cls.name} ({c.allocatedJP}/{totalWeeklySlots} JP)
+            </option>
+          ))}
+        </select>
 
-        <div className="class-selector-wrap" style={{ minWidth: '160px' }}>
-          <div className="select-with-icon">
-            <GraduationCap size={14} />
-            <select
-              value={selectedClassFilter}
-              onChange={(e) => setSelectedClassFilter(e.target.value)}
-              style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', fontWeight: 600, color: '#16483f' }}
-            >
-              <option value="ALL">Semua Rombel ({classCapacityStats.length})</option>
-              {classCapacityStats.map((c) => (
-                <option key={c.cls.id} value={c.cls.id}>
-                  Kelas {c.cls.name} ({c.allocatedJP}/{totalWeeklySlots} JP)
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="toolbar-divider" />
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '11px', color: '#556663', fontWeight: 700 }}>
-            Menampilkan {filteredRequirements.length} dari {state.requirements.length} Alokasi
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+          <span className="s5-tnum" style={{ fontSize: '11.5px', color: '#556663', fontWeight: 600 }}>
+            Menampilkan {filteredRequirements.length} dari {state.requirements.length} alokasi
           </span>
           {onlyIssuesFilter && (
-            <span style={{ fontSize: '11px', background: '#fdf0ee', color: '#b24c3d', padding: '2px 7px', borderRadius: '4px', fontWeight: 600 }}>
+            <span style={{ fontSize: '11px', background: '#fdf0ee', color: '#b24c3d', padding: '4px 8px', borderRadius: '6px', fontWeight: 600 }}>
               Filter Isu Aktif
             </span>
           )}
@@ -6513,12 +6438,18 @@ function RequirementsScreen({
             )}
           </tbody>
         </table>
-        <TablePagination
+        <UnifiedPagination
           totalItems={filteredRequirements.length}
           page={reqPage}
           pageSize={reqPageSize}
+          pageSizeOptions={[10, 20, 25, 50]}
+          allowShowAll
+          itemLabel="alokasi"
           onPageChange={setReqPage}
-          onPageSizeChange={setReqPageSize}
+          onPageSizeChange={(size) => {
+            setReqPageSize(size);
+            setReqPage(1);
+          }}
         />
       </div>
     </>
@@ -6551,9 +6482,9 @@ function ValidationScreen({
   return (
     <>
       <PageHeading
-        kicker="RULE COMPLIANCE"
+        kicker="KEPATUHAN ATURAN JADWAL"
         title="Validasi &amp; Konflik Jadwal"
-        description="Validator deterministik memastikan jadwal 100% mematuhi aturan keras sebelum diterbitkan."
+        description="Sistem pemeriksaan otomatis memastikan jadwal 100% bebas bentrok aturan wajib sebelum diterbitkan."
         actions={
           <Button icon={RefreshCw} onClick={onValidate}>
             Uji Ulang Jadwal
@@ -6571,7 +6502,7 @@ function ValidationScreen({
         </div>
         <div className="validation-banner-count">
           <strong>{hardErrors.length}</strong>
-          <span>HARD ERRORS</span>
+          <span>BENTROK WAJIB</span>
         </div>
       </div>
 
@@ -6598,7 +6529,7 @@ function ValidationScreen({
             <XCircle size={20} />
           </div>
           <div>
-            <span>KONFLIK KERAS</span>
+            <span>BENTROK WAJIB</span>
             <strong style={{ color: hardErrors.length > 0 ? '#b42318' : '#1f6850' }}>
               <KpiAnimatedNumber value={hardErrors.length} />
             </strong>
@@ -6611,7 +6542,7 @@ function ValidationScreen({
             <AlertTriangle size={20} />
           </div>
           <div>
-            <span>PERINGATAN LEMAH</span>
+            <span>SARAN OPTIMALISASI</span>
             <strong style={{ color: combined.length - hardErrors.length > 0 ? '#876123' : '#1f6850' }}>
               <KpiAnimatedNumber value={combined.length - hardErrors.length} />
             </strong>
@@ -6651,7 +6582,7 @@ function ValidationScreen({
             Audit Kepatuhan: 100% Bebas Bentrok
           </h3>
           <p style={{ margin: '0 0 16px', color: '#16483f', fontSize: '13px', maxWidth: '520px', marginLeft: 'auto', marginRight: 'auto' }}>
-            Seluruh jadwal KBM, kuota mingguan rombel, batas beban guru, dan slot khusus (Upacara/Religi/Istirahat) telah diverifikasi secara deterministik tanpa konflik.
+            Seluruh jadwal KBM, kuota mingguan rombel, batas beban guru, dan slot khusus (Upacara/Religi/Istirahat) telah diverifikasi secara menyeluruh tanpa konflik.
           </p>
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
             {onNavigate && (
@@ -6725,9 +6656,9 @@ function HistoryScreen({ state, onRestore, onNavigate }: { state: AppState; onRe
   return (
     <>
       <PageHeading
-        kicker="VERSION CONTROL"
+        kicker="RIWAYAT VERSI"
         title="Riwayat Versi &amp; Cadangan Data"
-        description="Snapshot jadwal resmi dan pencadangan data madrasah tersimpan secara lokal. Anda dapat memulihkan versi sebelumnya kapan saja."
+        description="Salinan jadwal resmi dan cadangan data madrasah tersimpan secara lokal. Anda dapat memulihkan versi sebelumnya kapan saja."
         actions={<Button variant="secondary" icon={CalendarDays} onClick={() => onNavigate('schedule')}>Buka Jadwal</Button>}
       />
 
@@ -6740,12 +6671,12 @@ function HistoryScreen({ state, onRestore, onNavigate }: { state: AppState; onRe
             <div className="version-main">
               <div className="version-title-row">
                 <div>
-                  <div className="version-kicker">{idx === 0 ? 'ACTIVE VERSION' : `ARCHIVE · VERSI ${version.version}`}</div>
+                  <div className="version-kicker">{idx === 0 ? 'VERSI AKTIF' : `ARSIP · VERSI ${version.version}`}</div>
                   <h3>{version.label}</h3>
                 </div>
                 <div className="version-actions">
                   {idx === 0 && <StatusPill status="success">Aktif</StatusPill>}
-                  <Button variant="secondary" icon={RefreshCw} onClick={() => onRestore(version)}>Pulihkan ke Draft</Button>
+                  <Button variant="secondary" icon={RefreshCw} onClick={() => onRestore(version)}>Pulihkan ke Draf</Button>
                 </div>
               </div>
               <div className="version-meta">
@@ -6779,13 +6710,13 @@ function BackupScreen({
   return (
     <>
       <PageHeading
-        kicker="DATA PORTABILITY"
-        title="Ekspor &amp; Backup Data"
-        description={`Seluruh data ${state.settings.schoolName} tersimpan di browser Anda. Ekspor backup secara teratur untuk keamanan.`}
+        kicker="CADANGAN & EKSPOR DATA"
+        title="Ekspor &amp; Cadangan Data"
+        description={`Seluruh data ${state.settings.schoolName} tersimpan di browser Anda. Ekspor berkas cadangan secara teratur untuk keamanan.`}
         actions={
           <div style={{ display: 'flex', gap: '8px' }}>
             <Button variant="secondary" icon={Download} onClick={onExportJSON}>Ekspor JSON</Button>
-            <Button icon={Download} onClick={onBackup}>Download Backup JSON</Button>
+            <Button icon={Download} onClick={onBackup}>Unduh Cadangan JSON</Button>
           </div>
         }
       />
@@ -6794,17 +6725,17 @@ function BackupScreen({
         <KpiMotionCard index={0} className="backup-action-card">
           <div className="backup-action-icon json"><FileCheck2 size={21} /></div>
           <div className="backup-action-copy">
-            <div className="backup-action-kicker">FULL WORKSPACE SNAPSHOT</div>
-            <h3>Backup Penuh JSON</h3>
-            <p>Cadangkan seluruh data master, alokasi kebutuhan, presensi, hari libur, dan jadwal ke file aman.</p>
-            <Button icon={Download} onClick={onBackup}>Download Backup JSON</Button>
+            <div className="backup-action-kicker">ARSIP PENUH RUANG KERJA</div>
+            <h3>Cadangan Penuh JSON</h3>
+            <p>Cadangkan seluruh data master, alokasi kebutuhan, presensi, hari libur, dan jadwal ke berkas aman.</p>
+            <Button icon={Download} onClick={onBackup}>Unduh Cadangan JSON</Button>
           </div>
         </KpiMotionCard>
 
         <KpiMotionCard index={1} className="backup-action-card">
           <div className="backup-action-icon csv"><FileSpreadsheet size={21} /></div>
           <div className="backup-action-copy">
-            <div className="backup-action-kicker">SPREADSHEET EXPORT</div>
+            <div className="backup-action-kicker">EKSPOR LEMBAR KERJA</div>
             <h3>Ekspor Jadwal CSV</h3>
             <p>Ekspor susunan jadwal ke format tabel CSV untuk dibuka di Microsoft Excel atau Google Sheets.</p>
             <Button variant="secondary" icon={FileSpreadsheet} onClick={onExportCSV}>Ekspor CSV</Button>
@@ -6814,11 +6745,11 @@ function BackupScreen({
         <KpiMotionCard index={2} className="backup-action-card">
           <div className="backup-action-icon json"><Upload size={21} /></div>
           <div className="backup-action-copy">
-            <div className="backup-action-kicker">RESTORE FROM BACKUP</div>
-            <h3>Pulihkan Data Backup</h3>
-            <p>Pilih file JSON hasil cadangan sebelumnya untuk memulihkan seluruh data madrasah.</p>
+            <div className="backup-action-kicker">PULIHKAN CADANGAN</div>
+            <h3>Pulihkan Data Cadangan</h3>
+            <p>Pilih berkas JSON hasil cadangan sebelumnya untuk memulihkan seluruh data madrasah.</p>
             <label className="button button-secondary file-pick-button">
-              <Upload size={15} /> Pilih File JSON
+              <Upload size={15} /> Pilih Berkas JSON
               <input
                 type="file"
                 accept="application/json,.json"

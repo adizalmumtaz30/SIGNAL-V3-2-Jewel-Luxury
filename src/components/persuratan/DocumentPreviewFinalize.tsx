@@ -1438,7 +1438,7 @@ export function DocumentPreviewFinalize({
                   borderRadius: '8px',
                   background: '#f2f8f5',
                   border: '1px solid #bfd3ca',
-                  fontFamily: 'var(--font-mono, monospace)',
+                  fontFamily: 'var(--font-mono)',
                   fontWeight: 700,
                   color: '#0b2923',
                 }}

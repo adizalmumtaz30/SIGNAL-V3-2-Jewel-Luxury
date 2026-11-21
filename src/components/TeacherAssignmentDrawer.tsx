@@ -311,7 +311,7 @@ export const TeacherAssignmentDrawer: React.FC<TeacherAssignmentDrawerProps> = (
                 ) : (
                   <AlertTriangle size={15} style={{ color: '#9A5B13' }} aria-hidden="true" />
                 )}
-                <span>Sumber Resmi SK Mengajar (ScheduleVersion)</span>
+                <span>Sumber Resmi SK Mengajar (Jadwal Terbit)</span>
               </div>
               {profile.officialVersion && (
                 <span className="s5-tnum" style={{ fontSize: '11px', fontWeight: 700, color: '#14532D' }}>
@@ -365,26 +365,18 @@ export const TeacherAssignmentDrawer: React.FC<TeacherAssignmentDrawerProps> = (
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <select
                 aria-label="Pilih jenis dokumen penugasan guru"
+                className="s5-toolbar-select"
                 value={quickTemplateId}
                 onChange={(e) => setQuickTemplateId(e.target.value)}
-                style={{
-                  flex: '1 1 220px',
-                  height: '36px',
-                  borderRadius: '8px',
-                  border: '1px solid #C5D4CD',
-                  padding: '0 10px',
-                  fontSize: '12.5px',
-                  color: '#0B2923',
-                  background: '#F9FBFA',
-                }}
+                style={{ flex: '1 1 220px' }}
               >
-                <option value="SYS-TPL-04">SK Tugas Tambahan / Jabatan (SYS-TPL-04)</option>
-                <option value="SYS-TPL-01">Surat Tugas Pelatihan / Bimtek (SYS-TPL-01)</option>
-                <option value="SYS-TPL-02">Surat Tugas Dinas Luar (SYS-TPL-02)</option>
-                <option value="SYS-TPL-05">SK Kepanitiaan Kegiatan (SYS-TPL-05)</option>
+                <option value="SYS-TPL-04">SK Tugas Tambahan / Jabatan</option>
+                <option value="SYS-TPL-01">Surat Tugas Pelatihan / Bimtek</option>
+                <option value="SYS-TPL-02">Surat Tugas Dinas Luar</option>
+                <option value="SYS-TPL-05">SK Kepanitiaan Kegiatan</option>
                 <option value="SYS-TPL-03" disabled={!officialBasis.allowed}>
-                  SK Pembagian Tugas Mengajar (SYS-TPL-03)
-                  {!officialBasis.allowed ? ' — Butuh ScheduleVersion Resmi' : ''}
+                  SK Pembagian Tugas Mengajar
+                  {!officialBasis.allowed ? ' — Butuh Jadwal Terbit Resmi' : ''}
                 </option>
               </select>
               <button
@@ -392,7 +384,7 @@ export const TeacherAssignmentDrawer: React.FC<TeacherAssignmentDrawerProps> = (
                 className="button button-primary button-sm"
                 disabled={!teacher.isActive}
                 onClick={() => handleLaunchTemplateForTeacher(quickTemplateId)}
-                title={teacher.isActive ? 'Buka S03 dengan data guru terisi otomatis' : 'Guru nonaktif tidak dapat diberi tugas baru'}
+                title={teacher.isActive ? 'Buka formulir surat dengan data guru terisi otomatis' : 'Guru nonaktif tidak dapat diberi tugas baru'}
               >
                 <FileText size={13} aria-hidden="true" />
                 <span>Buat Dokumen Guru</span>
@@ -581,10 +573,10 @@ export const TeacherAssignmentDrawer: React.FC<TeacherAssignmentDrawerProps> = (
                         </div>
                         <span
                           style={{
-                            fontSize: '10.5px',
-                            fontWeight: 700,
+                            fontSize: '11px',
+                            fontWeight: 600,
                             padding: '2px 8px',
-                            borderRadius: '999px',
+                            borderRadius: '6px',
                             background: badge.bg,
                             color: badge.color,
                             border: `1px solid ${badge.border}`,
@@ -607,7 +599,7 @@ export const TeacherAssignmentDrawer: React.FC<TeacherAssignmentDrawerProps> = (
                         {item.sourceScheduleVersionId && (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                             <BookOpen size={11} aria-hidden="true" />
-                            Jadwal: {item.sourceScheduleVersionId}
+                            Tertaut ke Jadwal Terbit Resmi
                           </span>
                         )}
                       </div>
@@ -641,7 +633,7 @@ export const TeacherAssignmentDrawer: React.FC<TeacherAssignmentDrawerProps> = (
                           >
                             <FileCheck2 size={12} aria-hidden="true" />
                             <span>
-                              {linkedDoc.documentNumber || linkedDoc.status} ({linkedDoc.id})
+                              {linkedDoc.documentNumber || 'Draf Surat Terkait'}
                             </span>
                             <ExternalLink size={11} aria-hidden="true" />
                           </button>

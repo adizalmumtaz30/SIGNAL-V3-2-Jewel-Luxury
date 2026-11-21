@@ -160,7 +160,7 @@ describe('Paket 3 — Duplikasi Draft Aman, Produktivitas Studio S04, & Polish R
 
     expect(studioHtml).toContain('kata');
     expect(studioHtml).toContain('karakter');
-    expect(studioHtml).toContain('Susun Ulang dari Snapshot S03');
+    expect(studioHtml).toContain('Susun Ulang dari Data Awal');
     expect(studioHtml).not.toContain('Terbitkan Nomor');
     expect(studioHtml).not.toContain('Finalisasi Dokumen');
 
@@ -188,6 +188,6 @@ describe('Paket 3 — Duplikasi Draft Aman, Produktivitas Studio S04, & Polish R
         initialDraftId: saved.draft.id,
       })
     );
-    expect(wsHtml).toContain('Susun Ulang dari Snapshot S03');
+    expect(wsHtml).toContain('Susun Ulang dari Data Awal');
   });
 });

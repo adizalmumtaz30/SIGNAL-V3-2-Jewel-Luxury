@@ -82,21 +82,21 @@
 }
 
 .oks-legal-line {
-  font-size: 9.2px;
+  font-size: 11px;
   font-weight: 400;
   line-height: 1.24;
   color: #111111;
 }
 
 .oks-registry-line {
-  font-size: 9.4px;
+  font-size: 11px;
   font-weight: 500;
   line-height: 1.24;
   color: #111111;
 }
 
 .oks-accreditation-line {
-  font-size: 9.6px;
+  font-size: 11px;
   font-weight: 700;
   line-height: 1.22;
   letter-spacing: 0.02em;
@@ -109,7 +109,7 @@
   border-bottom: 1.5px solid #000000;
   padding: 3.5px 6px;
   text-align: center;
-  font-size: 9.2px;
+  font-size: 11px;
   font-weight: 400;
   line-height: 1.25;
   color: #0a0a0a;
@@ -118,6 +118,7 @@
 /* Compact Variant (Settings Right Card & Export Modal Preview) */
 .oks-root.is-compact {
   margin-bottom: 8px;
+  zoom: 0.72;
 }
 
 .oks-root.is-compact .oks-header-row {
@@ -143,32 +144,33 @@
 }
 
 .oks-root.is-compact .oks-title-line {
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .oks-root.is-compact .oks-foundation-line {
-  font-size: 8.2px;
+  font-size: 11px;
 }
 
 .oks-root.is-compact .oks-legal-line,
 .oks-root.is-compact .oks-registry-line {
-  font-size: 6.8px;
+  font-size: 11px;
 }
 
 .oks-root.is-compact .oks-accreditation-line {
-  font-size: 7.1px;
+  font-size: 11px;
 }
 
 .oks-root.is-compact .oks-address-band {
   border-top-width: 1.15px;
   border-bottom-width: 1.15px;
   padding: 2.5px 4px;
-  font-size: 6.8px;
+  font-size: 11px;
 }
 
-/* Mini Variant (S03 Live Miniature Paper Preview) */
+/* Mini Variant (Live Miniature Paper Preview) */
 .oks-root.is-mini {
   margin-bottom: 8px;
+  zoom: 0.64;
 }
 
 .oks-root.is-mini .oks-header-row {
@@ -194,25 +196,25 @@
 }
 
 .oks-root.is-mini .oks-title-line {
-  font-size: 9.5px;
+  font-size: 13px;
 }
 
 .oks-root.is-mini .oks-foundation-line {
-  font-size: 7.4px;
+  font-size: 11px;
 }
 
 .oks-root.is-mini .oks-legal-line,
 .oks-root.is-mini .oks-registry-line {
-  font-size: 6.1px;
+  font-size: 11px;
 }
 
 .oks-root.is-mini .oks-accreditation-line {
-  font-size: 6.4px;
+  font-size: 11px;
 }
 
 .oks-root.is-mini .oks-address-band {
   border-top-width: 1px;
   border-bottom-width: 1px;
   padding: 2px 3px;
-  font-size: 6.1px;
+  font-size: 11px;
 }

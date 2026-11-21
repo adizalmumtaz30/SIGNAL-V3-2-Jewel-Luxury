@@ -156,7 +156,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
       {
         id: 'nav-schedule',
         category: 'Aksi Cepat',
-        title: 'Buka Jadwal Pelajaran (Timetable Workspace)',
+        title: 'Buka Jadwal Pelajaran',
         subtitle: 'Tampilan kisi induk & jadwal per kelas',
         icon: <Calendar size={16} color="#124037" aria-hidden="true" />,
         action: () => {
@@ -178,7 +178,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
       {
         id: 'nav-workload',
         category: 'Aksi Cepat',
-        title: 'Matriks Beban Mengajar (Workload Dashboard)',
+        title: 'Beban Mengajar Guru',
         subtitle: 'Distribusi JP dan persentase kuota dewan guru',
         icon: <LayoutGrid size={16} color="#124037" aria-hidden="true" />,
         action: () => {
@@ -211,8 +211,8 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
       {
         id: 'act-time-machine',
         category: 'Aksi Cepat',
-        title: 'Buka Time Machine Vault (Riwayat Pulih)',
-        subtitle: 'Pulihkan data dari snapshot atau berkas cadangan .sakala / .signal',
+        title: 'Buka Riwayat Versi & Cadangan',
+        subtitle: 'Pulihkan data dari titik pemulihan atau berkas cadangan .sakala / .signal',
         icon: <Clock size={16} color="#C5A059" aria-hidden="true" />,
         action: () => {
           onClose();
@@ -443,7 +443,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
             }}
             placeholder="Ketik surat, template, guru, kelas, mapel, atau aksi cepat..."
           />
-          <span className="s5-kbd-shortcut">ESC untuk batal</span>
+          <span className="s5-kbd-shortcut">ESC tutup</span>
         </div>
 
         {/* Results List */}
@@ -544,15 +544,15 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
         >
           <div style={{ display: 'flex', gap: '12px' }}>
             <span>
-              <kbd style={{ fontFamily: 'monospace', fontWeight: 700 }}>↑</kbd>{' '}
-              <kbd style={{ fontFamily: 'monospace', fontWeight: 700 }}>↓</kbd> Navigasi
+              <kbd style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>↑</kbd>{' '}
+              <kbd style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>↓</kbd> Navigasi
             </span>
             <span>
-              <kbd style={{ fontFamily: 'monospace', fontWeight: 700 }}>↵</kbd> Pilih
+              <kbd style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>↵</kbd> Pilih
             </span>
           </div>
           <span aria-live="polite" className="s5-tnum">
-            {filteredItems.length} hasil · SAKALA Command
+            {filteredItems.length} hasil · Pencarian Cepat SAKALA
           </span>
         </div>
       </div>

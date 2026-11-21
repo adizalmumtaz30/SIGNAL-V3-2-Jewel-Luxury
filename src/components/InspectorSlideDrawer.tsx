@@ -342,7 +342,7 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
                       }}
                     />
                   </div>
-                  <small style={{ fontSize: '10.5px', color: '#687E77', marginTop: '4px', display: 'block' }}>
+                  <small style={{ fontSize: '11px', color: '#687E77', marginTop: '4px', display: 'block' }}>
                     Berdasarkan rencana Kebutuhan JP di {stats.classCount} rombel (bukan jadwal terbit)
                   </small>
                 </div>
@@ -402,7 +402,7 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
                       borderRadius: '7px',
                       border: '1px solid #CCD8D2',
                       fontSize: '12px',
-                      fontFamily: 'monospace',
+                      fontFamily: 'var(--font-mono)',
                       fontWeight: 700,
                     }}
                   />
@@ -430,7 +430,7 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
                       borderRadius: '7px',
                       border: '1px solid #CCD8D2',
                       fontSize: '12px',
-                      fontFamily: 'monospace',
+                      fontFamily: 'var(--font-mono)',
                     }}
                   />
                 </div>

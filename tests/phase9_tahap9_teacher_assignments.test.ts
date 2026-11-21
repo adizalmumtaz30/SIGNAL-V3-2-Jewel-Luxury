@@ -314,7 +314,7 @@ describe('Tahap 9 — Integrasi Penugasan Guru, ScheduleVersion Resmi & Provenan
       })
     );
     expect(drawerHtml).toContain(teacher.name);
-    expect(drawerHtml).toContain('Sumber Resmi SK Mengajar (ScheduleVersion)');
+    expect(drawerHtml).toContain('Sumber Resmi SK Mengajar (Jadwal Terbit)');
     expect(drawerHtml).toContain('Buat Dokumen Guru');
     expect(drawerHtml).not.toContain(teacher.nip ?? 'NO_NIP_TOKEN');
 

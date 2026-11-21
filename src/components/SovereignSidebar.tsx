@@ -214,7 +214,7 @@ export function SovereignSidebar({
                     transition={{ duration: 0.16, ease: RAIL_EASE }}
                   >
                     <h2 className="sakala-brand-title">SAKALA</h2>
-                    <span className="sakala-brand-subtitle">MADRASAH OPERATIONS</span>
+                    <span className="sakala-brand-subtitle">MANAJEMEN MADRASAH</span>
                   </motion.div>
                 )}
               </AnimatePresence>

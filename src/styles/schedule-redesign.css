@@ -83,7 +83,7 @@
 }
 
 .class-selector-wrap label {
-  font-size: 10.5px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
   letter-spacing: 0.06em !important;
   color: #557067 !important;
@@ -204,8 +204,8 @@
 }
 
 .status-badge-action {
-  font-size: 10.5px;
-  opacity: 0.8;
+  font-size: 11px;
+  opacity: 0.85;
   font-weight: 700;
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -278,8 +278,8 @@
 }
 
 .view-popover-title {
-  font-size: 10.5px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 700;
   letter-spacing: 0.05em;
   color: #557067;
   text-transform: uppercase;
@@ -433,13 +433,13 @@
 }
 
 .row-badge {
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   padding: 2px 7px;
   background: #e3ede7;
   color: #174e40;
-  border-radius: 4px;
+  border-radius: 6px;
   text-transform: uppercase;
 }
 
@@ -457,7 +457,7 @@
 }
 
 .row-legend-hint {
-  font-size: 10.5px;
+  font-size: 11px;
   color: #6d857d;
   font-weight: 500;
 }
@@ -498,17 +498,17 @@
 .class-name {
   margin: 0;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   color: #154236;
 }
 
 .class-level-tag {
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 700;
   padding: 1px 6px;
   background: #ffffff;
   border: 1px solid #d2ded7;
-  border-radius: 4px;
+  border-radius: 6px;
   color: #2d6b5b;
 }
 
@@ -525,7 +525,7 @@
   font-variant-numeric: tabular-nums;
   background: #ffffff;
   padding: 2px 7px;
-  border-radius: 5px;
+  border-radius: 6px;
   border: 1px solid #d5e2da;
 }
 
@@ -533,14 +533,14 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 24px;
-  padding: 0 8px;
-  border-radius: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
   border: 1px solid #c9d8ce;
   background: #ffffff;
   color: #195243;
-  font-size: 10.5px;
-  font-weight: 700;
+  font-size: 11.5px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.12s ease;
 }
@@ -562,7 +562,7 @@
 .master-class-weekly-table thead th {
   background: #f4f8f5;
   color: #27483f;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -599,7 +599,7 @@
 
 .jp-row-header strong {
   display: block;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   color: #1a4237;
   font-variant-numeric: tabular-nums;
@@ -608,7 +608,7 @@
 
 .jp-row-header small {
   display: block;
-  font-size: 9px;
+  font-size: 11px;
   color: #5c756d;
   font-variant-numeric: tabular-nums;
 }
@@ -655,21 +655,21 @@
 }
 
 .master-slot-teacher {
-  font-size: 9.5px !important;
+  font-size: 11px !important;
   font-weight: 500 !important;
   opacity: 0.85;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.1 !important;
+  line-height: 1.15 !important;
 }
 
 /* Master Non-KBM Slots (Calm, dignified, not shouting) */
 .master-non-kbm-slot {
   height: 38px;
-  border-radius: 5px;
+  border-radius: 6px;
   padding: 3px 5px;
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -750,10 +750,10 @@
 }
 
 .master-empty-slot span {
-  font-size: 10.5px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
   color: #206d57 !important;
-  opacity: 0.3 !important;
+  opacity: 0.35 !important;
   transition: opacity 0.12s ease !important;
 }
 
@@ -796,7 +796,7 @@
   display: grid;
   place-items: center;
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.02em;
   box-shadow: 0 2px 6px rgba(18, 50, 42, 0.15);
 }
@@ -804,7 +804,7 @@
 .schedule-selected-class strong {
   display: block;
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 700;
   color: #143d32;
   line-height: 1.2;
 }
@@ -824,17 +824,17 @@
 }
 
 .schedule-summary-metric span {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   color: #617b72;
 }
 
 .schedule-summary-metric strong {
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
   font-size: 16px !important;
-  font-weight: 800 !important;
+  font-weight: 700 !important;
   color: #143d32 !important;
   font-variant-numeric: tabular-nums !important;
   margin-top: 2px;
@@ -914,9 +914,9 @@ table.schedule-table thead th,
 
 .schedule-table thead th small {
   display: block;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   color: #537367;
   margin-top: 1px;
 }
@@ -928,9 +928,9 @@ table.schedule-table thead th,
   text-align: center !important;
   background: #eef5f1 !important;
   color: #154236 !important;
-  font-size: 10px !important;
-  font-weight: 800 !important;
-  letter-spacing: 0.05em !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.04em !important;
   position: sticky;
   left: 0;
   z-index: 8;
@@ -939,14 +939,14 @@ table.schedule-table thead th,
 
 .schedule-table th.schedule-time-column span {
   font-size: 11.5px;
-  font-weight: 800;
+  font-weight: 700;
   color: #123d32;
 }
 
 .schedule-table th.schedule-time-column small {
-  font-size: 8.5px;
+  font-size: 11px;
   color: #4f6e63;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
 }
 
 .schedule-table tbody th.period-heading {
@@ -968,7 +968,7 @@ table.schedule-table thead th,
 .schedule-table tbody th.period-heading span {
   display: block;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   color: #154236;
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
@@ -976,7 +976,7 @@ table.schedule-table thead th,
 
 .schedule-table tbody th.period-heading small {
   display: block;
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 600;
   color: #4a685e;
   font-variant-numeric: tabular-nums;
@@ -1015,14 +1015,14 @@ table.schedule-table tbody td,
 .non-kbm-card {
   height: 26px !important;
   min-height: 26px !important;
-  border-radius: 5px !important;
+  border-radius: 6px !important;
   padding: 0 8px !important;
   display: flex !important;
   flex-direction: row !important;
   align-items: center !important;
   justify-content: center !important;
   gap: 6px !important;
-  font-size: 9.5px !important;
+  font-size: 11px !important;
   font-weight: 600 !important;
   text-align: center !important;
   box-sizing: border-box;
@@ -1102,8 +1102,8 @@ table.schedule-table tbody td,
 }
 
 .schedule-cell .cell-time {
-  font-size: 8.5px !important;
-  font-weight: 700 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
   letter-spacing: 0.02em !important;
   color: #557268 !important;
   font-variant-numeric: tabular-nums;
@@ -1120,21 +1120,21 @@ table.schedule-table tbody td,
 }
 
 .cell-subject-code {
-  font-size: 8.5px !important;
-  font-weight: 800 !important;
-  letter-spacing: 0.04em !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.03em !important;
   color: #2b554a !important;
-  font-family: var(--mono, monospace) !important;
+  font-family: var(--font-mono) !important;
   background: rgba(23, 54, 55, 0.08) !important;
   padding: 1px 4px !important;
-  border-radius: 3px !important;
+  border-radius: 4px !important;
   line-height: 1.2 !important;
 }
 
 .cell-subject-title,
 .schedule-cell strong {
   font-size: 11.5px !important;
-  font-weight: 750 !important;
+  font-weight: 700 !important;
   color: #14352b !important;
   line-height: 1.25 !important;
   white-space: nowrap !important;
@@ -1156,13 +1156,13 @@ table.schedule-table tbody td,
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  font-size: 8px !important;
-  font-weight: 800 !important;
-  font-family: var(--mono, monospace) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  font-family: var(--font-mono) !important;
   letter-spacing: 0.03em !important;
-  padding: 0 3px !important;
-  height: 14px !important;
-  border-radius: 3px !important;
+  padding: 0 4px !important;
+  height: 16px !important;
+  border-radius: 4px !important;
   background: rgba(23, 54, 55, 0.08) !important;
   color: #173d32 !important;
   border: 1px solid rgba(23, 54, 55, 0.14) !important;
@@ -1171,8 +1171,8 @@ table.schedule-table tbody td,
 
 .teacher-name-text,
 .schedule-cell small {
-  font-size: 9.5px !important;
-  font-weight: 550 !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
   color: #3f5d54 !important;
   white-space: nowrap !important;
   overflow: hidden !important;
@@ -1185,7 +1185,7 @@ table.schedule-table tbody td,
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 8.5px;
+  font-size: 11px;
   color: #657e75;
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -1209,10 +1209,10 @@ table.schedule-table tbody td,
 }
 
 .schedule-cell.is-empty .empty-cell-hint {
-  font-size: 10px !important;
+  font-size: 11px !important;
   font-weight: 600 !important;
   color: #668278 !important;
-  opacity: 0.6;
+  opacity: 0.65;
   transition: all 0.12s ease;
 }
 
@@ -1255,19 +1255,19 @@ table.schedule-table tbody td,
   }
 
   .schedule-table th.schedule-time-column span {
-    font-size: 10px !important;
+    font-size: 11px !important;
   }
 
   .schedule-table th.schedule-time-column small {
-    font-size: 7.5px !important;
+    font-size: 11px !important;
   }
 
   .schedule-table tbody th.period-heading span {
-    font-size: 10.5px !important;
+    font-size: 11px !important;
   }
 
   .schedule-table tbody th.period-heading small {
-    font-size: 8px !important;
+    font-size: 11px !important;
   }
 
   .schedule-table thead th {
@@ -1279,7 +1279,7 @@ table.schedule-table tbody td,
   }
 
   .schedule-table thead th small {
-    font-size: 8px !important;
+    font-size: 11px !important;
   }
 
   .schedule-table tbody td {
@@ -1292,26 +1292,26 @@ table.schedule-table tbody td,
     height: 45px !important;
     min-height: 45px !important;
     padding: 3px 5px !important;
-    border-radius: 5px !important;
+    border-radius: 6px !important;
     border-left-width: 3px !important;
   }
 
   .schedule-cell .cell-time {
-    font-size: 8px !important;
+    font-size: 11px !important;
   }
 
   .schedule-cell strong {
-    font-size: 10px !important;
+    font-size: 11px !important;
     line-height: 1.15 !important;
   }
 
   .schedule-cell small {
-    font-size: 8.5px !important;
+    font-size: 11px !important;
     line-height: 1.1 !important;
   }
 
   .schedule-cell .cell-foot {
-    font-size: 8px !important;
+    font-size: 11px !important;
   }
 
   .schedule-cell .cell-foot-time {
@@ -1327,7 +1327,7 @@ table.schedule-table tbody td,
   .non-kbm-card {
     height: 21px !important;
     min-height: 21px !important;
-    font-size: 8.5px !important;
+    font-size: 11px !important;
     padding: 0 4px !important;
     gap: 3px !important;
   }
@@ -1350,11 +1350,11 @@ table.schedule-table tbody td,
   }
 
   .schedule-cell strong {
-    font-size: 9.5px !important;
+    font-size: 11px !important;
   }
 
   .schedule-cell small {
-    font-size: 8px !important;
+    font-size: 11px !important;
   }
 }
 
@@ -1464,9 +1464,9 @@ table.schedule-table tbody td,
 }
 
 .density-label {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   color: #4b665d;
   padding-left: 4px;
 }
@@ -1517,11 +1517,11 @@ table.schedule-table tbody td,
 }
 
 .density-compact .cell-subject-title {
-  font-size: 10.5px !important;
+  font-size: 11px !important;
 }
 
 .density-compact .teacher-name-text {
-  font-size: 8.5px !important;
+  font-size: 11px !important;
 }
 
 .density-compact .cell-foot {
@@ -1537,7 +1537,7 @@ table.schedule-table tbody td,
 .density-compact .non-kbm-card {
   height: 20px !important;
   min-height: 20px !important;
-  font-size: 8.5px !important;
+  font-size: 11px !important;
   padding: 0 4px !important;
 }
 
@@ -1547,17 +1547,17 @@ table.schedule-table tbody td,
 }
 
 .density-compact .master-slot-subject {
-  font-size: 10px !important;
+  font-size: 11px !important;
 }
 
 .density-compact .master-slot-teacher {
-  font-size: 8.5px !important;
+  font-size: 11px !important;
 }
 
 .density-compact .master-non-kbm-slot {
   height: 28px !important;
   min-height: 28px !important;
-  font-size: 8.5px !important;
+  font-size: 11px !important;
   padding: 1px 3px !important;
 }
 
@@ -1571,11 +1571,11 @@ table.schedule-table tbody td,
 }
 
 .density-compact .jp-row-header strong {
-  font-size: 10px !important;
+  font-size: 11px !important;
 }
 
 .density-compact .jp-row-header small {
-  font-size: 8px !important;
+  font-size: 11px !important;
 }
 
 /* --- DENSITY 2: STANDAR (Default) --- */
@@ -1607,7 +1607,7 @@ table.schedule-table tbody td,
 }
 
 .density-comfortable .teacher-name-text {
-  font-size: 10.5px !important;
+  font-size: 11px !important;
 }
 
 .density-comfortable .non-kbm-cell-wrap {
@@ -1618,7 +1618,7 @@ table.schedule-table tbody td,
 .density-comfortable .non-kbm-card {
   height: 30px !important;
   min-height: 30px !important;
-  font-size: 10.5px !important;
+  font-size: 11px !important;
 }
 
 .density-comfortable .master-slot-btn {
@@ -1631,13 +1631,13 @@ table.schedule-table tbody td,
 }
 
 .density-comfortable .master-slot-teacher {
-  font-size: 10px !important;
+  font-size: 11px !important;
 }
 
 .density-comfortable .master-non-kbm-slot {
   height: 44px !important;
   min-height: 44px !important;
-  font-size: 10.5px !important;
+  font-size: 11px !important;
 }
 
 .density-comfortable .master-empty-slot {
@@ -1662,8 +1662,8 @@ table.schedule-table tbody td,
 }
 
 .drag-hud-badge {
-  font-size: 9.5px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 700;
   padding: 3px 8px;
   border-radius: 6px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
@@ -1821,7 +1821,7 @@ table.schedule-table tbody td,
 
 .quick-menu-header small {
   display: block;
-  font-size: 9.5px;
+  font-size: 11px;
   color: #657e75;
 }
 
@@ -1894,22 +1894,22 @@ table.schedule-table tbody td,
 
 .unplaced-dock-title strong {
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   color: #154236;
 }
 
 .unplaced-dock-title span {
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
   color: #267c64;
   background: #edf6f2;
   padding: 2px 8px;
-  border-radius: 12px;
+  border-radius: 8px;
   border: 1px solid #d3e5dc;
 }
 
 .unplaced-dock-hint {
-  font-size: 10.5px;
+  font-size: 11px;
   color: #607b71;
   font-weight: 500;
 }
@@ -1951,14 +1951,14 @@ table.schedule-table tbody td,
 }
 
 .unplaced-card-sub {
-  font-size: 11px;
-  font-weight: 750;
+  font-size: 11.5px;
+  font-weight: 700;
   color: #163e32;
   line-height: 1.2;
 }
 
 .unplaced-card-tch {
-  font-size: 9.5px;
+  font-size: 11px;
   color: #557267;
   display: flex;
   align-items: center;
@@ -1966,10 +1966,10 @@ table.schedule-table tbody td,
 }
 
 .unplaced-card-badge {
-  font-size: 10px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 700;
   padding: 2px 6px;
-  border-radius: 5px;
+  border-radius: 6px;
   background: #fdf3e2;
   color: #8c5d18;
   border: 1px solid #ebd3a7;
@@ -1991,56 +1991,28 @@ table.schedule-table tbody td,
 }
 
 /* ========================================================================= */
-/* --- 11. TAHAP 1 & 2: LUXURY PRESTIGE DATA MASTER REDESIGN ---            */
+/* --- 11. TAHAP 1 & 2: TIER 2 PORCELAIN EDITORIAL MASTER HEADER ---        */
 /* ========================================================================= */
 .master-prestige-hero {
   position: relative !important;
   overflow: hidden !important;
   border-radius: 16px !important;
-  background: linear-gradient(135deg, #0b2620 0%, #133c32 50%, #0d2a23 100%) !important;
-  color: #ffffff !important;
-  padding: 24px 28px !important;
-  margin-bottom: 20px !important;
-  box-shadow: 0 12px 32px -4px rgba(11, 38, 32, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.08) inset !important;
+  background: linear-gradient(135deg, #FFFFFF 0%, #F7FAF8 60%, #FBF7EE 100%) !important;
+  border: 0.75px solid rgba(197, 160, 89, 0.36) !important;
+  color: #0B2923 !important;
+  padding: 20px 24px !important;
+  margin-bottom: 18px !important;
+  box-shadow: var(--s5-shadow-card, 0 2px 8px rgba(11, 41, 35, 0.04)), inset 0 1px 0 rgba(255, 255, 255, 0.96) !important;
 }
 
-.master-hero-ornament {
-  position: absolute !important;
-  right: -25px !important;
-  top: -25px !important;
-  width: 320px !important;
-  height: 320px !important;
-  opacity: 0.06 !important;
-  pointer-events: none !important;
-  color: #ffffff !important;
-}
-
-.master-hero-glow {
-  position: absolute !important;
-  right: 15% !important;
-  top: -40% !important;
-  width: 280px !important;
-  height: 280px !important;
-  background: radial-gradient(circle, rgba(212, 175, 55, 0.18) 0%, rgba(34, 197, 94, 0.08) 50%, transparent 70%) !important;
-  filter: blur(40px) !important;
-  pointer-events: none !important;
-}
-
-@keyframes royalShimmer {
-  0% { transform: translateX(-120%) skewX(-20deg); }
-  35%, 100% { transform: translateX(250%) skewX(-20deg); }
-}
-
-.master-hero-shimmer {
+.master-prestige-hero::before {
+  content: "" !important;
   position: absolute !important;
   top: 0 !important;
-  left: 0 !important;
-  width: 40% !important;
-  height: 100% !important;
-  background: linear-gradient(90deg, transparent 0%, rgba(212, 175, 55, 0.12) 50%, transparent 100%) !important;
-  animation: royalShimmer 9s cubic-bezier(0.16, 1, 0.3, 1) infinite !important;
-  pointer-events: none !important;
-  z-index: 1 !important;
+  left: 24px !important;
+  right: 24px !important;
+  height: 1.5px !important;
+  background: linear-gradient(90deg, rgba(18, 64, 55, 0.45), rgba(197, 160, 89, 0.65), transparent) !important;
 }
 
 .madrasah-avatar-container {
@@ -2063,45 +2035,45 @@ table.schedule-table tbody td,
 }
 
 .master-hero-left {
-  max-width: 640px !important;
+  max-width: 680px !important;
 }
 
 .master-hero-kicker {
   display: inline-flex !important;
   align-items: center !important;
   gap: 6px !important;
-  font-size: 10.5px !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.08em !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.06em !important;
   text-transform: uppercase !important;
-  color: #f1cf68 !important;
-  background: rgba(212, 175, 55, 0.14) !important;
-  border: 1px solid rgba(212, 175, 55, 0.28) !important;
-  border-radius: 20px !important;
-  padding: 3px 11px !important;
-  margin-bottom: 10px !important;
-  backdrop-filter: blur(6px) !important;
+  color: #8E7035 !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin-bottom: 6px !important;
 }
 
 .hero-kicker-icon {
-  color: #f1cf68 !important;
+  color: #8E7035 !important;
   flex-shrink: 0 !important;
 }
 
 .master-hero-title {
-  font-size: 23px !important;
-  font-weight: 800 !important;
+  font-family: var(--font-serif) !important;
+  font-size: 26px !important;
+  font-weight: 700 !important;
   letter-spacing: -0.02em !important;
-  color: #ffffff !important;
+  color: #0B2923 !important;
   margin: 0 0 6px 0 !important;
-  line-height: 1.2 !important;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  line-height: 1.18 !important;
+  text-shadow: none !important;
 }
 
 .master-hero-desc {
-  font-size: 12.5px !important;
-  color: #b7ceca !important;
-  margin: 0 0 14px 0 !important;
+  font-size: 13px !important;
+  color: #526861 !important;
+  margin: 0 0 12px 0 !important;
   line-height: 1.5 !important;
 }
 
@@ -2109,8 +2081,8 @@ table.schedule-table tbody td,
   display: flex !important;
   align-items: center !important;
   gap: 12px !important;
-  font-size: 11px !important;
-  color: #8dafa5 !important;
+  font-size: 12px !important;
+  color: #526861 !important;
   flex-wrap: wrap !important;
 }
 
@@ -2124,7 +2096,7 @@ table.schedule-table tbody td,
   width: 3px !important;
   height: 3px !important;
   border-radius: 50% !important;
-  background: rgba(255, 255, 255, 0.25) !important;
+  background: rgba(11, 41, 35, 0.25) !important;
 }
 
 .master-hero-actions {
@@ -2139,33 +2111,34 @@ table.schedule-table tbody td,
   display: inline-flex !important;
   align-items: center !important;
   gap: 8px !important;
-  background: linear-gradient(135deg, #1ca957 0%, #15803d 100%) !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  background: linear-gradient(135deg, #164D42 0%, #0E362D 100%) !important;
   color: #ffffff !important;
-  font-size: 12.5px !important;
-  font-weight: 700 !important;
-  padding: 9px 16px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  padding: 0 16px !important;
   border-radius: 10px !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  box-shadow: 0 4px 14px rgba(21, 128, 61, 0.35) !important;
+  border: 1px solid rgba(197, 160, 89, 0.48) !important;
+  box-shadow: 0 2px 6px rgba(11, 41, 35, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
   cursor: pointer !important;
   transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 .master-hero-primary-btn:hover {
   transform: translateY(-1px) !important;
-  box-shadow: 0 6px 18px rgba(21, 128, 61, 0.45) !important;
-  filter: brightness(1.06) !important;
+  box-shadow: 0 6px 16px rgba(11, 41, 35, 0.22) !important;
 }
 
 .hero-kbd-badge {
-  font-size: 10px !important;
-  font-weight: 800 !important;
-  font-family: monospace !important;
-  background: rgba(0, 0, 0, 0.25) !important;
-  color: #eaf8f0 !important;
-  padding: 1px 5px !important;
-  border-radius: 4px !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  font-family: var(--font-mono) !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+  color: #FFF9EA !important;
+  padding: 1px 6px !important;
+  border-radius: 6px !important;
+  border: 1px solid rgba(229, 195, 120, 0.45) !important;
   margin-left: 2px !important;
 }
 
@@ -2173,23 +2146,24 @@ table.schedule-table tbody td,
   display: inline-flex !important;
   align-items: center !important;
   gap: 7px !important;
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: #ebf4f1 !important;
-  font-size: 12px !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  background: #ffffff !important;
+  color: #163830 !important;
+  font-size: 12.5px !important;
   font-weight: 600 !important;
-  padding: 8px 14px !important;
+  padding: 0 15px !important;
   border-radius: 10px !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  backdrop-filter: blur(8px) !important;
+  border: 1px solid #C9D7D0 !important;
   cursor: pointer !important;
   transition: all 0.16s ease !important;
 }
 
 .master-hero-secondary-btn:hover {
-  background: rgba(255, 255, 255, 0.16) !important;
-  color: #ffffff !important;
+  background: #F5F9F7 !important;
+  color: #0D3028 !important;
   transform: translateY(-1px) !important;
-  border-color: rgba(255, 255, 255, 0.3) !important;
+  border-color: rgba(197, 160, 89, 0.75) !important;
 }
 
 /* --- PRESTIGE METRIC GRID --- */
@@ -2273,7 +2247,7 @@ table.schedule-table tbody td,
 }
 
 .prestige-card-tag {
-  font-size: 10.5px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
   color: #496d60 !important;
   background: #f1f6f3 !important;
@@ -2291,7 +2265,7 @@ table.schedule-table tbody td,
 
 .prestige-val {
   font-size: 22px !important;
-  font-weight: 800 !important;
+  font-weight: 700 !important;
   color: #0e2e26 !important;
   font-variant-numeric: tabular-nums !important;
   line-height: 1.1 !important;
@@ -2383,31 +2357,31 @@ table.schedule-table tbody td,
 }
 
 .master-toolbar-search-wrap .table-search input {
-  height: 36px !important;
+  height: 38px !important;
   min-width: 250px !important;
-  border-radius: 9px !important;
-  padding-right: 48px !important;
+  border-radius: 10px !important;
+  padding-right: 36px !important;
 }
 
 .search-shortcut-hint {
   position: absolute !important;
-  right: 8px !important;
+  right: 10px !important;
   top: 50% !important;
   transform: translateY(-50%) !important;
-  font-size: 9.5px !important;
-  font-weight: 700 !important;
-  font-family: monospace !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  font-family: var(--font-mono) !important;
   color: #6a867c !important;
   background: #edf3ef !important;
   border: 1px solid #d4ded7 !important;
-  padding: 1px 5px !important;
-  border-radius: 4px !important;
+  padding: 1px 6px !important;
+  border-radius: 6px !important;
   pointer-events: none !important;
 }
 
 .search-clear-btn {
   position: absolute !important;
-  right: 28px !important;
+  right: 10px !important;
   top: 50% !important;
   transform: translateY(-50%) !important;
   background: none !important;
@@ -2428,14 +2402,14 @@ table.schedule-table tbody td,
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  font-size: 9px !important;
-  font-weight: 800 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
   color: #47665b !important;
   background: #edf3ef !important;
   border: 1px solid #d4dfd8 !important;
-  border-radius: 4px !important;
-  padding: 0 5px !important;
-  height: 17px !important;
+  border-radius: 6px !important;
+  padding: 0 6px !important;
+  height: 20px !important;
   cursor: help !important;
 }
 
@@ -2468,7 +2442,7 @@ table.schedule-table tbody td,
   justify-content: center !important;
   color: #ffffff !important;
   font-size: 13px !important;
-  font-weight: 800 !important;
+  font-weight: 700 !important;
   letter-spacing: 0.04em !important;
   border: 1px solid rgba(255, 255, 255, 0.25) !important;
   box-shadow: 0 2px 6px rgba(16, 44, 37, 0.12) !important;
@@ -2504,9 +2478,10 @@ table.schedule-table tbody td,
 }
 
 .teacher-nip-text {
-  font-size: 10.5px !important;
+  font-size: 11px !important;
   color: #617b73 !important;
-  font-family: monospace !important;
+  font-family: var(--font-mono) !important;
+  font-variant-numeric: tabular-nums !important;
   letter-spacing: 0.02em !important;
 }
 
@@ -2576,10 +2551,10 @@ table.schedule-table tbody td,
 }
 
 .workload-pct-badge {
-  font-size: 10px !important;
-  font-weight: 800 !important;
-  padding: 1px 5px !important;
-  border-radius: 4px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  padding: 1px 6px !important;
+  border-radius: 6px !important;
   font-variant-numeric: tabular-nums !important;
 }
 
@@ -2620,11 +2595,12 @@ table.schedule-table tbody td,
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  font-size: 10px !important;
-  font-weight: 800 !important;
-  font-family: monospace !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  font-family: var(--font-mono) !important;
+  font-variant-numeric: tabular-nums !important;
   padding: 2px 7px !important;
-  border-radius: 5px !important;
+  border-radius: 6px !important;
   letter-spacing: 0.04em !important;
 }
 
@@ -2686,13 +2662,16 @@ table.schedule-table tbody td,
 }
 
 .master-filter-chip {
+  display: inline-flex !important;
+  align-items: center !important;
+  height: 32px !important;
   background: #f3f7f5 !important;
   border: 1px solid #dce6e1 !important;
   color: #415e54 !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 600 !important;
-  padding: 3px 10px !important;
-  border-radius: 20px !important;
+  padding: 0 12px !important;
+  border-radius: 8px !important;
   cursor: pointer !important;
   transition: all 0.15s ease !important;
 }
@@ -2704,10 +2683,10 @@ table.schedule-table tbody td,
 }
 
 .master-filter-chip.active {
-  background: #174d41 !important;
+  background: #124037 !important;
   color: #ffffff !important;
-  border-color: #123d33 !important;
-  box-shadow: 0 2px 6px rgba(23, 77, 65, 0.25) !important;
+  border-color: rgba(197, 160, 89, 0.55) !important;
+  box-shadow: 0 2px 6px rgba(18, 64, 55, 0.22) !important;
 }
 
 /* Bespoke Madrasah Empty State */
@@ -2719,7 +2698,7 @@ table.schedule-table tbody td,
   text-align: center !important;
   padding: 48px 24px !important;
   background: #fafcfb !important;
-  border-radius: 12px !important;
+  border-radius: 16px !important;
   border: 1px dashed #dbe5df !important;
   margin: 12px 0 !important;
 }
@@ -2733,7 +2712,7 @@ table.schedule-table tbody td,
 
 .master-empty-title {
   font-size: 16px !important;
-  font-weight: 800 !important;
+  font-weight: 700 !important;
   color: #0f2c25 !important;
   margin: 0 0 6px 0 !important;
 }
@@ -2749,22 +2728,23 @@ table.schedule-table tbody td,
 .master-empty-reset-btn {
   display: inline-flex !important;
   align-items: center !important;
+  justify-content: center !important;
   gap: 6px !important;
-  background: #15803d !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  background: linear-gradient(135deg, #164D42 0%, #0E362D 100%) !important;
   color: #ffffff !important;
-  font-size: 12px !important;
-  font-weight: 700 !important;
-  padding: 7px 14px !important;
-  border-radius: 8px !important;
-  border: none !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  padding: 0 16px !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(197, 160, 89, 0.48) !important;
   cursor: pointer !important;
-  box-shadow: 0 2px 8px rgba(21, 128, 61, 0.25) !important;
+  box-shadow: 0 2px 6px rgba(11, 41, 35, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
   transition: all 0.15s ease !important;
 }
 
 .master-empty-reset-btn:hover {
-  background: #166534 !important;
+  background: linear-gradient(135deg, #1B5D4F 0%, #124237 100%) !important;
   transform: translateY(-1px) !important;
 }
-
-

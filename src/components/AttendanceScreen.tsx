@@ -44,6 +44,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { AttendancePdfExportModal } from './AttendancePdfExportModal';
 import { MadrasahTeacherAvatar } from './MadrasahTeacherAvatar';
 import { KpiAnimatedNumber, KpiMotionCard } from './KpiMotion';
+import { UnifiedPagination } from './UnifiedPagination';
 
 interface AttendanceScreenProps {
   state: AppState;
@@ -82,20 +83,6 @@ const MONTHS_FULL_ID = [
   'November',
   'Desember',
 ];
-
-function getPaginationItems(currentPage: number, totalPages: number): (number | 'ellipsis')[] {
-  if (totalPages <= 7) {
-    return Array.from({ length: totalPages }, (_, i) => i + 1);
-  }
-  const items: (number | 'ellipsis')[] = [1];
-  if (currentPage > 3) items.push('ellipsis');
-  const start = Math.max(2, currentPage - 1);
-  const end = Math.min(totalPages - 1, currentPage + 1);
-  for (let p = start; p <= end; p++) items.push(p);
-  if (currentPage < totalPages - 2) items.push('ellipsis');
-  items.push(totalPages);
-  return items;
-}
 
 function formatLocalDate(dateStr: string) {
   if (!dateStr) return '';
@@ -2234,90 +2221,48 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
             </table>
           </div>
 
-          {/* Luxury Architectural Footbar (.s5-att-footbar) */}
-          <div className="s5-att-footbar">
-            <div className="s5-footbar-composition" aria-hidden="true">
-              <div className="s5-footbar-seg hadir" style={{ width: `${dailyHadirPct}%` }} />
-              <div className="s5-footbar-seg permit" style={{ width: `${dailyPermitPct}%` }} />
-              <div className="s5-footbar-seg alpa" style={{ width: `${dailyAlpaPct}%` }} />
-            </div>
-
-            <div className="s5-att-footbar-row">
-              <div className="s5-footbar-meta">
-                <select
-                  aria-label="Jumlah baris tabel harian"
-                  className="s5-footbar-select"
-                  value={dailyPageSize}
-                  onChange={(e) => {
-                    setDailyPageSize(Number(e.target.value));
-                    setDailyPage(1);
-                  }}
-                >
-                  <option value={10}>10 Baris</option>
-                  <option value={20}>20 Baris</option>
-                  <option value={25}>25 Baris</option>
-                  <option value={0}>Semua ({filteredDailyTeachers.length})</option>
-                </select>
-                <span className="s5-tnum">
-                  Hadir <strong style={{ color: '#1B5E43' }}>{dailyPresentCount}</strong> · Ket.{' '}
-                  <strong style={{ color: '#9C6F28' }}>{dailyPermitCount}</strong> · Alpa{' '}
-                  <strong style={{ color: dailyAbsentCount > 0 ? '#A63A2E' : undefined }}>
-                    {dailyAbsentCount}
-                  </strong>
-                </span>
+          {/* Unified Luxury Pagination Footbar */}
+          <UnifiedPagination
+            className="s5-att-unified-footbar"
+            totalItems={filteredDailyTeachers.length}
+            page={safeDailyPage}
+            pageSize={dailyPageSize}
+            pageSizeOptions={[10, 20, 25]}
+            allowShowAll
+            itemLabel="guru"
+            selectAriaLabel="Jumlah baris tabel harian"
+            navAriaLabel="Navigasi halaman tabel harian"
+            onPageChange={(next) => setDailyPage(next)}
+            onPageSizeChange={(size) => {
+              setDailyPageSize(size);
+              setDailyPage(1);
+            }}
+            topSlot={
+              <div className="s5-footbar-composition" aria-hidden="true">
+                <div className="s5-footbar-seg hadir" style={{ width: `${dailyHadirPct}%` }} />
+                <div className="s5-footbar-seg permit" style={{ width: `${dailyPermitPct}%` }} />
+                <div className="s5-footbar-seg alpa" style={{ width: `${dailyAlpaPct}%` }} />
               </div>
-
-              <div className="s5-footbar-actions">
-                {dailyPageSize > 0 && totalDailyPages > 1 && (
-                  <div className="s5-pagination-group" aria-label="Navigasi halaman tabel harian">
-                    <button
-                      type="button"
-                      className="s5-page-btn"
-                      disabled={safeDailyPage <= 1}
-                      onClick={() => setDailyPage((p) => Math.max(1, p - 1))}
-                      aria-label="Halaman sebelumnya"
-                    >
-                      <ChevronLeft size={14} />
-                    </button>
-                    {getPaginationItems(safeDailyPage, totalDailyPages).map((item, idx) =>
-                      item === 'ellipsis' ? (
-                        <span key={`d-ell-${idx}`} style={{ padding: '0 4px', color: '#8A9B95' }}>
-                          …
-                        </span>
-                      ) : (
-                        <button
-                          key={`d-pg-${item}`}
-                          type="button"
-                          className={`s5-page-btn s5-tnum ${safeDailyPage === item ? 'is-active' : ''}`}
-                          onClick={() => setDailyPage(item)}
-                        >
-                          {item}
-                        </button>
-                      ),
-                    )}
-                    <button
-                      type="button"
-                      className="s5-page-btn"
-                      disabled={safeDailyPage >= totalDailyPages}
-                      onClick={() => setDailyPage((p) => Math.min(totalDailyPages, p + 1))}
-                      aria-label="Halaman berikutnya"
-                    >
-                      <ChevronRight size={14} />
-                    </button>
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  className="button button-primary"
-                  onClick={handleSaveDaily}
-                  style={{ height: '36px', padding: '0 16px', fontSize: '12.5px' }}
-                >
-                  <Save size={14} /> Simpan Presensi
-                </button>
-              </div>
-            </div>
-          </div>
+            }
+            leftExtra={
+              <span className="s5-tnum">
+                Hadir <strong style={{ color: '#1B5E43' }}>{dailyPresentCount}</strong> · Ket.{' '}
+                <strong style={{ color: '#9C6F28' }}>{dailyPermitCount}</strong> · Alpa{' '}
+                <strong style={{ color: dailyAbsentCount > 0 ? '#A63A2E' : undefined }}>
+                  {dailyAbsentCount}
+                </strong>
+              </span>
+            }
+            rightExtra={
+              <button
+                type="button"
+                className="button button-primary button-sm"
+                onClick={handleSaveDaily}
+              >
+                <Save size={14} /> Simpan Presensi
+              </button>
+            }
+          />
         </div>
       )}
 
@@ -3008,77 +2953,38 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
             </table>
           </div>
 
-          {/* Ledger Architectural Footbar (.s5-att-footbar) */}
-          <div className="s5-att-footbar">
-            <div className="s5-footbar-composition" aria-hidden="true">
-              <div className="s5-footbar-seg hadir" style={{ width: `${teacherHadirPct}%` }} />
-              <div className="s5-footbar-seg permit" style={{ width: `${teacherPermitPct}%` }} />
-              <div className="s5-footbar-seg alpa" style={{ width: `${teacherAlpaPct}%` }} />
-            </div>
-
-            <div className="s5-att-footbar-row">
-              <div className="s5-footbar-meta">
-                <select
-                  aria-label="Jumlah baris kalender pendidik"
-                  className="s5-footbar-select"
-                  value={ledgerPageSize}
-                  onChange={(e) => {
-                    setLedgerPageSize(Number(e.target.value));
-                    setLedgerPage(1);
-                  }}
-                >
-                  <option value={10}>10 Baris</option>
-                  <option value={15}>15 Baris</option>
-                  <option value={0}>Semua ({ledgerRows.length})</option>
-                </select>
-                <span className="s5-tnum">
-                  H: <strong>{selectedTeacherMonthSummary.hadir}</strong> · DL:{' '}
-                  <strong>{selectedTeacherMonthSummary.dinas}</strong> · I/S:{' '}
-                  <strong>{selectedTeacherMonthSummary.izin + selectedTeacherMonthSummary.sakit}</strong> · A:{' '}
-                  <strong>{selectedTeacherMonthSummary.alpa}</strong>
-                </span>
+          {/* Ledger Unified Pagination Footbar */}
+          <UnifiedPagination
+            className="s5-att-unified-footbar"
+            totalItems={ledgerRows.length}
+            page={safeLedgerPage}
+            pageSize={ledgerPageSize}
+            pageSizeOptions={[10, 15]}
+            allowShowAll
+            itemLabel="hari"
+            selectAriaLabel="Jumlah baris kalender pendidik"
+            navAriaLabel="Navigasi halaman ledger guru"
+            onPageChange={(next) => setLedgerPage(next)}
+            onPageSizeChange={(size) => {
+              setLedgerPageSize(size);
+              setLedgerPage(1);
+            }}
+            topSlot={
+              <div className="s5-footbar-composition" aria-hidden="true">
+                <div className="s5-footbar-seg hadir" style={{ width: `${teacherHadirPct}%` }} />
+                <div className="s5-footbar-seg permit" style={{ width: `${teacherPermitPct}%` }} />
+                <div className="s5-footbar-seg alpa" style={{ width: `${teacherAlpaPct}%` }} />
               </div>
-
-              {ledgerPageSize > 0 && totalLedgerPages > 1 && (
-                <div className="s5-pagination-group" aria-label="Navigasi halaman ledger guru">
-                  <button
-                    type="button"
-                    className="s5-page-btn"
-                    disabled={safeLedgerPage <= 1}
-                    onClick={() => setLedgerPage((p) => Math.max(1, p - 1))}
-                    aria-label="Halaman sebelumnya"
-                  >
-                    <ChevronLeft size={14} />
-                  </button>
-                  {getPaginationItems(safeLedgerPage, totalLedgerPages).map((item, idx) =>
-                    item === 'ellipsis' ? (
-                      <span key={`l-ell-${idx}`} style={{ padding: '0 4px', color: '#8A9B95' }}>
-                        …
-                      </span>
-                    ) : (
-                      <button
-                        key={`l-pg-${item}`}
-                        type="button"
-                        className={`s5-page-btn s5-tnum ${safeLedgerPage === item ? 'is-active' : ''}`}
-                        onClick={() => setLedgerPage(item)}
-                      >
-                        {item}
-                      </button>
-                    ),
-                  )}
-                  <button
-                    type="button"
-                    className="s5-page-btn"
-                    disabled={safeLedgerPage >= totalLedgerPages}
-                    onClick={() => setLedgerPage((p) => Math.min(totalLedgerPages, p + 1))}
-                    aria-label="Halaman berikutnya"
-                  >
-                    <ChevronRight size={14} />
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
+            }
+            leftExtra={
+              <span className="s5-tnum">
+                H: <strong>{selectedTeacherMonthSummary.hadir}</strong> · DL:{' '}
+                <strong>{selectedTeacherMonthSummary.dinas}</strong> · I/S:{' '}
+                <strong>{selectedTeacherMonthSummary.izin + selectedTeacherMonthSummary.sakit}</strong> · A:{' '}
+                <strong>{selectedTeacherMonthSummary.alpa}</strong>
+              </span>
+            }
+          />
         </div>
       )}
 
@@ -3510,86 +3416,44 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
             </table>
           </div>
 
-          {/* Recap Architectural Footbar (.s5-att-footbar) */}
-          <div className="s5-att-footbar">
-            <div className="s5-footbar-composition" aria-hidden="true">
-              <div className="s5-footbar-seg hadir" style={{ width: `${overallAvgRate}%` }} />
-            </div>
-
-            <div className="s5-att-footbar-row">
-              <div className="s5-footbar-meta">
-                <select
-                  aria-label="Jumlah baris tabel rekap"
-                  className="s5-footbar-select"
-                  value={recapPageSize}
-                  onChange={(e) => {
-                    setRecapPageSize(Number(e.target.value));
-                    setRecapPage(1);
-                  }}
-                >
-                  <option value={10}>10 Baris</option>
-                  <option value={20}>20 Baris</option>
-                  <option value={25}>25 Baris</option>
-                  <option value={0}>Semua ({sortedRecapRows.length})</option>
-                </select>
-                <span className="s5-tnum">
-                  <strong>{recapSelectedTeachers.length}</strong> terpilih · Rata-rata kehadiran{' '}
-                  <strong>{overallAvgRate}%</strong>
-                </span>
+          {/* Recap Unified Pagination Footbar */}
+          <UnifiedPagination
+            className="s5-att-unified-footbar"
+            totalItems={sortedRecapRows.length}
+            page={safeRecapPage}
+            pageSize={recapPageSize}
+            pageSizeOptions={[10, 20, 25]}
+            allowShowAll
+            itemLabel="guru"
+            selectAriaLabel="Jumlah baris tabel rekap"
+            navAriaLabel="Navigasi halaman tabel rekap"
+            onPageChange={(next) => setRecapPage(next)}
+            onPageSizeChange={(size) => {
+              setRecapPageSize(size);
+              setRecapPage(1);
+            }}
+            topSlot={
+              <div className="s5-footbar-composition" aria-hidden="true">
+                <div className="s5-footbar-seg hadir" style={{ width: `${overallAvgRate}%` }} />
               </div>
-
-              <div className="s5-footbar-actions">
-                {recapPageSize > 0 && totalRecapPages > 1 && (
-                  <div className="s5-pagination-group" aria-label="Navigasi halaman tabel rekap">
-                    <button
-                      type="button"
-                      className="s5-page-btn"
-                      disabled={safeRecapPage <= 1}
-                      onClick={() => setRecapPage((p) => Math.max(1, p - 1))}
-                      aria-label="Halaman sebelumnya"
-                    >
-                      <ChevronLeft size={14} />
-                    </button>
-                    {getPaginationItems(safeRecapPage, totalRecapPages).map((item, idx) =>
-                      item === 'ellipsis' ? (
-                        <span key={`r-ell-${idx}`} style={{ padding: '0 4px', color: '#8A9B95' }}>
-                          …
-                        </span>
-                      ) : (
-                        <button
-                          key={`r-pg-${item}`}
-                          type="button"
-                          className={`s5-page-btn s5-tnum ${safeRecapPage === item ? 'is-active' : ''}`}
-                          onClick={() => setRecapPage(item)}
-                        >
-                          {item}
-                        </button>
-                      ),
-                    )}
-                    <button
-                      type="button"
-                      className="s5-page-btn"
-                      disabled={safeRecapPage >= totalRecapPages}
-                      onClick={() => setRecapPage((p) => Math.min(totalRecapPages, p + 1))}
-                      aria-label="Halaman berikutnya"
-                    >
-                      <ChevronRight size={14} />
-                    </button>
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  className="button button-primary"
-                  onClick={() => setPdfModalOpen(true)}
-                  disabled={recapSelectedTeachers.length === 0}
-                  style={{ height: '36px', padding: '0 16px', fontSize: '12.5px' }}
-                >
-                  <Download size={14} /> Ekspor PDF ({recapSelectedTeachers.length} Guru)
-                </button>
-              </div>
-            </div>
-          </div>
+            }
+            leftExtra={
+              <span className="s5-tnum">
+                <strong>{recapSelectedTeachers.length}</strong> terpilih · Rata-rata{' '}
+                <strong>{overallAvgRate}%</strong>
+              </span>
+            }
+            rightExtra={
+              <button
+                type="button"
+                className="button button-primary button-sm"
+                onClick={() => setPdfModalOpen(true)}
+                disabled={recapSelectedTeachers.length === 0}
+              >
+                <Download size={14} /> Ekspor PDF ({recapSelectedTeachers.length} Guru)
+              </button>
+            }
+          />
         </div>
       )}
 
@@ -3894,7 +3758,7 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
                     type="button"
                     className="button button-quiet"
                     onClick={() => setNewHolidayName(detectedOfficialManualDate.name)}
-                    style={{ height: '26px', fontSize: '11px' }}
+                    style={{ height: '32px', fontSize: '11px' }}
                   >
                     Pakai Nama Resmi
                   </button>
@@ -4055,67 +3919,23 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
                 </table>
               </div>
 
-              {/* Holiday Footbar (.s5-att-footbar) */}
-              <div className="s5-att-footbar">
-                <div className="s5-att-footbar-row">
-                  <div className="s5-footbar-meta">
-                    <select
-                      aria-label="Jumlah baris tabel hari libur"
-                      className="s5-footbar-select"
-                      value={holidayPageSize}
-                      onChange={(e) => {
-                        setHolidayPageSize(Number(e.target.value));
-                        setHolidayPage(1);
-                      }}
-                    >
-                      <option value={6}>6 Baris</option>
-                      <option value={10}>10 Baris</option>
-                      <option value={20}>20 Baris</option>
-                      <option value={0}>Semua ({filteredHolidays.length})</option>
-                    </select>
-                    <span className="s5-tnum">{filteredHolidays.length} hari libur</span>
-                  </div>
-
-                  {holidayPageSize > 0 && totalHolidayPages > 1 && (
-                    <div className="s5-pagination-group" aria-label="Navigasi halaman hari libur">
-                      <button
-                        type="button"
-                        className="s5-page-btn"
-                        disabled={safeHolidayPage <= 1}
-                        onClick={() => setHolidayPage((p) => Math.max(1, p - 1))}
-                        aria-label="Halaman sebelumnya"
-                      >
-                        <ChevronLeft size={14} />
-                      </button>
-                      {getPaginationItems(safeHolidayPage, totalHolidayPages).map((item, idx) =>
-                        item === 'ellipsis' ? (
-                          <span key={`h-ell-${idx}`} style={{ padding: '0 4px', color: '#8A9B95' }}>
-                            …
-                          </span>
-                        ) : (
-                          <button
-                            key={`h-pg-${item}`}
-                            type="button"
-                            className={`s5-page-btn s5-tnum ${safeHolidayPage === item ? 'is-active' : ''}`}
-                            onClick={() => setHolidayPage(item)}
-                          >
-                            {item}
-                          </button>
-                        ),
-                      )}
-                      <button
-                        type="button"
-                        className="s5-page-btn"
-                        disabled={safeHolidayPage >= totalHolidayPages}
-                        onClick={() => setHolidayPage((p) => Math.min(totalHolidayPages, p + 1))}
-                        aria-label="Halaman berikutnya"
-                      >
-                        <ChevronRight size={14} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
+              {/* Holiday Unified Pagination Footbar */}
+              <UnifiedPagination
+                className="s5-att-unified-footbar"
+                totalItems={filteredHolidays.length}
+                page={safeHolidayPage}
+                pageSize={holidayPageSize}
+                pageSizeOptions={[6, 10, 20]}
+                allowShowAll
+                itemLabel="hari libur"
+                selectAriaLabel="Jumlah baris tabel hari libur"
+                navAriaLabel="Navigasi halaman hari libur"
+                onPageChange={(next) => setHolidayPage(next)}
+                onPageSizeChange={(size) => {
+                  setHolidayPageSize(size);
+                  setHolidayPage(1);
+                }}
+              />
             </div>
           </div>
         </div>

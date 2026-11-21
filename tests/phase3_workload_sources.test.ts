@@ -274,7 +274,7 @@ describe('Tahap 3B — Sumber Resmi Beban Mengajar Guru (ScheduleVersion vs Draf
       createElement(WorkloadDashboard, { state, initialSourceMode: 'PUBLISHED' })
     );
     expect(publishedHtml).toContain('Jadwal Terbit (Resmi)');
-    expect(publishedHtml).toContain('Pratinjau Draft');
+    expect(publishedHtml).toContain('Pratinjau Draf');
     expect(publishedHtml).toContain('Kebutuhan JP (Rencana)');
     expect(publishedHtml).toContain('VER-DEMO-01');
     expect(publishedHtml).toContain('(Sah)');

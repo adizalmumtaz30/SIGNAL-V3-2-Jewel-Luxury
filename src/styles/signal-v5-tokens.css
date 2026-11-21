@@ -62,12 +62,17 @@
   --s5-spring-smooth: cubic-bezier(0.16, 1, 0.3, 1);   /* 320ms: Slide Drawers */
   --s5-spring-snap: cubic-bezier(0.34, 1.56, 0.64, 1); /* 240ms: Drag-and-Drop Magnetic */
 
-  /* ------------------------------------------------------------------------
-     2. GLOBAL TYPOGRAPHIC UTILITIES
-     ------------------------------------------------------------------------ */
+  /* Typography & Micro-Geometry Contract (4 Radii Steps, 3 Control Heights) */
   --font-serif: 'Fraunces', Georgia, serif;
   --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
+  --s5-r-xs: 6px;
+  --s5-r-sm: 8px;
+  --s5-r-md: 10px;
+  --s5-r-lg: 16px;
+  --s5-h-sm: 32px;
+  --s5-h-md: 38px;
+  --s5-h-lg: 42px;
 }
 
 /* Tabular Numbers (Anti-layout jitter for time & hours) */
@@ -125,7 +130,7 @@
 
 .s5-brand-badge {
   font-family: var(--font-mono) !important;
-  font-size: 10.5px !important;
+  font-size: 11px !important;
   font-weight: 600 !important;
   letter-spacing: 0.08em !important;
   color: var(--s5-gold-muted) !important;
@@ -158,10 +163,10 @@
 .s5-kbd-shortcut {
   margin-left: auto !important;
   font-family: var(--font-mono) !important;
-  font-size: 10px !important;
+  font-size: 11px !important;
   font-weight: 600 !important;
   padding: 2px 6px !important;
-  border-radius: 5px !important;
+  border-radius: 6px !important;
   background: var(--s5-canvas-subtle) !important;
   border: 0.75px solid #D0DDD7 !important;
   color: var(--s5-ink-secondary) !important;
@@ -273,12 +278,14 @@
   align-items: center !important;
   justify-content: center !important;
   gap: 5px !important;
-  padding: 5px 9px !important;
-  border-radius: 6px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 0 10px !important;
+  border-radius: 8px !important;
   background: transparent !important;
   border: none !important;
   color: var(--s5-ink-secondary) !important;
-  font-size: 11.5px !important;
+  font-size: 12px !important;
   font-weight: 600 !important;
   cursor: pointer !important;
   transition: all 0.14s var(--s5-spring-fast) !important;
@@ -847,16 +854,31 @@
   pointer-events: none !important;
 }
 
-/* Luxury Page Header with Generous Breathing Room */
+/* Tier 2 Porcelain Editorial Page Header */
 .s5-page-header {
-  margin-bottom: 24px !important;
+  position: relative !important;
+  overflow: hidden !important;
+  margin-bottom: 0 !important;
   display: flex !important;
   justify-content: space-between !important;
-  align-items: flex-end !important;
+  align-items: center !important;
   gap: 20px !important;
   flex-wrap: wrap !important;
-  padding-bottom: 16px !important;
-  border-bottom: 0.75px solid rgba(18, 64, 55, 0.08) !important;
+  padding: 20px 24px !important;
+  border-radius: 16px !important;
+  background: linear-gradient(135deg, #FFFFFF 0%, #F7FAF8 60%, #FBF7EE 100%) !important;
+  border: 0.75px solid rgba(197, 160, 89, 0.36) !important;
+  box-shadow: var(--s5-shadow-resting), inset 0 1px 0 rgba(255, 255, 255, 0.96) !important;
+}
+
+.s5-page-header::before {
+  content: "" !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 24px !important;
+  right: 24px !important;
+  height: 1.5px !important;
+  background: linear-gradient(90deg, rgba(18, 64, 55, 0.45), rgba(197, 160, 89, 0.65), transparent) !important;
 }
 
 .s5-page-kicker {
@@ -1818,8 +1840,8 @@ table.s5-figma-table tbody td.s5-checkbox-col {
 
 .s5-att-kpi-label {
   display: block !important;
-  font-size: 10.5px !important;
-  font-weight: 800 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
   letter-spacing: 0.05em !important;
   text-transform: uppercase !important;
   color: #FFF9EA !important;
@@ -2231,7 +2253,7 @@ table.s5-figma-table tbody td.s5-checkbox-col {
 }
 
 .s5-month-pill-count {
-  font-size: 10.5px !important;
+  font-size: 11px !important;
   font-weight: 600 !important;
   opacity: 0.78 !important;
 }
@@ -2336,7 +2358,7 @@ table.s5-figma-table tbody td.s5-checkbox-col {
 }
 
 .s5-kaldik-mon {
-  font-size: 10px !important;
+  font-size: 11px !important;
   font-weight: 600 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.04em !important;
@@ -2436,7 +2458,7 @@ table.s5-figma-table tbody td.s5-checkbox-col {
   width: 22px !important;
   height: 22px !important;
   border-radius: 6px !important;
-  font-size: 10.5px !important;
+  font-size: 11px !important;
   font-weight: 600 !important;
   display: inline-grid !important;
   place-items: center !important;
@@ -2876,7 +2898,8 @@ label {
 
 /* 19.5 Enforce Minimum >=11px Readability Floor & Accessible Contrast */
 .sakala-brand-subtitle {
-  font-size: 10.5px !important;
+  display: block !important;
+  font-size: 11px !important;
   font-weight: 600 !important;
   letter-spacing: 0.08em !important;
 }
@@ -4067,7 +4090,7 @@ table.s5-calm-table tbody tr:hover .s5-drag-grip {
 }
 
 .s5-slot-role-tag {
-  font-size: 10px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
   letter-spacing: 0.02em !important;
   line-height: 1.2 !important;
@@ -4106,7 +4129,7 @@ table.s5-calm-table tbody tr.is-gap-row {
   align-items: center !important;
   flex-wrap: wrap !important;
   gap: 4px !important;
-  font-size: 10.5px !important;
+  font-size: 11px !important;
   font-weight: 600 !important;
   line-height: 1.25 !important;
 }
@@ -4124,7 +4147,7 @@ table.s5-calm-table tbody tr.is-gap-row {
   border: none !important;
   background: transparent !important;
   padding: 0 2px !important;
-  font-size: 10.5px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
   text-decoration: underline !important;
   color: var(--s5-emerald-primary) !important;
@@ -4194,7 +4217,7 @@ table.s5-calm-table tbody tr:hover .s5-slot-insert-btn,
 
 .s5-row-insert-title {
   padding: 4px 10px 6px !important;
-  font-size: 10.5px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.04em !important;
@@ -4503,7 +4526,7 @@ table.s5-calm-table tbody tr:hover .s5-slot-insert-btn,
 .overview-page-wrapper .hero {
   margin-bottom: 0 !important;
   padding: clamp(22px, 2.2vw, 30px) clamp(24px, 2.5vw, 34px) !important;
-  border-radius: 18px !important;
+  border-radius: 16px !important;
 }
 
 .overview-page-wrapper .hero p {
@@ -4547,7 +4570,7 @@ table.s5-calm-table tbody tr:hover .s5-slot-insert-btn,
 }
 
 .s5-panel-kicker {
-  font-size: 10.5px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
   letter-spacing: 0.08em !important;
   text-transform: uppercase !important;
@@ -4901,7 +4924,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 
 /* 21.7 Full-Width Proportional Scaling for All Remaining Core Screens */
 .page-heading {
-  padding: 4px 86px 16px 0 !important;
+  padding: 20px 24px !important;
   margin-bottom: 0 !important;
 }
 
@@ -5011,12 +5034,12 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   }
 }
 
-/* 21.8 WorkloadDashboard Architectural Meta Readouts (De-Pillified) */
+/* 21.8 WorkloadDashboard Architectural Meta Readouts (Tier 2 Porcelain High-Contrast) */
 .s5-workload-hero-desc {
   margin: 5px 0 0 !important;
   font-size: 13px !important;
   line-height: 1.5 !important;
-  color: rgba(244, 241, 232, 0.78) !important;
+  color: var(--s5-ink-tertiary) !important;
 }
 
 .s5-hero-meta-strip {
@@ -5024,10 +5047,11 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   align-items: center !important;
   gap: 14px !important;
   padding: 9px 14px !important;
-  border-radius: 11px !important;
-  background: rgba(255, 255, 255, 0.08) !important;
-  border: 0.75px solid rgba(229, 195, 120, 0.3) !important;
-  color: #FFFDF7 !important;
+  border-radius: 10px !important;
+  background: #FFFFFF !important;
+  border: 1px solid #C9D7D0 !important;
+  box-shadow: 0 1px 2px rgba(15, 42, 35, 0.04) !important;
+  color: #163830 !important;
   font-size: 12px !important;
   font-weight: 600 !important;
   position: relative;
@@ -5039,18 +5063,18 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   display: inline-flex !important;
   align-items: center !important;
   gap: 7px !important;
-  color: #FFFDF7 !important;
+  color: #163830 !important;
 }
 
 .s5-hero-meta-item svg {
-  color: #E5C378 !important;
+  color: #8E7035 !important;
   flex-shrink: 0;
 }
 
 .s5-hero-meta-sep {
   width: 1px;
   height: 14px;
-  background: rgba(229, 195, 120, 0.32);
+  background: #D5E0DA;
 }
 
 .s5-table-count-label {
@@ -5474,51 +5498,61 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   transform: translateY(-1px) !important;
 }
 
-/* Master Hero Action Harmonization (Aligning with Sovereign Emerald & Gold) */
+/* Master Hero Action Harmonization (Sovereign Emerald Primary & Porcelain Secondary on Tier 2 Hero) */
 .master-hero-primary-btn {
   height: 38px !important;
   min-height: 38px !important;
   padding: 0 16px !important;
   border-radius: 10px !important;
-  background: linear-gradient(135deg, #EED28E 0%, #C5A059 100%) !important;
-  color: #0D2D26 !important;
+  background: linear-gradient(135deg, #164D42 0%, #0E362D 100%) !important;
+  color: #FFFFFF !important;
   font-size: 13px !important;
-  font-weight: 700 !important;
-  border: 1px solid rgba(255, 245, 214, 0.65) !important;
+  font-weight: 600 !important;
+  border: 1px solid rgba(197, 160, 89, 0.48) !important;
   box-shadow:
-    0 4px 14px rgba(0, 0, 0, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+    0 2px 6px rgba(11, 41, 35, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
   white-space: nowrap !important;
 }
 
 .master-hero-primary-btn .hero-kbd-badge {
-  background: rgba(11, 41, 35, 0.16) !important;
-  color: #0B2923 !important;
-  border-color: rgba(11, 41, 35, 0.24) !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+  color: #FFF9EA !important;
+  border-color: rgba(255, 255, 255, 0.28) !important;
 }
 
 .master-hero-primary-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #F4DA9B 0%, #CFA960 100%) !important;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28) !important;
+  background: linear-gradient(135deg, #1B5D4F 0%, #124237 100%) !important;
+  border-color: rgba(214, 179, 106, 0.72) !important;
+  box-shadow:
+    0 6px 16px rgba(11, 41, 35, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24) !important;
   filter: none !important;
 }
 
 .master-hero-secondary-btn {
   height: 38px !important;
   min-height: 38px !important;
-  padding: 0 15px !important;
+  padding: 0 16px !important;
   border-radius: 10px !important;
-  background: rgba(255, 255, 255, 0.1) !important;
-  color: #FFFDF7 !important;
+  background: #FFFFFF !important;
+  color: #163830 !important;
   font-size: 12.5px !important;
   font-weight: 600 !important;
-  border: 1px solid rgba(229, 195, 120, 0.34) !important;
+  border: 1px solid #C9D7D0 !important;
+  box-shadow:
+    0 1px 2px rgba(15, 42, 35, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
   white-space: nowrap !important;
 }
 
 .master-hero-secondary-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.18) !important;
-  border-color: rgba(229, 195, 120, 0.65) !important;
+  background: #F5F9F7 !important;
+  color: #0D3028 !important;
+  border-color: rgba(197, 160, 89, 0.75) !important;
+  box-shadow:
+    0 4px 12px rgba(15, 42, 35, 0.08),
+    inset 0 1px 0 #FFFFFF !important;
 }
 
 /* Obsidian Sidebar / Card CTA Harmonization */
@@ -5771,7 +5805,8 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   align-items: center !important;
   justify-content: center !important;
   gap: 5px !important;
-  height: 28px !important;
+  height: 32px !important;
+  min-height: 32px !important;
   padding: 0 10px !important;
   border-radius: 8px !important;
   border: 1px solid #C9D7D0 !important;
@@ -5848,7 +5883,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
    Single Source of Truth for SAKALA Sidebar:
    - Deep Obsidian Emerald layered surface + specular 1px inner bevel
    - Ambient warm-gold radial spotlight + ultra-thin Khatam Octagram filigree
-   - Brand emblem diagonal sheen sweep + 10.5px legible subtitle + context strip
+   - Brand emblem diagonal sheen sweep + 11px legible subtitle + context strip
    - Engraved Quick Command Trigger (Ctrl K) + spring-rotated rail chevron
    - Framer Motion shared layoutId active capsule & glowing Champagne Gold bar
    - Portal Obsidian Glass tooltip (never clipped by rail overflow)
@@ -6056,7 +6091,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 .sakala-brand-subtitle {
   display: block !important;
   margin-top: 3px !important;
-  font-size: 10.5px !important;
+  font-size: 11px !important;
   font-weight: 600 !important;
   letter-spacing: 0.09em !important;
   text-transform: uppercase !important;
@@ -6189,12 +6224,12 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 .sakala-sidebar-search-kbd {
   flex-shrink: 0 !important;
   padding: 2px 6px !important;
-  border-radius: 5px !important;
+  border-radius: 6px !important;
   border: 1px solid rgba(229, 201, 122, 0.28) !important;
   background: rgba(255, 255, 255, 0.06) !important;
   color: #E5C97A !important;
   font-family: inherit !important;
-  font-size: 10px !important;
+  font-size: 11px !important;
   font-weight: 600 !important;
   line-height: 1.1 !important;
 }
@@ -6278,7 +6313,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 }
 
 .sakala-nav-section-title {
-  font-size: 10.5px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
   letter-spacing: 0.08em !important;
   color: #A8C8BA !important;
@@ -6398,7 +6433,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   z-index: 1 !important;
   margin-left: auto !important;
   flex-shrink: 0 !important;
-  font-size: 10.5px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
   font-variant-numeric: tabular-nums !important;
   background: #DC2626 !important;
@@ -6443,7 +6478,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   padding: 0 4px !important;
   display: grid !important;
   place-items: center !important;
-  font-size: 9.5px !important;
+  font-size: 11px !important;
   border: 1.5px solid #102D25 !important;
 }
 
@@ -6515,7 +6550,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 }
 
 .sidebar-status-meta {
-  font-size: 10.5px !important;
+  font-size: 11px !important;
   color: #A8C8BA !important;
   line-height: 1.25 !important;
   white-space: nowrap !important;
@@ -6601,12 +6636,12 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 .sakala-portal-tooltip-kbd {
   flex-shrink: 0 !important;
   padding: 2px 6px !important;
-  border-radius: 5px !important;
+  border-radius: 6px !important;
   border: 1px solid rgba(229, 201, 122, 0.36) !important;
   background: rgba(255, 255, 255, 0.07) !important;
   color: #E5C97A !important;
   font-family: inherit !important;
-  font-size: 10px !important;
+  font-size: 11px !important;
   font-weight: 600 !important;
 }
 
@@ -6677,6 +6712,324 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
     transform: translateX(-125%) rotate(12deg) !important;
   }
 }
+
+/* ==========================================================================
+   26. SOVEREIGN ATELIER LUXURY — UNIFIED TOOLBAR, TABS & PAGINATION CONTRACT
+   Single source of truth for:
+   - <UnifiedPagination> (.s5-unified-pagination & .s5-att-unified-footbar)
+   - Workload Source Tabs (.s5-workload-source-tabs & zero-jitter active rings)
+   - Unified Toolbar Select & Search Controls (.s5-toolbar-select / .s5-toolbar-search)
+   ========================================================================== */
+
+/* 26.1 Unified Toolbar Select & Search (38px height, 10px radius) */
+.s5-toolbar-select {
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 34px 0 12px !important;
+  border-radius: 10px !important;
+  border: 1px solid #C9D7D0 !important;
+  background-color: #FFFFFF !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23526861' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 10px center !important;
+  background-size: 14px 14px !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  color: #163830 !important;
+  font-family: var(--font-sans) !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  box-shadow: 0 1px 2px rgba(15, 42, 35, 0.04) !important;
+  transition: border-color 150ms ease, box-shadow 160ms ease, background-color 150ms ease !important;
+}
+
+.s5-toolbar-select:hover:not(:disabled) {
+  border-color: #A7BEB3 !important;
+  background-color: #FAFDFB !important;
+}
+
+.s5-toolbar-select:focus-visible {
+  outline: none !important;
+  border-color: #C5A059 !important;
+  box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.2) !important;
+  background-color: #FFFFFF !important;
+}
+
+.s5-toolbar-search {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 12px !important;
+  border-radius: 10px !important;
+  border: 1px solid #C9D7D0 !important;
+  background: #FFFFFF !important;
+  color: var(--s5-ink-tertiary) !important;
+  box-shadow: 0 1px 2px rgba(15, 42, 35, 0.04) !important;
+  transition: border-color 150ms ease, box-shadow 160ms ease !important;
+  min-width: 240px !important;
+}
+
+.s5-toolbar-search:focus-within {
+  border-color: #C5A059 !important;
+  box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.2) !important;
+}
+
+.s5-toolbar-search input {
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  font-family: var(--font-sans) !important;
+  font-size: 12.5px !important;
+  color: #0F201C !important;
+}
+
+/* 26.2 Workload Source Tabs (Zero 1px<->1.5px Border Width Layout Jitter) */
+.s5-workload-source-tabs {
+  display: inline-flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+.s5-workload-source-tab {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 14px !important;
+  border-radius: 10px !important;
+  border: 1px solid #CFDCD6 !important;
+  background: #FFFFFF !important;
+  color: #355048 !important;
+  font-family: var(--font-sans) !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease !important;
+}
+
+.s5-workload-source-tab:hover:not(.is-active) {
+  background: #F4F8F6 !important;
+  border-color: #A7BEB3 !important;
+  color: #0B2923 !important;
+}
+
+.s5-workload-source-tab:focus-visible {
+  outline: 2px solid #C5A059 !important;
+  outline-offset: 2px !important;
+}
+
+.s5-workload-source-tab.is-active.tone-emerald {
+  background: #E9F5EE !important;
+  border-color: #1B5E43 !important;
+  color: #0B2923 !important;
+  box-shadow: 0 0 0 1px #1B5E43, 0 2px 6px rgba(27, 94, 67, 0.1) !important;
+}
+
+.s5-workload-source-tab.is-active.tone-gold {
+  background: #FDF5E6 !important;
+  border-color: #B47922 !important;
+  color: #6B420D !important;
+  box-shadow: 0 0 0 1px #B47922, 0 2px 6px rgba(180, 121, 34, 0.1) !important;
+}
+
+.s5-workload-source-tab.is-active.tone-slate {
+  background: #ECF3F9 !important;
+  border-color: #2B5B84 !important;
+  color: #163450 !important;
+  box-shadow: 0 0 0 1px #2B5B84, 0 2px 6px rgba(43, 91, 132, 0.1) !important;
+}
+
+.s5-workload-version-wrap {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+}
+
+.s5-workload-version-label {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--s5-ink-tertiary) !important;
+  margin: 0 !important;
+}
+
+.s5-workload-version-select {
+  min-width: 240px !important;
+  max-width: 360px !important;
+}
+
+/* 26.3 Unified Pagination Architecture (<UnifiedPagination>) */
+.s5-unified-pagination {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  margin-top: 14px !important;
+  padding: 12px 16px !important;
+  border-radius: 16px !important;
+  background: linear-gradient(180deg, #FAFBF9 0%, #F2F6F4 100%) !important;
+  border: 0.75px solid #D4DFD9 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92), 0 2px 8px rgba(11, 41, 35, 0.025) !important;
+}
+
+.s01-workspace-card > .s5-unified-pagination,
+.table-pagination.s5-unified-pagination {
+  margin-top: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  border-top: 1px solid #E3EBE6 !important;
+  box-shadow: none !important;
+}
+
+.s5-unified-pag-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: wrap !important;
+  gap: 12px !important;
+}
+
+.s5-unified-pag-meta {
+  display: inline-flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+  font-size: 12px !important;
+  color: var(--s5-ink-secondary) !important;
+}
+
+.s5-unified-pag-select-wrap {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-size: 12px !important;
+  color: var(--s5-ink-secondary) !important;
+}
+
+.s5-unified-pag-select {
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 0 28px 0 10px !important;
+  border-radius: 8px !important;
+  border: 1px solid #C9D7D0 !important;
+  background-color: #FFFFFF !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23526861' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 8px center !important;
+  background-size: 12px 12px !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  font-family: var(--font-sans) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--s5-ink-primary) !important;
+  cursor: pointer !important;
+}
+
+.s5-unified-pag-select:focus-visible {
+  outline: none !important;
+  border-color: #C5A059 !important;
+  box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.2) !important;
+}
+
+.s5-unified-pag-summary {
+  font-size: 12px !important;
+  color: var(--s5-ink-secondary) !important;
+}
+
+.s5-unified-pag-extra {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+}
+
+.s5-unified-pag-controls {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+  margin-left: auto !important;
+}
+
+.s5-unified-pag-pages {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 3px !important;
+  border-radius: 10px !important;
+  background: #FFFFFF !important;
+  border: 0.75px solid #D5E0DA !important;
+}
+
+.s5-unified-pag-btn {
+  min-width: 32px !important;
+  height: 32px !important;
+  padding: 0 9px !important;
+  border-radius: 8px !important;
+  border: none !important;
+  background: transparent !important;
+  color: var(--s5-ink-secondary) !important;
+  font-family: var(--font-sans) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  cursor: pointer !important;
+  transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease !important;
+}
+
+.s5-unified-pag-btn:hover:not(:disabled) {
+  background: var(--s5-emerald-subtle) !important;
+  color: var(--s5-emerald-primary) !important;
+}
+
+.s5-unified-pag-btn.is-active {
+  background: var(--s5-emerald-primary) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 2px 5px rgba(18, 64, 55, 0.2) !important;
+}
+
+.s5-unified-pag-btn:disabled {
+  opacity: 0.42 !important;
+  cursor: not-allowed !important;
+}
+
+.s5-unified-pag-btn:focus-visible {
+  outline: 2px solid #C5A059 !important;
+  outline-offset: 2px !important;
+}
+
+.s5-unified-pag-ellipsis {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 24px !important;
+  height: 32px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--s5-ink-tertiary) !important;
+}
+
+.s5-unified-pag-indicator {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--s5-ink-secondary) !important;
+  padding: 0 4px !important;
+  white-space: nowrap !important;
+}
+
 
 
 

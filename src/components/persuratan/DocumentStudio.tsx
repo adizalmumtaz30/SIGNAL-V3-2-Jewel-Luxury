@@ -748,7 +748,7 @@ export function DocumentStudio({
     editorProps: {
       attributes: {
         class: 's04-prosemirror',
-        'aria-label': 'Editor naskah Document Studio S04',
+        'aria-label': 'Editor naskah Dokumen Resmi',
         spellcheck: 'true',
       },
       transformPastedHTML: (html: string) => sanitizePastedHtml(html),
@@ -1177,7 +1177,7 @@ export function DocumentStudio({
     setS03ConflictResolved(true);
     markDirty(true);
     onNotify?.(
-      'Naskah disusun ulang dari data S03 terbaru. Simpan Draft atau tunggu autosave.',
+      'Naskah disusun ulang dari data awal terbaru. Simpan Draf atau tunggu simpan otomatis.',
       'info'
     );
   };
@@ -1186,7 +1186,7 @@ export function DocumentStudio({
     setS03ConflictResolved(true);
     markDirty(true);
     onNotify?.(
-      'Naskah S04 saat ini dipertahankan. Penanda pembaruan S03 ditutup setelah penyimpanan berikutnya.',
+      'Naskah editor saat ini dipertahankan. Penanda pembaruan data awal ditutup setelah penyimpanan berikutnya.',
       'info'
     );
   };
@@ -1281,7 +1281,7 @@ export function DocumentStudio({
       await Promise.resolve(onPersistStudioState(result.state, result.draft));
       setIsDiffModalOpen(false);
       onNotify?.(
-        `${result.updatedKeys.length} kelompok snapshot sumber diperbarui tanpa menimpa suntingan naskah S04 Anda.`,
+        `${result.updatedKeys.length} kelompok data rujukan sumber diperbarui tanpa menimpa suntingan naskah Anda.`,
         'success'
       );
     } catch (err) {
@@ -1564,12 +1564,12 @@ export function DocumentStudio({
         </div>
       )}
 
-      {/* Explicit S03 Edited After Studio Conflict Banner (No Silent Overwrite) */}
+      {/* Explicit Intake Edited After Studio Conflict Banner (No Silent Overwrite) */}
       {showS03ConflictBanner && (
-        <div className="s04-banner is-warning" role="region" aria-label="Pemberitahuan pembaruan Data Awal S03">
+        <div className="s04-banner is-warning" role="region" aria-label="Pemberitahuan pembaruan Data Awal">
           <div>
-            <strong>Data Awal S03 telah diperbarui</strong> setelah penyuntingan S04 dimulai.
-            Naskah yang sudah Anda ketik di S04 tetap dipertahankan agar tidak hilang diam-diam.
+            <strong>Data Awal telah diperbarui</strong> setelah penyuntingan naskah dimulai.
+            Naskah yang sudah Anda ketik di editor tetap dipertahankan agar tidak hilang diam-diam.
           </div>
           <div className="s04-banner-actions">
             <button
@@ -1577,14 +1577,14 @@ export function DocumentStudio({
               className="s02-btn-secondary"
               onClick={handleKeepExistingStudioOverS03}
             >
-              Pertahankan Naskah S04
+              Pertahankan Naskah Editor
             </button>
             <button
               type="button"
               className="s02-btn-primary"
               onClick={handleRebuildFromUpdatedS03}
             >
-              Buat Ulang dari Data S03 Baru
+              Buat Ulang dari Data Baru
             </button>
           </div>
         </div>
@@ -2542,7 +2542,7 @@ export function DocumentStudio({
         {/* Collapsible Right Properties & Inspector Drawer */}
         {drawerOpen && (
           <aside className="s04-drawer" aria-label="Panel informasi & properti Document Studio">
-            <div className="s04-drawer-tabs" role="tablist" aria-label="Tab panel properti S04">
+            <div className="s04-drawer-tabs" role="tablist" aria-label="Tab panel properti naskah">
               <button
                 type="button"
                 role="tab"
@@ -2782,7 +2782,7 @@ export function DocumentStudio({
                       onClick={() => setIsResetConfirmOpen(true)}
                     >
                       <RotateCcw size={13} aria-hidden="true" />
-                      <span>Susun Ulang dari Snapshot S03</span>
+                      <span>Susun Ulang dari Data Awal</span>
                     </button>
                   </div>
                 </div>
@@ -2816,14 +2816,14 @@ export function DocumentStudio({
                         Sumber: {snap.provenance} · Status: {snap.status}
                         {snap.isDemoData ? ' · Dataset Demo' : ''}
                       </div>
-                      <div className="s5-tnum" style={{ fontSize: '10.5px', color: '#5d756d' }}>
+                      <div className="s5-tnum" style={{ fontSize: '11px', color: '#5d756d' }}>
                         Diambil: {snap.capturedAt ? snap.capturedAt.replace('T', ' ').slice(0, 19) : '—'}
                       </div>
                       {snap.sourceIdentity && (
                         <div
                           style={{
                             fontSize: '11px',
-                            fontFamily: 'var(--font-mono, monospace)',
+                            fontFamily: 'var(--font-mono)',
                             color: '#34524a',
                           }}
                         >
@@ -3245,8 +3245,8 @@ export function DocumentStudio({
                   <RotateCcw size={19} />
                 </div>
                 <div>
-                  <h2 id="s04-reset-draft-title">Susun Ulang dari Snapshot S03?</h2>
-                  <p>Mengembalikan naskah ke hasil konversi awal dari snapshot S03.</p>
+                  <h2 id="s04-reset-draft-title">Susun Ulang dari Data Awal?</h2>
+                  <p>Mengembalikan naskah ke hasil konversi awal dari formulir data surat.</p>
                 </div>
               </div>
               <button
@@ -3261,7 +3261,7 @@ export function DocumentStudio({
             <div className="s01-modal-body">
               <p style={{ margin: 0 }}>
                 Suntingan manual pada kanvas saat ini akan diganti dengan struktur awal template dari
-                snapshot S03 (<code>{draft.id}</code>). Snapshot sumber tetap beku dan Anda masih dapat
+                salinan data awal surat. Data sumber tetap aman dan Anda masih dapat
                 memeriksa hasilnya sebelum menekan <strong>Simpan Draft</strong>.
               </p>
             </div>

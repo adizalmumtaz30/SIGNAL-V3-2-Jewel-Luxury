@@ -140,7 +140,7 @@
   border: 1px solid #bdd0c8;
   background: #f6faf8;
   color: var(--s5-emerald-obsidian, #0b2923);
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 700;
 }

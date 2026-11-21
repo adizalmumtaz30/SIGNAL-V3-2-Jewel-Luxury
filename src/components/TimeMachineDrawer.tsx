@@ -249,10 +249,10 @@ export const TimeMachineDrawer: React.FC<TimeMachineDrawerProps> = ({
             </div>
             <div>
               <strong id="s5-time-machine-title" style={{ fontSize: '14.5px', color: '#0B2923', display: 'block' }}>
-                Time Machine Vault
+                Riwayat Versi &amp; Cadangan
               </strong>
               <small style={{ fontSize: '11px', color: '#4B635D' }}>
-                Titik Pemulihan &amp; Ketahanan Data
+                Titik Pemulihan &amp; Keamanan Data Madrasah
               </small>
             </div>
           </div>
@@ -268,7 +268,7 @@ export const TimeMachineDrawer: React.FC<TimeMachineDrawerProps> = ({
               padding: '6px',
               borderRadius: '6px',
             }}
-            aria-label="Tutup Time Machine"
+            aria-label="Tutup Riwayat Versi"
           >
             <X size={18} />
           </button>
@@ -403,7 +403,7 @@ export const TimeMachineDrawer: React.FC<TimeMachineDrawerProps> = ({
                   marginBottom: '6px',
                 }}
               >
-                Label Titik Tonggak (Milestone)
+                Label Titik Pemulihan Manual
               </label>
               <input
                 type="text"
@@ -497,7 +497,7 @@ export const TimeMachineDrawer: React.FC<TimeMachineDrawerProps> = ({
             </div>
             {loading && (
               <div style={{ textAlign: 'center', padding: '20px 10px', color: '#687E77', fontSize: '12px' }}>
-                Memuat riwayat snapshot vault...
+                Memuat riwayat titik pemulihan...
               </div>
             )}
             {!loading && autoSnapshots.length === 0 && starredSnapshots.length === 0 && (
@@ -712,7 +712,7 @@ export const TimeMachineDrawer: React.FC<TimeMachineDrawerProps> = ({
                 }}
               >
                 {pendingImport.parsed.verification === 'legacy_unverified'
-                  ? 'Tetap Pulihkan (Unverified)'
+                  ? 'Tetap Pulihkan (Tanpa Verifikasi)'
                   : 'Ya, Pulihkan Sekarang'}
               </button>
             </div>

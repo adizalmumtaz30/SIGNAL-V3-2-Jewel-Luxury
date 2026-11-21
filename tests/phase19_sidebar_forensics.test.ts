@@ -71,7 +71,7 @@ describe('Phase 19: Sovereign Atelier Pro Sidebar Architecture', () => {
     );
 
     expect(expandedHtml).toContain('SAKALA');
-    expect(expandedHtml).toContain('MADRASAH OPERATIONS');
+    expect(expandedHtml).toContain('MANAJEMEN MADRASAH');
     expect(expandedHtml).toContain('MAN Insan Cendekia');
     expect(expandedHtml).toContain('Pencarian Cepat');
     expect(expandedHtml).toContain('Ctrl K');
@@ -131,7 +131,7 @@ describe('Phase 19: Sovereign Atelier Pro Sidebar Architecture', () => {
     expect(v5Css).toContain('.sakala-portal-tooltip');
     expect(v5Css).toContain('.sakala-nav-active-bar');
     expect(v5Css).toContain('.sakala-sidebar-search');
-    expect(v5Css).toContain('font-size: 10.5px !important;');
+    expect(v5Css).toContain('font-size: 11px !important;');
     expect(v5Css).toContain('.sidebar.sidebar-collapsed .sakala-brand');
     expect(v5Css).toContain('flex-direction: column !important;');
     expect(v5Css).toContain('.sidebar.sidebar-collapsed .sakala-nav-badge');

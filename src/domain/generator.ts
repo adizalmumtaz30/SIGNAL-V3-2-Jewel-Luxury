@@ -249,7 +249,7 @@ export function generateSchedule(state: AppState, seed = Date.now() >>> 0, overr
       nodes,
       message: limitHit
         ? `Pencarian mencapai batas ${nodeLimit.toLocaleString('id-ID')} langkah tanpa kandidat terverifikasi. Kurangi kendala, periksa alokasi, atau naikkan batas pencarian.`
-        : 'Tidak ditemukan susunan yang memenuhi seluruh hard constraint setelah ruang pencarian selesai diperiksa. Periksa kembali kebutuhan JP dan ketersediaan guru.',
+        : 'Tidak ditemukan susunan yang memenuhi seluruh aturan wajib jadwal setelah ruang pencarian selesai diperiksa. Periksa kembali kebutuhan JP dan ketersediaan guru.',
     };
   }
 

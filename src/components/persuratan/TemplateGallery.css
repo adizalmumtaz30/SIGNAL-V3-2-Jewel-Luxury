@@ -745,7 +745,7 @@
 
 .s02-card-spec-label {
   display: block;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -834,11 +834,12 @@
   box-shadow: 0 6px 18px -6px rgba(11, 41, 35, 0.14);
   padding: 18px 16px;
   color: #162420;
-  font-size: 10.5px;
+  font-size: 11px;
   line-height: 1.45;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  zoom: 0.9;
 }
 
 .s02-paper-kop {
@@ -847,34 +848,34 @@
 
 .s02-paper-kop strong {
   display: block;
-  font-size: 10.5px;
+  font-size: 11.5px;
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }
 
 .s02-paper-kop span {
   display: block;
-  font-size: 9px;
+  font-size: 11px;
   color: #4f615b;
 }
 
 .s02-paper-doc-title {
   text-align: center;
   font-weight: 700;
-  font-size: 10.5px;
+  font-size: 11.5px;
   text-decoration: underline;
   white-space: pre-line;
 }
 
 .s02-paper-doc-num {
   text-align: center;
-  font-size: 9.5px;
+  font-size: 11px;
   color: #435751;
 }
 
 .s02-paper-token {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 11px;
   background: var(--s5-emerald-subtle, #e8f2ee);
   color: var(--s5-emerald-primary, #124037);
   padding: 0 4px;
@@ -884,7 +885,7 @@
 .s02-paper-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 8.8px;
+  font-size: 11px;
 }
 
 .s02-paper-table th,
@@ -904,7 +905,7 @@
   display: grid;
   grid-template-columns: 92px minmax(0, 1fr);
   gap: 3px 6px;
-  font-size: 9.5px;
+  font-size: 11px;
 }
 
 .s02-paper-sig-row {
@@ -912,7 +913,7 @@
   justify-content: space-between;
   gap: 10px;
   margin-top: 8px;
-  font-size: 9.5px;
+  font-size: 11px;
 }
 
 .s02-paper-sig-box {

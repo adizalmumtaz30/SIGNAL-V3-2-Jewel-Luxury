@@ -142,7 +142,7 @@ export function validateSchedule(state: AppState, entries: ScheduleEntry[], opti
     if (includeSoftWarnings) {
       const hasDouble = sequence.some((entry, index) => !!entry && !!sequence[index + 1] && entry.subjectId === sequence[index + 1]?.subjectId);
       if (dayEntries.length > 0 && !hasDouble) {
-        issues.push(makeIssue('SC-NO-DOUBLE-BLOCK', 'warning', 'Preferensi blok 2 JP belum terpenuhi', `${schoolClass?.name ?? classId} belum memiliki pasangan 2 JP mapel yang berurutan pada ${day}.`, undefined, 'Bila memungkinkan, gabungkan dua JP mapel yang sama tanpa melanggar hard constraint.'));
+        issues.push(makeIssue('SC-NO-DOUBLE-BLOCK', 'warning', 'Preferensi blok 2 JP belum terpenuhi', `${schoolClass?.name ?? classId} belum memiliki pasangan 2 JP mapel yang berurutan pada ${day}.`, undefined, 'Bila memungkinkan, gabungkan dua JP mapel yang sama tanpa melanggar aturan wajib jadwal.'));
       }
     }
   }

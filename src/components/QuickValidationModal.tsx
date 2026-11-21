@@ -126,9 +126,9 @@ export function QuickValidationModal({
             )}
           </div>
           <div>
-            <h2 style={{ fontSize: '18px', margin: 0, color: '#173637' }}>Quick Validation Report</h2>
+            <h2 style={{ fontSize: '18px', margin: 0, color: '#173637' }}>Ringkasan Pemeriksaan Jadwal</h2>
             <p style={{ margin: 0, fontSize: '11.5px', color: '#526861' }}>
-              Hasil audit otomatis seluruh aturan keras (hard constraints) dan preferensi jadwal
+              Hasil audit otomatis seluruh aturan wajib bebas bentrok dan preferensi jadwal
             </p>
           </div>
           <button className="icon-button" onClick={onClose} aria-label="Tutup dialog">
@@ -272,7 +272,7 @@ export function QuickValidationModal({
                         <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
                           <button
                             className="button button-secondary"
-                            style={{ height: '30px', fontSize: '11px', padding: '4px 10px' }}
+                            style={{ height: '32px', fontSize: '11.5px', padding: '0 12px' }}
                             onClick={() => {
                               onClose();
                               if (issue.code.includes('COLLISION') || issue.code.includes('SLOT')) {
@@ -309,7 +309,7 @@ export function QuickValidationModal({
           }}
         >
           <span style={{ fontSize: '11.5px', color: '#526861', display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <FileCheck2 size={14} /> Validator Deterministik v1.0 · Single source of truth
+            <FileCheck2 size={14} /> Pemeriksaan Terpadu SAKALA · Mengacu Data Aktif
           </span>
           <button className="button button-primary" onClick={onClose}>
             Tutup Laporan

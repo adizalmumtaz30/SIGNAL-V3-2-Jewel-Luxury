@@ -542,9 +542,9 @@ describe('Tahap 5 — S04 Document Studio / Editor Dokumen Bergaya Word', () => 
         onBackToCenter: () => {},
       })
     );
-    expect(conflictStudioHtml).toContain('Data Awal S03 telah diperbarui');
-    expect(conflictStudioHtml).toContain('Pertahankan Naskah S04');
-    expect(conflictStudioHtml).toContain('Buat Ulang dari Data S03 Baru');
+    expect(conflictStudioHtml).toContain('Data Awal telah diperbarui');
+    expect(conflictStudioHtml).toContain('Pertahankan Naskah Editor');
+    expect(conflictStudioHtml).toContain('Buat Ulang dari Data Baru');
 
     // S01 menampilkan Lanjutkan Naskah & dock aksi kebab tetap utuh
     const s01Html = renderToStaticMarkup(

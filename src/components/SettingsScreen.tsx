@@ -2278,7 +2278,7 @@ export function SettingsScreen({
                     <FileText size={16} />
                   </div>
                   <div>
-                    <h3 className="s5-calm-panel-title">Aturan Penomoran Surat Otomatis (S05)</h3>
+                    <h3 className="s5-calm-panel-title">Aturan Penomoran Surat Otomatis</h3>
                     <p className="s5-calm-panel-desc">
                       Format nomor urut resmi saat finalisasi dokumen persuratan &amp; SK.
                     </p>
@@ -2482,70 +2482,72 @@ export function SettingsScreen({
                     variant="compact"
                   />
 
-                  <div style={{ textAlign: 'center', padding: '4px 0 6px' }}>
+                  <div style={{ zoom: 0.72 }}>
+                    <div style={{ textAlign: 'center', padding: '6px 0 8px' }}>
+                      <div
+                        style={{
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          color: '#0b3435',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.03em',
+                        }}
+                      >
+                        JADWAL PELAJARAN SEMESTER {semester.toUpperCase()}
+                      </div>
+                      <div
+                        className="s5-tnum"
+                        style={{ fontSize: '11px', color: '#435e58', fontWeight: 600, marginTop: '2px' }}
+                      >
+                        TAHUN AJARAN {academicYear}
+                      </div>
+                    </div>
+
                     <div
                       style={{
-                        fontSize: '9px',
-                        fontWeight: 700,
-                        color: '#0b3435',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.03em',
+                        marginTop: '10px',
+                        paddingTop: '10px',
+                        borderTop: '1px dashed #d9e2dc',
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: '12px',
+                        fontSize: '11px',
+                        color: '#435e58',
+                        lineHeight: 1.4,
                       }}
                     >
-                      JADWAL PELAJARAN SEMESTER {semester.toUpperCase()}
-                    </div>
-                    <div
-                      className="s5-tnum"
-                      style={{ fontSize: '8px', color: '#435e58', fontWeight: 600, marginTop: '1px' }}
-                    >
-                      TAHUN AJARAN {academicYear}
-                    </div>
-                  </div>
-
-                  <div
-                    style={{
-                      marginTop: '8px',
-                      paddingTop: '8px',
-                      borderTop: '1px dashed #d9e2dc',
-                      display: 'grid',
-                      gridTemplateColumns: '1fr 1fr',
-                      gap: '10px',
-                      fontSize: '7px',
-                      color: '#435e58',
-                      lineHeight: 1.35,
-                    }}
-                  >
-                    <div>
-                      <div>Mengetahui,</div>
-                      <div style={{ fontWeight: 600, color: '#0b3435' }}>
-                        {curriculumLeaderTitle || 'Waka Bidang Kurikulum'}
-                      </div>
-                      <div style={{ height: '14px' }} />
-                      <div style={{ fontWeight: 700, textDecoration: 'underline', color: '#0b3435' }}>
-                        {curriculumLeaderName || '—'}
-                      </div>
-                      <div className="s5-tnum">
-                        {curriculumLeaderNip && !/^[.\-\s]+$/.test(curriculumLeaderNip)
-                          ? `NIP. ${curriculumLeaderNip}`
-                          : 'NIP. —'}
-                      </div>
-                    </div>
-
-                    <div style={{ textAlign: 'right' }}>
                       <div>
-                        {city || 'Madrasah'}, {formatDisplayDateId()}
+                        <div>Mengetahui,</div>
+                        <div style={{ fontWeight: 600, color: '#0b3435' }}>
+                          {curriculumLeaderTitle || 'Waka Bidang Kurikulum'}
+                        </div>
+                        <div style={{ height: '18px' }} />
+                        <div style={{ fontWeight: 700, textDecoration: 'underline', color: '#0b3435' }}>
+                          {curriculumLeaderName || '—'}
+                        </div>
+                        <div className="s5-tnum">
+                          {curriculumLeaderNip && !/^[.\-\s]+$/.test(curriculumLeaderNip)
+                            ? `NIP. ${curriculumLeaderNip}`
+                            : 'NIP. —'}
+                        </div>
                       </div>
-                      <div style={{ fontWeight: 600, color: '#0b3435' }}>
-                        {headmasterTitle || 'Kepala Madrasah'}
-                      </div>
-                      <div style={{ height: '14px' }} />
-                      <div style={{ fontWeight: 700, textDecoration: 'underline', color: '#0b3435' }}>
-                        {headmasterName || '—'}
-                      </div>
-                      <div className="s5-tnum">
-                        {headmasterNip && !/^[.\-\s]+$/.test(headmasterNip)
-                          ? `NIP. ${headmasterNip}`
-                          : 'NIP. —'}
+
+                      <div style={{ textAlign: 'right' }}>
+                        <div>
+                          {city || 'Madrasah'}, {formatDisplayDateId()}
+                        </div>
+                        <div style={{ fontWeight: 600, color: '#0b3435' }}>
+                          {headmasterTitle || 'Kepala Madrasah'}
+                        </div>
+                        <div style={{ height: '18px' }} />
+                        <div style={{ fontWeight: 700, textDecoration: 'underline', color: '#0b3435' }}>
+                          {headmasterName || '—'}
+                        </div>
+                        <div className="s5-tnum">
+                          {headmasterNip && !/^[.\-\s]+$/.test(headmasterNip)
+                            ? `NIP. ${headmasterNip}`
+                            : 'NIP. —'}
+                        </div>
                       </div>
                     </div>
                   </div>

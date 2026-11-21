@@ -6,8 +6,6 @@ import {
   BookOpen,
   CalendarDays,
   CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   Clock,
   ClipboardList,
   Download,
@@ -33,6 +31,7 @@ import {
 import { exportScheduleTeacherPDF } from '../utils/pdfExport';
 import { MadrasahTeacherAvatar } from './MadrasahTeacherAvatar';
 import { KpiAnimatedNumber, KpiMotionCard } from './KpiMotion';
+import { UnifiedPagination } from './UnifiedPagination';
 
 export interface WorkloadDashboardProps {
   state: AppState;
@@ -261,7 +260,7 @@ export function WorkloadDashboard({
           <div>
             <h2 style={{ margin: 0 }}>Statistik &amp; Distribusi Beban Guru</h2>
             <p className="s5-workload-hero-desc">
-              Pemisahan tegas sumber beban mengajar antara Jadwal Terbit resmi (ScheduleVersion), Pratinjau Draft, dan Rencana Kebutuhan JP.
+              Pemisahan jelas antara beban mengajar dari Jadwal Terbit Resmi, Pratinjau Draf, dan Rencana Kebutuhan JP.
             </p>
           </div>
         </div>
@@ -300,25 +299,13 @@ export function WorkloadDashboard({
             flexWrap: 'wrap',
           }}
         >
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }} role="tablist" aria-label="Mode sumber beban guru">
+          <div className="s5-workload-source-tabs" role="tablist" aria-label="Mode sumber beban guru">
             <button
               type="button"
               role="tab"
               aria-selected={sourceMode === 'PUBLISHED'}
               onClick={() => handleModeChange('PUBLISHED')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '7px',
-                padding: '9px 14px',
-                borderRadius: '10px',
-                border: sourceMode === 'PUBLISHED' ? '1.5px solid #124037' : '1px solid #CFDAD4',
-                background: sourceMode === 'PUBLISHED' ? '#124037' : '#FFFFFF',
-                color: sourceMode === 'PUBLISHED' ? '#FFFFFF' : '#1E3C35',
-                fontWeight: 600,
-                fontSize: '12.5px',
-                cursor: 'pointer',
-              }}
+              className={`s5-workload-source-tab tone-emerald ${sourceMode === 'PUBLISHED' ? 'is-active' : ''}`}
             >
               <ShieldCheck size={15} aria-hidden="true" />
               <span>Jadwal Terbit (Resmi)</span>
@@ -329,22 +316,10 @@ export function WorkloadDashboard({
               role="tab"
               aria-selected={sourceMode === 'DRAFT'}
               onClick={() => handleModeChange('DRAFT')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '7px',
-                padding: '9px 14px',
-                borderRadius: '10px',
-                border: sourceMode === 'DRAFT' ? '1.5px solid #A66E17' : '1px solid #CFDAD4',
-                background: sourceMode === 'DRAFT' ? '#FDF4E7' : '#FFFFFF',
-                color: sourceMode === 'DRAFT' ? '#6D430C' : '#1E3C35',
-                fontWeight: 600,
-                fontSize: '12.5px',
-                cursor: 'pointer',
-              }}
+              className={`s5-workload-source-tab tone-gold ${sourceMode === 'DRAFT' ? 'is-active' : ''}`}
             >
               <FileWarning size={15} aria-hidden="true" />
-              <span>Pratinjau Draft</span>
+              <span>Pratinjau Draf</span>
             </button>
 
             <button
@@ -352,19 +327,7 @@ export function WorkloadDashboard({
               role="tab"
               aria-selected={sourceMode === 'REQUIREMENTS'}
               onClick={() => handleModeChange('REQUIREMENTS')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '7px',
-                padding: '9px 14px',
-                borderRadius: '10px',
-                border: sourceMode === 'REQUIREMENTS' ? '1.5px solid #2D608F' : '1px solid #CFDAD4',
-                background: sourceMode === 'REQUIREMENTS' ? '#EEF4FA' : '#FFFFFF',
-                color: sourceMode === 'REQUIREMENTS' ? '#173754' : '#1E3C35',
-                fontWeight: 600,
-                fontSize: '12.5px',
-                cursor: 'pointer',
-              }}
+              className={`s5-workload-source-tab tone-slate ${sourceMode === 'REQUIREMENTS' ? 'is-active' : ''}`}
             >
               <ClipboardList size={15} aria-hidden="true" />
               <span>Kebutuhan JP (Rencana)</span>
@@ -372,29 +335,20 @@ export function WorkloadDashboard({
           </div>
 
           {sourceMode === 'PUBLISHED' && sourceResolution.availableVersions.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <div className="s5-workload-version-wrap">
               <label
                 htmlFor="workload-version-select"
-                style={{ fontSize: '11.5px', fontWeight: 700, color: '#3B504A' }}
+                className="s5-workload-version-label"
               >
                 Versi Terbit:
               </label>
               <select
                 id="workload-version-select"
+                className="s5-toolbar-select s5-workload-version-select"
                 value={sourceResolution.selectedVersion?.version.id ?? ''}
                 onChange={(e) => {
                   setSelectedVersionId(e.target.value);
                   setPage(1);
-                }}
-                style={{
-                  height: '36px',
-                  padding: '0 10px',
-                  borderRadius: '8px',
-                  border: '1px solid #C6D3CC',
-                  background: '#FFFFFF',
-                  color: '#0B2923',
-                  fontSize: '12.5px',
-                  fontWeight: 600,
                 }}
               >
                 {sourceResolution.availableVersions.map((item) => (
@@ -456,8 +410,8 @@ export function WorkloadDashboard({
                   sourceMode === 'PUBLISHED' &&
                   sourceResolution.canUseAsOfficialSKBasis &&
                   sourceResolution.selectedVersion
-                    ? `Buat SK Pembagian Tugas Mengajar dari ScheduleVersion v${sourceResolution.selectedVersion.version.version}`
-                    : 'SK Pembagian Tugas Mengajar wajib berasal dari Jadwal Terbit Resmi (ScheduleVersion) terverifikasi.'
+                    ? `Buat SK Pembagian Tugas Mengajar dari Jadwal Terbit v${sourceResolution.selectedVersion.version.version}`
+                    : 'SK Pembagian Tugas Mengajar wajib berasal dari Jadwal Terbit Resmi terverifikasi.'
                 }
                 onClick={() => {
                   if (
@@ -502,15 +456,15 @@ export function WorkloadDashboard({
             }}
           >
             <div>
-              <dt style={{ fontSize: '10.5px', fontWeight: 700, color: '#5A7069', textTransform: 'uppercase' }}>
-                ID &amp; Nomor Versi
+              <dt style={{ fontSize: '11px', fontWeight: 600, color: '#5A7069', textTransform: 'uppercase' }}>
+                Nomor &amp; Label Versi
               </dt>
               <dd className="s5-tnum" style={{ margin: '2px 0 0', fontSize: '12.5px', fontWeight: 700, color: '#0B2923' }}>
-                v{sourceResolution.selectedVersion.metadata.versionNumber} · {sourceResolution.selectedVersion.metadata.id}
+                v{sourceResolution.selectedVersion.metadata.versionNumber} · {sourceResolution.selectedVersion.metadata.label}
               </dd>
             </div>
             <div>
-              <dt style={{ fontSize: '10.5px', fontWeight: 700, color: '#5A7069', textTransform: 'uppercase' }}>
+              <dt style={{ fontSize: '11px', fontWeight: 600, color: '#5A7069', textTransform: 'uppercase' }}>
                 Tanggal Terbit
               </dt>
               <dd className="s5-tnum" style={{ margin: '2px 0 0', fontSize: '12.5px', fontWeight: 600, color: '#0B2923' }}>
@@ -518,7 +472,7 @@ export function WorkloadDashboard({
               </dd>
             </div>
             <div>
-              <dt style={{ fontSize: '10.5px', fontWeight: 700, color: '#5A7069', textTransform: 'uppercase' }}>
+              <dt style={{ fontSize: '11px', fontWeight: 700, color: '#5A7069', textTransform: 'uppercase' }}>
                 Tahun Ajaran &amp; Semester
               </dt>
               <dd style={{ margin: '2px 0 0', fontSize: '12.5px', fontWeight: 600, color: '#0B2923' }}>
@@ -528,7 +482,7 @@ export function WorkloadDashboard({
               </dd>
             </div>
             <div>
-              <dt style={{ fontSize: '10.5px', fontWeight: 700, color: '#5A7069', textTransform: 'uppercase' }}>
+              <dt style={{ fontSize: '11px', fontWeight: 700, color: '#5A7069', textTransform: 'uppercase' }}>
                 Fingerprint &amp; Entri
               </dt>
               <dd className="s5-tnum" style={{ margin: '2px 0 0', fontSize: '12.5px', fontWeight: 600, color: sourceResolution.selectedVersion.isValidForOfficialUse ? '#1B5E43' : '#8F2D24' }}>
@@ -937,7 +891,7 @@ export function WorkloadDashboard({
                                     opacity: count === 0 ? 0.25 : 1,
                                   }}
                                 />
-                                <span style={{ fontSize: '7.5px', fontWeight: 700, color: '#556663', lineHeight: 1 }}>
+                                <span style={{ fontSize: '11px', fontWeight: 700, color: '#556663', lineHeight: 1 }}>
                                   {day.slice(0, 1)}
                                 </span>
                               </div>
@@ -951,7 +905,7 @@ export function WorkloadDashboard({
                           <span className="s5-tnum" style={{ fontSize: '11.5px', fontWeight: 700, color: '#0B2923' }}>
                             {stat.totalSessions} sesi
                           </span>
-                          <small style={{ fontSize: '9.5px', color: '#556663' }}>
+                          <small style={{ fontSize: '11px', color: '#556663' }}>
                             {stat.doubleBlocks} blok 2-JP · {stat.singleBlocks} tunggal
                           </small>
                         </div>
@@ -992,61 +946,22 @@ export function WorkloadDashboard({
           )}
         </div>
 
-        {/* Table Pagination Controls */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '12px 18px',
-            borderTop: '1px solid #edf2ee',
-            flexWrap: 'wrap',
-            gap: '10px',
-            fontSize: '12px',
-            color: '#5e756e',
+        {/* Unified Pagination Controls */}
+        <UnifiedPagination
+          totalItems={totalDisplayCount}
+          page={currentPage}
+          pageSize={pageSize}
+          pageSizeOptions={[10, 20, 25]}
+          allowShowAll
+          itemLabel="guru"
+          selectAriaLabel="Jumlah guru per halaman"
+          navAriaLabel="Navigasi halaman beban mengajar guru"
+          onPageChange={(next) => setPage(next)}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(1);
           }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>Tampilkan:</span>
-            <select
-              value={pageSize}
-              onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-              style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #d0dad4' }}
-            >
-              <option value={10}>10 Baris</option>
-              <option value={20}>20 Baris</option>
-              <option value={25}>25 Baris</option>
-              <option value={0}>Semua ({totalDisplayCount})</option>
-            </select>
-            <span>Total {totalDisplayCount} guru terdata</span>
-          </div>
-
-          {pageSize > 0 && totalPages > 1 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <button
-                type="button"
-                className="button button-quiet"
-                style={{ padding: '4px 8px' }}
-                disabled={currentPage <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                <ChevronLeft size={14} /> Sebelumnya
-              </button>
-              <span>
-                Halaman <strong>{currentPage}</strong> dari <strong>{totalPages}</strong>
-              </span>
-              <button
-                type="button"
-                className="button button-quiet"
-                style={{ padding: '4px 8px' }}
-                disabled={currentPage >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              >
-                Berikutnya <ChevronRight size={14} />
-              </button>
-            </div>
-          )}
-        </div>
+        />
       </div>
 
       {/* Verification & Administrative Assignment Separation Notice */}
@@ -1069,9 +984,8 @@ export function WorkloadDashboard({
           <CheckCircle2 size={16} style={{ color: '#387468', flexShrink: 0, marginTop: '2px' }} />
           <div style={{ fontSize: '11.5px', color: '#405a54', lineHeight: 1.5 }}>
             <strong>Prinsip Pemisahan Sumber Beban &amp; Penugasan:</strong> Rekap JP resmi untuk dasar SK hanya diambil dari{' '}
-            <code>ScheduleVersion</code> terpublikasi di riwayat (bukan <code>requirements</code>, bukan <code>draft</code>, dan bukan{' '}
-            <code>TeacherAssignment</code>). Tercatat terpisah{' '}
-            <strong>{assignmentSummary.totalActive} rekaman administratif TeacherAssignment</strong> aktif ({assignmentSummary.nonTeachingActiveCount} tugas non-mengajar).
+            <strong>Jadwal Resmi Terbit</strong> di riwayat versi (bukan Rencana Kebutuhan JP, bukan Draf Sementara, dan bukan catatan penugasan tambahan). Tercatat terpisah{' '}
+            <strong>{assignmentSummary.totalActive} catatan penugasan administratif</strong> aktif ({assignmentSummary.nonTeachingActiveCount} tugas non-mengajar).
           </div>
         </div>
         {onNavigateToMaster && (

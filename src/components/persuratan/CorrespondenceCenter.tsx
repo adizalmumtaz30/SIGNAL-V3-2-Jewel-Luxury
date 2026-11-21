@@ -6,8 +6,6 @@ import {
   ArrowUpDown,
   CheckCircle2,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Clock,
   Copy,
   Download,
@@ -55,6 +53,7 @@ import {
   paginateCorrespondenceDocuments,
   sortCorrespondenceDocuments,
 } from '../../domain/persuratan/selectors';
+import { UnifiedPagination } from '../UnifiedPagination';
 import {
   attachFileToDocumentInState,
   bulkArchiveDocumentsInState,
@@ -1612,57 +1611,22 @@ export function CorrespondenceCenter({
           </div>
         )}
 
-        {/* Pagination Footer */}
+        {/* Unified Pagination Footer */}
         {!isLoading && sortedDocuments.length > 0 && (
-          <div className="s01-pagination">
-            <div className="s5-tnum">
-              Menampilkan <strong>{pagination.startIndex}–{pagination.endIndex}</strong> dari{' '}
-              <strong>{pagination.totalItems}</strong> dokumen
-            </div>
-            <div className="s01-pagination-controls">
-              <label htmlFor="s01-page-size" style={{ fontSize: '12.5px' }}>
-                Per halaman:
-              </label>
-              <select
-                id="s01-page-size"
-                className="s01-select"
-                style={{ height: '32px' }}
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setPage(1);
-                }}
-              >
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={50}>50</option>
-              </select>
-
-              <button
-                type="button"
-                className="s01-page-btn"
-                disabled={pagination.currentPage <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                <ChevronLeft size={14} aria-hidden="true" />
-                <span>Sebelumnya</span>
-              </button>
-
-              <span className="s5-tnum" style={{ fontSize: '12.5px', fontWeight: 600 }}>
-                Hal {pagination.currentPage} / {pagination.totalPages}
-              </span>
-
-              <button
-                type="button"
-                className="s01-page-btn"
-                disabled={pagination.currentPage >= pagination.totalPages}
-                onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
-              >
-                <span>Berikutnya</span>
-                <ChevronRight size={14} aria-hidden="true" />
-              </button>
-            </div>
-          </div>
+          <UnifiedPagination
+            totalItems={pagination.totalItems}
+            page={pagination.currentPage}
+            pageSize={pageSize}
+            pageSizeOptions={[10, 20, 50]}
+            itemLabel="dokumen"
+            selectAriaLabel="Jumlah dokumen per halaman"
+            navAriaLabel="Navigasi halaman daftar surat"
+            onPageChange={(next) => setPage(next)}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setPage(1);
+            }}
+          />
         )}
       </div>
 
