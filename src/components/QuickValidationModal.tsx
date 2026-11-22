@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   ChevronDown,
   FileCheck2,
+  FileText,
   GraduationCap,
   RefreshCw,
   ShieldAlert,
@@ -32,6 +33,7 @@ interface QuickValidationModalProps {
   onNavigateToSlot?: (classId: string, day: Day, jpNo: number) => void;
   onNavigateToScreen: (screen: 'schedule' | 'master' | 'requirements' | 'settings') => void;
   onRevalidate: () => void;
+  onOpenPdfModal?: () => void;
 }
 
 type IssueCategory = 'all' | 'teacher_clash' | 'class_clash' | 'time_activity' | 'coverage';
@@ -45,6 +47,7 @@ export function QuickValidationModal({
   onNavigateToSlot,
   onNavigateToScreen,
   onRevalidate,
+  onOpenPdfModal,
 }: QuickValidationModalProps) {
   const [activeCategory, setActiveCategory] = useState<IssueCategory>('all');
   const [expandedIssueId, setExpandedIssueId] = useState<string | null>(null);
@@ -278,6 +281,8 @@ export function QuickValidationModal({
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
+            gap: '10px',
+            flexWrap: 'wrap',
             background: '#faf8f2',
             borderRadius: '0 0 14px 14px',
           }}
@@ -285,9 +290,21 @@ export function QuickValidationModal({
           <span style={{ fontSize: '11.5px', color: '#526861', display: 'flex', alignItems: 'center', gap: '5px' }}>
             <FileCheck2 size={14} /> Pemeriksaan Terpadu SAKALA · Mengacu Data Aktif
           </span>
-          <button className="button button-primary" onClick={onClose}>
-            Tutup Laporan
-          </button>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {onOpenPdfModal && (
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={onOpenPdfModal}
+                title="Tetap cetak atau ekspor PDF jadwal walaupun masih ada konflik"
+              >
+                <FileText size={14} /> Cetak / Ekspor PDF
+              </button>
+            )}
+            <button type="button" className="button button-primary" onClick={onClose}>
+              Tutup Laporan
+            </button>
+          </div>
         </div>
     </MotionModalDialog>
   );

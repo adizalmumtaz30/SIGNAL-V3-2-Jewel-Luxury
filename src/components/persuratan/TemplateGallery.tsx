@@ -42,6 +42,8 @@ import type {
   TemplatePreferences,
   TemplatePreviewBlock,
 } from '../../domain/persuratan/templates/types';
+import { getEffectivePaperDimensionsMm } from '../../domain/persuratan/studio/contentValidation';
+import { LivePreviewViewport } from '../LivePreviewViewport';
 import { OfficialKopSuratPreview } from '../OfficialKopSuratPreview';
 import './TemplateGallery.css';
 
@@ -740,23 +742,46 @@ export function TemplateGallery({
                 </button>
               </div>
 
-              {/* Compact Paper Layout Preview */}
-              <div className="s02-paper-stage p5-paper-stage-bg is-scrollable">
-                <div className="s02-paper-sheet" aria-label="Simulasi tata letak halaman dokumen">
-                  {previewTemplate.documentHeader.includeKopSurat && (
-                    <div className="s02-paper-kop">
-                      <OfficialKopSuratPreview settings={state.settings} variant="mini" />
+              {/* Real-Scale Paper Layout Preview */}
+              {(() => {
+                const paperDims = getEffectivePaperDimensionsMm(
+                  previewTemplate.initialPageSettings.paperSize,
+                  previewTemplate.initialPageSettings.orientation
+                );
+                const margins = previewTemplate.initialPageSettings.marginsMm;
+                return (
+                  <LivePreviewViewport
+                    title="Pratinjau Tata Letak Template"
+                    metaText={`${previewTemplate.initialPageSettings.paperSize.toUpperCase()} · ${
+                      previewTemplate.initialPageSettings.orientation === 'portrait'
+                        ? 'Portrait'
+                        : 'Landscape'
+                    }`}
+                    paperWidthMm={paperDims.widthMm}
+                    paperHeightMm={paperDims.heightMm}
+                    compactMaxHeight={380}
+                    paperStyle={{
+                      padding: `${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm`,
+                    }}
+                    ariaLabel="Simulasi tata letak halaman dokumen ukuran cetak"
+                  >
+                    <div className="s02-paper-sheet">
+                      {previewTemplate.documentHeader.includeKopSurat && (
+                        <div className="s02-paper-kop">
+                          <OfficialKopSuratPreview settings={state.settings} variant="full" />
+                        </div>
+                      )}
+                      <div className="s02-paper-doc-title">
+                        {renderTextWithTokens(previewTemplate.documentHeader.title)}
+                      </div>
+                      <div className="s02-paper-doc-num">
+                        {renderTextWithTokens(previewTemplate.documentHeader.numberPlaceholder)}
+                      </div>
+                      {previewTemplate.previewBlocks.map((block, idx) => renderPreviewBlock(block, idx))}
                     </div>
-                  )}
-                  <div className="s02-paper-doc-title">
-                    {renderTextWithTokens(previewTemplate.documentHeader.title)}
-                  </div>
-                  <div className="s02-paper-doc-num">
-                    {renderTextWithTokens(previewTemplate.documentHeader.numberPlaceholder)}
-                  </div>
-                  {previewTemplate.previewBlocks.map((block, idx) => renderPreviewBlock(block, idx))}
-                </div>
-              </div>
+                  </LivePreviewViewport>
+                );
+              })()}
 
               {previewTemplate.legalNotice && (
                 <details className="s02-specs-disclosure">

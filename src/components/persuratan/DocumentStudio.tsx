@@ -157,7 +157,7 @@ const SLASH_COMMANDS: StudioSlashCommandItem[] = [
 ];
 
 type DrawerTab = 'detail' | 'snapshots' | 'placeholders' | 'page';
-type StudioZoomMode = 'fit' | 0.85 | 1 | 1.15;
+type StudioZoomMode = 'fit' | number;
 const MM_TO_PX = 96 / 25.4; // CSS physical pixel constant (3.7795275591)
 const AUTOSAVE_DEBOUNCE_MS = 1400;
 
@@ -522,6 +522,7 @@ export function DocumentStudio({
   const [legacyMismatchAccepted, setLegacyMismatchAccepted] = useState<boolean>(false);
   const [estimatedPages, setEstimatedPages] = useState<number>(1);
   const [zoomMode, setZoomMode] = useState<StudioZoomMode>('fit');
+  const [isCanvasMaximized, setIsCanvasMaximized] = useState<boolean>(false);
   const [viewportWidthPx, setViewportWidthPx] = useState<number>(0);
   const [paperSizePx, setPaperSizePx] = useState<{ width: number; height: number } | null>(null);
   const [, setSelectionTick] = useState<number>(0);
@@ -685,6 +686,36 @@ export function DocumentStudio({
       isMountedRef.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!isCanvasMaximized) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        e.preventDefault();
+        setIsCanvasMaximized(false);
+        setZoomMode('fit');
+      }
+    };
+    window.addEventListener('keydown', handleEsc, true);
+    return () => window.removeEventListener('keydown', handleEsc, true);
+  }, [isCanvasMaximized]);
+
+  const handleToggleCanvasMaximize = useCallback(() => {
+    setIsCanvasMaximized((prev) => {
+      const next = !prev;
+      setZoomMode(next ? 1 : 'fit');
+      return next;
+    });
+  }, []);
+
+  const handleStepZoomPct = useCallback(
+    (deltaPct: number, currentPct: number) => {
+      const nextPct = Math.min(160, Math.max(35, Math.round((currentPct + deltaPct) / 5) * 5));
+      setZoomMode(nextPct / 100);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (isDeleteConfirmOpen) {
@@ -2328,7 +2359,10 @@ export function DocumentStudio({
           </aside>
         )}
 
-        <div ref={viewportRef} className="s04-canvas-viewport">
+        <div
+          ref={viewportRef}
+          className={`s04-canvas-viewport ${isCanvasMaximized ? 'is-maximized' : ''}`}
+        >
           <div className="s04-canvas-meta-bar s5-tnum">
             <span>
               <strong>{PAPER_DIMENSIONS_MM[pageSettings.paperSize].label}</strong> ·{' '}
@@ -2342,28 +2376,58 @@ export function DocumentStudio({
                 : 'Semua token terisi'}
             </span>
 
-            <div className="s04-zoom-group" role="group" aria-label="Skala tampilan kertas">
-              {(
-                [
-                  { id: 'fit' as const, label: `Fit (${zoomMode === 'fit' ? `${zoomPercentLabel}%` : 'Auto'})` },
-                  { id: 0.85 as const, label: '85%' },
-                  { id: 1 as const, label: '100%' },
-                  { id: 1.15 as const, label: '115%' },
-                ]
-              ).map((opt) => {
-                const isActive = zoomMode === opt.id;
-                return (
-                  <button
-                    key={String(opt.id)}
-                    type="button"
-                    className={`s04-zoom-btn ${isActive ? 'is-active' : ''}`}
-                    aria-pressed={isActive}
-                    onClick={() => setZoomMode(opt.id)}
-                  >
-                    {opt.label}
-                  </button>
-                );
-              })}
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <div className="s04-zoom-group" role="group" aria-label="Skala tampilan kertas">
+                {(
+                  [
+                    { id: 'fit' as const, label: `Pas (${zoomMode === 'fit' ? `${zoomPercentLabel}%` : 'Auto'})` },
+                    { id: 0.85 as const, label: '85%' },
+                    { id: 1 as const, label: '100%' },
+                    { id: 1.15 as const, label: '115%' },
+                  ]
+                ).map((opt) => {
+                  const isActive = zoomMode === opt.id;
+                  return (
+                    <button
+                      key={String(opt.id)}
+                      type="button"
+                      className={`s04-zoom-btn ${isActive ? 'is-active' : ''}`}
+                      aria-pressed={isActive}
+                      onClick={() => setZoomMode(opt.id)}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                className={`lpv-max-btn ${isCanvasMaximized ? 'is-active' : ''}`}
+                onClick={handleToggleCanvasMaximize}
+                aria-label={
+                  isCanvasMaximized
+                    ? 'Perkecil kembali ke pratinjau editor normal'
+                    : 'Maksimalkan kanvas ke ukuran cetak asli (100%)'
+                }
+                title={
+                  isCanvasMaximized
+                    ? 'Perkecil kanvas (Esc)'
+                    : 'Maksimalkan ke ukuran real siap cetak (100%)'
+                }
+              >
+                {isCanvasMaximized ? (
+                  <>
+                    <Minimize2 size={13} aria-hidden="true" />
+                    <span>Perkecil</span>
+                  </>
+                ) : (
+                  <>
+                    <Maximize2 size={13} aria-hidden="true" />
+                    <span>Maksimalkan (100%)</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
 
@@ -2537,6 +2601,75 @@ export function DocumentStudio({
               ))}
             </div>
           )}
+
+          {/* Bottom Slider Zoom Bar Inside Preview Canvas */}
+          <div
+            className="lpv-bottom-zoom-bar s04-bottom-zoom-bar"
+            role="group"
+            aria-label="Kontrol zoom kanvas naskah"
+          >
+            <div className="lpv-zoom-slider-group">
+              <button
+                type="button"
+                className="lpv-zoom-step-btn"
+                onClick={() => handleStepZoomPct(-10, zoomPercentLabel)}
+                disabled={zoomPercentLabel <= 35}
+                aria-label="Perkecil zoom naskah"
+                title="Perkecil (-10%)"
+              >
+                <Minus size={13} aria-hidden="true" />
+              </button>
+              <input
+                type="range"
+                className="lpv-zoom-slider"
+                min={35}
+                max={160}
+                step={5}
+                value={Math.min(160, Math.max(35, zoomPercentLabel))}
+                aria-label="Geser skala zoom naskah"
+                onChange={(e) => setZoomMode(Number(e.target.value) / 100)}
+              />
+              <button
+                type="button"
+                className="lpv-zoom-step-btn"
+                onClick={() => handleStepZoomPct(10, zoomPercentLabel)}
+                disabled={zoomPercentLabel >= 160}
+                aria-label="Perbesar zoom naskah"
+                title="Perbesar (+10%)"
+              >
+                <Plus size={13} aria-hidden="true" />
+              </button>
+            </div>
+            <div className="lpv-zoom-presets">
+              <span className="lpv-zoom-readout s5-tnum" aria-live="polite">
+                {zoomPercentLabel}%
+              </span>
+              <button
+                type="button"
+                className={`lpv-zoom-chip ${zoomMode === 'fit' ? 'is-active' : ''}`}
+                onClick={() => setZoomMode('fit')}
+              >
+                Pas
+              </button>
+              <button
+                type="button"
+                className={`lpv-zoom-chip ${zoomMode === 1 ? 'is-active' : ''}`}
+                onClick={() => setZoomMode(1)}
+              >
+                100%
+              </button>
+              {isCanvasMaximized && (
+                <button
+                  type="button"
+                  className="lpv-zoom-chip"
+                  onClick={handleToggleCanvasMaximize}
+                >
+                  <RotateCcw size={11} aria-hidden="true" />
+                  <span>Mini</span>
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Collapsible Right Properties & Inspector Drawer */}

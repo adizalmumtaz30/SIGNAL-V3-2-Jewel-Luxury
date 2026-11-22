@@ -53,6 +53,8 @@ import {
   attachFileToDocumentInState,
   removeAttachmentFromDocumentInState,
 } from '../../domain/persuratan/archive/archiveEngine';
+import { getEffectivePaperDimensionsMm } from '../../domain/persuratan/studio/contentValidation';
+import { LivePreviewViewport } from '../LivePreviewViewport';
 import { OfficialKopSuratPreview } from '../OfficialKopSuratPreview';
 import { FinalizationSlideDrawer } from './FinalizationSlideDrawer';
 import { BatchIssueModal } from './BatchIssueModal';
@@ -102,7 +104,7 @@ function renderMiniInline(nodes: TipTapJSONNode[] | undefined) {
 }
 
 function renderMiniPreviewNodes(nodes: TipTapJSONNode[]) {
-  return nodes.slice(0, 28).map((node, idx) => {
+  return nodes.map((node, idx) => {
     const align =
       node.attrs?.textAlign && typeof node.attrs.textAlign === 'string'
         ? (node.attrs.textAlign as 'left' | 'center' | 'right' | 'justify')
@@ -115,10 +117,10 @@ function renderMiniPreviewNodes(nodes: TipTapJSONNode[]) {
           style={{
             borderTop: '1px dashed #8da89e',
             textAlign: 'center',
-            fontSize: '7.5px',
+            fontSize: '10px',
             color: '#526861',
-            margin: '5px 0',
-            paddingTop: '2px',
+            margin: '8px 0',
+            paddingTop: '3px',
           }}
         >
           — Halaman Berikutnya —
@@ -126,7 +128,7 @@ function renderMiniPreviewNodes(nodes: TipTapJSONNode[]) {
       );
     }
     if (node.type === 'horizontalRule') {
-      return <hr key={idx} style={{ border: 0, borderTop: '1px solid #000000', margin: '4px 0' }} />;
+      return <hr key={idx} style={{ border: 0, borderTop: '1px solid #000000', margin: '6px 0' }} />;
     }
     if (node.type === 'heading') {
       const Tag = node.attrs?.level === 1 ? 'h1' : node.attrs?.level === 3 ? 'h3' : 'h2';
@@ -139,8 +141,8 @@ function renderMiniPreviewNodes(nodes: TipTapJSONNode[]) {
     if (node.type === 'bulletList' || node.type === 'orderedList') {
       const ListTag = node.type === 'orderedList' ? 'ol' : 'ul';
       return (
-        <ListTag key={idx} style={{ margin: '2px 0 4px 14px', padding: 0 }}>
-          {(node.content ?? []).slice(0, 6).map((li, liIdx) => (
+        <ListTag key={idx} style={{ margin: '3px 0 6px 18px', padding: 0 }}>
+          {(node.content ?? []).map((li, liIdx) => (
             <li key={liIdx}>
               {(li.content ?? []).map((p, pIdx) => (
                 <span key={pIdx}>{renderMiniInline(p.content)}</span>
@@ -157,7 +159,7 @@ function renderMiniPreviewNodes(nodes: TipTapJSONNode[]) {
       return (
         <table key={idx} data-table-layout={rawLayout}>
           <tbody>
-            {rows.slice(0, 8).map((row, rIdx) => (
+            {rows.map((row, rIdx) => (
               <tr key={rIdx}>
                 {(row.content ?? []).map((cell, cIdx) => {
                   const CellTag = cell.type === 'tableHeader' ? 'th' : 'td';
@@ -174,16 +176,6 @@ function renderMiniPreviewNodes(nodes: TipTapJSONNode[]) {
                 })}
               </tr>
             ))}
-            {rows.length > 8 && (
-              <tr>
-                <td
-                  colSpan={Math.max(1, rows[0]?.content?.length ?? 1)}
-                  style={{ textAlign: 'center', fontStyle: 'italic', color: '#526861' }}
-                >
-                  … +{rows.length - 8} baris lainnya
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
       );
@@ -1908,71 +1900,81 @@ export function DocumentIntakeForm({
               </button>
             </div>
 
-            {sideTab === 'preview' && (
-              <div className="s03-live-preview-card" role="region" aria-label="Pratinjau miniatur surat resmi">
-                <div className="s03-composer-switch" role="group" aria-label="Mode penyusunan naskah">
-                  <span className="s03-composer-pill is-active">Form Terstruktur</span>
-                  {onOpenStudio ? (
-                    <button
-                      type="button"
-                      className="s03-composer-pill"
-                      onClick={() => void commitIntakeDraft('open_studio')}
-                      title="Buka kanvas Editor Naskah untuk menyunting bebas tata letak"
-                    >
-                      <span>Kanvas Naskah · Sunting Bebas &rarr;</span>
-                    </button>
-                  ) : (
-                    <span className="s03-composer-pill is-disabled">Sunting Bebas</span>
-                  )}
-                </div>
+            {sideTab === 'preview' && (() => {
+              const paperDims = getEffectivePaperDimensionsMm(
+                template.initialPageSettings.paperSize,
+                template.initialPageSettings.orientation
+              );
+              const margins = template.initialPageSettings.marginsMm;
+              const showLiveKop =
+                template.documentHeader?.includeKopSurat !== false &&
+                !(schema.baseTemplateId === 'SYS-TPL-30' && values.tampilkan_kop === 'Tidak');
+              const miniNodes = liveMiniaturePreview
+                ? showLiveKop
+                  ? stripAutoGeneratedKopNodes(
+                      liveMiniaturePreview.content.content,
+                      autoData.kop.schoolName
+                    )
+                  : liveMiniaturePreview.content.content
+                : null;
+              return (
+                <div className="s03-live-preview-card" role="region" aria-label="Pratinjau surat resmi langsung">
+                  <div className="s03-composer-switch" role="group" aria-label="Mode penyusunan naskah">
+                    <span className="s03-composer-pill is-active">Form Terstruktur</span>
+                    {onOpenStudio ? (
+                      <button
+                        type="button"
+                        className="s03-composer-pill"
+                        onClick={() => void commitIntakeDraft('open_studio')}
+                        title="Buka kanvas Editor Naskah untuk menyunting bebas tata letak"
+                      >
+                        <span>Kanvas Naskah · Sunting Bebas &rarr;</span>
+                      </button>
+                    ) : (
+                      <span className="s03-composer-pill is-disabled">Sunting Bebas</span>
+                    )}
+                  </div>
 
-                <div className="s03-live-preview-head s5-tnum">
-                  <span>
-                    {template.initialPageSettings.paperSize.toUpperCase()} ·{' '}
-                    {template.initialPageSettings.orientation === 'portrait' ? 'Portrait' : 'Landscape'}
-                  </span>
-                  <span
-                    className={`s03-inline-status ${
-                      completenessStats.allRequiredValid ? 'is-ready' : 'is-pending'
+                  <LivePreviewViewport
+                    title="Pratinjau Surat Live"
+                    metaText={`${template.initialPageSettings.paperSize.toUpperCase()} · ${
+                      template.initialPageSettings.orientation === 'portrait' ? 'Portrait' : 'Landscape'
                     }`}
+                    paperWidthMm={paperDims.widthMm}
+                    paperHeightMm={paperDims.heightMm}
+                    compactMaxHeight={480}
+                    headerActions={
+                      <span
+                        className={`s03-inline-status s5-tnum ${
+                          completenessStats.allRequiredValid ? 'is-ready' : 'is-pending'
+                        }`}
+                      >
+                        {completenessStats.completedRequired}/{completenessStats.totalRequired} wajib
+                      </span>
+                    }
+                    paperStyle={{
+                      padding: `${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm`,
+                    }}
+                    ariaLabel="Pratinjau isi surat langsung ukuran cetak"
                   >
-                    {completenessStats.completedRequired}/{completenessStats.totalRequired} wajib
-                  </span>
+                    <article className="s03-live-paper">
+                      {showLiveKop && (
+                        <div className="s03-live-kop">
+                          <OfficialKopSuratPreview settings={state.settings} variant="full" />
+                        </div>
+                      )}
+                      {miniNodes ? (
+                        <div>{renderMiniPreviewNodes(miniNodes)}</div>
+                      ) : (
+                        <p style={{ color: '#526861' }}>
+                          Isi formulir di sebelah kiri untuk melihat pratinjau langsung naskah surat.
+                        </p>
+                      )}
+                    </article>
+                  </LivePreviewViewport>
                 </div>
-
-                <article className="s03-live-paper" aria-label="Pratinjau isi surat langsung">
-                  {(() => {
-                    const showLiveKop =
-                      template.documentHeader?.includeKopSurat !== false &&
-                      !(schema.baseTemplateId === 'SYS-TPL-30' && values.tampilkan_kop === 'Tidak');
-                    const miniNodes = liveMiniaturePreview
-                      ? showLiveKop
-                        ? stripAutoGeneratedKopNodes(
-                            liveMiniaturePreview.content.content,
-                            autoData.kop.schoolName
-                          )
-                        : liveMiniaturePreview.content.content
-                      : null;
-                    return (
-                      <>
-                        {showLiveKop && (
-                          <div className="s03-live-kop">
-                            <OfficialKopSuratPreview settings={state.settings} variant="mini" />
-                          </div>
-                        )}
-                        {miniNodes ? (
-                          <div>{renderMiniPreviewNodes(miniNodes)}</div>
-                        ) : (
-                          <p style={{ color: '#526861' }}>
-                            Isi formulir di sebelah kiri untuk melihat pratinjau langsung naskah surat.
-                          </p>
-                        )}
-                      </>
-                    );
-                  })()}
-                </article>
-              </div>
-            )}
+              );
+            })()}
 
             <div
               className="s03-side-card"

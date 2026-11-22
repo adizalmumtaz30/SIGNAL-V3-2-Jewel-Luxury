@@ -561,7 +561,7 @@
   background-size: 16px 16px;
   border: 1px solid #cfdcd5;
   border-radius: 14px;
-  padding: 20px 18px 28px;
+  padding: 20px 18px 16px;
   overflow-x: auto;
   overflow-y: visible;
   min-width: 0;
@@ -569,6 +569,30 @@
   flex-direction: column;
   align-items: center;
   gap: 14px;
+}
+
+.s04-canvas-viewport.is-maximized {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  border-radius: 0;
+  border: none;
+  padding: 16px 24px 0;
+  overflow: auto;
+  box-shadow: 0 24px 64px rgba(11, 41, 35, 0.45);
+}
+
+.s04-canvas-viewport .s04-bottom-zoom-bar {
+  width: calc(100% + 36px);
+  margin: 4px -18px -16px;
+  position: sticky;
+  bottom: 0;
+  z-index: 15;
+}
+
+.s04-canvas-viewport.is-maximized .s04-bottom-zoom-bar {
+  width: calc(100% + 48px);
+  margin: auto -24px 0;
 }
 
 .s04-canvas-meta-bar {

@@ -46,6 +46,7 @@ import {
   OFFICIAL_KOP_ASSET_PATH,
   type KopRenderMode,
 } from '../domain/kopIdentity';
+import { LivePreviewViewport } from './LivePreviewViewport';
 import { OfficialKopSuratPreview } from './OfficialKopSuratPreview';
 import {
   DEFAULT_NUMBERING_PATTERN,
@@ -2568,107 +2569,107 @@ export function SettingsScreen({
             </section>
 
             <section className="s5-lux-panel">
-              <div className="s5-calm-panel-head" style={{ marginBottom: '12px' }}>
-                <h3 className="s5-calm-panel-title">Pratinjau Kop Surat</h3>
-                <FileText size={15} color="#526861" />
-              </div>
+              <LivePreviewViewport
+                title="Pratinjau Kop Surat Resmi"
+                metaText="A4 · Portrait (210 × 297 mm)"
+                paperWidthMm={210}
+                paperHeightMm={297}
+                compactMaxHeight={380}
+                paperStyle={{ padding: '16mm 18mm' }}
+                headerActions={<FileText size={15} color="#526861" aria-hidden="true" />}
+                ariaLabel="Pratinjau langsung Kop Surat Resmi Madrasah"
+              >
+                <OfficialKopSuratPreview
+                  settings={state.settings}
+                  overrides={{
+                    schoolName,
+                    ministry,
+                    regionalOffice,
+                    legalDecree,
+                    accreditation,
+                    nsm,
+                    npsn,
+                    address,
+                    city,
+                    postalCode,
+                    phone,
+                    email,
+                    website,
+                    logoUrl: logoUrl || undefined,
+                    kopMode,
+                    kopImageUrl,
+                  }}
+                  variant="full"
+                />
 
-              <div className="s5-pdf-paper-stage">
-                <div className="s5-pdf-paper-sheet">
-                  <OfficialKopSuratPreview
-                    settings={state.settings}
-                    overrides={{
-                      schoolName,
-                      ministry,
-                      regionalOffice,
-                      legalDecree,
-                      accreditation,
-                      nsm,
-                      npsn,
-                      address,
-                      city,
-                      postalCode,
-                      phone,
-                      email,
-                      website,
-                      logoUrl: logoUrl || undefined,
-                      kopMode,
-                      kopImageUrl,
+                <div style={{ textAlign: 'center', padding: '14px 0 16px' }}>
+                  <div
+                    style={{
+                      fontSize: '14px',
+                      fontWeight: 700,
+                      color: '#0b3435',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.03em',
                     }}
-                    variant="compact"
-                  />
+                  >
+                    JADWAL PELAJARAN SEMESTER {semester.toUpperCase()}
+                  </div>
+                  <div
+                    className="s5-tnum"
+                    style={{ fontSize: '12px', color: '#435e58', fontWeight: 600, marginTop: '3px' }}
+                  >
+                    TAHUN AJARAN {academicYear}
+                  </div>
+                </div>
 
-                  <div style={{ zoom: 0.72 }}>
-                    <div style={{ textAlign: 'center', padding: '6px 0 8px' }}>
-                      <div
-                        style={{
-                          fontSize: '12px',
-                          fontWeight: 700,
-                          color: '#0b3435',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.03em',
-                        }}
-                      >
-                        JADWAL PELAJARAN SEMESTER {semester.toUpperCase()}
-                      </div>
-                      <div
-                        className="s5-tnum"
-                        style={{ fontSize: '11px', color: '#435e58', fontWeight: 600, marginTop: '2px' }}
-                      >
-                        TAHUN AJARAN {academicYear}
-                      </div>
+                <div
+                  style={{
+                    marginTop: '14px',
+                    paddingTop: '12px',
+                    borderTop: '1px dashed #d9e2dc',
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '16px',
+                    fontSize: '12px',
+                    color: '#435e58',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  <div>
+                    <div>Mengetahui,</div>
+                    <div style={{ fontWeight: 600, color: '#0b3435' }}>
+                      {curriculumLeaderTitle || 'Waka Bidang Kurikulum'}
                     </div>
+                    <div style={{ height: '32px' }} />
+                    <div style={{ fontWeight: 700, textDecoration: 'underline', color: '#0b3435' }}>
+                      {curriculumLeaderName || '—'}
+                    </div>
+                    <div className="s5-tnum">
+                      {curriculumLeaderNip && !/^[.\-\s]+$/.test(curriculumLeaderNip)
+                        ? `NIP. ${curriculumLeaderNip}`
+                        : 'NIP. —'}
+                    </div>
+                  </div>
 
-                    <div
-                      style={{
-                        marginTop: '10px',
-                        paddingTop: '10px',
-                        borderTop: '1px dashed #d9e2dc',
-                        display: 'grid',
-                        gridTemplateColumns: '1fr 1fr',
-                        gap: '12px',
-                        fontSize: '11px',
-                        color: '#435e58',
-                        lineHeight: 1.4,
-                      }}
-                    >
-                      <div>
-                        <div>Mengetahui,</div>
-                        <div style={{ fontWeight: 600, color: '#0b3435' }}>
-                          {curriculumLeaderTitle || 'Waka Bidang Kurikulum'}
-                        </div>
-                        <div style={{ height: '18px' }} />
-                        <div style={{ fontWeight: 700, textDecoration: 'underline', color: '#0b3435' }}>
-                          {curriculumLeaderName || '—'}
-                        </div>
-                        <div className="s5-tnum">
-                          {curriculumLeaderNip && !/^[.\-\s]+$/.test(curriculumLeaderNip)
-                            ? `NIP. ${curriculumLeaderNip}`
-                            : 'NIP. —'}
-                        </div>
-                      </div>
-
-                      <div style={{ textAlign: 'right' }}>
-                        <div>
-                          {city || 'Madrasah'}, {formatDisplayDateId()}
-                        </div>
-                        <div style={{ fontWeight: 600, color: '#0b3435' }}>
-                          {headmasterTitle || 'Kepala Madrasah'}
-                        </div>
-                        <div style={{ height: '18px' }} />
-                        <div style={{ fontWeight: 700, textDecoration: 'underline', color: '#0b3435' }}>
-                          {headmasterName || '—'}
-                        </div>
-                        <div className="s5-tnum">
-                          {headmasterNip && !/^[.\-\s]+$/.test(headmasterNip)
-                            ? `NIP. ${headmasterNip}`
-                            : 'NIP. —'}
-                        </div>
-                      </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div>
+                      {city || 'Madrasah'}, {formatDisplayDateId()}
+                    </div>
+                    <div style={{ fontWeight: 600, color: '#0b3435' }}>
+                      {headmasterTitle || 'Kepala Madrasah'}
+                    </div>
+                    <div style={{ height: '32px' }} />
+                    <div style={{ fontWeight: 700, textDecoration: 'underline', color: '#0b3435' }}>
+                      {headmasterName || '—'}
+                    </div>
+                    <div className="s5-tnum">
+                      {headmasterNip && !/^[.\-\s]+$/.test(headmasterNip)
+                        ? `NIP. ${headmasterNip}`
+                        : 'NIP. —'}
                     </div>
                   </div>
                 </div>
-              </div>
+              </LivePreviewViewport>
             </section>
           </aside>
         </div>

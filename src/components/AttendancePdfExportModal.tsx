@@ -20,11 +20,13 @@ import {
 import {
   buildRightSignerTitle,
   exportAttendanceRecapPDF,
+  getPaperDimensions,
   type AttendanceRecapPdfOptions,
   type PaperSize,
 } from '../utils/pdfExport';
 import { DEFAULT_MADRASAH_IDENTITY, type KopRenderMode } from '../domain/kopIdentity';
 import { OfficialKopSuratPreview } from './OfficialKopSuratPreview';
+import { LivePreviewViewport } from './LivePreviewViewport';
 
 interface AttendancePdfExportModalProps {
   state: AppState;
@@ -293,8 +295,13 @@ export function AttendancePdfExportModal({
       monthSummaries: summary.monthSummaries,
       teacherCount: chosenTeachers.length,
       avgRate: summary.overallAvgRate,
+      overallPredikat: summary.overallPredikat,
+      sumHadirAll: summary.sumHadirAll,
+      sumSakitAll: summary.sumSakitAll,
+      sumIzinAll: summary.sumIzinAll,
+      sumAlpaAll: summary.sumAlpaAll,
       hasData: summary.teachersWithRecordsCount > 0,
-      sampleRows: summary.rows.slice(0, 5),
+      rows: summary.rows,
       months: summary.months,
     };
   }, [state.attendance, monthYear, effectiveEndMonth, selectedTeacherIds, activeTeachers]);
@@ -309,14 +316,8 @@ export function AttendancePdfExportModal({
 
   if (!isOpen) return null;
 
-  const paperDimensionText =
-    paperSize === 'a4'
-      ? orientation === 'landscape'
-        ? '297 × 210 mm'
-        : '210 × 297 mm'
-      : orientation === 'landscape'
-      ? '330 × 215 mm'
-      : '215 × 330 mm';
+  const [paperWidthMm, paperHeightMm] = getPaperDimensions(paperSize, orientation);
+  const paperDimensionText = `${paperWidthMm} × ${paperHeightMm} mm`;
 
   const paperLabel = paperSize === 'a4' ? 'A4 Standar' : 'F4 / Folio Kemenag';
 
@@ -1267,390 +1268,462 @@ export function AttendancePdfExportModal({
               )}
             </div>
 
-            {/* RIGHT COLUMN: Live Scaled Kemenag Document Studio Preview */}
-            <div className="s5-pdf-paper-stage">
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  gap: '8px',
-                }}
-              >
-                <span className="s5-studio-kicker">Pratinjau Dokumen Resmi</span>
-                <span className="s5-tnum" style={{ fontSize: '11px', color: '#526861', fontWeight: 600 }}>
-                  {paperLabel} · {orientation === 'landscape' ? 'Landscape' : 'Portrait'}
-                </span>
-              </div>
+            {/* RIGHT COLUMN: Real-Live WYSIWYG Document Viewport */}
+            <div className="s5-pdf-paper-stage" style={{ padding: 0, overflow: 'hidden', border: 'none', background: 'transparent' }}>
+              <LivePreviewViewport
+                title="Pratinjau Laporan Presensi (Live)"
+                metaText={`${paperLabel} · ${orientation === 'landscape' ? 'Landscape' : 'Portrait'} (${paperDimensionText})`}
+                paperWidthMm={paperWidthMm}
+                paperHeightMm={paperHeightMm}
+                compactMaxHeight={485}
+                sheetMode="stack"
+                ariaLabel="Pratinjau laporan presensi guru siap cetak"
+                topSlot={
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {/* 3 Live Metric Tiles */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                      <div style={{ padding: '7px 10px', background: '#FFFFFF', borderRadius: '9px', border: '0.75px solid #D5E0DA' }}>
+                        <div style={{ fontSize: '10px', color: '#526861', fontWeight: 600 }}>
+                          {previewStats.isMultiMonth ? 'CAKUPAN' : 'HARI TERCATAT'}
+                        </div>
+                        <strong
+                          className="s5-tnum"
+                          style={{
+                            fontSize: '13.5px',
+                            color: previewStats.recordedDays > 0 ? '#0B2923' : '#687E77',
+                          }}
+                        >
+                          {previewStats.isMultiMonth
+                            ? `${previewStats.monthCount} Bln · ${previewStats.recordedDays} Hr`
+                            : previewStats.recordedDays > 0
+                            ? `${previewStats.recordedDays} Hari`
+                            : 'Belum Ada'}
+                        </strong>
+                      </div>
+                      <div style={{ padding: '7px 10px', background: '#FFFFFF', borderRadius: '9px', border: '0.75px solid #D5E0DA' }}>
+                        <div style={{ fontSize: '10px', color: '#526861', fontWeight: 600 }}>PENDIDIK</div>
+                        <strong className="s5-tnum" style={{ fontSize: '13.5px', color: '#0B2923' }}>
+                          {previewStats.teacherCount} Guru
+                        </strong>
+                      </div>
+                      <div style={{ padding: '7px 10px', background: '#FFFFFF', borderRadius: '9px', border: '0.75px solid #D5E0DA' }}>
+                        <div style={{ fontSize: '10px', color: '#526861', fontWeight: 600 }}>RATA-RATA</div>
+                        <strong
+                          className="s5-tnum"
+                          style={{
+                            fontSize: '13.5px',
+                            color: !previewStats.hasData
+                              ? '#687E77'
+                              : previewStats.avgRate >= 85
+                              ? '#1B5E43'
+                              : '#A63A2E',
+                          }}
+                        >
+                          {previewStats.hasData ? `${previewStats.avgRate}%` : '—'}
+                        </strong>
+                      </div>
+                    </div>
 
-              {/* 3 Live Metric Tiles */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-                <div
-                  style={{
-                    padding: '9px 10px',
-                    background: '#FFFFFF',
-                    borderRadius: '9px',
-                    border: '0.75px solid #D5E0DA',
-                  }}
-                >
-                  <div style={{ fontSize: '10px', color: '#526861', fontWeight: 600 }}>
-                    {previewStats.isMultiMonth ? 'CAKUPAN' : 'HARI TERCATAT'}
-                  </div>
-                  <strong
-                    className="s5-tnum"
-                    style={{
-                      fontSize: '14px',
-                      color: previewStats.recordedDays > 0 ? '#0B2923' : '#687E77',
-                    }}
-                  >
-                    {previewStats.isMultiMonth
-                      ? `${previewStats.monthCount} Bln · ${previewStats.recordedDays} Hr`
-                      : previewStats.recordedDays > 0
-                      ? `${previewStats.recordedDays} Hari`
-                      : 'Belum Ada'}
-                  </strong>
-                </div>
-                <div
-                  style={{
-                    padding: '9px 10px',
-                    background: '#FFFFFF',
-                    borderRadius: '9px',
-                    border: '0.75px solid #D5E0DA',
-                  }}
-                >
-                  <div style={{ fontSize: '10px', color: '#526861', fontWeight: 600 }}>PENDIDIK</div>
-                  <strong className="s5-tnum" style={{ fontSize: '14.5px', color: '#0B2923' }}>
-                    {previewStats.teacherCount} Guru
-                  </strong>
-                </div>
-                <div
-                  style={{
-                    padding: '9px 10px',
-                    background: '#FFFFFF',
-                    borderRadius: '9px',
-                    border: '0.75px solid #D5E0DA',
-                  }}
-                >
-                  <div style={{ fontSize: '10px', color: '#526861', fontWeight: 600 }}>RATA-RATA</div>
-                  <strong
-                    className="s5-tnum"
-                    style={{
-                      fontSize: '14.5px',
-                      color: !previewStats.hasData
-                        ? '#687E77'
-                        : previewStats.avgRate >= 85
-                        ? '#1B5E43'
-                        : '#A63A2E',
-                    }}
-                  >
-                    {previewStats.hasData ? `${previewStats.avgRate}%` : '—'}
-                  </strong>
-                </div>
-              </div>
-
-              {previewStats.recordedDays === 0 && (
-                <div
-                  style={{
-                    padding: '8px 10px',
-                    borderRadius: '8px',
-                    background: '#FBF6EB',
-                    border: '0.75px solid #E5D4B0',
-                    fontSize: '11px',
-                    color: '#7A5A22',
-                    lineHeight: 1.4,
-                  }}
-                >
-                  Periode {activePeriodLabel} belum memiliki catatan presensi. Isi di tab Harian atau Massal agar persentase riil terhitung otomatis.
-                </div>
-              )}
-
-              {/* Live Paper Mockup Sheet */}
-              <div className="s5-pdf-paper-sheet">
-                {includeKop && (
-                  <OfficialKopSuratPreview
-                    settings={state.settings}
-                    overrides={{
-                      schoolName,
-                      ministry,
-                      regionalOffice,
-                      legalDecree,
-                      accreditation,
-                      nsm,
-                      npsn,
-                      address,
-                      city,
-                      postalCode,
-                      phone,
-                      email,
-                      website,
-                      kopMode,
-                      kopImageUrl: state.settings.kopImageUrl,
-                    }}
-                    variant="compact"
-                  />
-                )}
-
-                <div style={{ textAlign: 'center', margin: '8px 0 8px' }}>
-                  <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#0B2923', letterSpacing: '0.02em' }}>
-                    {documentTitle || (isMultiMonth ? DEFAULT_MULTI_TITLE : DEFAULT_SINGLE_TITLE)}
-                  </div>
-                  <div className="s5-tnum" style={{ fontSize: '10px', color: '#526861', marginTop: '1px' }}>
-                    Periode {activePeriodLabel} · TA {academicYear} ({semester})
-                  </div>
-                  <div
-                    style={{
-                      width: '44px',
-                      height: '1.5px',
-                      background: '#C5A059',
-                      margin: '4px auto 0',
-                      borderRadius: '2px',
-                    }}
-                  />
-                </div>
-
-                {/* Multi-Month Mini Summary Strip */}
-                {previewStats.isMultiMonth && (
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: '5px',
-                      marginBottom: '8px',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    {previewStats.monthSummaries.slice(0, 6).map((mb) => (
-                      <span
-                        key={mb.monthYear}
-                        className="s5-tnum"
+                    {previewStats.recordedDays === 0 && (
+                      <div
                         style={{
-                          padding: '2px 7px',
-                          borderRadius: '6px',
-                          background: mb.recordedDaysCount > 0 ? '#EEF6F1' : '#F4F5F4',
-                          border: `0.5px solid ${mb.recordedDaysCount > 0 ? '#C2DDD0' : '#DCE0DD'}`,
-                          fontSize: '9.5px',
-                          color: mb.recordedDaysCount > 0 ? '#124037' : '#687E77',
-                          fontWeight: 600,
+                          padding: '7px 10px',
+                          borderRadius: '8px',
+                          background: '#FBF6EB',
+                          border: '0.75px solid #E5D4B0',
+                          fontSize: '11px',
+                          color: '#7A5A22',
+                          lineHeight: 1.4,
                         }}
                       >
-                        {mb.shortLabel}: {mb.recordedDaysCount > 0 ? `${mb.overallAvgRate}%` : '—'}
-                      </span>
-                    ))}
-                    {previewStats.monthSummaries.length > 6 && (
-                      <span style={{ fontSize: '9.5px', color: '#526861', alignSelf: 'center' }}>
-                        +{previewStats.monthSummaries.length - 6} bln lainnya
-                      </span>
+                        Periode {activePeriodLabel} belum memiliki catatan presensi. Isi di tab Harian atau Massal agar persentase riil terhitung otomatis.
+                      </div>
                     )}
                   </div>
-                )}
+                }
+              >
+                {(() => {
+                  const kopOverrides = {
+                    schoolName,
+                    ministry,
+                    regionalOffice,
+                    legalDecree,
+                    accreditation,
+                    nsm,
+                    npsn,
+                    address,
+                    city,
+                    postalCode,
+                    phone,
+                    email,
+                    website,
+                    kopMode,
+                    kopImageUrl: state.settings.kopImageUrl,
+                  };
+                  const resolvedTitle =
+                    (documentTitle || (isMultiMonth ? DEFAULT_MULTI_TITLE : DEFAULT_SINGLE_TITLE)).toUpperCase();
+                  const cellPad = layoutDensity === 'compact' ? '4px 6px' : '6px 8px';
+                  const tableFont = layoutDensity === 'compact' ? '9.5px' : '10.5px';
+                  const totalPages = showAppendixMonthMatrix ? 2 : 1;
 
-                {/* Miniature Recap Table */}
-                <div
-                  style={{
-                    border: '0.75px solid #D5E0DA',
-                    borderRadius: '6px',
-                    overflow: 'hidden',
-                    marginBottom: '10px',
-                  }}
-                >
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px' }}>
-                    <thead>
-                      <tr style={{ background: '#124037', color: '#FFFFFF' }}>
-                        <th style={{ padding: '4px 6px', textAlign: 'left', fontWeight: 600 }}>Pendidik</th>
-                        {showInlineMonthCols &&
-                          previewStats.monthSummaries.slice(0, 3).map((mb) => (
-                            <th
-                              key={`th-${mb.monthYear}`}
-                              className="s5-tnum"
-                              style={{ padding: '4px 4px', textAlign: 'center', fontWeight: 600 }}
+                  const renderDualSignatures = () =>
+                    includeSignature && (
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: '1fr 1fr',
+                          gap: '24px',
+                          marginTop: '14px',
+                          paddingTop: '6px',
+                          fontSize: '10.5px',
+                          lineHeight: 1.4,
+                          color: '#2F443E',
+                        }}
+                      >
+                        <div>
+                          <div>Mengetahui / Memeriksa,</div>
+                          <div style={{ fontWeight: 600, color: '#0F201C' }}>{officerTitle}</div>
+                          <div style={{ height: '34px' }} />
+                          <div style={{ fontWeight: 700, color: '#0B2923', textDecoration: 'underline' }}>
+                            {officerName}
+                          </div>
+                          <div className="s5-tnum">
+                            {formatCleanNip(officerNip) ? `NIP. ${formatCleanNip(officerNip)}` : 'NIP. —'}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'left' }}>
+                          <div>
+                            {signerCity || 'Madrasah'}, {signerDate}
+                          </div>
+                          <div style={{ fontWeight: 600, color: '#0F201C', wordBreak: 'break-word' }}>
+                            {buildRightSignerTitle(principalTitle, schoolName)}
+                          </div>
+                          <div style={{ height: '34px' }} />
+                          <div style={{ fontWeight: 700, color: '#0B2923', textDecoration: 'underline' }}>
+                            {principalName}
+                          </div>
+                          <div className="s5-tnum">
+                            {formatCleanNip(principalNip) ? `NIP. ${formatCleanNip(principalNip)}` : 'NIP. —'}
+                          </div>
+                        </div>
+                      </div>
+                    );
+
+                  return (
+                    <>
+                      <article
+                        className="lpv-real-page"
+                        style={{ padding: '20px 26px', display: 'flex', flexDirection: 'column', gap: '10px' }}
+                      >
+                        {includeKop && (
+                          <OfficialKopSuratPreview settings={state.settings} overrides={kopOverrides} variant="full" />
+                        )}
+
+                        <div style={{ textAlign: 'center', margin: '2px 0' }}>
+                          <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#0B3435', letterSpacing: '0.02em' }}>
+                            {resolvedTitle}
+                          </div>
+                          <div className="s5-tnum" style={{ fontSize: '10px', color: '#505F5A', marginTop: '2px' }}>
+                            Periode: {activePeriodLabel} · Semester {semester} · Tahun Ajaran {academicYear}
+                          </div>
+                          <div style={{ width: '56px', height: '2px', background: '#C5A059', margin: '5px auto 0' }} />
+                        </div>
+
+                        {/* Executive 4-Card Summary Strip matching PDF export */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '8px' }}>
+                          {[
+                            { label: 'PENDIDIK TERDATA', value: `${previewStats.teacherCount} Guru`, accent: '#0B3435' },
+                            {
+                              label: previewStats.isMultiMonth ? 'CAKUPAN & HARI PRESENSI' : 'HARI TERCATAT PRESENSI',
+                              value: previewStats.isMultiMonth
+                                ? `${previewStats.monthCount} Bln · ${previewStats.recordedDays} Hari`
+                                : previewStats.recordedDays > 0
+                                ? `${previewStats.recordedDays} Hari`
+                                : 'Belum Tercatat',
+                              accent: '#0B3435',
+                            },
+                            {
+                              label: 'RATA-RATA KEHADIRAN',
+                              value: previewStats.hasData ? `${previewStats.avgRate}%` : '—',
+                              accent: previewStats.avgRate >= 85 ? '#1B5E43' : '#A63A2E',
+                            },
+                            { label: 'PREDIKAT MADRASAH', value: previewStats.overallPredikat, accent: '#C5A059' },
+                          ].map((kpi) => (
+                            <div
+                              key={kpi.label}
+                              style={{
+                                position: 'relative',
+                                padding: '6px 9px 6px 13px',
+                                background: '#F9FBFA',
+                                border: '0.75px solid #D6E1DC',
+                                borderRadius: '5px',
+                              }}
                             >
-                              {mb.shortLabel}
-                            </th>
+                              <span
+                                aria-hidden="true"
+                                style={{
+                                  position: 'absolute',
+                                  left: '5px',
+                                  top: '6px',
+                                  bottom: '6px',
+                                  width: '3px',
+                                  borderRadius: '2px',
+                                  background: kpi.accent,
+                                }}
+                              />
+                              <div style={{ fontSize: '8px', fontWeight: 700, color: '#5C7069' }}>{kpi.label}</div>
+                              <div className="s5-tnum" style={{ fontSize: '11.5px', fontWeight: 700, color: '#0B2923', marginTop: '1px' }}>
+                                {kpi.value}
+                              </div>
+                            </div>
                           ))}
-                        <th style={{ padding: '4px 4px', textAlign: 'center', fontWeight: 600 }}>H</th>
-                        <th style={{ padding: '4px 4px', textAlign: 'center', fontWeight: 600 }}>S</th>
-                        <th style={{ padding: '4px 4px', textAlign: 'center', fontWeight: 600 }}>I</th>
-                        <th style={{ padding: '4px 4px', textAlign: 'center', fontWeight: 600 }}>A</th>
-                        <th style={{ padding: '4px 6px', textAlign: 'right', fontWeight: 600 }}>%</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {previewStats.sampleRows.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan={6 + (showInlineMonthCols ? Math.min(3, previewStats.monthSummaries.length) : 0)}
-                            style={{ padding: '12px', textAlign: 'center', color: '#687E77' }}
-                          >
-                            Belum ada pendidik dipilih
-                          </td>
-                        </tr>
-                      ) : (
-                        previewStats.sampleRows.map((row, idx) => (
-                          <tr
-                            key={row.teacher.id}
+                        </div>
+
+                        {/* Full Live Recap Table (ALL rows, zero truncation) */}
+                        <div style={{ border: '0.75px solid #D5E0DA', borderRadius: '5px', overflow: 'hidden' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: tableFont }}>
+                            <thead>
+                              <tr style={{ background: '#0B3435', color: '#FFFFFF' }}>
+                                <th style={{ padding: cellPad, textAlign: 'center', width: '28px' }}>No</th>
+                                <th style={{ padding: cellPad, textAlign: 'center', width: '48px' }}>Kode</th>
+                                <th style={{ padding: cellPad, textAlign: 'left' }}>Nama Lengkap &amp; NIP</th>
+                                <th style={{ padding: cellPad, textAlign: 'left' }}>Jabatan</th>
+                                {showInlineMonthCols &&
+                                  previewStats.monthSummaries.map((mb) => (
+                                    <th key={`th-${mb.monthYear}`} className="s5-tnum" style={{ padding: cellPad, textAlign: 'center' }}>
+                                      {mb.shortLabel}
+                                    </th>
+                                  ))}
+                                <th style={{ padding: cellPad, textAlign: 'center', width: '32px' }}>H</th>
+                                <th style={{ padding: cellPad, textAlign: 'center', width: '32px' }}>S</th>
+                                <th style={{ padding: cellPad, textAlign: 'center', width: '32px' }}>I</th>
+                                <th style={{ padding: cellPad, textAlign: 'center', width: '32px' }}>A</th>
+                                <th style={{ padding: cellPad, textAlign: 'right', width: '44px' }}>%</th>
+                                <th style={{ padding: cellPad, textAlign: 'center', width: '78px' }}>Predikat</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {previewStats.rows.length === 0 ? (
+                                <tr>
+                                  <td
+                                    colSpan={10 + (showInlineMonthCols ? previewStats.monthSummaries.length : 0)}
+                                    style={{ padding: '16px', textAlign: 'center', color: '#687E77' }}
+                                  >
+                                    Belum ada pendidik dipilih
+                                  </td>
+                                </tr>
+                              ) : (
+                                <>
+                                  {previewStats.rows.map((row, idx) => {
+                                    const cleanNip = formatCleanNip(row.teacher.nip);
+                                    return (
+                                      <tr
+                                        key={row.teacher.id}
+                                        style={{
+                                          background: idx % 2 === 0 ? '#FFFFFF' : '#F8FAF8',
+                                          borderTop: '0.5px solid #E5ECE8',
+                                        }}
+                                      >
+                                        <td className="s5-tnum" style={{ padding: cellPad, textAlign: 'center' }}>{row.no}</td>
+                                        <td className="s5-tnum" style={{ padding: cellPad, textAlign: 'center', fontWeight: 700, color: '#0B3435' }}>
+                                          {row.teacher.code}
+                                        </td>
+                                        <td style={{ padding: cellPad, color: '#0F201C' }}>
+                                          <div style={{ fontWeight: 600 }}>{row.teacher.name}</div>
+                                          {cleanNip && (
+                                            <div className="s5-tnum" style={{ fontSize: '8.5px', color: '#5D706A' }}>
+                                              NIP. {cleanNip}
+                                            </div>
+                                          )}
+                                        </td>
+                                        <td style={{ padding: cellPad, color: '#3E544D' }}>
+                                          {row.teacher.roleTitle || 'Guru Mapel'}
+                                        </td>
+                                        {showInlineMonthCols &&
+                                          previewStats.monthSummaries.map((mb) => {
+                                            const bucket = row.monthlyBreakdown[mb.monthYear];
+                                            return (
+                                              <td
+                                                key={`td-${row.teacher.id}-${mb.monthYear}`}
+                                                className="s5-tnum"
+                                                style={{
+                                                  padding: cellPad,
+                                                  textAlign: 'center',
+                                                  color: bucket?.hasData ? '#124037' : '#8A9B95',
+                                                  fontWeight: bucket?.hasData ? 600 : 400,
+                                                }}
+                                              >
+                                                {bucket?.hasData ? `${bucket.rate}% (${bucket.hadir}H)` : '—'}
+                                              </td>
+                                            );
+                                          })}
+                                        <td className="s5-tnum" style={{ padding: cellPad, textAlign: 'center', fontWeight: 600 }}>{row.hadir}</td>
+                                        <td className="s5-tnum" style={{ padding: cellPad, textAlign: 'center' }}>{row.sakit}</td>
+                                        <td className="s5-tnum" style={{ padding: cellPad, textAlign: 'center' }}>{row.izin}</td>
+                                        <td
+                                          className="s5-tnum"
+                                          style={{
+                                            padding: cellPad,
+                                            textAlign: 'center',
+                                            fontWeight: row.alpa > 0 ? 700 : 400,
+                                            color: row.alpa > 0 ? '#A63A2E' : '#2F443E',
+                                          }}
+                                        >
+                                          {row.alpa}
+                                        </td>
+                                        <td
+                                          className="s5-tnum"
+                                          style={{
+                                            padding: cellPad,
+                                            textAlign: 'right',
+                                            fontWeight: 700,
+                                            color: !row.hasData
+                                              ? '#687E77'
+                                              : row.rate >= 90
+                                              ? '#1B5E43'
+                                              : row.rate >= 75
+                                              ? '#9C6F28'
+                                              : '#A63A2E',
+                                          }}
+                                        >
+                                          {row.hasData ? `${row.rate}%` : '—'}
+                                        </td>
+                                        <td style={{ padding: cellPad, textAlign: 'center', fontWeight: 600, color: '#2F443E' }}>
+                                          {row.predikat}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+
+                                  {/* Grand Total Summary Row */}
+                                  <tr style={{ background: '#EDF4F0', borderTop: '1px solid #B7CCC2', fontWeight: 700, color: '#0B3435' }}>
+                                    <td colSpan={4 + (showInlineMonthCols ? previewStats.monthSummaries.length : 0)} style={{ padding: cellPad, textAlign: 'right' }}>
+                                      TOTAL AKUMULASI MADRASAH
+                                    </td>
+                                    <td className="s5-tnum" style={{ padding: cellPad, textAlign: 'center' }}>{previewStats.sumHadirAll}</td>
+                                    <td className="s5-tnum" style={{ padding: cellPad, textAlign: 'center' }}>{previewStats.sumSakitAll}</td>
+                                    <td className="s5-tnum" style={{ padding: cellPad, textAlign: 'center' }}>{previewStats.sumIzinAll}</td>
+                                    <td className="s5-tnum" style={{ padding: cellPad, textAlign: 'center', color: previewStats.sumAlpaAll > 0 ? '#A63A2E' : '#0B3435' }}>
+                                      {previewStats.sumAlpaAll}
+                                    </td>
+                                    <td className="s5-tnum" style={{ padding: cellPad, textAlign: 'right' }}>
+                                      {previewStats.hasData ? `${previewStats.avgRate}%` : '—'}
+                                    </td>
+                                    <td style={{ padding: cellPad, textAlign: 'center' }}>{previewStats.overallPredikat}</td>
+                                  </tr>
+                                </>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {includeNotes && (
+                          <div style={{ fontSize: '9px', color: '#526861', lineHeight: 1.45, background: '#F8FAF9', padding: '7px 10px', borderRadius: '5px', border: '0.5px solid #DCE5E0' }}>
+                            <strong>Keterangan Status &amp; Predikat:</strong> H = Hadir Efektif, S = Sakit (surat keterangan), I = Izin Dinas/Pribadi, A = Tanpa Keterangan.
+                            Predikat: Sangat Baik (≥ 95%), Baik (85–94%), Cukup (75–84%), Perlu Pembinaan (&lt; 75%).
+                          </div>
+                        )}
+
+                        {renderDualSignatures()}
+
+                        {includePrintMeta && (
+                          <div
+                            className="s5-tnum"
                             style={{
-                              background: idx % 2 === 0 ? '#FFFFFF' : '#F8FAF8',
-                              borderTop: '0.5px solid #E5ECE8',
+                              marginTop: 'auto',
+                              paddingTop: '6px',
+                              borderTop: '0.5px solid #DCE5E0',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              fontSize: '8.5px',
+                              color: '#687E77',
                             }}
                           >
-                            <td
-                              style={{
-                                padding: '4px 6px',
-                                color: '#0F201C',
-                                fontWeight: 600,
-                                maxWidth: '115px',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {row.teacher.name}
-                            </td>
-                            {showInlineMonthCols &&
-                              previewStats.monthSummaries.slice(0, 3).map((mb) => {
-                                const bucket = row.monthlyBreakdown[mb.monthYear];
-                                return (
-                                  <td
-                                    key={`td-${row.teacher.id}-${mb.monthYear}`}
-                                    className="s5-tnum"
-                                    style={{
-                                      padding: '4px 4px',
-                                      textAlign: 'center',
-                                      color: bucket?.hasData ? '#124037' : '#8A9B95',
-                                      fontWeight: bucket?.hasData ? 600 : 400,
-                                    }}
-                                  >
-                                    {bucket?.hasData ? `${bucket.rate}%` : '—'}
-                                  </td>
-                                );
-                              })}
-                            <td className="s5-tnum" style={{ padding: '4px 4px', textAlign: 'center', fontWeight: 600 }}>
-                              {row.hadir}
-                            </td>
-                            <td className="s5-tnum" style={{ padding: '4px 4px', textAlign: 'center' }}>
-                              {row.sakit}
-                            </td>
-                            <td className="s5-tnum" style={{ padding: '4px 4px', textAlign: 'center' }}>
-                              {row.izin}
-                            </td>
-                            <td
+                            <span>Dicetak di {signerCity || 'Madrasah'} · {activePeriodLabel}</span>
+                            <span>Halaman 1 dari {totalPages}</span>
+                          </div>
+                        )}
+                      </article>
+
+                      {/* Page 2: Monthly Matrix Appendix when multi-month cannot fit inline */}
+                      {showAppendixMonthMatrix && (
+                        <article
+                          className="lpv-real-page"
+                          style={{ padding: '20px 26px', display: 'flex', flexDirection: 'column', gap: '10px' }}
+                        >
+                          {includeKop && (
+                            <OfficialKopSuratPreview settings={state.settings} overrides={kopOverrides} variant="full" />
+                          )}
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#0B3435' }}>
+                              LAMPIRAN MATRIKS RINCIAN KEHADIRAN PER BULAN
+                            </div>
+                            <div className="s5-tnum" style={{ fontSize: '9.5px', color: '#505F5A', marginTop: '2px' }}>
+                              Periode: {activePeriodLabel} ({previewStats.monthCount} Bulan) · {schoolName}
+                            </div>
+                          </div>
+
+                          <div style={{ border: '0.75px solid #D5E0DA', borderRadius: '5px', overflow: 'hidden' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px' }}>
+                              <thead>
+                                <tr style={{ background: '#0B3435', color: '#FFFFFF' }}>
+                                  <th style={{ padding: '4px 6px', textAlign: 'center', width: '26px' }}>No</th>
+                                  <th style={{ padding: '4px 6px', textAlign: 'left' }}>Nama Pendidik</th>
+                                  {previewStats.monthSummaries.map((mb) => (
+                                    <th key={`ap-th-${mb.monthYear}`} className="s5-tnum" style={{ padding: '4px 4px', textAlign: 'center' }}>
+                                      {mb.shortLabel}
+                                    </th>
+                                  ))}
+                                  <th style={{ padding: '4px 6px', textAlign: 'right' }}>Total</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {previewStats.rows.map((row, idx) => (
+                                  <tr key={`ap-row-${row.teacher.id}`} style={{ background: idx % 2 === 0 ? '#FFFFFF' : '#F8FAF8', borderTop: '0.5px solid #E5ECE8' }}>
+                                    <td className="s5-tnum" style={{ padding: '4px 6px', textAlign: 'center' }}>{row.no}</td>
+                                    <td style={{ padding: '4px 6px', fontWeight: 600 }}>{row.teacher.name}</td>
+                                    {previewStats.monthSummaries.map((mb) => {
+                                      const b = row.monthlyBreakdown[mb.monthYear];
+                                      return (
+                                        <td key={`ap-td-${row.teacher.id}-${mb.monthYear}`} className="s5-tnum" style={{ padding: '4px 4px', textAlign: 'center', color: b?.hasData ? '#124037' : '#8A9B95' }}>
+                                          {b?.hasData ? `${b.rate}%` : '—'}
+                                        </td>
+                                      );
+                                    })}
+                                    <td className="s5-tnum" style={{ padding: '4px 6px', textAlign: 'right', fontWeight: 700, color: '#0B3435' }}>
+                                      {row.hasData ? `${row.rate}%` : '—'}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {renderDualSignatures()}
+
+                          {includePrintMeta && (
+                            <div
                               className="s5-tnum"
                               style={{
-                                padding: '4px 4px',
-                                textAlign: 'center',
-                                fontWeight: row.alpa > 0 ? 700 : 400,
-                                color: row.alpa > 0 ? '#A63A2E' : '#2F443E',
+                                marginTop: 'auto',
+                                paddingTop: '6px',
+                                borderTop: '0.5px solid #DCE5E0',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                fontSize: '8.5px',
+                                color: '#687E77',
                               }}
                             >
-                              {row.alpa}
-                            </td>
-                            <td
-                              className="s5-tnum"
-                              style={{
-                                padding: '4px 6px',
-                                textAlign: 'right',
-                                fontWeight: 700,
-                                color: !row.hasData
-                                  ? '#687E77'
-                                  : row.rate >= 90
-                                  ? '#1B5E43'
-                                  : row.rate >= 75
-                                  ? '#9C6F28'
-                                  : '#A63A2E',
-                              }}
-                            >
-                              {row.hasData ? `${row.rate}%` : '—'}
-                            </td>
-                          </tr>
-                        ))
+                              <span>Lampiran Matriks Bulanan · {activePeriodLabel}</span>
+                              <span>Halaman 2 dari 2</span>
+                            </div>
+                          )}
+                        </article>
                       )}
-                    </tbody>
-                  </table>
-                  {(previewStats.teacherCount > 5 || showAppendixMonthMatrix) && (
-                    <div
-                      className="s5-tnum"
-                      style={{
-                        padding: '3px 8px',
-                        fontSize: '9.5px',
-                        color: '#47615A',
-                        background: '#F4F7F5',
-                        borderTop: '0.5px solid #E5ECE8',
-                        textAlign: 'center',
-                      }}
-                    >
-                      {previewStats.teacherCount > 5 ? `+${previewStats.teacherCount - 5} pendidik lainnya` : ''}
-                      {previewStats.teacherCount > 5 && showAppendixMonthMatrix ? ' · ' : ''}
-                      {showAppendixMonthMatrix
-                        ? `Hal. 2: Matriks Rincian ${previewStats.monthCount} Bulan`
-                        : ''}
-                    </div>
-                  )}
-                </div>
-
-                {/* Live Dual Signature Block Preview */}
-                {includeSignature && (
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: '1fr 1fr',
-                      gap: '12px',
-                      paddingTop: '4px',
-                      fontSize: '9.5px',
-                      lineHeight: 1.32,
-                      color: '#2F443E',
-                    }}
-                  >
-                    <div>
-                      <div>Mengetahui / Memeriksa,</div>
-                      <div style={{ fontWeight: 600, color: '#0F201C' }}>{officerTitle}</div>
-                      <div style={{ height: '14px' }} />
-                      <div style={{ fontWeight: 700, color: '#0B2923', textDecoration: 'underline' }}>
-                        {officerName}
-                      </div>
-                      <div className="s5-tnum">
-                        {formatCleanNip(officerNip) ? `NIP. ${formatCleanNip(officerNip)}` : 'NIP. —'}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'left' }}>
-                      <div>
-                        {signerCity || 'Madrasah'}, {signerDate}
-                      </div>
-                      <div style={{ fontWeight: 600, color: '#0F201C', wordBreak: 'break-word' }}>
-                        {buildRightSignerTitle(principalTitle, schoolName)}
-                      </div>
-                      <div style={{ height: '14px' }} />
-                      <div style={{ fontWeight: 700, color: '#0B2923', textDecoration: 'underline' }}>
-                        {principalName}
-                      </div>
-                      <div className="s5-tnum">
-                        {formatCleanNip(principalNip) ? `NIP. ${formatCleanNip(principalNip)}` : 'NIP. —'}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {includePrintMeta && (
-                  <div
-                    className="s5-tnum"
-                    style={{
-                      marginTop: '9px',
-                      paddingTop: '5px',
-                      borderTop: '0.5px solid #DCE5E0',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      fontSize: '9px',
-                      color: '#687E77',
-                    }}
-                  >
-                    <span>
-                      Dicetak di {signerCity || 'Madrasah'} · {activePeriodLabel}
-                    </span>
-                    <span>
-                      Halaman 1 dari {showAppendixMonthMatrix ? 2 : 1}
-                    </span>
-                  </div>
-                )}
-              </div>
+                    </>
+                  );
+                })()}
+              </LivePreviewViewport>
             </div>
           </div>
         </div>

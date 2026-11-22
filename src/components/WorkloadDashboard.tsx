@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   ArrowRight,
   ArrowUpDown,
+  BarChart3,
   BookOpen,
   CalendarDays,
   CheckCircle2,
@@ -60,6 +61,7 @@ export function WorkloadDashboard({
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(10);
+  const [hoveredDay, setHoveredDay] = useState<string | null>(null);
 
   const activeTeachers = useMemo(() => state.teachers.filter((t) => t.isActive), [state.teachers]);
   const activeClasses = useMemo(() => state.classes.filter((c) => c.isActive), [state.classes]);
@@ -148,6 +150,38 @@ export function WorkloadDashboard({
     }
     return teacherStats.filter((t) => t.totalJP >= defaultMaxWeeklyJP).length;
   }, [sourceMode, requirementStats, teacherStats, defaultMaxWeeklyJP]);
+
+  const dailyDistribution = useMemo(() => {
+    const items = activeDays.map((day) => {
+      const dayEntries = filteredEntries.filter((e) => e.day === day);
+      const totalJP = dayEntries.length;
+      const teacherCount = new Set(dayEntries.map((e) => e.teacherId)).size;
+      const classCount = new Set(dayEntries.map((e) => e.classId)).size;
+      return {
+        day,
+        shortLabel: day.slice(0, 3),
+        totalJP,
+        teacherCount,
+        classCount,
+        astroHours: Math.round(((totalJP * periodMinutes) / 60) * 10) / 10,
+      };
+    });
+    const maxJP = Math.max(1, ...items.map((d) => d.totalJP));
+    const totalAll = items.reduce((sum, d) => sum + d.totalJP, 0);
+    const nonZero = items.filter((d) => d.totalJP > 0);
+    const busiest = items.reduce((best, cur) => (cur.totalJP > best.totalJP ? cur : best), items[0] ?? { day: '—', totalJP: 0, teacherCount: 0, classCount: 0, shortLabel: '—', astroHours: 0 });
+    const lightestSource = nonZero.length > 0 ? nonZero : items;
+    const lightest = lightestSource.reduce((min, cur) => (cur.totalJP < min.totalJP ? cur : min), lightestSource[0] ?? { day: '—', totalJP: 0, teacherCount: 0, classCount: 0, shortLabel: '—', astroHours: 0 });
+    const avgPerDay = items.length > 0 ? Math.round((totalAll / items.length) * 10) / 10 : 0;
+    return {
+      items,
+      maxJP,
+      totalAll,
+      busiest,
+      lightest,
+      avgPerDay,
+    };
+  }, [activeDays, filteredEntries, periodMinutes]);
 
   const displayScheduleTeachers = useMemo(() => {
     const rows = teacherStats.filter((stat) => {
@@ -655,6 +689,236 @@ export function WorkloadDashboard({
         </div>
       </div>
 
+      {/* Aggregate Day Distribution Chart (Senin - Sabtu) */}
+      {sourceMode !== 'REQUIREMENTS' && (
+        <section className="s5-workload-chart-card" aria-label="Grafik Distribusi Beban Mengajar per Hari">
+          <div className="s5-workload-chart-head">
+            <div>
+              <div className="card-eyebrow" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <BarChart3 size={13} aria-hidden="true" />
+                <span>GRAFIK DISTRIBUSI HARIAN</span>
+              </div>
+              <h3 style={{ margin: '2px 0 0', fontSize: '16px', color: '#0B2923' }}>
+                Sebaran Beban Mengajar per Hari ({activeDays[0] ?? 'Senin'}–{activeDays[activeDays.length - 1] ?? 'Sabtu'})
+              </h3>
+            </div>
+            <div className="s5-workload-chart-legend">
+              <span>
+                <span className="s5-legend-dot" style={{ background: '#124037' }} />
+                Beban Reguler
+              </span>
+              <span>
+                <span className="s5-legend-dot" style={{ background: '#C5A059' }} />
+                Hari Puncak
+              </span>
+              <span>
+                <span className="s5-legend-dot" style={{ background: '#CFDAD4' }} />
+                Belum Terisi
+              </span>
+            </div>
+          </div>
+
+          {(() => {
+            const items = dailyDistribution.items;
+            const chartScaleMax = Math.max(8, Math.ceil(dailyDistribution.maxJP / 4) * 4);
+            const svgW = 620;
+            const svgH = 200;
+            const padL = 36;
+            const padR = 16;
+            const padT = 26;
+            const padB = 40;
+            const plotW = svgW - padL - padR;
+            const plotH = svgH - padT - padB;
+            const slotW = items.length > 0 ? plotW / items.length : plotW;
+            const barW = Math.min(46, Math.max(22, slotW * 0.54));
+            const inspectedItem =
+              (hoveredDay ? items.find((d) => d.day === hoveredDay) : null) ??
+              dailyDistribution.busiest;
+
+            return (
+              <div className="s5-day-chart-grid">
+                <div className="s5-day-svg-wrap">
+                  <svg
+                    viewBox={`0 0 ${svgW} ${svgH}`}
+                    width="100%"
+                    height="auto"
+                    role="img"
+                    aria-label="Diagram batang distribusi JP per hari aktif"
+                    style={{ display: 'block', overflow: 'visible' }}
+                  >
+                    <defs>
+                      <linearGradient id="s5BarEmerald" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#1B5E43" />
+                        <stop offset="100%" stopColor="#0E332B" />
+                      </linearGradient>
+                      <linearGradient id="s5BarGold" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#D6B16A" />
+                        <stop offset="100%" stopColor="#9E762F" />
+                      </linearGradient>
+                    </defs>
+
+                    {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+                      const y = padT + plotH - ratio * plotH;
+                      const val = Math.round(chartScaleMax * ratio);
+                      return (
+                        <g key={ratio}>
+                          <line
+                            x1={padL}
+                            y1={y}
+                            x2={svgW - padR}
+                            y2={y}
+                            stroke={ratio === 0 ? '#BCCBC3' : '#E3ECE7'}
+                            strokeDasharray={ratio === 0 ? undefined : '4 4'}
+                            strokeWidth={1}
+                          />
+                          <text
+                            x={padL - 8}
+                            y={y + 3.5}
+                            textAnchor="end"
+                            fontSize="10.5"
+                            fontWeight="600"
+                            fill="#5A7069"
+                            style={{ fontVariantNumeric: 'tabular-nums' }}
+                          >
+                            {val}
+                          </text>
+                        </g>
+                      );
+                    })}
+
+                    {items.map((item, idx) => {
+                      const cx = padL + slotW * idx + slotW / 2;
+                      const barX = cx - barW / 2;
+                      const rawH = item.totalJP > 0 ? Math.max(8, (item.totalJP / chartScaleMax) * plotH) : 4;
+                      const barY = padT + plotH - rawH;
+                      const isPeak = item.totalJP > 0 && item.totalJP === dailyDistribution.maxJP;
+                      const isHovered = hoveredDay === item.day;
+                      const fill =
+                        item.totalJP === 0
+                          ? '#D5E0DA'
+                          : isPeak
+                          ? 'url(#s5BarGold)'
+                          : 'url(#s5BarEmerald)';
+
+                      return (
+                        <g
+                          key={item.day}
+                          style={{ cursor: 'pointer' }}
+                          onMouseEnter={() => setHoveredDay(item.day)}
+                          onMouseLeave={() => setHoveredDay(null)}
+                        >
+                          {isHovered && (
+                            <rect
+                              x={cx - slotW * 0.42}
+                              y={padT - 6}
+                              width={slotW * 0.84}
+                              height={plotH + 10}
+                              rx={8}
+                              fill="rgba(18, 64, 55, 0.05)"
+                            />
+                          )}
+                          <rect
+                            x={barX}
+                            y={barY}
+                            width={barW}
+                            height={rawH}
+                            rx={6}
+                            fill={fill}
+                            stroke={isHovered ? '#0B2923' : 'none'}
+                            strokeWidth={isHovered ? 1.5 : 0}
+                          />
+                          <text
+                            x={cx}
+                            y={barY - 6}
+                            textAnchor="middle"
+                            fontSize="11"
+                            fontWeight="700"
+                            fill={item.totalJP === 0 ? '#748781' : isPeak ? '#7B571A' : '#0B2923'}
+                            style={{ fontVariantNumeric: 'tabular-nums' }}
+                          >
+                            {item.totalJP} JP
+                          </text>
+                          <text
+                            x={cx}
+                            y={padT + plotH + 16}
+                            textAnchor="middle"
+                            fontSize="11.5"
+                            fontWeight="700"
+                            fill="#0B2923"
+                          >
+                            {item.day}
+                          </text>
+                          <text
+                            x={cx}
+                            y={padT + plotH + 30}
+                            textAnchor="middle"
+                            fontSize="10.5"
+                            fontWeight="600"
+                            fill="#5A7069"
+                            style={{ fontVariantNumeric: 'tabular-nums' }}
+                          >
+                            {item.teacherCount} guru
+                          </text>
+                        </g>
+                      );
+                    })}
+                  </svg>
+                </div>
+
+                <div className="s5-day-insight-box">
+                  <div>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#526861', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                      {hoveredDay ? `Sorotan Hari ${inspectedItem.day}` : 'Sorotan Keseimbangan Harian'}
+                    </div>
+                    <div className="s5-tnum" style={{ fontSize: '20px', fontWeight: 700, color: '#0B2923', marginTop: '4px' }}>
+                      {inspectedItem.totalJP} JP · {inspectedItem.astroHours} Jam
+                    </div>
+                    <div className="s5-tnum" style={{ fontSize: '12px', color: '#465D56', marginTop: '2px' }}>
+                      {inspectedItem.teacherCount} guru aktif di {inspectedItem.classCount} rombel
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: '8px',
+                      paddingTop: '10px',
+                      borderTop: '1px solid #DCE6E0',
+                    }}
+                  >
+                    <div>
+                      <span style={{ display: 'block', fontSize: '11px', color: '#526861', fontWeight: 600 }}>
+                        Hari Terpadat
+                      </span>
+                      <strong className="s5-tnum" style={{ fontSize: '13px', color: '#7B571A' }}>
+                        {dailyDistribution.busiest.day} ({dailyDistribution.busiest.totalJP} JP)
+                      </strong>
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', fontSize: '11px', color: '#526861', fontWeight: 600 }}>
+                        Hari Teringan
+                      </span>
+                      <strong className="s5-tnum" style={{ fontSize: '13px', color: '#124037' }}>
+                        {dailyDistribution.lightest.day} ({dailyDistribution.lightest.totalJP} JP)
+                      </strong>
+                    </div>
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <span style={{ display: 'block', fontSize: '11px', color: '#526861', fontWeight: 600 }}>
+                        Rata-Rata Beban Terjadwal
+                      </span>
+                      <strong className="s5-tnum" style={{ fontSize: '13px', color: '#0B2923' }}>
+                        {dailyDistribution.avgPerDay} JP / hari ({dailyDistribution.totalAll} JP total sesuai filter)
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </section>
+      )}
+
       {/* Main Table */}
       <div className="surface-card" style={{ marginTop: '16px' }}>
         <div className="card-heading">
@@ -882,31 +1146,73 @@ export function WorkloadDashboard({
                       </td>
 
                       <td>
-                        <div className="s5-mini-heatmap" title={activeDays.map((d) => `${d}: ${stat.dayDist[d] || 0} JP`).join(' · ')}>
-                          {activeDays.map((day) => {
-                            const count = stat.dayDist[day] || 0;
-                            const heightPct = Math.min(100, Math.max(16, (count / 8) * 100));
-                            const tone = count === 0 ? '' : count > 6 ? 'overload' : count >= 5 ? 'heavy' : 'optimal';
-                            return (
-                              <div
-                                key={day}
-                                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end', gap: '2px' }}
-                                title={`${day}: ${count} JP`}
-                              >
-                                <div
-                                  className={`s5-heat-bar ${tone}`}
-                                  style={{
-                                    height: `${heightPct}%`,
-                                    opacity: count === 0 ? 0.25 : 1,
-                                  }}
-                                />
-                                <span style={{ fontSize: '11px', fontWeight: 700, color: '#556663', lineHeight: 1 }}>
-                                  {day.slice(0, 1)}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
+                        {(() => {
+                          const rowDayMax = Math.max(
+                            6,
+                            ...activeDays.map((d) => stat.dayDist[d] || 0),
+                          );
+                          return (
+                            <div
+                              className="s5-row-day-chart"
+                              role="img"
+                              aria-label={`Distribusi harian ${stat.teacher.name}: ${activeDays
+                                .map((d) => `${d} ${stat.dayDist[d] || 0} JP`)
+                                .join(', ')}`}
+                              title={activeDays
+                                .map((d) => `${d}: ${stat.dayDist[d] || 0} JP`)
+                                .join(' · ')}
+                            >
+                              {activeDays.map((day) => {
+                                const count = stat.dayDist[day] || 0;
+                                const heightPct =
+                                  count === 0
+                                    ? 10
+                                    : Math.min(100, Math.max(20, Math.round((count / rowDayMax) * 100)));
+                                const barColor =
+                                  count === 0
+                                    ? '#CBD7D1'
+                                    : count > 6
+                                    ? '#A63A2E'
+                                    : count >= 5
+                                    ? '#C5A059'
+                                    : '#124037';
+                                const shortDay =
+                                  (
+                                    {
+                                      Senin: 'Sn',
+                                      Selasa: 'Sl',
+                                      Rabu: 'Rb',
+                                      Kamis: 'Km',
+                                      Jumat: 'Jm',
+                                      Sabtu: 'Sb',
+                                    } as const
+                                  )[day];
+                                return (
+                                  <div key={day} className="s5-row-day-col" title={`${day}: ${count} JP`}>
+                                    <span
+                                      className="s5-row-day-val s5-tnum"
+                                      style={{
+                                        color: count === 0 ? '#7D908A' : count > 6 ? '#A63A2E' : '#124037',
+                                      }}
+                                    >
+                                      {count}
+                                    </span>
+                                    <div className="s5-row-day-track">
+                                      <div
+                                        className="s5-row-day-fill"
+                                        style={{
+                                          height: `${heightPct}%`,
+                                          backgroundColor: barColor,
+                                        }}
+                                      />
+                                    </div>
+                                    <span className="s5-row-day-lbl">{shortDay}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       <td>

@@ -1265,7 +1265,14 @@ export default function App() {
       ]);
     }
     downloadTextFile(rows.map((row) => row.map((cell) => csvCell(cell)).join(',')).join('\r\n'), `SAKALA-jadwal-${workspace.settings.academicYear.replace('/', '-')}.csv`);
-    notify('CSV jadwal berhasil diunduh.', 'success');
+    if (report && report.hardErrorCount > 0) {
+      notify(
+        `CSV jadwal berhasil diunduh (catatan: masih terdapat ${report.hardErrorCount} bentrok aturan wajib).`,
+        'warning',
+      );
+    } else {
+      notify('CSV jadwal berhasil diunduh.', 'success');
+    }
   };
 
   const exportJSONSchedule = () => {
@@ -1600,6 +1607,8 @@ export default function App() {
                   setHighlightedSlot({ classId, day, jpNo });
                   navigate('schedule');
                 }}
+                onOpenPdfModal={() => setPdfExportOpen(true)}
+                onExportCSV={exportScheduleCSV}
                 onValidate={() => {
                   const newReport = validateSchedule(workspace, workspace.draft ?? workspace.activeSchedule ?? [], { strictCoverage: true, includeSoftWarnings: true });
                   notify(newReport.valid ? 'Validasi selesai: jadwal bebas pelanggaran.' : `Validasi selesai: ditemukan ${newReport.hardErrorCount} pelanggaran wajib.`, newReport.valid ? 'success' : 'warning');
@@ -1832,6 +1841,10 @@ export default function App() {
         onRevalidate={() => {
           notify('Validasi jadwal selesai diperiksa.', 'info');
         }}
+        onOpenPdfModal={() => {
+          setQuickValidationOpen(false);
+          setPdfExportOpen(true);
+        }}
       />
 
       {/* PDF Export Modal */}
@@ -1841,6 +1854,8 @@ export default function App() {
         isOpen={pdfExportOpen}
         onClose={() => setPdfExportOpen(false)}
         onNotify={notify}
+        hardErrorCount={report?.hardErrorCount ?? 0}
+        warningCount={report?.warningCount ?? 0}
       />
 
       {/* Consolidated Entity Edit Modal (Every deletable entity is editable) */}
@@ -2330,6 +2345,15 @@ export function OperatorOverviewScreen({
                 >
                   <WandSparkles size={15} />
                   <span>{isGenerating ? 'Menyusun…' : 'Susun Ulang Otomatis'}</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn hero-ghost"
+                  onClick={onOpenPdfModal}
+                  title="Tetap cetak atau ekspor PDF jadwal walaupun masih ada konflik"
+                >
+                  <FileText size={15} />
+                  <span>Cetak Dokumen PDF</span>
                 </button>
               </>
             ) : (
@@ -6968,6 +6992,8 @@ function ValidationScreen({
   onNavigate,
   onNavigateToSlot,
   onValidate,
+  onOpenPdfModal,
+  onExportCSV,
 }: {
   state: AppState;
   report: ReturnType<typeof validateSchedule>;
@@ -6977,6 +7003,8 @@ function ValidationScreen({
   onNavigate?: (screen: ScreenId) => void;
   onNavigateToSlot?: (classId: string, day: Day, jpNo: number) => void;
   onValidate: () => void;
+  onOpenPdfModal?: () => void;
+  onExportCSV?: () => void;
 }) {
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'teacher' | 'class' | 'time' | 'allocation'>('all');
   const [severityFilter, setSeverityFilter] = useState<'all' | 'error' | 'warning'>('all');
@@ -7014,11 +7042,23 @@ function ValidationScreen({
       <PageHeading
         kicker="KEPATUHAN ATURAN JADWAL"
         title="Validasi &amp; Konflik Jadwal"
-        description="Sistem pemeriksaan otomatis memastikan jadwal 100% bebas bentrok aturan wajib sebelum diterbitkan."
+        description="Sistem pemeriksaan otomatis memastikan jadwal 100% bebas bentrok aturan wajib sebelum diterbitkan. Anda tetap dapat mencetak atau mengekspor PDF/CSV kapan saja untuk tinjauan draf."
         actions={
-          <Button icon={RefreshCw} onClick={onValidate}>
-            Uji Ulang Jadwal
-          </Button>
+          <div className="page-heading-actions">
+            {onExportCSV && (
+              <Button variant="secondary" icon={FileSpreadsheet} onClick={onExportCSV}>
+                Ekspor CSV
+              </Button>
+            )}
+            {onOpenPdfModal && (
+              <Button variant="secondary" icon={FileText} onClick={onOpenPdfModal}>
+                Cetak / PDF
+              </Button>
+            )}
+            <Button icon={RefreshCw} onClick={onValidate}>
+              Uji Ulang Jadwal
+            </Button>
+          </div>
         }
       />
 
@@ -7028,7 +7068,11 @@ function ValidationScreen({
         </div>
         <div>
           <h2>{hardErrors.length ? 'Terdapat Pelanggaran Aturan Wajib' : 'Jadwal Memenuhi Seluruh Aturan Wajib'}</h2>
-          <p>{hardErrors.length ? 'Perbaiki seluruh bentrok aturan wajib sebelum menerbitkan jadwal resmi.' : 'Tidak ada konflik guru, bentrok kelas, atau ketidaksesuaian alokasi.'}</p>
+          <p>
+            {hardErrors.length
+              ? 'Selesaikan bentrok aturan wajib sebelum menerbitkan versi resmi. Pencetakan & ekspor PDF/CSV draf tetap tersedia tanpa hambatan.'
+              : 'Tidak ada konflik guru, bentrok kelas, atau ketidaksesuaian alokasi.'}
+          </p>
         </div>
         <div className="validation-banner-count">
           <strong className="s5-tnum">{hardErrors.length}</strong>

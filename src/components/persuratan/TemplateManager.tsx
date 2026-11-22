@@ -40,8 +40,10 @@ import {
   validateTemplateStructure,
 } from '../../domain/persuratan/templates/templateManagerEngine';
 import { DOCUMENT_KIND_LABELS } from '../../domain/persuratan/selectors';
+import { getEffectivePaperDimensionsMm } from '../../domain/persuratan/studio/contentValidation';
 import { TemplateVisualEditor } from './TemplateVisualEditor';
 import { NumberingFormatModal } from './NumberingFormatModal';
+import { LivePreviewViewport } from '../LivePreviewViewport';
 import { OfficialKopSuratPreview } from '../OfficialKopSuratPreview';
 import './TemplateManager.css';
 
@@ -975,31 +977,130 @@ export function TemplateManager({
                 );
               })()}
 
-              {/* Compact Paper Preview */}
-              <div className="s02-paper-stage p5-paper-stage-bg is-scrollable">
-                <div className="s02-paper-sheet">
-                  {selectedTemplate.documentHeader.includeKopSurat && (
-                    <div className="s02-paper-kop">
-                      <OfficialKopSuratPreview settings={state.settings} variant="mini" />
+              {/* Real-Scale Paper Preview */}
+              {(() => {
+                const paperDims = getEffectivePaperDimensionsMm(
+                  selectedTemplate.initialPageSettings.paperSize,
+                  selectedTemplate.initialPageSettings.orientation
+                );
+                const margins = selectedTemplate.initialPageSettings.marginsMm;
+                return (
+                  <LivePreviewViewport
+                    title="Pratinjau Tata Letak Template"
+                    metaText={`${selectedTemplate.initialPageSettings.paperSize.toUpperCase()} · ${
+                      selectedTemplate.initialPageSettings.orientation === 'portrait'
+                        ? 'Portrait'
+                        : 'Landscape'
+                    }`}
+                    paperWidthMm={paperDims.widthMm}
+                    paperHeightMm={paperDims.heightMm}
+                    compactMaxHeight={380}
+                    paperStyle={{
+                      padding: `${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm`,
+                    }}
+                    ariaLabel="Pratinjau isi dan tata letak template madrasah"
+                  >
+                    <div className="s02-paper-sheet">
+                      {selectedTemplate.documentHeader.includeKopSurat && (
+                        <div className="s02-paper-kop">
+                          <OfficialKopSuratPreview settings={state.settings} variant="full" />
+                        </div>
+                      )}
+                      <div className="s02-paper-doc-title">{selectedTemplate.documentHeader.title}</div>
+                      <div className="s02-paper-doc-num">
+                        {selectedTemplate.documentHeader.numberPlaceholder}
+                      </div>
+                      {selectedTemplate.previewBlocks.map((blk, i) => {
+                        if (blk.type === 'heading') {
+                          return (
+                            <div
+                              key={i}
+                              style={{
+                                fontWeight: 700,
+                                fontSize: '12pt',
+                                textAlign: blk.align ?? 'left',
+                                marginTop: '4px',
+                              }}
+                            >
+                              {blk.text}
+                            </div>
+                          );
+                        }
+                        if (blk.type === 'paragraph') {
+                          return (
+                            <p key={i} style={{ margin: 0 }}>
+                              {blk.text}
+                            </p>
+                          );
+                        }
+                        if (blk.type === 'meta_grid') {
+                          return (
+                            <div key={i} className="s02-paper-meta-grid">
+                              {blk.rows.map((row, rIdx) => (
+                                <div key={rIdx} style={{ display: 'contents' }}>
+                                  <span style={{ color: '#4c625c', fontWeight: 600 }}>{row.label}</span>
+                                  <span>: {row.value}</span>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        }
+                        if (blk.type === 'list') {
+                          const ListTag = blk.ordered ? 'ol' : 'ul';
+                          return (
+                            <ListTag key={i} style={{ margin: '0 0 0 18px', padding: 0 }}>
+                              {blk.items.map((item, iIdx) => (
+                                <li key={iIdx} style={{ marginBottom: '2px' }}>
+                                  {item}
+                                </li>
+                              ))}
+                            </ListTag>
+                          );
+                        }
+                        if (blk.type === 'table') {
+                          return (
+                            <table key={i} className="s02-paper-table">
+                              <thead>
+                                <tr>
+                                  {blk.columns.map((col, cIdx) => (
+                                    <th key={cIdx}>{col}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {blk.sampleRows.map((row, rIdx) => (
+                                  <tr key={rIdx}>
+                                    {row.map((cell, cIdx) => (
+                                      <td key={cIdx}>{cell}</td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          );
+                        }
+                        return (
+                          <div key={i} className="s02-paper-sig-row">
+                            {blk.leftTitle && (
+                              <div className="s02-paper-sig-box">
+                                <div>{blk.leftTitle}</div>
+                                <div style={{ height: '24px' }} />
+                                <div style={{ fontWeight: 700 }}>{blk.leftName ?? ''}</div>
+                              </div>
+                            )}
+                            <div className={`s02-paper-sig-box ${!blk.leftTitle ? 'is-right' : ''}`}>
+                              <div>{blk.rightTitle}</div>
+                              <div style={{ height: '24px' }} />
+                              <div style={{ fontWeight: 700 }}>{blk.rightName}</div>
+                              {blk.rightIdLabel && <div>{blk.rightIdLabel}</div>}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  )}
-                  <div className="s02-paper-doc-title">{selectedTemplate.documentHeader.title}</div>
-                  <div className="s02-paper-doc-num">{selectedTemplate.documentHeader.numberPlaceholder}</div>
-                  {selectedTemplate.previewBlocks.slice(0, 6).map((blk, i) => (
-                    <p key={i} style={{ margin: 0 }}>
-                      {blk.type === 'heading' || blk.type === 'paragraph'
-                        ? blk.text
-                        : blk.type === 'list'
-                        ? blk.items.join(' · ')
-                        : blk.type === 'meta_grid'
-                        ? blk.rows.map((r) => `${r.label}: ${r.value}`).join(' | ')
-                        : blk.type === 'table'
-                        ? `[Tabel: ${blk.columns.join(', ')}]`
-                        : `[Tanda Tangan: ${blk.rightTitle}]`}
-                    </p>
-                  ))}
-                </div>
-              </div>
+                  </LivePreviewViewport>
+                );
+              })()}
             </>
           )}
         </aside>

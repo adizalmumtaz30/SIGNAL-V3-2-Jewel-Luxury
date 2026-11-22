@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import {
   AlignLeft,
+  AlertTriangle,
   Award,
-  Check,
   Download,
   FileEdit,
   FileSpreadsheet,
@@ -19,17 +19,23 @@ import type { AppState } from '../domain/types';
 import { MotionModalDialog } from './KpiMotion';
 import {
   buildRightSignerTitle,
+  compactSubjectName,
+  compactTeacherName,
   exportAllClassesSinglePageA4PDF,
   exportAllClassesWeeklyPDF,
   exportScheduleClassPDF,
   exportScheduleMasterPDF,
   exportScheduleTeacherPDF,
+  getPaperDimensions,
+  getPrintableCellColor,
   type PaperSize,
   type WeeklyClassSchedulePdfOptions,
 } from '../utils/pdfExport';
-import { jpToAstronomical } from '../domain/time';
+import { getTimelineRows, isSlotBlocked, jpToAstronomical } from '../domain/time';
 import { DEFAULT_MADRASAH_IDENTITY, type KopRenderMode } from '../domain/kopIdentity';
 import { OfficialKopSuratPreview } from './OfficialKopSuratPreview';
+import { LivePreviewViewport } from './LivePreviewViewport';
+import { groupClassesForMasterMatrix } from '../utils/matrixGrouping';
 
 interface SchedulePdfExportModalProps {
   state: AppState;
@@ -37,6 +43,8 @@ interface SchedulePdfExportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onNotify: (message: string, kind?: 'success' | 'warning' | 'error' | 'info') => void;
+  hardErrorCount?: number;
+  warningCount?: number;
 }
 
 type ExportType = 'all_single_page' | 'class' | 'school' | 'teacher';
@@ -55,6 +63,8 @@ export function SchedulePdfExportModal({
   isOpen,
   onClose,
   onNotify,
+  hardErrorCount = 0,
+  warningCount = 0,
 }: SchedulePdfExportModalProps) {
   const [studioTab, setStudioTab] = useState<StudioMainTab>('layout');
   const [contentSubTab, setContentSubTab] = useState<ContentSubTab>('kop');
@@ -266,7 +276,45 @@ export function SchedulePdfExportModal({
     };
   }, [state, exportType, targetClassId, selectedTeacherObj, activeClasses, classLayoutMode, includeRecapPage]);
 
-  const previewSubjects = useMemo(() => state.subjects.slice(0, 6), [state.subjects]);
+  const liveEntries = useMemo(
+    () => state.draft ?? state.activeSchedule ?? [],
+    [state.draft, state.activeSchedule],
+  );
+  const activeDays = state.settings.activeDays;
+  const periodMinutes = state.settings.periodMinutes ?? 40;
+  const timelineRows = useMemo(
+    () => getTimelineRows(state.slots, state.settings.teachingPeriodsPerDay),
+    [state.slots, state.settings.teachingPeriodsPerDay],
+  );
+  const rombelRows = useMemo(
+    () => groupClassesForMasterMatrix(activeClasses),
+    [activeClasses],
+  );
+
+  const teacherRecapRows = useMemo(() => {
+    const activeClassIds = new Set(activeClasses.map((c) => c.id));
+    return activeTeachers
+      .map((t) => {
+        const tEntries = liveEntries.filter((e) => e.teacherId === t.id && activeClassIds.has(e.classId));
+        const subjNames = [...new Set(tEntries.map((e) => {
+          const s = state.subjects.find((sub) => sub.id === e.subjectId);
+          return s ? compactSubjectName(s.name, s.code) : '';
+        }).filter(Boolean))];
+        const classNames = [...new Set(tEntries.map((e) => {
+          const c = activeClasses.find((cls) => cls.id === e.classId);
+          return c?.name || '';
+        }).filter(Boolean))];
+        const astro = jpToAstronomical(tEntries.length, periodMinutes);
+        return {
+          teacher: t,
+          jpCount: tEntries.length,
+          astroLabel: `${astro.hours}j ${astro.minutes % 60}m`,
+          subjectsSummary: subjNames.join(', ') || '—',
+          classesSummary: classNames.join(', ') || '—',
+        };
+      })
+      .sort((a, b) => b.jpCount - a.jpCount || a.teacher.name.localeCompare(b.teacher.name));
+  }, [activeTeachers, activeClasses, liveEntries, state.subjects, periodMinutes]);
 
   if (!isOpen) return null;
 
@@ -275,15 +323,14 @@ export function SchedulePdfExportModal({
     exportType === 'school' ||
     (exportType === 'class' && classOrientation === 'landscape');
 
+  const [paperWidthMm, paperHeightMm] = getPaperDimensions(
+    paperSize,
+    isLandscapeOutput ? 'landscape' : 'portrait',
+  );
   const paperLabel = paperSize === 'a4' ? 'A4 Standar' : 'F4 / Folio';
-  const paperDimensionText =
-    paperSize === 'a4'
-      ? isLandscapeOutput
-        ? '297 × 210 mm · Landscape'
-        : '210 × 297 mm · Portrait'
-      : isLandscapeOutput
-      ? '330 × 215 mm · Landscape'
-      : '215 × 330 mm · Portrait';
+  const paperDimensionText = `${paperWidthMm} × ${paperHeightMm} mm · ${
+    isLandscapeOutput ? 'Landscape' : 'Portrait'
+  }`;
 
   const handleDownload = () => {
     try {
@@ -390,13 +437,6 @@ export function SchedulePdfExportModal({
       setIsExporting(false);
     }
   };
-
-  const previewHeadline =
-    exportType === 'class' && selectedClassObj
-      ? `${documentTitle || 'JADWAL PELAJARAN MINGGUAN'} — KELAS ${selectedClassObj.name}`
-      : exportType === 'teacher' && selectedTeacherObj
-      ? `JADWAL MENGAJAR — ${selectedTeacherObj.name.toUpperCase()}`
-      : documentTitle || 'JADWAL PELAJARAN SELURUH KELAS';
 
   const modeChoices: Array<{
     id: ExportType;
@@ -1107,251 +1147,761 @@ export function SchedulePdfExportModal({
               )}
             </div>
 
-            {/* RIGHT PANE: Live Paper & Telemetry Preview */}
-            <div className="s5-pdf-paper-stage">
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  gap: '8px',
-                }}
-              >
-                <span className="s5-studio-kicker">Pratinjau Dokumen Resmi</span>
-                <span className="s5-tnum" style={{ fontSize: '11px', color: '#526861', fontWeight: 600 }}>
-                  {paperLabel} · {isLandscapeOutput ? 'Landscape' : 'Portrait'}
-                </span>
-              </div>
-
-              {/* 4 Live Document KPI Strip */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '8px' }}>
-                <div
-                  style={{
-                    padding: '8px 10px',
-                    background: '#FFFFFF',
-                    borderRadius: '9px',
-                    border: '0.75px solid #D5E0DA',
-                  }}
-                >
-                  <div style={{ fontSize: '10px', color: '#526861', fontWeight: 600 }}>ALOKASI</div>
-                  <strong className="s5-tnum" style={{ fontSize: '14px', color: '#0B2923' }}>
-                    {classPreviewStats.totalJp} JP
-                  </strong>
-                </div>
-                <div
-                  style={{
-                    padding: '8px 10px',
-                    background: '#FFFFFF',
-                    borderRadius: '9px',
-                    border: '0.75px solid #D5E0DA',
-                  }}
-                >
-                  <div style={{ fontSize: '10px', color: '#526861', fontWeight: 600 }}>ASTRONOMIS</div>
-                  <strong className="s5-tnum" style={{ fontSize: '12.5px', color: '#0B2923' }}>
-                    {classPreviewStats.astroFormatted}
-                  </strong>
-                </div>
-                <div
-                  style={{
-                    padding: '8px 10px',
-                    background: '#FFFFFF',
-                    borderRadius: '9px',
-                    border: '0.75px solid #D5E0DA',
-                  }}
-                >
-                  <div style={{ fontSize: '10px', color: '#526861', fontWeight: 600 }}>PENDIDIK</div>
-                  <strong className="s5-tnum" style={{ fontSize: '14px', color: '#0B2923' }}>
-                    {classPreviewStats.teacherCount} Guru
-                  </strong>
-                </div>
-                <div
-                  style={{
-                    padding: '8px 10px',
-                    background: '#FFFFFF',
-                    borderRadius: '9px',
-                    border: '0.75px solid #D5E0DA',
-                  }}
-                >
-                  <div style={{ fontSize: '10px', color: '#526861', fontWeight: 600 }}>ESTIMASI</div>
-                  <strong className="s5-tnum" style={{ fontSize: '13.5px', color: '#1B5E43' }}>
-                    {classPreviewStats.pageEstimate} Hal
-                  </strong>
-                </div>
-              </div>
-
-              {/* Miniature Official Paper Sheet */}
-              <div className="s5-pdf-paper-sheet">
-                {includeKop && (
-                  <OfficialKopSuratPreview
-                    settings={state.settings}
-                    overrides={{
-                      schoolName,
-                      ministry,
-                      regionalOffice,
-                      legalDecree,
-                      accreditation,
-                      nsm,
-                      npsn,
-                      address,
-                      city,
-                      postalCode,
-                      phone,
-                      email,
-                      website,
-                      kopMode,
-                      kopImageUrl: state.settings.kopImageUrl,
-                    }}
-                    variant="compact"
-                  />
-                )}
-
-                <div style={{ textAlign: 'center', margin: '8px 0 9px' }}>
-                  <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#0B2923', letterSpacing: '0.02em' }}>
-                    {previewHeadline}
-                  </div>
-                  <div className="s5-tnum" style={{ fontSize: '10px', color: '#526861', marginTop: '1px' }}>
-                    TA {academicYear} ({semester}) · {paperSize.toUpperCase()}
-                    {extraNotes.trim() ? ` · ${extraNotes.trim()}` : ''}
-                  </div>
-                  <div
-                    style={{
-                      width: '40px',
-                      height: '1.5px',
-                      background: '#C5A059',
-                      margin: '4px auto 0',
-                      borderRadius: '2px',
-                    }}
-                  />
-                </div>
-
-                {/* Live Mini Schedule Grid */}
-                <div
-                  style={{
-                    border: '0.75px solid #D5E0DA',
-                    borderRadius: '6px',
-                    overflow: 'hidden',
-                    marginBottom: '9px',
-                  }}
-                >
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9.5px' }}>
-                    <thead>
-                      <tr style={{ background: '#124037', color: '#FFFFFF' }}>
-                        <th style={{ padding: '4px 5px', textAlign: 'center', width: '36px' }}>JP</th>
-                        <th style={{ padding: '4px 5px', textAlign: 'center' }}>Senin</th>
-                        <th style={{ padding: '4px 5px', textAlign: 'center' }}>Selasa</th>
-                        <th style={{ padding: '4px 5px', textAlign: 'center' }}>Rabu</th>
-                        <th style={{ padding: '4px 5px', textAlign: 'center' }}>Kamis</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[1, 2, 3].map((rowJp) => (
-                        <tr key={rowJp} style={{ borderTop: '0.5px solid #E5ECE8' }}>
-                          <td
-                            className="s5-tnum"
-                            style={{
-                              padding: '4px 5px',
-                              textAlign: 'center',
-                              fontWeight: 700,
-                              color: '#124037',
-                              background: '#F4F7F5',
-                            }}
-                          >
-                            {rowJp}
-                          </td>
-                          {[0, 1, 2, 3].map((colIdx) => {
-                            const subj =
-                              previewSubjects[(rowJp + colIdx) % Math.max(1, previewSubjects.length)];
-                            const bg = colorizeSubjects && subj?.color ? `${subj.color}22` : '#FFFFFF';
-                            const label = compactNames
-                              ? subj?.code || 'MPL'
-                              : subj?.name?.slice(0, 9) || 'Mapel';
-                            return (
-                              <td
-                                key={colIdx}
-                                style={{
-                                  padding: '4px 5px',
-                                  textAlign: 'center',
-                                  background: bg,
-                                  color: '#0F201C',
-                                  fontWeight: 600,
-                                  borderLeft: '0.5px solid #E5ECE8',
-                                }}
-                              >
-                                {label}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <div
-                    style={{
-                      padding: '4px 8px',
-                      background: '#F5F8F6',
-                      borderTop: '0.5px solid #E5ECE8',
-                      fontSize: '9.5px',
-                      color: '#466159',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <span>
-                      {exportType === 'all_single_page'
-                        ? `${activeClasses.length} blok jadwal kelas paralel`
-                        : exportType === 'class' && targetClassId === 'all'
-                        ? `${activeClasses.length} rombel (${classLayoutMode === 'single_page' ? '1 hal/rombel' : '2 hal/rombel'})`
-                        : 'Matriks jadwal mingguan lengkap + jeda non-KBM'}
-                    </span>
-                    {(includeRecapPage || (exportType === 'class' && classLayoutMode === 'single_page')) && (
-                      <span style={{ color: '#1B5E43', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                        <Check size={10} strokeWidth={3} /> Rekap JP &amp; TTD
-                      </span>
+            {/* RIGHT PANE: Real-Live WYSIWYG Document Viewport */}
+            <div className="s5-pdf-paper-stage" style={{ padding: 0, overflow: 'hidden', border: 'none', background: 'transparent' }}>
+              <LivePreviewViewport
+                title="Pratinjau Dokumen Jadwal (Live)"
+                metaText={`${paperLabel} · ${paperDimensionText}`}
+                paperWidthMm={paperWidthMm}
+                paperHeightMm={paperHeightMm}
+                compactMaxHeight={485}
+                sheetMode="stack"
+                ariaLabel="Pratinjau dokumen jadwal siap cetak"
+                topSlot={
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {(hardErrorCount > 0 || warningCount > 0) && (
+                      <div className="lpv-conflict-warning-banner" role="status">
+                        <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: '1px', color: '#B45309' }} />
+                        <span>
+                          <strong>Mode Cetak Draf Aktif:</strong> Jadwal masih memiliki{' '}
+                          <span className="s5-tnum" style={{ fontWeight: 700 }}>
+                            {hardErrorCount > 0 ? `${hardErrorCount} bentrok keras` : ''}
+                            {hardErrorCount > 0 && warningCount > 0 ? ' & ' : ''}
+                            {warningCount > 0 ? `${warningCount} catatan` : ''}
+                          </span>
+                          . Anda tetap dapat meninjau, mencetak, dan mengunduh PDF/CSV kapan saja untuk koreksi lapangan.
+                        </span>
+                      </div>
                     )}
-                  </div>
-                </div>
 
-                {/* Miniature Dual Signature Preview */}
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '12px',
-                    paddingTop: '4px',
-                    fontSize: '9.5px',
-                    lineHeight: 1.32,
-                    color: '#2F443E',
-                  }}
-                >
-                  <div>
-                    <div>Mengetahui,</div>
-                    <div style={{ fontWeight: 600, color: '#0F201C' }}>{coordinatorTitle}</div>
-                    <div style={{ height: '14px' }} />
-                    <div style={{ fontWeight: 700, color: '#0B2923', textDecoration: 'underline' }}>
-                      {coordinatorName}
-                    </div>
-                    <div className="s5-tnum">
-                      {formatCleanNip(coordinatorNip) ? `NIP. ${formatCleanNip(coordinatorNip)}` : 'NIP. —'}
-                    </div>
-                  </div>
-                  <div>
-                    <div>
-                      {signerCity || 'Madrasah'}, {signerDate}
-                    </div>
-                    <div style={{ fontWeight: 600, color: '#0F201C', wordBreak: 'break-word' }}>
-                      {buildRightSignerTitle(principalTitle, schoolName)}
-                    </div>
-                    <div style={{ height: '14px' }} />
-                    <div style={{ fontWeight: 700, color: '#0B2923', textDecoration: 'underline' }}>
-                      {principalName}
-                    </div>
-                    <div className="s5-tnum">
-                      {formatCleanNip(principalNip) ? `NIP. ${formatCleanNip(principalNip)}` : 'NIP. —'}
+                    {/* 4 Live Document KPI Strip */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '8px' }}>
+                      <div style={{ padding: '7px 10px', background: '#FFFFFF', borderRadius: '9px', border: '0.75px solid #D5E0DA' }}>
+                        <div style={{ fontSize: '10px', color: '#526861', fontWeight: 600 }}>ALOKASI</div>
+                        <strong className="s5-tnum" style={{ fontSize: '13.5px', color: '#0B2923' }}>
+                          {classPreviewStats.totalJp} JP
+                        </strong>
+                      </div>
+                      <div style={{ padding: '7px 10px', background: '#FFFFFF', borderRadius: '9px', border: '0.75px solid #D5E0DA' }}>
+                        <div style={{ fontSize: '10px', color: '#526861', fontWeight: 600 }}>ASTRONOMIS</div>
+                        <strong className="s5-tnum" style={{ fontSize: '12px', color: '#0B2923' }}>
+                          {classPreviewStats.astroFormatted}
+                        </strong>
+                      </div>
+                      <div style={{ padding: '7px 10px', background: '#FFFFFF', borderRadius: '9px', border: '0.75px solid #D5E0DA' }}>
+                        <div style={{ fontSize: '10px', color: '#526861', fontWeight: 600 }}>PENDIDIK</div>
+                        <strong className="s5-tnum" style={{ fontSize: '13.5px', color: '#0B2923' }}>
+                          {classPreviewStats.teacherCount} Guru
+                        </strong>
+                      </div>
+                      <div style={{ padding: '7px 10px', background: '#FFFFFF', borderRadius: '9px', border: '0.75px solid #D5E0DA' }}>
+                        <div style={{ fontSize: '10px', color: '#526861', fontWeight: 600 }}>ESTIMASI</div>
+                        <strong className="s5-tnum" style={{ fontSize: '13px', color: '#1B5E43' }}>
+                          {classPreviewStats.pageEstimate} Hal
+                        </strong>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
+                }
+              >
+                {(() => {
+                  const kopOverrides = {
+                    schoolName,
+                    ministry,
+                    regionalOffice,
+                    legalDecree,
+                    accreditation,
+                    nsm,
+                    npsn,
+                    address,
+                    city,
+                    postalCode,
+                    phone,
+                    email,
+                    website,
+                    kopMode,
+                    kopImageUrl: state.settings.kopImageUrl,
+                  };
+
+                  const renderSignatures = (leftTitleOverride?: string) => (
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: '24px',
+                        marginTop: '14px',
+                        paddingTop: '8px',
+                        fontSize: '10.5px',
+                        lineHeight: 1.4,
+                        color: '#2F443E',
+                      }}
+                    >
+                      <div>
+                        <div>Mengetahui,</div>
+                        <div style={{ fontWeight: 600, color: '#0F201C' }}>
+                          {leftTitleOverride || coordinatorTitle}
+                        </div>
+                        <div style={{ height: '34px' }} />
+                        <div style={{ fontWeight: 700, color: '#0B2923', textDecoration: 'underline' }}>
+                          {coordinatorName}
+                        </div>
+                        <div className="s5-tnum">
+                          {formatCleanNip(coordinatorNip) ? `NIP. ${formatCleanNip(coordinatorNip)}` : 'NIP. —'}
+                        </div>
+                      </div>
+                      <div>
+                        <div>
+                          {signerCity || 'Madrasah'}, {signerDate}
+                        </div>
+                        <div style={{ fontWeight: 600, color: '#0F201C', wordBreak: 'break-word' }}>
+                          {buildRightSignerTitle(principalTitle, schoolName)}
+                        </div>
+                        <div style={{ height: '34px' }} />
+                        <div style={{ fontWeight: 700, color: '#0B2923', textDecoration: 'underline' }}>
+                          {principalName}
+                        </div>
+                        <div className="s5-tnum">
+                          {formatCleanNip(principalNip) ? `NIP. ${formatCleanNip(principalNip)}` : 'NIP. —'}
+                        </div>
+                      </div>
+                    </div>
+                  );
+
+                  const renderNonKbmCell = (actTypeRaw: string, compactFont = false) => {
+                    const actType = actTypeRaw.toUpperCase();
+                    let bg = '#FEF8E6';
+                    let color = '#825F1E';
+                    let label = 'ISTIRAHAT';
+                    if (actType.includes('UPACARA')) {
+                      bg = '#FDF2F0';
+                      color = '#A03C30';
+                      label = 'UPACARA';
+                    } else if (actType.includes('RELIGI') || actType.includes('SHOLAT')) {
+                      bg = '#F7EFFD';
+                      color = '#632B8E';
+                      label = 'RELIGI';
+                    }
+                    return (
+                      <span
+                        style={{
+                          display: 'block',
+                          width: '100%',
+                          height: '100%',
+                          background: bg,
+                          color,
+                          fontWeight: 700,
+                          fontSize: compactFont ? '7.5px' : '9px',
+                          padding: compactFont ? '2px 1px' : '4px 3px',
+                        }}
+                      >
+                        {compactFont ? label.slice(0, 5) : label}
+                      </span>
+                    );
+                  };
+
+                  // MODE A & C: ALL CLASSES SINGLE PAGE OR SCHOOL MASTER MATRIX
+                  if (exportType === 'all_single_page' || exportType === 'school') {
+                    const showPage2 = exportType === 'school' || includeRecapPage;
+                    const activeSubjects = state.subjects.filter((s) => s.isActive);
+                    return (
+                      <>
+                        <article className="lpv-real-page" style={{ padding: '18px 22px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {includeKop && (
+                            <OfficialKopSuratPreview settings={state.settings} overrides={kopOverrides} variant="full" />
+                          )}
+                          <div style={{ textAlign: 'center', margin: '2px 0 4px' }}>
+                            <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#0B3435', letterSpacing: '0.02em' }}>
+                              {(exportType === 'school'
+                                ? documentTitle || 'JADWAL PELAJARAN INDUK MADRASAH'
+                                : documentTitle || 'JADWAL PELAJARAN SELURUH KELAS'
+                              ).toUpperCase()}
+                            </div>
+                            <div className="s5-tnum" style={{ fontSize: '10px', color: '#465A55', marginTop: '2px' }}>
+                              Tahun Ajaran {academicYear} · Semester {semester} · Rombel Aktif: {activeClasses.map((c) => c.name).join(', ') || '—'} · {schoolName}
+                              {extraNotes.trim() ? ` · ${extraNotes.trim()}` : ''}
+                            </div>
+                            <div style={{ width: '56px', height: '2px', background: '#C5A059', margin: '5px auto 0' }} />
+                          </div>
+
+                          {/* Real Rombel Matrix Rows */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {rombelRows.length === 0 ? (
+                              <div style={{ padding: '24px', textAlign: 'center', color: '#687E77', border: '1px dashed #CBD7D1', borderRadius: '6px' }}>
+                                Belum ada kelas aktif untuk ditampilkan.
+                              </div>
+                            ) : (
+                              rombelRows.map((row) => (
+                                <div key={row.rowId} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  <div style={{ fontSize: '9.5px', fontWeight: 700, color: '#0F3732', letterSpacing: '0.02em' }}>
+                                    {row.label.toUpperCase()} · {row.classes.map((c) => c.name).join(' | ')}
+                                  </div>
+                                  <div
+                                    style={{
+                                      display: 'grid',
+                                      gridTemplateColumns: `repeat(${Math.max(1, row.classes.length)}, minmax(0, 1fr))`,
+                                      gap: '8px',
+                                    }}
+                                  >
+                                    {row.classes.map((cls) => {
+                                      const clsEntries = liveEntries.filter((e) => e.classId === cls.id);
+                                      return (
+                                        <div
+                                          key={cls.id}
+                                          style={{
+                                            border: '1px solid #0B3435',
+                                            borderRadius: '4px',
+                                            overflow: 'hidden',
+                                            background: '#FFFFFF',
+                                          }}
+                                        >
+                                          <div
+                                            style={{
+                                              background: '#0B3435',
+                                              color: '#FFFFFF',
+                                              padding: '3px 7px',
+                                              display: 'flex',
+                                              justifyContent: 'space-between',
+                                              alignItems: 'center',
+                                              fontSize: '9.5px',
+                                            }}
+                                          >
+                                            <strong>Kelas {cls.name}</strong>
+                                            <span className="s5-tnum" style={{ fontSize: '8.5px', color: '#DCEEE6' }}>
+                                              Tingkat {cls.level} · {clsEntries.length} JP
+                                            </span>
+                                          </div>
+                                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8px', tableLayout: 'fixed' }}>
+                                            <thead>
+                                              <tr style={{ background: '#E8F3EE', color: '#0B3435' }}>
+                                                <th style={{ padding: '2px', borderBottom: '0.5px solid #D2E1DA', width: '20px' }}>JP</th>
+                                                <th style={{ padding: '2px', borderLeft: '0.5px solid #D2E1DA', borderBottom: '0.5px solid #D2E1DA', width: '48px' }}>WAKTU</th>
+                                                {activeDays.map((day) => (
+                                                  <th
+                                                    key={day}
+                                                    style={{
+                                                      padding: '2px',
+                                                      borderLeft: '0.5px solid #D2E1DA',
+                                                      borderBottom: '0.5px solid #D2E1DA',
+                                                      textAlign: 'center',
+                                                    }}
+                                                  >
+                                                    {day.slice(0, 3).toUpperCase()}
+                                                  </th>
+                                                ))}
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {timelineRows.map((tRow, idx) => (
+                                                <tr key={`${cls.id}-${tRow.order}-${idx}`} style={{ borderTop: '0.5px solid #DCE8E2' }}>
+                                                  <td className="s5-tnum" style={{ padding: '2px', textAlign: 'center', fontWeight: 700, background: '#F6FAF8', color: '#0B3435' }}>
+                                                    {tRow.isKbm ? String(tRow.jpNo).padStart(2, '0') : '—'}
+                                                  </td>
+                                                  <td className="s5-tnum" style={{ padding: '2px', textAlign: 'center', background: '#FAFCFB', color: '#55645F', borderLeft: '0.5px solid #DCE8E2', fontSize: '7px' }}>
+                                                    {tRow.start}-{tRow.end}
+                                                  </td>
+                                                  {activeDays.map((day) => {
+                                                    const slotDef = state.slots.find((s) => s.day === day && s.order === tRow.order);
+                                                    const blocked = !tRow.isKbm || isSlotBlocked(slotDef);
+                                                    if (blocked) {
+                                                      return (
+                                                        <td key={day} style={{ padding: 0, textAlign: 'center', borderLeft: '0.5px solid #DCE8E2' }}>
+                                                          {renderNonKbmCell(slotDef?.activityType || tRow.activityType || 'ISTIRAHAT', true)}
+                                                        </td>
+                                                      );
+                                                    }
+                                                    const entry = clsEntries.find((e) => e.day === day && e.jpNo === tRow.jpNo);
+                                                    if (!entry) {
+                                                      return (
+                                                        <td key={day} style={{ padding: '2px', textAlign: 'center', borderLeft: '0.5px solid #DCE8E2', color: '#B4C3BE' }}>
+                                                          —
+                                                        </td>
+                                                      );
+                                                    }
+                                                    const sub = state.subjects.find((s) => s.id === entry.subjectId);
+                                                    const tch = state.teachers.find((t) => t.id === entry.teacherId);
+                                                    const c = colorizeSubjects && sub?.color
+                                                      ? getPrintableCellColor(sub.color)
+                                                      : { bg: [246, 250, 248], text: [17, 50, 48] };
+                                                    const subTxt = compactNames
+                                                      ? compactSubjectName(sub?.name || '', sub?.code)
+                                                      : (sub?.name || 'Mapel');
+                                                    const tchTxt = compactNames
+                                                      ? compactTeacherName(tch?.name || '', tch?.code)
+                                                      : (tch?.name || '—');
+                                                    return (
+                                                      <td
+                                                        key={day}
+                                                        style={{
+                                                          padding: '1.5px 2px',
+                                                          textAlign: 'center',
+                                                          borderLeft: '0.5px solid #DCE8E2',
+                                                          background: `rgb(${c.bg.join(',')})`,
+                                                          color: `rgb(${c.text.join(',')})`,
+                                                          lineHeight: 1.15,
+                                                        }}
+                                                      >
+                                                        <div style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                          {subTxt}
+                                                        </div>
+                                                        <div style={{ fontSize: '6.8px', opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                          {tchTxt}
+                                                        </div>
+                                                      </td>
+                                                    );
+                                                  })}
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+
+                          {/* Color Swatch Legend */}
+                          {colorizeSubjects && activeSubjects.length > 0 && (
+                            <div style={{ marginTop: '4px', paddingTop: '6px', borderTop: '0.5px solid #DCE5E0' }}>
+                              <div style={{ fontSize: '8.5px', fontWeight: 700, color: '#0B3435', marginBottom: '4px' }}>
+                                LEGENDA MAPEL &amp; KEGIATAN:
+                              </div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                {activeSubjects.map((sub) => {
+                                  const { bg, text } = getPrintableCellColor(sub.color || '#2f7771');
+                                  return (
+                                    <span
+                                      key={sub.id}
+                                      style={{
+                                        fontSize: '8px',
+                                        padding: '1.5px 6px',
+                                        borderRadius: '3px',
+                                        background: `rgb(${bg.join(',')})`,
+                                        color: `rgb(${text.join(',')})`,
+                                        border: `0.5px solid rgb(${text.join(',')})`,
+                                        fontWeight: 600,
+                                      }}
+                                    >
+                                      {sub.code}: {compactSubjectName(sub.name, sub.code)}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="s5-tnum" style={{ marginTop: 'auto', fontSize: '8.5px', color: '#556964', display: 'flex', justifyContent: 'space-between' }}>
+                            <span>* 1 JP = {periodMinutes} menit waktu efektif KBM · Jadwal disusun per kelompok rombel paralel.</span>
+                            <span>Halaman 1 dari {showPage2 ? 2 : 1}</span>
+                          </div>
+                        </article>
+
+                        {showPage2 && (
+                          <article className="lpv-real-page" style={{ padding: '20px 26px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {includeKop && (
+                              <OfficialKopSuratPreview settings={state.settings} overrides={kopOverrides} variant="full" />
+                            )}
+                            <div style={{ textAlign: 'center', margin: '2px 0' }}>
+                              <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#0B3435' }}>
+                                REKAPITULASI BEBAN MENGAJAR PENDIDIK &amp; PENGESAHAN
+                              </div>
+                              <div className="s5-tnum" style={{ fontSize: '10px', color: '#465A55' }}>
+                                Tahun Ajaran {academicYear} · Semester {semester} · {schoolName}
+                              </div>
+                            </div>
+
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9.5px' }}>
+                              <thead>
+                                <tr style={{ background: '#0B3435', color: '#FFFFFF' }}>
+                                  <th style={{ padding: '5px 6px', textAlign: 'center', width: '30px' }}>No</th>
+                                  <th style={{ padding: '5px 6px', textAlign: 'center', width: '52px' }}>Kode</th>
+                                  <th style={{ padding: '5px 8px', textAlign: 'left' }}>Nama Pendidik</th>
+                                  <th style={{ padding: '5px 8px', textAlign: 'left' }}>Mata Pelajaran</th>
+                                  <th style={{ padding: '5px 8px', textAlign: 'left' }}>Kelas Diampu</th>
+                                  <th style={{ padding: '5px 6px', textAlign: 'center', width: '58px' }}>Total JP</th>
+                                  <th style={{ padding: '5px 6px', textAlign: 'right', width: '74px' }}>Astronomis</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {teacherRecapRows.map((row, idx) => (
+                                  <tr
+                                    key={row.teacher.id}
+                                    style={{
+                                      background: idx % 2 === 0 ? '#FFFFFF' : '#F6FAF8',
+                                      borderBottom: '0.5px solid #DCE6E1',
+                                    }}
+                                  >
+                                    <td className="s5-tnum" style={{ padding: '4px 6px', textAlign: 'center' }}>{idx + 1}</td>
+                                    <td className="s5-tnum" style={{ padding: '4px 6px', textAlign: 'center', fontWeight: 700, color: '#0B3435' }}>{row.teacher.code}</td>
+                                    <td style={{ padding: '4px 8px', fontWeight: 600, color: '#0F201C' }}>{row.teacher.name}</td>
+                                    <td style={{ padding: '4px 8px', color: '#385049' }}>{row.subjectsSummary}</td>
+                                    <td style={{ padding: '4px 8px', color: '#385049' }}>{row.classesSummary}</td>
+                                    <td className="s5-tnum" style={{ padding: '4px 6px', textAlign: 'center', fontWeight: 700, color: '#0B3435' }}>{row.jpCount} JP</td>
+                                    <td className="s5-tnum" style={{ padding: '4px 6px', textAlign: 'right', color: '#47615A' }}>{row.astroLabel}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+
+                            {renderSignatures()}
+
+                            <div className="s5-tnum" style={{ marginTop: 'auto', fontSize: '8.5px', color: '#556964', display: 'flex', justifyContent: 'space-between' }}>
+                              <span>Dokumen Rekapitulasi Akademik Resmi · {schoolName}</span>
+                              <span>Halaman 2 dari 2</span>
+                            </div>
+                          </article>
+                        )}
+                      </>
+                    );
+                  }
+
+                  // MODE B: PER ROMBEL KELAS (1 HALAMAN TERPADU / 2 HALAMAN LENGKAP)
+                  if (exportType === 'class') {
+                    const cls = selectedClassObj ?? activeClasses[0];
+                    if (!cls) {
+                      return (
+                        <article className="lpv-real-page" style={{ padding: '28px', textAlign: 'center', color: '#687E77' }}>
+                          Belum ada rombel kelas aktif untuk dipratinjau.
+                        </article>
+                      );
+                    }
+                    const clsEntries = liveEntries.filter((e) => e.classId === cls.id);
+                    const astroCls = jpToAstronomical(clsEntries.length, periodMinutes);
+                    const clsTeachers = [...new Set(clsEntries.map((e) => e.teacherId))];
+                    const clsSubjects = [...new Set(clsEntries.map((e) => e.subjectId))];
+                    const classAllocationRows = clsSubjects.map((subId) => {
+                      const sub = state.subjects.find((s) => s.id === subId);
+                      const subEntries = clsEntries.filter((e) => e.subjectId === subId);
+                      const tIds = [...new Set(subEntries.map((e) => e.teacherId))];
+                      const tNames = tIds.map((tid) => state.teachers.find((t) => t.id === tid)?.name || '—').join(', ');
+                      return {
+                        id: subId,
+                        code: sub?.code || 'MPL',
+                        subjectName: sub?.name || 'Mapel',
+                        teacherName: tNames,
+                        jpCount: subEntries.length,
+                      };
+                    }).sort((a, b) => b.jpCount - a.jpCount);
+
+                    return (
+                      <>
+                        <article className="lpv-real-page" style={{ padding: '18px 24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {targetClassId === 'all' && (
+                            <div style={{ padding: '6px 10px', borderRadius: '6px', background: '#EEF6F2', border: '0.75px solid #C6DDD2', fontSize: '10px', color: '#124037', fontWeight: 600 }}>
+                              Mode Bundel Seluruh Kelas ({activeClasses.length} Rombel) — Pratinjau menampilkan sampel kelas pertama ({cls.name}). File PDF yang diunduh memuat seluruh {activeClasses.length} kelas berurutan.
+                            </div>
+                          )}
+                          {includeKop && (
+                            <OfficialKopSuratPreview settings={state.settings} overrides={kopOverrides} variant="full" />
+                          )}
+                          <div style={{ textAlign: 'center', margin: '2px 0' }}>
+                            <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#112D2A' }}>
+                              {(documentTitle ? `${documentTitle} — KELAS ${cls.name}` : `JADWAL PELAJARAN MINGGUAN — KELAS ${cls.name}`).toUpperCase()}
+                            </div>
+                            <div className="s5-tnum" style={{ fontSize: '10px', color: '#505F5A', marginTop: '2px' }}>
+                              Tingkat {cls.level} · T.A. {academicYear} ({semester}) · Alokasi: {clsEntries.length} JP ({astroCls.hours} Jam Efektif) · {clsTeachers.length} Guru Pengajar
+                              {extraNotes.trim() ? ` · ${extraNotes.trim()}` : ''}
+                            </div>
+                            <div style={{ width: '50px', height: '2px', background: '#C5A059', margin: '5px auto 0' }} />
+                          </div>
+
+                          {classLayoutMode === 'two_pages' && (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '8px', margin: '4px 0' }}>
+                              {[
+                                { label: 'TOTAL ALOKASI JP', val: `${clsEntries.length} JP Mingguan` },
+                                { label: 'WAKTU ASTRONOMIS', val: `${astroCls.hours} Jam (${astroCls.minutes} Mnt)` },
+                                { label: 'GURU PENGAJAR', val: `${clsTeachers.length} Pendidik` },
+                                { label: 'MATA PELAJARAN', val: `${clsSubjects.length} Bidang Studi` },
+                              ].map((k) => (
+                                <div key={k.label} style={{ padding: '6px 9px', borderRadius: '6px', background: '#F6FAF8', border: '0.75px solid #D3E1DA' }}>
+                                  <div style={{ fontSize: '8.5px', fontWeight: 700, color: '#586E67' }}>{k.label}</div>
+                                  <div className="s5-tnum" style={{ fontSize: '11.5px', fontWeight: 700, color: '#0B3435', marginTop: '2px' }}>{k.val}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9.5px', tableLayout: 'fixed', border: '1px solid #0B3435' }}>
+                            <thead>
+                              <tr style={{ background: '#0B3435', color: '#FFFFFF' }}>
+                                <th style={{ padding: '5px 4px', width: '36px', textAlign: 'center' }}>JP</th>
+                                <th style={{ padding: '5px 4px', width: '82px', textAlign: 'center', borderLeft: '0.5px solid rgba(255,255,255,0.2)' }}>WAKTU</th>
+                                {activeDays.map((day) => (
+                                  <th key={day} style={{ padding: '5px 4px', textAlign: 'center', borderLeft: '0.5px solid rgba(255,255,255,0.2)' }}>
+                                    {day.toUpperCase()}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {timelineRows.map((tRow, idx) => (
+                                <tr key={`${tRow.order}-${idx}`} style={{ borderTop: '0.5px solid #D8E4DE' }}>
+                                  <td className="s5-tnum" style={{ padding: '4px', textAlign: 'center', fontWeight: 700, background: '#F6FAF8', color: '#0B3435' }}>
+                                    {tRow.isKbm ? String(tRow.jpNo).padStart(2, '0') : '—'}
+                                  </td>
+                                  <td className="s5-tnum" style={{ padding: '4px', textAlign: 'center', background: '#FAFCFB', color: '#526660', borderLeft: '0.5px solid #D8E4DE', fontSize: '8.5px' }}>
+                                    {tRow.start} – {tRow.end}
+                                  </td>
+                                  {activeDays.map((day) => {
+                                    const slotDef = state.slots.find((s) => s.day === day && s.order === tRow.order);
+                                    const blocked = !tRow.isKbm || isSlotBlocked(slotDef);
+                                    if (blocked) {
+                                      return (
+                                        <td key={day} style={{ padding: 0, textAlign: 'center', borderLeft: '0.5px solid #D8E4DE' }}>
+                                          {renderNonKbmCell(slotDef?.activityType || tRow.activityType || 'ISTIRAHAT', false)}
+                                        </td>
+                                      );
+                                    }
+                                    const entry = clsEntries.find((e) => e.day === day && e.jpNo === tRow.jpNo);
+                                    if (!entry) {
+                                      return (
+                                        <td key={day} style={{ padding: '4px', textAlign: 'center', borderLeft: '0.5px solid #D8E4DE', color: '#B4C3BE' }}>
+                                          —
+                                        </td>
+                                      );
+                                    }
+                                    const sub = state.subjects.find((s) => s.id === entry.subjectId);
+                                    const tch = state.teachers.find((t) => t.id === entry.teacherId);
+                                    const c = colorizeSubjects && sub?.color
+                                      ? getPrintableCellColor(sub.color)
+                                      : { bg: [246, 250, 248], text: [17, 50, 48] };
+                                    return (
+                                      <td
+                                        key={day}
+                                        style={{
+                                          padding: '4px 5px',
+                                          textAlign: 'center',
+                                          borderLeft: '0.5px solid #D8E4DE',
+                                          background: `rgb(${c.bg.join(',')})`,
+                                          color: `rgb(${c.text.join(',')})`,
+                                        }}
+                                      >
+                                        <div style={{ fontWeight: 700 }}>
+                                          {compactNames ? compactSubjectName(sub?.name || '', sub?.code) : (sub?.name || 'Mapel')}
+                                        </div>
+                                        <div style={{ fontSize: '8px', opacity: 0.85, marginTop: '1px' }}>
+                                          {compactNames ? compactTeacherName(tch?.name || '', tch?.code) : (tch?.name || '—')}
+                                        </div>
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+
+                          {classLayoutMode === 'single_page' && (
+                            <>
+                              <div style={{ marginTop: '4px' }}>
+                                <div style={{ fontSize: '9px', fontWeight: 700, color: '#0B3435', marginBottom: '3px' }}>
+                                  RINGKASAN PENGAMPU MATA PELAJARAN ({classAllocationRows.length} Mapel)
+                                </div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                  {classAllocationRows.map((row) => (
+                                    <span
+                                      key={row.id}
+                                      className="s5-tnum"
+                                      style={{
+                                        fontSize: '8.5px',
+                                        padding: '2px 7px',
+                                        borderRadius: '4px',
+                                        background: '#F4F8F6',
+                                        border: '0.5px solid #D0DDD7',
+                                        color: '#19352F',
+                                      }}
+                                    >
+                                      <strong>{row.subjectName}</strong> ({row.jpCount} JP) — {row.teacherName}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                              {renderSignatures(
+                                targetClassId === 'all'
+                                  ? coordinatorTitle
+                                  : coordinatorTitle || `Wali Kelas ${cls.name}`,
+                              )}
+                            </>
+                          )}
+
+                          <div className="s5-tnum" style={{ marginTop: 'auto', fontSize: '8.5px', color: '#556964', display: 'flex', justifyContent: 'space-between' }}>
+                            <span>Kelas {cls.name} · {schoolName}</span>
+                            <span>Halaman 1 dari {classLayoutMode === 'single_page' ? 1 : 2}</span>
+                          </div>
+                        </article>
+
+                        {classLayoutMode === 'two_pages' && (
+                          <article className="lpv-real-page" style={{ padding: '20px 26px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {includeKop && (
+                              <OfficialKopSuratPreview settings={state.settings} overrides={kopOverrides} variant="full" />
+                            )}
+                            <div style={{ textAlign: 'center', margin: '2px 0' }}>
+                              <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#0B3435' }}>
+                                DAFTAR PENGAMPU &amp; BEBAN MATA PELAJARAN — KELAS {cls.name}
+                              </div>
+                              <div className="s5-tnum" style={{ fontSize: '10px', color: '#465A55' }}>
+                                Tahun Ajaran {academicYear} · Semester {semester}
+                              </div>
+                            </div>
+
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px' }}>
+                              <thead>
+                                <tr style={{ background: '#0B3435', color: '#FFFFFF' }}>
+                                  <th style={{ padding: '5px 8px', width: '36px', textAlign: 'center' }}>No</th>
+                                  <th style={{ padding: '5px 8px', width: '70px', textAlign: 'center' }}>Kode</th>
+                                  <th style={{ padding: '5px 8px', textAlign: 'left' }}>Mata Pelajaran</th>
+                                  <th style={{ padding: '5px 8px', textAlign: 'left' }}>Guru Pengampu</th>
+                                  <th style={{ padding: '5px 8px', width: '76px', textAlign: 'center' }}>Beban JP</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {classAllocationRows.map((row, idx) => (
+                                  <tr key={row.id} style={{ background: idx % 2 === 0 ? '#FFFFFF' : '#F6FAF8', borderBottom: '0.5px solid #DCE6E1' }}>
+                                    <td className="s5-tnum" style={{ padding: '5px 8px', textAlign: 'center' }}>{idx + 1}</td>
+                                    <td className="s5-tnum" style={{ padding: '5px 8px', textAlign: 'center', fontWeight: 700 }}>{row.code}</td>
+                                    <td style={{ padding: '5px 8px', fontWeight: 600 }}>{row.subjectName}</td>
+                                    <td style={{ padding: '5px 8px' }}>{row.teacherName}</td>
+                                    <td className="s5-tnum" style={{ padding: '5px 8px', textAlign: 'center', fontWeight: 700 }}>{row.jpCount} JP</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+
+                            {renderSignatures(
+                              targetClassId === 'all'
+                                ? coordinatorTitle
+                                : coordinatorTitle || `Wali Kelas ${cls.name}`,
+                            )}
+                            <div className="s5-tnum" style={{ marginTop: 'auto', fontSize: '8.5px', color: '#556964', display: 'flex', justifyContent: 'space-between' }}>
+                              <span>Kelas {cls.name} · {schoolName}</span>
+                              <span>Halaman 2 dari 2</span>
+                            </div>
+                          </article>
+                        )}
+                      </>
+                    );
+                  }
+
+                  // MODE D: PER PENDIDIK / GURU
+                  const tch = selectedTeacherObj;
+                  if (!tch) {
+                    return (
+                      <article className="lpv-real-page" style={{ padding: '28px', textAlign: 'center', color: '#687E77' }}>
+                        Belum ada pendidik aktif untuk dipratinjau.
+                      </article>
+                    );
+                  }
+                  const tchEntries = liveEntries.filter((e) => e.teacherId === tch.id);
+                  const tchAstro = jpToAstronomical(tchEntries.length, periodMinutes);
+                  const maxQuota = tch.maxWeeklyJP > 0 ? tch.maxWeeklyJP : (state.settings.maxWeeklyJP ?? 24);
+                  const isDraftMode = state.draft !== null;
+
+                  return (
+                    <article className="lpv-real-page" style={{ padding: '22px 26px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {includeKop && (
+                        <OfficialKopSuratPreview settings={state.settings} overrides={kopOverrides} variant="full" />
+                      )}
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#0B3435' }}>
+                          {isDraftMode
+                            ? 'JADWAL MENGAJAR INDIVIDUAL GURU (PRATINJAU DRAFT)'
+                            : 'JADWAL MENGAJAR INDIVIDUAL GURU'}
+                        </div>
+                        <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#173637', marginTop: '3px' }}>
+                          {tch.name} ({tch.code}) — {tch.roleTitle || 'Guru Mapel'}
+                        </div>
+                        <div className="s5-tnum" style={{ fontSize: '9.5px', color: '#526861', marginTop: '2px' }}>
+                          {formatCleanNip(tch.nip) ? `NIP. ${formatCleanNip(tch.nip)} · ` : ''}
+                          Total Beban: {tchEntries.length} JP ({tchAstro.hours} Jam Astronomis) · Kuota Maksimum: {maxQuota} JP/minggu
+                        </div>
+                        {isDraftMode && (
+                          <div style={{ fontSize: '9px', fontWeight: 700, color: '#8F2D24', marginTop: '3px' }}>
+                            PRATINJAU DRAFT - BELUM DITERBITKAN; BUKAN DOKUMEN RESMI ATAU DASAR SK
+                          </div>
+                        )}
+                      </div>
+
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9.5px', tableLayout: 'fixed', border: '1px solid #0B3435' }}>
+                        <thead>
+                          <tr style={{ background: '#0B3435', color: '#FFFFFF' }}>
+                            <th style={{ padding: '5px 4px', width: '34px', textAlign: 'center' }}>JP</th>
+                            <th style={{ padding: '5px 4px', width: '80px', textAlign: 'center', borderLeft: '0.5px solid rgba(255,255,255,0.2)' }}>WAKTU</th>
+                            {activeDays.map((day) => (
+                              <th key={day} style={{ padding: '5px 4px', textAlign: 'center', borderLeft: '0.5px solid rgba(255,255,255,0.2)' }}>
+                                {day.toUpperCase()}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {timelineRows.map((tRow, idx) => (
+                            <tr key={`${tRow.order}-${idx}`} style={{ borderTop: '0.5px solid #D8E4DE' }}>
+                              <td className="s5-tnum" style={{ padding: '4px', textAlign: 'center', fontWeight: 700, background: '#F6FAF8', color: '#0B3435' }}>
+                                {tRow.isKbm ? String(tRow.jpNo).padStart(2, '0') : '—'}
+                              </td>
+                              <td className="s5-tnum" style={{ padding: '4px', textAlign: 'center', background: '#FAFCFB', color: '#526660', borderLeft: '0.5px solid #D8E4DE', fontSize: '8.5px' }}>
+                                {tRow.start} – {tRow.end}
+                              </td>
+                              {activeDays.map((day) => {
+                                const slotDef = state.slots.find((s) => s.day === day && s.order === tRow.order);
+                                const blocked = !tRow.isKbm || isSlotBlocked(slotDef);
+                                if (blocked) {
+                                  return (
+                                    <td key={day} style={{ padding: 0, textAlign: 'center', borderLeft: '0.5px solid #D8E4DE' }}>
+                                      {renderNonKbmCell(slotDef?.activityType || tRow.activityType || 'ISTIRAHAT', false)}
+                                    </td>
+                                  );
+                                }
+                                const slotEntries = tchEntries.filter((e) => e.day === day && e.jpNo === tRow.jpNo);
+                                if (slotEntries.length === 0) {
+                                  return (
+                                    <td key={day} style={{ padding: '4px', textAlign: 'center', borderLeft: '0.5px solid #D8E4DE', color: '#B4C3BE' }}>
+                                      —
+                                    </td>
+                                  );
+                                }
+                                const first = slotEntries[0];
+                                const sub = state.subjects.find((s) => s.id === first.subjectId);
+                                const clsNames = slotEntries
+                                  .map((se) => state.classes.find((c) => c.id === se.classId)?.name || '?')
+                                  .join(' & ');
+                                const c = colorizeSubjects && sub?.color
+                                  ? getPrintableCellColor(sub.color)
+                                  : { bg: [246, 250, 248], text: [17, 50, 48] };
+                                return (
+                                  <td
+                                    key={day}
+                                    style={{
+                                      padding: '4px 5px',
+                                      textAlign: 'center',
+                                      borderLeft: '0.5px solid #D8E4DE',
+                                      background: slotEntries.length > 1 ? '#FDF2F0' : `rgb(${c.bg.join(',')})`,
+                                      color: slotEntries.length > 1 ? '#8F2D24' : `rgb(${c.text.join(',')})`,
+                                    }}
+                                  >
+                                    <div style={{ fontWeight: 700 }}>Kelas {clsNames}</div>
+                                    <div style={{ fontSize: '8px', opacity: 0.9 }}>
+                                      {compactNames ? compactSubjectName(sub?.name || '', sub?.code) : (sub?.name || 'Mapel')}
+                                    </div>
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+
+                      {renderSignatures()}
+
+                      <div className="s5-tnum" style={{ marginTop: 'auto', fontSize: '8.5px', color: '#556964', display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Jadwal Mengajar Individual · {tch.name}</span>
+                        <span>Halaman 1 dari 1</span>
+                      </div>
+                    </article>
+                  );
+                })()}
+              </LivePreviewViewport>
             </div>
           </div>
         </div>
