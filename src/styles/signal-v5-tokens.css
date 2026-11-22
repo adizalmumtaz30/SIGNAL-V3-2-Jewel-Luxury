@@ -4965,13 +4965,13 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   }
 }
 
-/* ValidationScreen: Crisp Non-Pill Issue Code Label */
+/* ValidationScreen: Crisp Non-Pill Indonesian Category Label */
 .s5-issue-code-label {
-  font-family: var(--font-mono) !important;
-  font-size: 11px !important;
+  font-family: var(--font-sans) !important;
+  font-size: 11.5px !important;
   font-weight: 600 !important;
-  color: var(--s5-ink-tertiary) !important;
-  letter-spacing: 0.03em !important;
+  color: var(--s5-ink-secondary, #526861) !important;
+  letter-spacing: 0.01em !important;
 }
 
 /* BackupScreen: Full-Width 3-Card Bento Grid (Eliminates Empty Right Void) */

@@ -98,6 +98,8 @@ export interface ValidationIssue {
   message: string;
   context?: string;
   action?: string;
+  targetScreen?: 'schedule' | 'requirements' | 'master' | 'settings';
+  targetSlot?: { classId: string; day: Day; jpNo: number };
 }
 
 export interface ValidationReport {
@@ -107,6 +109,15 @@ export interface ValidationReport {
   warningCount: number;
 }
 
+export interface ScheduleScoreBreakdown {
+  base: number;
+  doubleBlockBonus: number;
+  doubleBlockCount: number;
+  sameDayPenalty: number;
+  freeSlotPenalty: number;
+  total: number;
+}
+
 export interface ScheduleCandidate {
   id: string;
   createdAt: string;
@@ -114,6 +125,7 @@ export interface ScheduleCandidate {
   entries: ScheduleEntry[];
   report: ValidationReport;
   score: number;
+  scoreBreakdown?: ScheduleScoreBreakdown;
   label: string;
   searchNodes: number;
 }
@@ -136,6 +148,7 @@ export interface AppSettings {
   academicYear: string;
   semester: 'Ganjil' | 'Genap';
   periodMinutes: number; // e.g. 40 minutes per JP
+  maxWeeklyJP?: number; // Default batas maksimal JP guru per minggu (dapat diisi manual)
   maxDailyJP: number;
   teachingPeriodsPerDay: number;
   activeDays: Day[];

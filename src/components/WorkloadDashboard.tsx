@@ -66,6 +66,8 @@ export function WorkloadDashboard({
   const activeSubjects = useMemo(() => state.subjects.filter((s) => s.isActive), [state.subjects]);
   const activeDays = state.settings.activeDays;
   const periodMinutes = state.settings.periodMinutes ?? 40;
+  const defaultMaxWeeklyJP =
+    state.settings.maxWeeklyJP && state.settings.maxWeeklyJP > 0 ? state.settings.maxWeeklyJP : 24;
 
   const sourceResolution = useMemo(
     () => resolveWorkloadSource(state, sourceMode, selectedVersionId || null),
@@ -89,8 +91,15 @@ export function WorkloadDashboard({
   }, [entries, selectedTeacherId, selectedClassId, selectedSubjectId]);
 
   const teacherStats = useMemo(
-    () => aggregateTeacherWorkloadFromEntries(activeTeachers, filteredEntries, activeDays, periodMinutes),
-    [activeTeachers, filteredEntries, activeDays, periodMinutes]
+    () =>
+      aggregateTeacherWorkloadFromEntries(
+        activeTeachers,
+        filteredEntries,
+        activeDays,
+        periodMinutes,
+        defaultMaxWeeklyJP
+      ),
+    [activeTeachers, filteredEntries, activeDays, periodMinutes, defaultMaxWeeklyJP]
   );
 
   const requirementStats = useMemo(
@@ -135,10 +144,10 @@ export function WorkloadDashboard({
 
   const standardLoadCount = useMemo(() => {
     if (sourceMode === 'REQUIREMENTS') {
-      return requirementStats.filter((t) => t.plannedJP >= 24).length;
+      return requirementStats.filter((t) => t.plannedJP >= defaultMaxWeeklyJP).length;
     }
-    return teacherStats.filter((t) => t.totalJP >= 24).length;
-  }, [sourceMode, requirementStats, teacherStats]);
+    return teacherStats.filter((t) => t.totalJP >= defaultMaxWeeklyJP).length;
+  }, [sourceMode, requirementStats, teacherStats, defaultMaxWeeklyJP]);
 
   const displayScheduleTeachers = useMemo(() => {
     const rows = teacherStats.filter((stat) => {
@@ -539,7 +548,7 @@ export function WorkloadDashboard({
 
         <KpiMotionCard className="stat-card tone-blue" index={2}>
           <div className="stat-top">
-            <span>Beban Standar (≥24 JP)</span>
+            <span>Beban Standar (≥{defaultMaxWeeklyJP} JP)</span>
             <div className="stat-icon">
               <GraduationCap size={17} />
             </div>
@@ -552,13 +561,13 @@ export function WorkloadDashboard({
           </div>
           <div className="stat-sub">
             {activeTeachers.length > 0
-              ? `${Math.round((standardLoadCount / activeTeachers.length) * 100)}% penuhi syarat TPG Kemenag`
+              ? `${Math.round((standardLoadCount / activeTeachers.length) * 100)}% capai standar ${defaultMaxWeeklyJP} JP/mgg`
               : 'Standar beban kerja guru'}
           </div>
           <div className="stat-accent" />
         </KpiMotionCard>
 
-        <KpiMotionCard className={`stat-card ${overloadedTeachersCount > 0 ? 'tone-rose' : 'tone-teal'}`} index={3}>
+        <KpiMotionCard className="stat-card tone-rose" index={3}>
           <div className="stat-top">
             <span>Kesesuaian Beban</span>
             <div className="stat-icon">

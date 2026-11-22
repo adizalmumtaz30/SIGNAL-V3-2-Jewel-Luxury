@@ -957,30 +957,28 @@ export function CorrespondenceCenter({
         </div>
       )}
 
-      {/* 4 Clickable Jewel KPI Tiles (Aligned with Validasi & Konflik Jadwal) */}
-      <div className="s01-stats-grid" role="region" aria-label="Ringkasan statistik persuratan">
+      {/* 4 Clickable KPI Tiles (Diselaraskan dengan Desain Beban Guru) */}
+      <div className="stat-grid" role="region" aria-label="Ringkasan statistik persuratan">
         <KpiMotionCard
           as="button"
           type="button"
           index={0}
-          className={`s01-stat-card stat-card ${isIncomingCardActive ? 'is-active' : ''}`}
+          className={`stat-card stat-card-interactive tone-teal ${isIncomingCardActive ? 'is-active' : ''}`}
           onClick={() => handleStatCardClick('INCOMING')}
           aria-pressed={isIncomingCardActive}
         >
-          <div className="s01-stat-icon" aria-hidden="true">
-            <Inbox size={20} />
-          </div>
-          <div className="s01-stat-body">
-            <div className="s01-stat-head">
-              <span className="s01-stat-label">Surat Masuk</span>
-              {isIncomingCardActive && <span className="s01-stat-active-tag">Aktif</span>}
+          <div className="stat-top">
+            <span>Surat Masuk{isIncomingCardActive ? ' · Aktif' : ''}</span>
+            <div className="stat-icon" aria-hidden="true">
+              <Inbox size={17} />
             </div>
-            <strong className="s01-stat-value s5-tnum">
-              {isLoading ? '—' : <KpiAnimatedNumber value={stats.incoming} />}
-            </strong>
-            <small className="s01-stat-sub">
-              {isIncomingCardActive ? 'Filter aktif · Klik untuk reset' : 'Agenda masuk tercatat'}
-            </small>
+          </div>
+          <div className="stat-value-row">
+            <strong>{isLoading ? '—' : <KpiAnimatedNumber value={stats.incoming} />}</strong>
+            <span className="stat-unit">berkas</span>
+          </div>
+          <div className="stat-sub">
+            {isIncomingCardActive ? 'Filter aktif · Klik untuk reset' : 'Agenda masuk tercatat'}
           </div>
         </KpiMotionCard>
 
@@ -988,24 +986,22 @@ export function CorrespondenceCenter({
           as="button"
           type="button"
           index={1}
-          className={`s01-stat-card stat-card ${isOutgoingCardActive ? 'is-active' : ''}`}
+          className={`stat-card stat-card-interactive tone-sand ${isOutgoingCardActive ? 'is-active' : ''}`}
           onClick={() => handleStatCardClick('OUTGOING')}
           aria-pressed={isOutgoingCardActive}
         >
-          <div className="s01-stat-icon" aria-hidden="true">
-            <Send size={20} />
-          </div>
-          <div className="s01-stat-body">
-            <div className="s01-stat-head">
-              <span className="s01-stat-label">Surat Keluar</span>
-              {isOutgoingCardActive && <span className="s01-stat-active-tag">Aktif</span>}
+          <div className="stat-top">
+            <span>Surat Keluar{isOutgoingCardActive ? ' · Aktif' : ''}</span>
+            <div className="stat-icon" aria-hidden="true">
+              <Send size={17} />
             </div>
-            <strong className="s01-stat-value s5-tnum">
-              {isLoading ? '—' : <KpiAnimatedNumber value={stats.outgoing} />}
-            </strong>
-            <small className="s01-stat-sub">
-              {isOutgoingCardActive ? 'Filter aktif · Klik untuk reset' : 'Naskah dinas diterbitkan'}
-            </small>
+          </div>
+          <div className="stat-value-row">
+            <strong>{isLoading ? '—' : <KpiAnimatedNumber value={stats.outgoing} />}</strong>
+            <span className="stat-unit">naskah</span>
+          </div>
+          <div className="stat-sub">
+            {isOutgoingCardActive ? 'Filter aktif · Klik untuk reset' : 'Naskah dinas diterbitkan'}
           </div>
         </KpiMotionCard>
 
@@ -1013,24 +1009,22 @@ export function CorrespondenceCenter({
           as="button"
           type="button"
           index={2}
-          className={`s01-stat-card stat-card tone-gold ${isDraftCardActive ? 'is-active' : ''}`}
+          className={`stat-card stat-card-interactive tone-blue ${isDraftCardActive ? 'is-active' : ''}`}
           onClick={() => handleStatCardClick('DRAFT')}
           aria-pressed={isDraftCardActive}
         >
-          <div className="s01-stat-icon" aria-hidden="true">
-            <FileEdit size={20} />
-          </div>
-          <div className="s01-stat-body">
-            <div className="s01-stat-head">
-              <span className="s01-stat-label">Draft</span>
-              {isDraftCardActive && <span className="s01-stat-active-tag">Aktif</span>}
+          <div className="stat-top">
+            <span>Draft{isDraftCardActive ? ' · Aktif' : ''}</span>
+            <div className="stat-icon" aria-hidden="true">
+              <FileEdit size={17} />
             </div>
-            <strong className="s01-stat-value s5-tnum">
-              {isLoading ? '—' : <KpiAnimatedNumber value={stats.draft} />}
-            </strong>
-            <small className="s01-stat-sub">
-              {isDraftCardActive ? 'Filter aktif · Klik untuk reset' : 'Menunggu finalisasi'}
-            </small>
+          </div>
+          <div className="stat-value-row">
+            <strong>{isLoading ? '—' : <KpiAnimatedNumber value={stats.draft} />}</strong>
+            <span className="stat-unit">draf</span>
+          </div>
+          <div className="stat-sub">
+            {isDraftCardActive ? 'Filter aktif · Klik untuk reset' : 'Menunggu finalisasi'}
           </div>
         </KpiMotionCard>
 
@@ -1038,24 +1032,22 @@ export function CorrespondenceCenter({
           as="button"
           type="button"
           index={3}
-          className={`s01-stat-card stat-card tone-slate ${isArchivedCardActive ? 'is-active' : ''}`}
+          className={`stat-card stat-card-interactive tone-rose ${isArchivedCardActive ? 'is-active' : ''}`}
           onClick={() => handleStatCardClick('ARCHIVED')}
           aria-pressed={isArchivedCardActive}
         >
-          <div className="s01-stat-icon" aria-hidden="true">
-            <Archive size={20} />
-          </div>
-          <div className="s01-stat-body">
-            <div className="s01-stat-head">
-              <span className="s01-stat-label">Arsip</span>
-              {isArchivedCardActive && <span className="s01-stat-active-tag">Aktif</span>}
+          <div className="stat-top">
+            <span>Arsip{isArchivedCardActive ? ' · Aktif' : ''}</span>
+            <div className="stat-icon" aria-hidden="true">
+              <Archive size={17} />
             </div>
-            <strong className="s01-stat-value s5-tnum">
-              {isLoading ? '—' : <KpiAnimatedNumber value={stats.archived} />}
-            </strong>
-            <small className="s01-stat-sub">
-              {isArchivedCardActive ? 'Filter aktif · Klik untuk reset' : 'Arsip resmi tersimpan'}
-            </small>
+          </div>
+          <div className="stat-value-row">
+            <strong>{isLoading ? '—' : <KpiAnimatedNumber value={stats.archived} />}</strong>
+            <span className="stat-unit">arsip</span>
+          </div>
+          <div className="stat-sub">
+            {isArchivedCardActive ? 'Filter aktif · Klik untuk reset' : 'Arsip resmi tersimpan'}
           </div>
         </KpiMotionCard>
       </div>

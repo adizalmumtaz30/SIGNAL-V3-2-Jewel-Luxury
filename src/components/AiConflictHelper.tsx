@@ -7,6 +7,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import type { ValidationIssue } from '../domain/types';
+import { formatValidationCategoryLabel } from '../domain/validationLabels';
 
 interface AiConflictHelperProps {
   issues: ValidationIssue[];
@@ -34,9 +35,10 @@ export function AiConflictHelper({
     setLoading(true);
     setErrorMessage(null);
 
+    const trimmedCustom = customQuestion.trim();
     const questionToSend =
-      overrideQuestion ??
-      customQuestion.trim() ??
+      overrideQuestion ||
+      trimmedCustom ||
       'Jelaskan akar penyebab bentrok di atas dan berikan 1-3 langkah perbaikan paling aman bagi operator.';
 
     const topIssues = (hardErrors.length ? hardErrors : warnings).slice(0, 6);
@@ -45,7 +47,7 @@ export function AiConflictHelper({
         ? topIssues
             .map(
               (i, idx) =>
-                `${idx + 1}. [${i.code}] ${i.title}: ${i.message}. Konteks: ${i.context || 'Jadwal'} (Tindakan awal: ${
+                `${idx + 1}. (${formatValidationCategoryLabel(i.code)}) ${i.title}: ${i.message}. Konteks: ${i.context || 'Jadwal'} (Tindakan awal: ${
                   i.action || 'Periksa alokasi'
                 })`
             )

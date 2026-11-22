@@ -42,11 +42,16 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
   const [teacherCode, setTeacherCode] = useState('');
   const [teacherNip, setTeacherNip] = useState('');
   const [teacherRole, setTeacherRole] = useState('');
-  const [teacherMaxJp, setTeacherMaxJp] = useState(24);
+  const [teacherMaxJp, setTeacherMaxJp] = useState('24');
   const [teacherGender, setTeacherGender] = useState<'male' | 'female'>('male');
   const [teacherDays, setTeacherDays] = useState<Day[]>(ALL_DAYS);
   const [teacherSubjectIds, setTeacherSubjectIds] = useState<string[]>([]);
   const [teacherIsActive, setTeacherIsActive] = useState(true);
+
+  const defaultMaxWeeklyJP =
+    state.settings.maxWeeklyJP && state.settings.maxWeeklyJP > 0
+      ? state.settings.maxWeeklyJP
+      : 24;
 
   // Sync state when target changes
   useEffect(() => {
@@ -58,13 +63,13 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
       setTeacherCode(t.code);
       setTeacherNip(t.nip || '');
       setTeacherRole(t.roleTitle || 'Guru Mapel');
-      setTeacherMaxJp(t.maxWeeklyJP || 24);
+      setTeacherMaxJp(String(t.maxWeeklyJP && t.maxWeeklyJP > 0 ? t.maxWeeklyJP : defaultMaxWeeklyJP));
       setTeacherGender(detectTeacherGender(t.name, t.roleTitle, t.gender));
       setTeacherDays(t.availableDays || ALL_DAYS);
       setTeacherSubjectIds(t.subjectIds || []);
       setTeacherIsActive(t.isActive);
     }
-  }, [target]);
+  }, [target, defaultMaxWeeklyJP]);
 
   const panelRef = useRef<HTMLDivElement>(null);
   const prevFocusRef = useRef<HTMLElement | null>(null);
@@ -97,13 +102,19 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
     e.preventDefault();
     if (target.type !== 'teacher' || !onSaveTeacher) return;
 
+    const parsedMaxJp = Number(teacherMaxJp);
+    if (!Number.isInteger(parsedMaxJp) || parsedMaxJp < 1 || parsedMaxJp > 80) {
+      onNotify('Batas kuota JP harus berupa bilangan bulat antara 1 sampai 80 JP/minggu.', 'warning');
+      return;
+    }
+
     const updated: Teacher = {
       ...target.data,
       name: teacherName.trim(),
       code: teacherCode.trim().toUpperCase(),
       nip: teacherNip.trim() || undefined,
       roleTitle: teacherRole.trim(),
-      maxWeeklyJP: Number(teacherMaxJp) || 24,
+      maxWeeklyJP: parsedMaxJp,
       gender: teacherGender,
       availableDays: teacherDays,
       subjectIds: teacherSubjectIds,
@@ -140,7 +151,8 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
     if (target.type !== 'teacher') return null;
     const reqs = state.requirements.filter((r) => r.teacherId === target.data.id);
     const assignedJP = reqs.reduce((sum, r) => sum + r.requiredJP, 0);
-    const maxJP = Number(teacherMaxJp) || 24;
+    const parsedPreview = Number(teacherMaxJp);
+    const maxJP = parsedPreview > 0 ? parsedPreview : defaultMaxWeeklyJP;
     const pct = Math.round((assignedJP / maxJP) * 100);
     const classCount = new Set(reqs.map((r) => r.classId)).size;
     return { assignedJP, maxJP, pct, classCount };
@@ -474,14 +486,14 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
                       marginBottom: '5px',
                     }}
                   >
-                    Batas Kuota JP
+                    Batas Kuota JP (Manual)
                   </label>
                   <input
                     type="number"
                     min={1}
-                    max={50}
+                    max={80}
                     value={teacherMaxJp}
-                    onChange={(e) => setTeacherMaxJp(Number(e.target.value))}
+                    onChange={(e) => setTeacherMaxJp(e.target.value)}
                     style={{
                       width: '100%',
                       padding: '8px 10px',

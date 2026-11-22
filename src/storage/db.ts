@@ -431,6 +431,11 @@ export function migrateAppStateSchema(
     changed = true;
   }
 
+  if (!cloned.settings.maxWeeklyJP || cloned.settings.maxWeeklyJP < 1) {
+    cloned.settings.maxWeeklyJP = 24;
+    changed = true;
+  }
+
   if (!cloned.schemaVersion || cloned.schemaVersion < CURRENT_APP_SCHEMA_VERSION) {
     cloned.schemaVersion = CURRENT_APP_SCHEMA_VERSION;
     changed = true;
@@ -513,6 +518,9 @@ export async function loadAppState(): Promise<AppState> {
       const { state } = migrateAppStateSchema(row.state);
 
       if (!state.settings.periodMinutes) state.settings.periodMinutes = 40;
+      if (!state.settings.maxWeeklyJP || state.settings.maxWeeklyJP < 1) {
+        state.settings.maxWeeklyJP = 24;
+      }
       if (state.dataMode !== 'custom') {
         const isLegacyDemoIdentity =
           !state.settings.schoolName ||

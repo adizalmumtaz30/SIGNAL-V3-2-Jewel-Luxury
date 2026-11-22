@@ -881,6 +881,7 @@ function renderClassWeeklyPages(
 
       const totalSchoolJp = allEntries.filter((e) => e.teacherId === teacher.id).length;
 
+      const teacherMax = teacher.maxWeeklyJP > 0 ? teacher.maxWeeklyJP : (state.settings.maxWeeklyJP ?? 24);
       compactTeacherRows.push([
         idx + 1,
         teacher.code,
@@ -888,7 +889,7 @@ function renderClassWeeklyPages(
         taughtSubNames,
         daysStr,
         `${tEntries.length} JP`,
-        `${totalSchoolJp} / ${teacher.maxWeeklyJP} JP`,
+        `${totalSchoolJp} / ${teacherMax} JP`,
       ]);
     });
 
@@ -1076,10 +1077,11 @@ function renderClassWeeklyPages(
       const daysStr = teachingDays.join(', ');
 
       const totalSchoolJp = allEntries.filter((e) => e.teacherId === teacher.id).length;
+      const teacherMax = teacher.maxWeeklyJP > 0 ? teacher.maxWeeklyJP : (state.settings.maxWeeklyJP ?? 24);
 
       let status = 'Sesuai Kuota';
-      if (totalSchoolJp > teacher.maxWeeklyJP) status = 'Melebihi Batas';
-      else if (totalSchoolJp === teacher.maxWeeklyJP) status = 'Maksimal';
+      if (totalSchoolJp > teacherMax) status = 'Melebihi Batas';
+      else if (totalSchoolJp === teacherMax) status = 'Maksimal';
 
       const teacherDisplayName = teacher.nip
         ? `${teacher.name}\nNIP. ${teacher.nip}`
@@ -1093,7 +1095,7 @@ function renderClassWeeklyPages(
         taughtSubjectNames,
         daysStr,
         `${tEntries.length} JP`,
-        `${totalSchoolJp} / ${teacher.maxWeeklyJP} JP`,
+        `${totalSchoolJp} / ${teacherMax} JP`,
         status,
       ]);
     });
@@ -1723,10 +1725,11 @@ export function exportAllClassesSinglePageA4PDF(
       });
 
       const totalTeacherJp = tEntries.length;
+      const teacherMax = t.maxWeeklyJP > 0 ? t.maxWeeklyJP : (state.settings.maxWeeklyJP ?? 24);
       const tAstro = jpToAstronomical(totalTeacherJp, periodMinutes);
       let status = 'Sesuai Kuota';
-      if (totalTeacherJp > t.maxWeeklyJP) status = 'Melebihi Batas';
-      else if (totalTeacherJp === t.maxWeeklyJP) status = 'Maksimal';
+      if (totalTeacherJp > teacherMax) status = 'Melebihi Batas';
+      else if (totalTeacherJp === teacherMax) status = 'Maksimal';
 
       const cleanNip = formatCleanNip(t.nip);
       const teacherDisplayName = cleanNip ? `${t.name}\nNIP. ${cleanNip}` : t.name;
@@ -1739,7 +1742,7 @@ export function exportAllClassesSinglePageA4PDF(
         taughtSubjectNames || '—',
         ...classJpCols.map((jp) => (jp > 0 ? `${jp} JP` : '—')),
         `${totalTeacherJp} JP`,
-        `${t.maxWeeklyJP} JP`,
+        `${teacherMax} JP`,
         `${tAstro.hours} Jam (${tAstro.minutes}m)`,
         status,
       ]);
@@ -1924,7 +1927,7 @@ export function exportScheduleTeacherPDF(
   doc.setTextColor(...MUTED);
   const nipText = teacher.nip ? `NIP. ${teacher.nip} · ` : '';
   doc.text(
-    `${nipText}Total Beban: ${entries.length} JP (${astro.hours} Jam Astronomis) · Kuota Maksimum: ${teacher.maxWeeklyJP} JP/minggu`,
+    `${nipText}Total Beban: ${entries.length} JP (${astro.hours} Jam Astronomis) · Kuota Maksimum: ${teacher.maxWeeklyJP > 0 ? teacher.maxWeeklyJP : (state.settings.maxWeeklyJP ?? 24)} JP/minggu`,
     pageWidth / 2,
     currentY,
     { align: 'center' },

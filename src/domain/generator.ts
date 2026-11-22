@@ -1,10 +1,16 @@
 import type { AppState, GenerateResult, Requirement, ScheduleCandidate, ScheduleEntry } from './types';
-import { validateMasterData, validateSchedule, scoreSchedule } from './validator';
+import { validateMasterData, validateSchedule, scoreScheduleDetailed } from './validator';
 import { teachingPeriodsForDay } from './time';
 
 interface Demand {
   requirement: Requirement;
   remaining: number;
+}
+
+export interface GeneratorOptions {
+  overrideLimit?: number;
+  onProgress?: (nodes: number) => void;
+  shouldCancel?: () => boolean;
 }
 
 function mulberry32(seed: number): () => number {
@@ -26,12 +32,22 @@ function cloneEntries(entries: ScheduleEntry[]): ScheduleEntry[] {
   return entries.map((entry) => ({ ...entry }));
 }
 
-export function generateSchedule(state: AppState, seed = Date.now() >>> 0, overrideLimit?: number): GenerateResult {
+export function generateSchedule(
+  state: AppState,
+  seed = Date.now() >>> 0,
+  overrideLimitOrOptions?: number | GeneratorOptions,
+): GenerateResult {
+  const options: GeneratorOptions =
+    typeof overrideLimitOrOptions === 'number'
+      ? { overrideLimit: overrideLimitOrOptions }
+      : (overrideLimitOrOptions ?? {});
+
   const masterIssues = validateMasterData(state);
   const masterErrors = masterIssues.filter((item) => item.severity === 'error');
   if (masterErrors.length) {
     return {
-      status: 'INVALID_INPUT', nodes: 0,
+      status: 'INVALID_INPUT',
+      nodes: 0,
       message: `Data master belum siap: ${masterErrors[0].title}. Perbaiki ${masterErrors.length} masalah sebelum membuat jadwal.`,
     };
   }
@@ -57,37 +73,56 @@ export function generateSchedule(state: AppState, seed = Date.now() >>> 0, overr
   const teacherById = new Map(state.teachers.map((teacher) => [teacher.id, teacher]));
   const subjectById = new Map(state.subjects.map((subject) => [subject.id, subject]));
   const classById = new Map(state.classes.map((schoolClass) => [schoolClass.id, schoolClass]));
+
+  const teacherAssignedSubjects = new Map<string, Set<string>>();
+  for (const row of demandRows) {
+    const set = teacherAssignedSubjects.get(row.requirement.teacherId) ?? new Set<string>();
+    set.add(row.requirement.subjectId);
+    teacherAssignedSubjects.set(row.requirement.teacherId, set);
+  }
+
   const entries: ScheduleEntry[] = [];
   const classSlotMap = new Map<string, ScheduleEntry>();
   const teacherSlotSet = new Set<string>();
   const entriesByClassDay = new Map<string, ScheduleEntry[]>();
   const teacherLoads = new Map<string, number>();
   let nodes = 0;
-  const nodeLimit = Math.max(1500, Math.min(overrideLimit ?? state.settings.searchLimit, 100000));
+  const nodeLimit = Math.max(1500, Math.min(options.overrideLimit ?? state.settings.searchLimit, 100000));
   let limitHit = false;
+  let cancelled = false;
   const random = mulberry32(seed);
   const availablePeriodsByDay = new Map(activeDays.map((day) => [day, teachingPeriodsForDay(state.slots, day).filter((jp) => jp <= state.settings.maxDailyJP)]));
   const maxJP = Math.max(0, ...[...availablePeriodsByDay.values()].flat());
 
+  // Track most frequently stalled demand for actionable bottleneck diagnostics
+  const deadEndHits = new Map<string, number>();
+
   const slotsForRequirement = (requirement: Requirement): Array<{ day: (typeof activeDays)[number]; jpNo: number }> => {
+    const schoolClass = classById.get(requirement.classId);
+    const subject = subjectById.get(requirement.subjectId);
+    const teacher = teacherById.get(requirement.teacherId);
+    if (!schoolClass?.isActive || !subject?.isActive || !teacher?.isActive || !teacher.subjectIds.includes(requirement.subjectId)) {
+      return [];
+    }
+    const teacherMaxWeekly = teacher.maxWeeklyJP > 0 ? teacher.maxWeeklyJP : (state.settings.maxWeeklyJP ?? 24);
+    if ((teacherLoads.get(teacher.id) ?? 0) >= teacherMaxWeekly) return [];
+
+    const allowedDays = teacher.availableDays && teacher.availableDays.length > 0 ? teacher.availableDays : activeDays;
     const result: Array<{ day: (typeof activeDays)[number]; jpNo: number }> = [];
     for (const day of activeDays) {
+      if (!allowedDays.includes(day)) continue;
       for (const jpNo of availablePeriodsByDay.get(day) ?? []) {
         const key = `${requirement.classId}|${day}|${jpNo}`;
         const teacherKey = `${requirement.teacherId}|${day}|${jpNo}`;
         if (classSlotMap.has(key) || teacherSlotSet.has(teacherKey)) continue;
-        const schoolClass = classById.get(requirement.classId);
-        const subject = subjectById.get(requirement.subjectId);
-        const teacher = teacherById.get(requirement.teacherId);
-        if (!schoolClass?.isActive || !subject?.isActive || !teacher?.isActive || !teacher.subjectIds.includes(requirement.subjectId)) continue;
-        if ((teacherLoads.get(teacher.id) ?? 0) >= teacher.maxWeeklyJP) continue;
         if (wouldViolateBlock(requirement.classId, day, jpNo, requirement.subjectId, entriesByClassDay)) continue;
         result.push({ day, jpNo });
       }
     }
-    // Stable enough for reproducibility: use a seed-specific shuffle after a light preference score.
-    return result.map((slot) => ({ ...slot, rank: placementRank(requirement, slot.day, slot.jpNo, entriesByClassDay) + random() * 1.8 }))
-      .sort((a, b) => b.rank - a.rank).map(({ day, jpNo }) => ({ day, jpNo }));
+    return result
+      .map((slot) => ({ ...slot, rank: placementRank(requirement, slot.day, slot.jpNo, entriesByClassDay) + random() * 1.8 }))
+      .sort((a, b) => b.rank - a.rank)
+      .map(({ day, jpNo }) => ({ day, jpNo }));
   };
 
   const partialRestRuleOkForCompletedSegments = (classId: string, day: string): boolean => {
@@ -116,7 +151,8 @@ export function generateSchedule(state: AppState, seed = Date.now() >>> 0, overr
       const lastEntry = byJP.get(beforeEnd);
       if (!lastEntry) continue;
       const teacher = teacherById.get(lastEntry.teacherId);
-      if (!teacher || teacher.subjectIds.length <= 1) continue;
+      const distinctSubjects = teacher ? (teacherAssignedSubjects.get(teacher.id)?.size ?? 0) : 0;
+      if (!teacher || distinctSubjects <= 1) continue;
       let runBefore = 0;
       for (let jp = beforeEnd; jp >= before[0]; jp--) {
         if (byJP.get(jp)?.teacherId !== teacher.id) break;
@@ -161,7 +197,6 @@ export function generateSchedule(state: AppState, seed = Date.now() >>> 0, overr
     if (before && before.subjectId !== requirement.subjectId) rank += 0.6;
     const inDay = existing.length;
     if (inDay < 2) rank += 1.5;
-    // Slightly balance heavy subjects across the week; random component breaks ties.
     rank -= (jpNo === maxJP ? 0.1 : 0);
     return rank;
   };
@@ -190,6 +225,13 @@ export function generateSchedule(state: AppState, seed = Date.now() >>> 0, overr
 
   function recurse(): boolean {
     nodes++;
+    if (nodes % 400 === 0) {
+      if (options.shouldCancel?.()) {
+        cancelled = true;
+        return false;
+      }
+      options.onProgress?.(nodes);
+    }
     if (nodes > nodeLimit) { limitHit = true; return false; }
     let remainingTotal = 0;
     for (const row of demandRows) remainingTotal += row.remaining;
@@ -198,11 +240,15 @@ export function generateSchedule(state: AppState, seed = Date.now() >>> 0, overr
       return report.valid;
     }
     const choice = chooseNextDemand();
-    if (!choice || !choice.candidates.length) return false;
+    if (!choice) return false;
     const demand = demandRows[choice.index];
     const requirement = demand.requirement;
+    if (!choice.candidates.length) {
+      deadEndHits.set(requirement.id, (deadEndHits.get(requirement.id) ?? 0) + 1);
+      return false;
+    }
     for (const slot of choice.candidates) {
-      if (limitHit) return false;
+      if (limitHit || cancelled) return false;
       const entry: ScheduleEntry = {
         id: entryId(seed, entries.length, requirement.id, slot.day, slot.jpNo),
         classId: requirement.classId,
@@ -236,20 +282,38 @@ export function generateSchedule(state: AppState, seed = Date.now() >>> 0, overr
       teacherSlotSet.delete(tKey);
       classSlotMap.delete(key);
       entries.pop();
-      if (limitHit) return false;
+      if (limitHit || cancelled) return false;
     }
     return false;
   }
 
   const found = recurse();
+  if (cancelled) {
+    return {
+      status: 'CANCELLED',
+      nodes,
+      message: `Penyusunan jadwal dihentikan oleh operator setelah memeriksa ${nodes.toLocaleString('id-ID')} kombinasi.`,
+    };
+  }
   if (!found) {
     const status = limitHit ? 'SEARCH_LIMIT_REACHED' : 'INFEASIBLE';
+    const topBottleneck = [...deadEndHits.entries()].sort((a, b) => b[1] - a[1])[0];
+    let bottleneckHint = '';
+    if (topBottleneck) {
+      const req = demandRows.find((d) => d.requirement.id === topBottleneck[0])?.requirement;
+      if (req) {
+        const cName = classById.get(req.classId)?.name ?? req.classId;
+        const sName = subjectById.get(req.subjectId)?.name ?? req.subjectId;
+        const tName = teacherById.get(req.teacherId)?.name ?? req.teacherId;
+        bottleneckHint = ` Titik kendala tersering: ${tName} (${sName} · Kelas ${cName}).`;
+      }
+    }
     return {
       status,
       nodes,
       message: limitHit
-        ? `Pencarian mencapai batas ${nodeLimit.toLocaleString('id-ID')} langkah tanpa kandidat terverifikasi. Kurangi kendala, periksa alokasi, atau naikkan batas pencarian.`
-        : 'Tidak ditemukan susunan yang memenuhi seluruh aturan wajib jadwal setelah ruang pencarian selesai diperiksa. Periksa kembali kebutuhan JP dan ketersediaan guru.',
+        ? `Pencarian mencapai batas ${nodeLimit.toLocaleString('id-ID')} langkah tanpa kandidat terverifikasi.${bottleneckHint} Coba naikkan batas langkah di Pengaturan atau kurangi batasan hari guru.`
+        : `Tidak ditemukan susunan yang memenuhi seluruh aturan wajib jadwal setelah ruang pencarian selesai diperiksa.${bottleneckHint} Periksa kembali kebutuhan JP dan ketersediaan hari guru.`,
     };
   }
 
@@ -258,15 +322,18 @@ export function generateSchedule(state: AppState, seed = Date.now() >>> 0, overr
   if (!report.valid) {
     return { status: 'FAILED', nodes, message: 'Generator menemukan susunan tetapi validasi final menolaknya. Kandidat tidak disimpan sebagai valid.' };
   }
+  const scoreBreakdown = scoreScheduleDetailed(state, finalEntries);
   const candidate: ScheduleCandidate = {
     id: `CAND-${seed.toString(36)}`,
     createdAt: new Date().toISOString(),
     seed,
     entries: finalEntries,
     report,
-    score: scoreSchedule(state, finalEntries),
+    score: scoreBreakdown.total,
+    scoreBreakdown,
     label: `Kandidat ${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`,
     searchNodes: nodes,
   };
   return { status: 'SUCCESS', candidate, nodes, message: 'Kandidat berhasil dibuat dan lolos validator deterministik.' };
 }
+

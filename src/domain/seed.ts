@@ -11,6 +11,7 @@ export function createDemoState(): AppState {
     academicYear: '2026/2027',
     semester: 'Ganjil' as const,
     periodMinutes: 40,
+    maxWeeklyJP: 24,
     maxDailyJP: 10,
     teachingPeriodsPerDay: 8,
     activeDays: ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'],

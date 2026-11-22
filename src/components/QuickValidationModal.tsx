@@ -13,7 +13,13 @@ import {
   X,
   XCircle,
 } from 'lucide-react';
-import type { AppState, ValidationIssue, ValidationReport } from '../domain/types';
+import type { AppState, Day, ValidationIssue, ValidationReport } from '../domain/types';
+import {
+  formatValidationCategoryLabel,
+  getActionLabelForIssue,
+  getTargetScreenForIssue,
+  getValidationCategoryGroup,
+} from '../domain/validationLabels';
 import { AiConflictHelper } from './AiConflictHelper';
 import { MotionModalDialog } from './KpiMotion';
 
@@ -23,7 +29,7 @@ interface QuickValidationModalProps {
   masterIssues: ValidationIssue[];
   isOpen: boolean;
   onClose: () => void;
-  onNavigateToSlot?: (classId: string, day: string, jpNo: number) => void;
+  onNavigateToSlot?: (classId: string, day: Day, jpNo: number) => void;
   onNavigateToScreen: (screen: 'schedule' | 'master' | 'requirements' | 'settings') => void;
   onRevalidate: () => void;
 }
@@ -36,7 +42,7 @@ export function QuickValidationModal({
   masterIssues,
   isOpen,
   onClose,
-  onNavigateToSlot: _onNavigateToSlot,
+  onNavigateToSlot,
   onNavigateToScreen,
   onRevalidate,
 }: QuickValidationModalProps) {
@@ -51,39 +57,10 @@ export function QuickValidationModal({
   const warnings = useMemo(() => allIssues.filter((i) => i.severity === 'warning'), [allIssues]);
 
   const categorized = useMemo(() => {
-    const teacherClash = allIssues.filter(
-      (i) =>
-        i.code.includes('TEACHER-COLLISION') ||
-        i.code.includes('TEACHER-WEEKLY-LIMIT') ||
-        i.code.includes('TEACHER-LOAD') ||
-        i.code.includes('MULTISUBJECT'),
-    );
-
-    const classClash = allIssues.filter(
-      (i) =>
-        i.code.includes('CLASS-COLLISION') ||
-        i.code.includes('SUBJECT-BLOCK') ||
-        i.code.includes('THREE-JP-BLOCK') ||
-        i.code.includes('NO-DOUBLE-BLOCK'),
-    );
-
-    const timeActivity = allIssues.filter(
-      (i) =>
-        i.code.includes('INVALID-SLOT') ||
-        i.code.includes('DAILY-LIMIT') ||
-        i.code.includes('BLOCKED-ACTIVITY') ||
-        i.code.includes('NO-DAYS'),
-    );
-
-    const coverage = allIssues.filter(
-      (i) =>
-        i.code.includes('REQUIREMENT') ||
-        i.code.includes('COVERAGE') ||
-        i.code.includes('UNALLOCATED') ||
-        i.code.includes('QUALIFICATION') ||
-        i.code.includes('CLASS-DEMAND') ||
-        i.code.startsWith('DATA-'),
-    );
+    const teacherClash = allIssues.filter((i) => getValidationCategoryGroup(i) === 'teacher');
+    const classClash = allIssues.filter((i) => getValidationCategoryGroup(i) === 'class');
+    const timeActivity = allIssues.filter((i) => getValidationCategoryGroup(i) === 'time');
+    const coverage = allIssues.filter((i) => getValidationCategoryGroup(i) === 'allocation');
 
     return {
       all: allIssues,
@@ -95,8 +72,6 @@ export function QuickValidationModal({
   }, [allIssues]);
 
   const currentList = categorized[activeCategory] || allIssues;
-
-  // Quick report status
 
   // Quick report status
   const statusType: 'PASS' | 'ISSUES' | 'FAIL' =
@@ -248,7 +223,7 @@ export function QuickValidationModal({
                       <div className="issue-copy">
                         <div className="issue-title-row">
                           <strong>{issue.title}</strong>
-                          <span className="issue-code">{issue.code}</span>
+                          <span className="issue-code">{formatValidationCategoryLabel(issue.code)}</span>
                         </div>
                         <p>{issue.message}</p>
                         {issue.context && <span className="issue-context">{issue.context}</span>}
@@ -269,22 +244,21 @@ export function QuickValidationModal({
                             {issue.action || 'Periksa data terkait dan lakukan validasi ulang.'}
                           </p>
                         </div>
-                        <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
+                        <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                           <button
+                            type="button"
                             className="button button-secondary"
                             style={{ height: '32px', fontSize: '11.5px', padding: '0 12px' }}
                             onClick={() => {
                               onClose();
-                              if (issue.code.includes('COLLISION') || issue.code.includes('SLOT')) {
-                                onNavigateToScreen('schedule');
-                              } else if (issue.code.includes('REQUIREMENT') || issue.code.includes('ALLOCATION')) {
-                                onNavigateToScreen('requirements');
+                              if (issue.targetSlot && onNavigateToSlot) {
+                                onNavigateToSlot(issue.targetSlot.classId, issue.targetSlot.day, issue.targetSlot.jpNo);
                               } else {
-                                onNavigateToScreen('master');
+                                onNavigateToScreen(getTargetScreenForIssue(issue));
                               }
                             }}
                           >
-                            Buka Area Terkait <ArrowRight size={13} />
+                            {getActionLabelForIssue(issue)} <ArrowRight size={13} />
                           </button>
                         </div>
                       </div>

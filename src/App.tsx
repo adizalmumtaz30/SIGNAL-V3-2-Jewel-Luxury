@@ -59,6 +59,7 @@ import {
 import type {
   AppState,
   Day,
+  GenerateResult,
   GeneratorStatus,
   Requirement,
   ScheduleEntry,
@@ -76,7 +77,18 @@ import {
 } from './domain/time';
 import { createDemoState } from './domain/seed';
 import { generateSchedule } from './domain/generator';
-import { buildScheduleFingerprint, validateMasterData, validateSchedule } from './domain/validator';
+import {
+  buildScheduleFingerprint,
+  scoreScheduleDetailed,
+  validateMasterData,
+  validateSchedule,
+} from './domain/validator';
+import {
+  formatValidationCategoryLabel,
+  getActionLabelForIssue,
+  getTargetScreenForIssue,
+  getValidationCategoryGroup,
+} from './domain/validationLabels';
 import {
   exportAppState,
   loadAppState,
@@ -184,7 +196,6 @@ const emptyMasterForm = {
   selectedSubjectIds: [] as string[],
   color: '#2f7771',
 };
-const emptyRequirementForm = { classId: '', subjectId: '', teacherId: '', requiredJP: '4' };
 
 function titleForScreen(screen: ScreenId) {
   const titles: Record<ScreenId, string> = {
@@ -239,14 +250,15 @@ export default function App() {
   const [addType, setAddType] = useState<AddType>(null);
   const [masterForm, setMasterForm] = useState(emptyMasterForm);
   const [masterSearch, setMasterSearch] = useState('');
-  const [reqFormOpen, setReqFormOpen] = useState(false);
-  const [reqForm, setReqForm] = useState(emptyRequirementForm);
   const [editingSlot, setEditingSlot] = useState<EditSlotContext | null>(null);
   const [editingSubject, setEditingSubject] = useState('');
   const [editingTeacher, setEditingTeacher] = useState('');
   const [customTeacherName, setCustomTeacherName] = useState('');
   const [selectedClass, setSelectedClass] = useState('');
+  const [highlightedSlot, setHighlightedSlot] = useState<{ classId: string; day: Day; jpNo: number } | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generatorNodesProgress, setGeneratorNodesProgress] = useState(0);
+  const generatorWorkerRef = useRef<Worker | null>(null);
   const [lastGeneratorResult, setLastGeneratorResult] = useState<{ status: GeneratorStatus; message: string; nodes: number } | null>(null);
   const [expandedIssue, setExpandedIssue] = useState<string | null>(null);
   const [settingsSaved, setSettingsSaved] = useState(false);
@@ -322,17 +334,20 @@ export default function App() {
   }, [sidebarOpen]);
 
   useEffect(() => {
+    return () => {
+      if (generatorWorkerRef.current) {
+        generatorWorkerRef.current.terminate();
+        generatorWorkerRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     let mounted = true;
     loadAppState().then((loaded) => {
       if (!mounted) return;
       setWorkspace(loaded);
       setSelectedClass(loaded.classes.find((item) => item.isActive)?.id ?? '');
-      setReqForm((prev) => ({
-        ...prev,
-        classId: loaded.classes.find((item) => item.isActive)?.id ?? '',
-        subjectId: loaded.subjects[0]?.id ?? '',
-        teacherId: loaded.teachers[0]?.id ?? '',
-      }));
       setReady(true);
     });
     return () => { mounted = false; };
@@ -414,7 +429,9 @@ export default function App() {
     setScreen(next);
     setSidebarOpen(false);
     setAddType(null);
-    setReqFormOpen(false);
+    if (next !== 'schedule') {
+      setHighlightedSlot(null);
+    }
   }, []);
 
   const navigate = (next: ScreenId) => {
@@ -470,38 +487,118 @@ export default function App() {
     }, true);
     setSettingsSaved(true);
     setSettingsDirty(false);
-    notify('Struktur waktu dan kegiatan KBM diperbarui.', 'success');
+    notify('Struktur waktu dan aturan beban mengajar diperbarui.', 'success');
   };
 
-  // Primary Action: Buat Jadwal in 1-Click
-  const handleGenerate = () => {
+  const handleApplyWeeklyLimitToAllTeachers = (limit: number) => {
+    const safeLimit = Math.max(1, Math.min(80, Math.round(limit)));
+    updateWorkspace((current) => ({
+      ...current,
+      settings: { ...current.settings, maxWeeklyJP: safeLimit },
+      teachers: current.teachers.map((t) => ({ ...t, maxWeeklyJP: safeLimit })),
+    }), true);
+    setSettingsSaved(true);
+    setSettingsDirty(false);
+    notify(`Batas maksimal ${safeLimit} JP/minggu diterapkan ke pengaturan & seluruh dewan guru.`, 'success');
+  };
+
+  // Primary Action: Buat Jadwal in 1-Click (runs in dedicated Web Worker when available)
+  const handleGenerate = (options?: { seed?: number; overrideLimit?: number; stayOnGenerator?: boolean }) => {
     if (!workspace) return;
+    if (generatorWorkerRef.current) {
+      generatorWorkerRef.current.terminate();
+      generatorWorkerRef.current = null;
+    }
+
+    const seed =
+      typeof options?.seed === 'number' && Number.isFinite(options.seed)
+        ? (options.seed >>> 0)
+        : ((Date.now() ^ Math.floor(Math.random() * 0xffff)) >>> 0);
+
     setIsGenerating(true);
+    setGeneratorNodesProgress(0);
     setLastGeneratorResult({ status: 'RUNNING', message: 'Menyiapkan aturan jadwal dan menyusun kombinasi optimal…', nodes: 0 });
 
-    window.setTimeout(() => {
-      const seed = (Date.now() ^ Math.floor(Math.random() * 0xffff)) >>> 0;
-      const result = generateSchedule(workspace, seed);
+    const applyGenerateResult = (result: GenerateResult) => {
       setLastGeneratorResult({ status: result.status, message: result.message, nodes: result.nodes });
+      setGeneratorNodesProgress(result.nodes);
       setIsGenerating(false);
 
       if (result.status === 'SUCCESS' && result.candidate) {
         createSnapshot(workspace, 'Jadwal Baru Berhasil Disusun', 'auto').catch(console.error);
         updateWorkspace((current) => ({
           ...current,
-          candidates: [result.candidate!, ...current.candidates.filter((item) => item.seed !== result.candidate!.seed)].slice(0, 5),
+          candidates: [result.candidate!, ...current.candidates.filter((item) => item.seed !== result.candidate!.seed)].slice(0, 6),
           draft: result.candidate!.entries,
           dataMode: 'custom',
         }));
         notify('Jadwal berhasil disusun dan bebas seluruh bentrok wajib.', 'success');
-        setScreen('schedule');
-      } else {
+        if (!options?.stayOnGenerator) {
+          setScreen('schedule');
+        }
+      } else if (result.status !== 'CANCELLED') {
         notify(result.message, result.status === 'INVALID_INPUT' ? 'warning' : 'error');
-        if (result.status === 'INVALID_INPUT') {
+        if (result.status === 'INVALID_INPUT' && screen !== 'generator') {
           setQuickValidationOpen(true);
         }
       }
-    }, 80);
+    };
+
+    if (typeof Worker !== 'undefined') {
+      try {
+        const worker = new Worker(new URL('./domain/generator.worker.ts', import.meta.url), { type: 'module' });
+        generatorWorkerRef.current = worker;
+        worker.onmessage = (
+          event: MessageEvent<{ type: 'progress'; nodes: number } | { type: 'result'; result: GenerateResult }>,
+        ) => {
+          if (event.data.type === 'progress') {
+            setGeneratorNodesProgress(event.data.nodes);
+          } else if (event.data.type === 'result') {
+            worker.terminate();
+            if (generatorWorkerRef.current === worker) generatorWorkerRef.current = null;
+            applyGenerateResult(event.data.result);
+          }
+        };
+        worker.onerror = () => {
+          worker.terminate();
+          if (generatorWorkerRef.current === worker) generatorWorkerRef.current = null;
+          const fallbackResult = generateSchedule(workspace, seed, { overrideLimit: options?.overrideLimit });
+          applyGenerateResult(fallbackResult);
+        };
+        worker.postMessage({ state: workspace, seed, overrideLimit: options?.overrideLimit });
+        return;
+      } catch {
+        // Graceful fallback to main thread timer if worker fails to instantiate
+      }
+    }
+
+    window.setTimeout(() => {
+      const result = generateSchedule(workspace, seed, { overrideLimit: options?.overrideLimit });
+      applyGenerateResult(result);
+    }, 60);
+  };
+
+  const handleCancelGenerate = () => {
+    if (generatorWorkerRef.current) {
+      generatorWorkerRef.current.terminate();
+      generatorWorkerRef.current = null;
+    }
+    setIsGenerating(false);
+    setLastGeneratorResult((prev) => ({
+      status: 'CANCELLED',
+      message: 'Penyusunan jadwal dibatalkan oleh operator.',
+      nodes: generatorNodesProgress || prev?.nodes || 0,
+    }));
+    notify('Penyusunan jadwal dihentikan.', 'info');
+  };
+
+  const handleDeleteCandidate = (candidateId: string) => {
+    if (!workspace) return;
+    updateWorkspace((current) => ({
+      ...current,
+      candidates: current.candidates.filter((item) => item.id !== candidateId),
+    }), true);
+    notify('Kandidat jadwal dihapus dari riwayat.', 'info');
   };
 
   const chooseCandidate = (candidateId: string) => {
@@ -721,7 +818,7 @@ export default function App() {
         name: customTeacherName.trim(),
         code: initials || 'GT',
         subjectIds: editingSubject ? [editingSubject] : [],
-        maxWeeklyJP: 30,
+        maxWeeklyJP: workspace.settings.maxWeeklyJP ?? 24,
         isActive: true,
       };
       nextTeachers.push(newTeacher);
@@ -807,6 +904,11 @@ export default function App() {
       notify(`Kelas ${name} ditambahkan.`);
     } else if (addType === 'teacher') {
       if (!masterForm.selectedSubjectIds.length) { notify('Pilih minimal satu kualifikasi mapel.', 'warning'); return; }
+      const parsedMaxJP = Number(masterForm.maxWeeklyJP);
+      if (!Number.isInteger(parsedMaxJP) || parsedMaxJP < 1 || parsedMaxJP > 80) {
+        notify('Batas maksimum mengajar harus antara 1 sampai 80 JP/minggu.', 'warning');
+        return;
+      }
       const teacher: Teacher = {
         id: `TCH-${Date.now().toString(36)}`,
         code: masterForm.code.trim() || `T-${workspace.teachers.length + 1}`,
@@ -815,7 +917,7 @@ export default function App() {
         nip: masterForm.nip.trim() || undefined,
         gender: detectTeacherGender(masterForm.name, masterForm.roleTitle, masterForm.gender),
         subjectIds: masterForm.selectedSubjectIds,
-        maxWeeklyJP: Math.max(1, Number(masterForm.maxWeeklyJP) || 24),
+        maxWeeklyJP: parsedMaxJP,
         isActive: true,
       };
       updateWorkspace((current) => ({ ...current, teachers: [...current.teachers, teacher] }), true);
@@ -938,7 +1040,7 @@ export default function App() {
           t.roleTitle ?? 'Guru Mapel',
           subjectsText || '-',
           String(totalJP),
-          String(t.maxWeeklyJP || 24),
+          String(t.maxWeeklyJP && t.maxWeeklyJP > 0 ? t.maxWeeklyJP : (workspace.settings.maxWeeklyJP ?? 24)),
           t.isActive ? 'Aktif' : 'Nonaktif',
         ]);
       }
@@ -1005,34 +1107,16 @@ export default function App() {
     );
   };
 
-  const saveRequirement = (event: FormEvent) => {
-    event.preventDefault();
+  const handleInlineUpdateRequirementJP = (reqId: string, nextJP: number) => {
     if (!workspace) return;
-    const requiredJP = Number(reqForm.requiredJP);
-    if (!reqForm.classId || !reqForm.subjectId || !reqForm.teacherId || !Number.isInteger(requiredJP) || requiredJP < 1) {
-      notify('Kelas, mapel, guru dan alokasi JP wajib diisi dengan benar.', 'warning');
-      return;
-    }
-    const teacher = workspace.teachers.find((item) => item.id === reqForm.teacherId);
-    if (!teacher) {
-      notify('Pilih guru pengampu yang terdaftar.', 'warning');
-      return;
-    }
-    updateWorkspace((current) => {
-      const nextTeachers = current.teachers.map((t) => {
-        if (t.id === reqForm.teacherId && !t.subjectIds.includes(reqForm.subjectId)) {
-          return { ...t, subjectIds: [...t.subjectIds, reqForm.subjectId] };
-        }
-        return t;
-      });
-      const existing = current.requirements.find((item) => item.classId === reqForm.classId && item.subjectId === reqForm.subjectId && item.teacherId === reqForm.teacherId);
-      const requirements = existing
-        ? current.requirements.map((item) => item.id === existing.id ? { ...item, requiredJP } : item)
-        : [...current.requirements, { id: `REQ-${Date.now().toString(36)}`, classId: reqForm.classId, subjectId: reqForm.subjectId, teacherId: reqForm.teacherId, requiredJP }];
-      return { ...current, teachers: nextTeachers, requirements, draft: null };
-    }, true);
-    setReqFormOpen(false);
-    notify('Alokasi JP tersimpan. Kualifikasi guru disesuaikan.', 'success');
+    const safeJP = Math.max(1, Math.min(50, Math.round(nextJP)));
+    updateWorkspace((current) => ({
+      ...current,
+      requirements: current.requirements.map((item) =>
+        item.id === reqId ? { ...item, requiredJP: safeJP } : item,
+      ),
+      draft: null,
+    }), true);
   };
 
   const deleteRequirement = (requirement: Requirement) => {
@@ -1104,10 +1188,16 @@ export default function App() {
   const handleSaveRequirementFromModal = (req: Requirement, isNew: boolean) => {
     if (!workspace) return;
     updateWorkspace((curr) => {
+      const nextTeachers = curr.teachers.map((t) => {
+        if (t.id === req.teacherId && !t.subjectIds.includes(req.subjectId)) {
+          return { ...t, subjectIds: [...t.subjectIds, req.subjectId] };
+        }
+        return t;
+      });
       const requirements = isNew
         ? [...curr.requirements, req]
         : curr.requirements.map((r) => (r.id === req.id ? req : r));
-      return { ...curr, requirements, draft: null };
+      return { ...curr, teachers: nextTeachers, requirements, draft: null };
     }, true);
     notify(isNew ? 'Alokasi kebutuhan JP ditambahkan.' : 'Alokasi kebutuhan JP diperbarui.', 'success');
   };
@@ -1355,7 +1445,7 @@ export default function App() {
                 occupiedSlots={occupiedSlots}
                 totalWeeklyCapacity={totalWeeklyCapacity}
                 onNavigate={navigate}
-                onGenerate={handleGenerate}
+                onGenerate={() => handleGenerate()}
                 isGenerating={isGenerating}
                 onOpenPdfModal={() => setPdfExportOpen(true)}
                 onOpenValidationModal={() => setQuickValidationOpen(true)}
@@ -1374,11 +1464,13 @@ export default function App() {
                 state={workspace}
                 selectedClass={selectedClassObj?.id ?? ''}
                 onSelectClass={setSelectedClass}
+                highlightedSlot={highlightedSlot}
+                onClearHighlightedSlot={() => setHighlightedSlot(null)}
                 onEditSlot={openSlotEditor}
                 onClearSlot={handleClearSlot}
                 onAssignSlot={handleAssignSlot}
                 onDropSlot={handleDropSlot}
-                onGenerate={handleGenerate}
+                onGenerate={() => handleGenerate()}
                 isGenerating={isGenerating}
                 onPublish={publishDraft}
                 onExportCSV={exportScheduleCSV}
@@ -1435,9 +1527,12 @@ export default function App() {
               <GeneratorScreen
                 state={workspace}
                 isGenerating={isGenerating}
+                nodesProgress={generatorNodesProgress}
                 result={lastGeneratorResult}
                 onGenerate={handleGenerate}
+                onCancel={handleCancelGenerate}
                 onChoose={chooseCandidate}
+                onDeleteCandidate={handleDeleteCandidate}
                 onNavigate={navigate}
               />
             )}
@@ -1450,7 +1545,13 @@ export default function App() {
                 onTabChange={(tab) => { setMasterTab(tab); setAddType(null); }}
                 search={masterSearch}
                 onSearch={setMasterSearch}
-                onAdd={(type) => { setAddType(type); setMasterForm(emptyMasterForm); }}
+                onAdd={(type) => {
+                  setAddType(type);
+                  setMasterForm({
+                    ...emptyMasterForm,
+                    maxWeeklyJP: String(workspace.settings.maxWeeklyJP ?? 24),
+                  });
+                }}
                 addType={addType}
                 form={masterForm}
                 setForm={setMasterForm}
@@ -1475,13 +1576,9 @@ export default function App() {
               <RequirementsScreen
                 state={workspace}
                 masterIssues={masterIssues}
-                formOpen={reqFormOpen}
-                setFormOpen={setReqFormOpen}
-                form={reqForm}
-                setForm={setReqForm}
-                onSave={saveRequirement}
+                onUpdateRequirementJP={handleInlineUpdateRequirementJP}
                 onDelete={deleteRequirement}
-                onGenerate={handleGenerate}
+                onGenerate={() => handleGenerate()}
                 onNavigate={navigate}
                 onEdit={(r) => setEntityModalTarget({ kind: 'requirement', isNew: false, item: r })}
                 onOpenAddModal={() => setEntityModalTarget({ kind: 'requirement', isNew: true })}
@@ -1498,6 +1595,11 @@ export default function App() {
                 expandedIssue={expandedIssue}
                 setExpandedIssue={setExpandedIssue}
                 onNavigate={navigate}
+                onNavigateToSlot={(classId, day, jpNo) => {
+                  setSelectedClass(classId);
+                  setHighlightedSlot({ classId, day, jpNo });
+                  navigate('schedule');
+                }}
                 onValidate={() => {
                   const newReport = validateSchedule(workspace, workspace.draft ?? workspace.activeSchedule ?? [], { strictCoverage: true, includeSoftWarnings: true });
                   notify(newReport.valid ? 'Validasi selesai: jadwal bebas pelanggaran.' : `Validasi selesai: ditemukan ${newReport.hardErrorCount} pelanggaran wajib.`, newReport.valid ? 'success' : 'warning');
@@ -1530,6 +1632,7 @@ export default function App() {
               <SettingsScreen
                 state={workspace}
                 onSettingsChange={handlePeriodConfig}
+                onApplyWeeklyLimitToAllTeachers={handleApplyWeeklyLimitToAllTeachers}
                 onReset={resetWorkspace}
                 onNotify={notify}
                 saved={settingsSaved}
@@ -1720,8 +1823,9 @@ export default function App() {
         masterIssues={masterIssues}
         isOpen={quickValidationOpen}
         onClose={() => setQuickValidationOpen(false)}
-        onNavigateToSlot={(classId) => {
+        onNavigateToSlot={(classId, day, jpNo) => {
           setSelectedClass(classId);
+          setHighlightedSlot({ classId, day, jpNo });
           navigate('schedule');
         }}
         onNavigateToScreen={(s) => navigate(s as ScreenId)}
@@ -2288,58 +2392,94 @@ export function OperatorOverviewScreen({
         </div>
       </section>
 
-      {/* 2. 4-KPI JEWEL METRIC STRIP */}
-      <div className="stats">
+      {/* 2. 4-KPI JEWEL METRIC STRIP (Diselaraskan dengan Beban Guru) */}
+      <div className="stat-grid">
         <KpiMotionCard
-          className="stat stat-card"
+          as="button"
+          type="button"
+          className="stat-card stat-card-interactive tone-teal"
           index={0}
           onClick={() => onNavigate('master')}
-          style={{ cursor: 'pointer', '--accent': '#B39A68' } as React.CSSProperties}
         >
-          <div className="label">ROMBEL AKTIF</div>
-          <div className="value s5-tnum">
-            <KpiAnimatedNumber value={classCount} />
+          <div className="stat-top">
+            <span>Rombel Aktif</span>
+            <div className="stat-icon" aria-hidden="true">
+              <GraduationCap size={17} />
+            </div>
           </div>
-          <div className="foot">Seluruh kelas terdaftar</div>
+          <div className="stat-value-row">
+            <strong>
+              <KpiAnimatedNumber value={classCount} />
+            </strong>
+            <span className="stat-unit">Rombel</span>
+          </div>
+          <div className="stat-sub">Seluruh kelas terdaftar</div>
         </KpiMotionCard>
 
         <KpiMotionCard
-          className="stat stat-card"
+          as="button"
+          type="button"
+          className="stat-card stat-card-interactive tone-sand"
           index={1}
           onClick={() => onNavigate('schedule')}
-          style={{ cursor: 'pointer', '--accent': '#2D8066' } as React.CSSProperties}
         >
-          <div className="label">ALOKASI KBM</div>
-          <div className="value s5-tnum">
-            <KpiAnimatedNumber value={capacityPercent} suffix="%" />
+          <div className="stat-top">
+            <span>Alokasi KBM</span>
+            <div className="stat-icon" aria-hidden="true">
+              <BookOpen size={17} />
+            </div>
           </div>
-          <div className="foot">{occupiedSlots} / {totalWeeklyCapacity} JP terjadwal</div>
+          <div className="stat-value-row">
+            <strong>
+              <KpiAnimatedNumber value={capacityPercent} suffix="%" />
+            </strong>
+            <span className="stat-unit">terisi</span>
+          </div>
+          <div className="stat-sub">{occupiedSlots} / {totalWeeklyCapacity} JP terjadwal</div>
         </KpiMotionCard>
 
         <KpiMotionCard
-          className="stat stat-card"
+          as="button"
+          type="button"
+          className="stat-card stat-card-interactive tone-blue"
           index={2}
           onClick={() => onOpenValidationModal()}
-          style={{ cursor: 'pointer', '--accent': '#334F70' } as React.CSSProperties}
         >
-          <div className="label">KONFLIK KERAS</div>
-          <div className="value s5-tnum">
-            <KpiAnimatedNumber value={totalErrors} />
+          <div className="stat-top">
+            <span>Konflik Keras</span>
+            <div className="stat-icon" aria-hidden="true">
+              {totalErrors > 0 ? <AlertTriangle size={17} /> : <ShieldCheck size={17} />}
+            </div>
           </div>
-          <div className="foot">{totalErrors === 0 ? 'Bebas bentrok aturan wajib' : 'Klik untuk tinjau bentrok'}</div>
+          <div className="stat-value-row">
+            <strong>
+              <KpiAnimatedNumber value={totalErrors} />
+            </strong>
+            <span className="stat-unit">Temuan</span>
+          </div>
+          <div className="stat-sub">{totalErrors === 0 ? 'Bebas bentrok aturan wajib' : 'Klik untuk tinjau bentrok'}</div>
         </KpiMotionCard>
 
         <KpiMotionCard
-          className="stat stat-card"
+          as="button"
+          type="button"
+          className="stat-card stat-card-interactive tone-rose"
           index={3}
           onClick={() => onNavigate('workload')}
-          style={{ cursor: 'pointer', '--accent': '#927D98' } as React.CSSProperties}
         >
-          <div className="label">DEWAN GURU AKTIF</div>
-          <div className="value s5-tnum">
-            <KpiAnimatedNumber value={teacherCount} />
+          <div className="stat-top">
+            <span>Dewan Guru Aktif</span>
+            <div className="stat-icon" aria-hidden="true">
+              <Users size={17} />
+            </div>
           </div>
-          <div className="foot">Rata-rata {avgTeacherJP} JP / guru</div>
+          <div className="stat-value-row">
+            <strong>
+              <KpiAnimatedNumber value={teacherCount} />
+            </strong>
+            <span className="stat-unit">Guru</span>
+          </div>
+          <div className="stat-sub">Rata-rata {avgTeacherJP} JP / guru</div>
         </KpiMotionCard>
       </div>
 
@@ -2567,54 +2707,98 @@ export function OperatorOverviewScreen({
           </div>
         </div>
 
-        <div className="s5-admin-persuratan-metrics">
-          <button
+        <div className="stat-grid">
+          <KpiMotionCard
+            as="button"
             type="button"
-            className="s5-admin-metric-card"
+            index={0}
+            className="stat-card stat-card-interactive tone-teal"
             onClick={() => openPersuratanView({ view: 'center', nonce: Date.now() })}
           >
-            <span className="s5-admin-metric-label">Draft Aktif</span>
-            <span className="s5-admin-metric-value s5-tnum">{draftDocsCount}</span>
-            <span className="s5-admin-metric-sub">
+            <div className="stat-top">
+              <span>Draft Aktif</span>
+              <div className="stat-icon" aria-hidden="true">
+                <FileText size={17} />
+              </div>
+            </div>
+            <div className="stat-value-row">
+              <strong>
+                <KpiAnimatedNumber value={draftDocsCount} />
+              </strong>
+              <span className="stat-unit">draf</span>
+            </div>
+            <div className="stat-sub">
               {draftDocsCount > 0 ? 'Siap dilanjutkan di Editor Naskah' : 'Belum ada draf berjalan'}
-            </span>
-          </button>
+            </div>
+          </KpiMotionCard>
 
-          <button
+          <KpiMotionCard
+            as="button"
             type="button"
-            className="s5-admin-metric-card"
+            index={1}
+            className="stat-card stat-card-interactive tone-sand"
             onClick={() => openPersuratanView({ view: 'center', nonce: Date.now() })}
           >
-            <span className="s5-admin-metric-label">Dokumen Final</span>
-            <span className="s5-admin-metric-value s5-tnum">{finalDocsCount}</span>
-            <span className="s5-admin-metric-sub">
+            <div className="stat-top">
+              <span>Dokumen Final</span>
+              <div className="stat-icon" aria-hidden="true">
+                <FileCheck2 size={17} />
+              </div>
+            </div>
+            <div className="stat-value-row">
+              <strong>
+                <KpiAnimatedNumber value={finalDocsCount} />
+              </strong>
+              <span className="stat-unit">naskah</span>
+            </div>
+            <div className="stat-sub">
               {finalDocsCount > 0 ? 'Bernomor resmi & salinan terkunci' : 'Belum ada dokumen disahkan'}
-            </span>
-          </button>
+            </div>
+          </KpiMotionCard>
 
-          <button
+          <KpiMotionCard
+            as="button"
             type="button"
-            className="s5-admin-metric-card"
+            index={2}
+            className="stat-card stat-card-interactive tone-blue"
             onClick={() => openPersuratanView({ view: 'center', nonce: Date.now() })}
           >
-            <span className="s5-admin-metric-label">Arsip &amp; Lampiran</span>
-            <span className="s5-admin-metric-value s5-tnum">{archivedDocsCount}</span>
-            <span className="s5-admin-metric-sub s5-tnum">
-              {attachmentsCount} lampiran terverifikasi tersimpan
-            </span>
-          </button>
+            <div className="stat-top">
+              <span>Arsip &amp; Lampiran</span>
+              <div className="stat-icon" aria-hidden="true">
+                <Archive size={17} />
+              </div>
+            </div>
+            <div className="stat-value-row">
+              <strong>
+                <KpiAnimatedNumber value={archivedDocsCount} />
+              </strong>
+              <span className="stat-unit">arsip</span>
+            </div>
+            <div className="stat-sub">{attachmentsCount} lampiran terverifikasi tersimpan</div>
+          </KpiMotionCard>
 
-          <button
+          <KpiMotionCard
+            as="button"
             type="button"
-            className="s5-admin-metric-card"
+            index={3}
+            className="stat-card stat-card-interactive tone-rose"
             onClick={() => openPersuratanView({ view: 'template-manager', nonce: Date.now() })}
           >
-            <span className="s5-admin-metric-label">Template Madrasah</span>
-            <span className="s5-admin-metric-value s5-tnum">{customTemplatesCount}</span>
-            <span className="s5-admin-metric-sub">
-              + 30 template resmi bawaan SAKALA
-            </span>
-          </button>
+            <div className="stat-top">
+              <span>Template Madrasah</span>
+              <div className="stat-icon" aria-hidden="true">
+                <LayoutGrid size={17} />
+              </div>
+            </div>
+            <div className="stat-value-row">
+              <strong>
+                <KpiAnimatedNumber value={customTemplatesCount} />
+              </strong>
+              <span className="stat-unit">kustom</span>
+            </div>
+            <div className="stat-sub">+ 30 template resmi bawaan SAKALA</div>
+          </KpiMotionCard>
         </div>
 
         {/* Status Kesiapan SK Pembagian Tugas Mengajar */}
@@ -2749,6 +2933,8 @@ function ScheduleScreen({
   state,
   selectedClass,
   onSelectClass,
+  highlightedSlot,
+  onClearHighlightedSlot,
   onEditSlot,
   onClearSlot,
   onAssignSlot,
@@ -2768,6 +2954,8 @@ function ScheduleScreen({
   state: AppState;
   selectedClass: string;
   onSelectClass: (value: string) => void;
+  highlightedSlot?: { classId: string; day: Day; jpNo: number } | null;
+  onClearHighlightedSlot?: () => void;
   onEditSlot: (classId: string, day: Day, jpNo: number) => void;
   onClearSlot?: (classId: string, day: Day, jpNo: number) => void;
   onAssignSlot?: (classId: string, day: Day, jpNo: number, subjectId: string, teacherId: string) => void;
@@ -2792,6 +2980,21 @@ function ScheduleScreen({
 
   // View mode switcher: 'all' (Matriks Seluruh Kelas) vs 'single' (Editor Per-Kelas)
   const [viewMode, setViewMode] = useState<'all' | 'single'>('all');
+
+  useEffect(() => {
+    if (!highlightedSlot) return;
+    setViewMode('single');
+    if (highlightedSlot.classId) {
+      onSelectClass(highlightedSlot.classId);
+    }
+    const timer = window.setTimeout(() => {
+      const el = document.querySelector(
+        `[data-slot-key="${highlightedSlot.classId}|${highlightedSlot.day}|${highlightedSlot.jpNo}"]`,
+      );
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    }, 90);
+    return () => window.clearTimeout(timer);
+  }, [highlightedSlot, onSelectClass]);
   const [filterTeacherId, setFilterTeacherId] = useState<string>('');
   const [filterSubjectId, setFilterSubjectId] = useState<string>('');
   const [colorizeCells, setColorizeCells] = useState<boolean>(true);
@@ -3860,6 +4063,42 @@ function ScheduleScreen({
                 </div>
               </div>
 
+              {highlightedSlot && highlightedSlot.classId === selectedClass && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '10px',
+                    flexWrap: 'wrap',
+                    padding: '10px 14px',
+                    marginBottom: '12px',
+                    borderRadius: '10px',
+                    background: '#FFFBEB',
+                    border: '1px solid #F3D999',
+                    color: '#78350F',
+                    fontSize: '12.5px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <AlertTriangle size={15} color="#B45309" />
+                    <span>
+                      Menyorot slot sasaran hasil validasi: <strong>Kelas {getClass(state, selectedClass)?.name}</strong> ·{' '}
+                      <strong>{highlightedSlot.day}</strong> · <strong>JP {String(highlightedSlot.jpNo).padStart(2, '0')}</strong>. Klik sel tersorot untuk mengedit atau menukar posisi.
+                    </span>
+                  </div>
+                  {onClearHighlightedSlot && (
+                    <button
+                      type="button"
+                      className="button button-sm button-secondary"
+                      onClick={onClearHighlightedSlot}
+                    >
+                      Tutup Sorotan
+                    </button>
+                  )}
+                </div>
+              )}
+
               {/* Interactive Drag-and-Drop Schedule Table */}
               <div className="schedule-table-wrap">
                 <table className="schedule-table">
@@ -3982,6 +4221,7 @@ function ScheduleScreen({
                                 </div>
                               )}
                               <div
+                                data-slot-key={`${selectedClass}|${day}|${jpNo}`}
                                 role="button"
                                 tabIndex={blocked ? -1 : 0}
                                 draggable={!blocked && !!entry}
@@ -3996,7 +4236,13 @@ function ScheduleScreen({
                                     onEditSlot(selectedClass, day, jpNo);
                                   }
                                 }}
-                                className={`schedule-cell ${entry ? 'has-entry' : 'is-empty'} ${blocked ? 'is-blocked' : ''}`}
+                                className={`schedule-cell ${entry ? 'has-entry' : 'is-empty'} ${blocked ? 'is-blocked' : ''} ${
+                                  highlightedSlot?.classId === selectedClass &&
+                                  highlightedSlot?.day === day &&
+                                  highlightedSlot?.jpNo === jpNo
+                                    ? 'schedule-cell-target-highlight'
+                                    : ''
+                                }`}
                                 style={{
                                   ...(entry && subject ? ({ '--subject-color': subject.color } as React.CSSProperties) : {}),
                                   cursor: blocked ? 'not-allowed' : undefined,
@@ -4185,18 +4431,30 @@ function ScheduleScreen({
 function GeneratorScreen({
   state,
   isGenerating,
+  nodesProgress,
   result,
   onGenerate,
+  onCancel,
   onChoose,
-  onNavigate: _onNavigate,
+  onDeleteCandidate,
+  onNavigate,
 }: {
   state: AppState;
   isGenerating: boolean;
+  nodesProgress: number;
   result: { status: GeneratorStatus; message: string; nodes: number } | null;
-  onGenerate: () => void;
+  onGenerate: (options?: { seed?: number; overrideLimit?: number; stayOnGenerator?: boolean }) => void;
+  onCancel: () => void;
   onChoose: (id: string) => void;
+  onDeleteCandidate: (id: string) => void;
   onNavigate?: (screen: ScreenId) => void;
 }) {
+  const [seedInput, setSeedInput] = useState<string>('');
+  const [searchLimitOverride, setSearchLimitOverride] = useState<number>(() =>
+    Math.max(1500, Math.min(100000, state.settings.searchLimit ?? 65000)),
+  );
+  const [autoOpenSchedule, setAutoOpenSchedule] = useState<boolean>(false);
+
   const statuses: Record<GeneratorStatus, { label: string; tone: 'success' | 'warning' | 'danger' | 'neutral' | 'info' }> = {
     QUEUED: { label: 'Menunggu', tone: 'neutral' },
     RUNNING: { label: 'Mencari kandidat', tone: 'info' },
@@ -4208,69 +4466,265 @@ function GeneratorScreen({
     FAILED: { label: 'Gagal', tone: 'danger' },
   };
 
+  const activeClassesCount = state.classes.filter((c) => c.isActive).length;
+  const totalSlotsCapacity = useMemo(
+    () =>
+      state.settings.activeDays.reduce((sum, day) => sum + teachingPeriodsForDay(state.slots, day).length, 0) *
+      activeClassesCount,
+    [state.settings.activeDays, state.slots, activeClassesCount],
+  );
   const allJP = state.requirements.reduce((sum, item) => sum + item.requiredJP, 0);
+  const uniqueSubjectCount = useMemo(
+    () => new Set(state.requirements.map((item) => item.subjectId)).size,
+    [state.requirements],
+  );
+
+  const preflightIssues = useMemo(() => validateMasterData(state), [state]);
+  const preflightErrors = useMemo(
+    () => preflightIssues.filter((issue) => issue.severity === 'error'),
+    [preflightIssues],
+  );
+  const preflightWarnings = useMemo(
+    () => preflightIssues.filter((issue) => issue.severity === 'warning'),
+    [preflightIssues],
+  );
+
+  const currentDraftFingerprint = useMemo(
+    () => buildScheduleFingerprint(state.draft ?? state.activeSchedule ?? []),
+    [state.draft, state.activeSchedule],
+  );
+
+  const triggerGenerateWithOptions = () => {
+    const trimmedSeed = seedInput.trim();
+    const parsedSeed = trimmedSeed && /^\d+$/.test(trimmedSeed) ? Number(trimmedSeed) : undefined;
+    onGenerate({
+      seed: parsedSeed,
+      overrideLimit: searchLimitOverride,
+      stayOnGenerator: !autoOpenSchedule,
+    });
+  };
 
   return (
     <>
       <PageHeading
         kicker="MESIN PENYUSUNAN PRESISI"
         title="Penyusun Jadwal Otomatis"
-        description={`Menyusun jadwal secara otomatis dengan mematuhi seluruh aturan wajib alokasi (${allJP} JP total kebutuhan) dan ketersediaan guru.`}
+        description={`Menyusun jadwal secara otomatis dengan mematuhi seluruh aturan wajib alokasi (${allJP} JP total kebutuhan) dan ketersediaan hari guru.`}
         actions={
-          <Button icon={WandSparkles} onClick={onGenerate} disabled={isGenerating}>
-            {isGenerating ? 'Sedang menyusun…' : 'Susun Jadwal Otomatis'}
-          </Button>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {isGenerating ? (
+              <Button variant="secondary" icon={X} onClick={onCancel}>
+                Batalkan Proses
+              </Button>
+            ) : null}
+            <Button
+              icon={WandSparkles}
+              onClick={triggerGenerateWithOptions}
+              disabled={isGenerating || preflightErrors.length > 0}
+            >
+              {isGenerating ? 'Sedang menyusun…' : 'Susun Jadwal Otomatis'}
+            </Button>
+          </div>
         }
       />
 
-      {/* Solver & Capacity KPI Metrics */}
-      <div className="generator-metrics">
-        <KpiMotionCard index={0}>
-          <span>TARGET ALOKASI JP</span>
-          <strong>
-            <KpiAnimatedNumber value={allJP} suffix=" JP" />
-          </strong>
-          <small>{state.requirements.length} Mata Pelajaran Siswa</small>
+      {/* Solver & Capacity KPI Metrics (Diselaraskan dengan Beban Guru) */}
+      <div className="stat-grid">
+        <KpiMotionCard index={0} className="stat-card tone-teal">
+          <div className="stat-top">
+            <span>Target Alokasi JP</span>
+            <div className="stat-icon" aria-hidden="true">
+              <BookOpen size={17} />
+            </div>
+          </div>
+          <div className="stat-value-row">
+            <strong>
+              <KpiAnimatedNumber value={allJP} />
+            </strong>
+            <span className="stat-unit">JP</span>
+          </div>
+          <div className="stat-sub">{uniqueSubjectCount} Mapel · {state.requirements.length} Alokasi</div>
         </KpiMotionCard>
-        <KpiMotionCard index={1}>
-          <span>KAPASITAS SLOT MURNI</span>
-          <strong>
-            <KpiAnimatedNumber
-              value={
-                state.settings.activeDays.reduce((sum, day) => sum + teachingPeriodsForDay(state.slots, day).length, 0) *
-                state.classes.filter((c) => c.isActive).length
-              }
-              suffix=" JP"
-            />
-          </strong>
-          <small>{state.classes.filter((c) => c.isActive).length} Rombel KBM Terdaftar</small>
+
+        <KpiMotionCard index={1} className="stat-card tone-sand">
+          <div className="stat-top">
+            <span>Kapasitas Slot Murni</span>
+            <div className="stat-icon" aria-hidden="true">
+              <Clock size={17} />
+            </div>
+          </div>
+          <div className="stat-value-row">
+            <strong>
+              <KpiAnimatedNumber value={totalSlotsCapacity} />
+            </strong>
+            <span className="stat-unit">JP</span>
+          </div>
+          <div className="stat-sub">{activeClassesCount} Rombel KBM Aktif</div>
         </KpiMotionCard>
-        <KpiMotionCard index={2}>
-          <span>KANDIDAT TERSIMPAN</span>
-          <strong>
-            <KpiAnimatedNumber value={state.candidates.length} />
-          </strong>
-          <small>Variasi Solusi Teruji</small>
+
+        <KpiMotionCard index={2} className="stat-card tone-blue">
+          <div className="stat-top">
+            <span>Kandidat Tersimpan</span>
+            <div className="stat-icon" aria-hidden="true">
+              <Sparkles size={17} />
+            </div>
+          </div>
+          <div className="stat-value-row">
+            <strong>
+              <KpiAnimatedNumber value={state.candidates.length} />
+            </strong>
+            <span className="stat-unit">solusi</span>
+          </div>
+          <div className="stat-sub">Variasi Solusi Teruji</div>
         </KpiMotionCard>
-        <KpiMotionCard index={3}>
-          <span>STATUS PENYUSUNAN</span>
-          <strong
-            style={{
-              color: isGenerating ? '#1f6850' : result?.status === 'SUCCESS' ? '#1f6850' : '#876123',
-            }}
-          >
-            {isGenerating ? (
-              'Menyusun...'
-            ) : result?.status === 'SUCCESS' ? (
-              <KpiAnimatedNumber value={100} suffix="% Lolos" />
-            ) : result ? (
-              statuses[result.status].label
-            ) : (
-              'Siap Dijalankan'
+
+        <KpiMotionCard index={3} className="stat-card tone-rose">
+          <div className="stat-top">
+            <span>Status Penyusunan</span>
+            <div className="stat-icon" aria-hidden="true">
+              {isGenerating ? (
+                <WandSparkles size={17} />
+              ) : result?.status === 'SUCCESS' ? (
+                <ShieldCheck size={17} />
+              ) : preflightErrors.length > 0 || result?.status === 'FAILED' || result?.status === 'INFEASIBLE' ? (
+                <AlertTriangle size={17} />
+              ) : (
+                <CheckCircle2 size={17} />
+              )}
+            </div>
+          </div>
+          <div className="stat-value-row">
+            <strong>
+              {isGenerating ? (
+                'Menyusun…'
+              ) : result?.status === 'SUCCESS' ? (
+                <KpiAnimatedNumber value={100} suffix="%" />
+              ) : result ? (
+                statuses[result.status].label
+              ) : preflightErrors.length > 0 ? (
+                `${preflightErrors.length} Syarat`
+              ) : (
+                'Siap'
+              )}
+            </strong>
+            {result?.status === 'SUCCESS' && !isGenerating && (
+              <span className="stat-unit">Lolos</span>
             )}
-          </strong>
-          <small>Mesin Kepatuhan Aturan Jadwal</small>
+          </div>
+          <div className="stat-sub">
+            {isGenerating
+              ? `${nodesProgress.toLocaleString('id-ID')} kombinasi diperiksa`
+              : preflightErrors.length > 0 && !result
+              ? 'Perlu penyesuaian prasyarat data'
+              : 'Mesin Kepatuhan Aturan Jadwal'}
+          </div>
         </KpiMotionCard>
+      </div>
+
+      {/* Pre-Flight Readiness & Solver Parameter Controls */}
+      <div className="surface-card" style={{ padding: '16px 20px', marginBottom: '18px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '9px',
+                display: 'grid',
+                placeItems: 'center',
+                background: preflightErrors.length > 0 ? '#FDE8E5' : '#E1F4EA',
+                color: preflightErrors.length > 0 ? '#9E2A21' : '#166534',
+              }}
+            >
+              {preflightErrors.length > 0 ? <AlertTriangle size={16} /> : <ShieldCheck size={16} />}
+            </div>
+            <div>
+              <strong style={{ fontSize: '13.5px', color: '#0B2923', display: 'block' }}>
+                {preflightErrors.length > 0
+                  ? `Prasyarat Belum Lengkap (${preflightErrors.length} Masalah Kritis)`
+                  : 'Pemeriksaan Prasyarat Data Master & Alokasi Lolos'}
+              </strong>
+              <span style={{ fontSize: '12px', color: '#526861' }}>
+                {preflightErrors.length > 0
+                  ? preflightErrors[0].message
+                  : preflightWarnings.length > 0
+                  ? `Data utama siap disusun; terdapat ${preflightWarnings.length} catatan optimalisasi ringan.`
+                  : 'Seluruh kapasitas kelas, kualifikasi guru, hari siap mengajar, dan beban JP memenuhi syarat.'}
+              </span>
+            </div>
+          </div>
+
+          {preflightErrors.length > 0 && onNavigate && (
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => onNavigate(getTargetScreenForIssue(preflightErrors[0]))}
+              >
+                {getActionLabelForIssue(preflightErrors[0])} →
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <div style={{ height: '1px', background: '#E4ECE7' }} />
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <label htmlFor="gen-depth" style={{ fontSize: '12px', fontWeight: 600, color: '#274744', margin: 0 }}>
+                Kedalaman Pencarian:
+              </label>
+              <select
+                id="gen-depth"
+                className="s5-toolbar-select"
+                value={searchLimitOverride}
+                disabled={isGenerating}
+                onChange={(e) => setSearchLimitOverride(Number(e.target.value))}
+                style={{ minWidth: '175px' }}
+              >
+                <option value={15000}>Cepat (15.000 langkah)</option>
+                <option value={65000}>Standar (65.000 langkah)</option>
+                <option value={100000}>Mendalam (100.000 langkah)</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <label htmlFor="gen-seed" style={{ fontSize: '12px', fontWeight: 600, color: '#274744', margin: 0 }}>
+                Seed Variasi:
+              </label>
+              <input
+                id="gen-seed"
+                type="text"
+                inputMode="numeric"
+                placeholder="Acak otomatis"
+                value={seedInput}
+                disabled={isGenerating}
+                onChange={(e) => setSeedInput(e.target.value.replace(/[^\d]/g, ''))}
+                className="s5-tnum"
+                style={{
+                  width: '132px',
+                  height: '36px',
+                  padding: '0 10px',
+                  borderRadius: '8px',
+                  border: '1px solid #C8D7D0',
+                  fontSize: '12.5px',
+                  color: '#0B2923',
+                  background: '#FFFFFF',
+                }}
+              />
+            </div>
+          </div>
+
+          <label className="master-toggle-label" style={{ fontSize: '12px', color: '#274744' }}>
+            <input
+              type="checkbox"
+              checked={autoOpenSchedule}
+              onChange={(e) => setAutoOpenSchedule(e.target.checked)}
+            />
+            <span>Otomatis buka Matriks Jadwal setelah selesai</span>
+          </label>
+        </div>
       </div>
 
       {/* Combinatorial Solver Radar Feedback */}
@@ -4280,18 +4734,21 @@ function GeneratorScreen({
             <Sparkles size={18} style={{ color: '#124037' }} />
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <strong style={{ fontSize: '13.5px', color: '#0B2923' }}>
                 Mesin Penyusun Jadwal Sedang Bekerja
               </strong>
-              <span className="s5-tnum" style={{ fontSize: '11px', background: '#E1E8E4', padding: '2px 8px', borderRadius: '4px', fontWeight: 600, color: '#124037' }}>
-                Pemeriksaan Otomatis
+              <span className="s5-tnum" style={{ fontSize: '11.5px', background: '#E1E8E4', padding: '2px 9px', borderRadius: '6px', fontWeight: 600, color: '#124037' }}>
+                {nodesProgress.toLocaleString('id-ID')} kombinasi diperiksa
               </span>
             </div>
             <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#556663' }}>
-              Memeriksa kombinasi ruang jadwal, ketersediaan hari mengajar guru, batas beban harian, serta slot khusus madrasah bebas bentrok.
+              Memeriksa kombinasi ruang jadwal, ketersediaan hari mengajar guru, batas beban harian, serta slot khusus madrasah bebas bentrok di latar belakang.
             </p>
           </div>
+          <Button variant="secondary" size="sm" icon={X} onClick={onCancel}>
+            Batalkan
+          </Button>
         </div>
       )}
 
@@ -4309,16 +4766,52 @@ function GeneratorScreen({
                 <WandSparkles size={22} />
               )}
             </div>
-            <div>
+            <div style={{ flex: 1 }}>
               <strong>{isGenerating ? 'Menyusun variasi jadwal…' : result ? statuses[result.status].label : 'Belum ada penyusunan baru'}</strong>
-              <span>{isGenerating ? 'Memeriksa slot, alokasi, dan bentrok lintas kelas.' : result?.message ?? 'Klik tombol di atas untuk menyusun jadwal.'}</span>
+              <span>{isGenerating ? 'Memeriksa slot, alokasi, dan bentrok lintas kelas.' : result?.message ?? 'Klik tombol Susun Jadwal Otomatis untuk memulai.'}</span>
             </div>
           </div>
 
           {result && (
             <div className="result-stats">
-              <div><span>Kombinasi Diperiksa</span><strong>{result.nodes.toLocaleString('id-ID')}</strong></div>
-              <div><span>Status</span><StatusPill status={statuses[result.status].tone}>{statuses[result.status].label}</StatusPill></div>
+              <div>
+                <span>Kombinasi Diperiksa</span>
+                <strong className="s5-tnum">{(isGenerating ? nodesProgress : result.nodes).toLocaleString('id-ID')}</strong>
+              </div>
+              <div>
+                <span>Status</span>
+                <StatusPill status={statuses[result.status].tone}>{statuses[result.status].label}</StatusPill>
+              </div>
+            </div>
+          )}
+
+          {result?.status === 'SUCCESS' && onNavigate && (
+            <div style={{ marginBottom: '14px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <Button icon={CalendarDays} onClick={() => onNavigate('schedule')}>
+                Buka Matriks Jadwal →
+              </Button>
+              <Button variant="secondary" icon={ShieldCheck} onClick={() => onNavigate('validation')}>
+                Lihat Audit Validasi
+              </Button>
+            </div>
+          )}
+
+          {(result?.status === 'INFEASIBLE' || result?.status === 'SEARCH_LIMIT_REACHED') && onNavigate && (
+            <div style={{ marginBottom: '14px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {result.status === 'SEARCH_LIMIT_REACHED' && searchLimitOverride < 100000 && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setSearchLimitOverride(100000);
+                    onGenerate({ overrideLimit: 100000, stayOnGenerator: !autoOpenSchedule });
+                  }}
+                >
+                  Coba Lagi dengan Mode Mendalam (100.000)
+                </Button>
+              )}
+              <Button variant="secondary" size="sm" onClick={() => onNavigate('requirements')}>
+                Tinjau Kebutuhan &amp; Alokasi JP →
+              </Button>
             </div>
           )}
 
@@ -4330,36 +4823,75 @@ function GeneratorScreen({
 
         <Card eyebrow="RIWAYAT KANDIDAT" title="Kandidat Tersimpan">
           {!state.candidates.length ? (
-            <EmptyState icon={WandSparkles} title="Belum ada kandidat" description="Kandidat valid akan muncul di sini." />
+            <EmptyState icon={WandSparkles} title="Belum ada kandidat" description="Kandidat jadwal yang lolos seluruh aturan wajib akan tersimpan di sini untuk dibandingkan." />
           ) : (
             <div className="candidate-table-wrap">
               <table className="data-table candidate-table">
                 <thead>
                   <tr>
                     <th>Kandidat</th>
-                    <th>Ketercapaian</th>
+                    <th>Kualitas &amp; Blok</th>
                     <th>Skor</th>
-                    <th>Aksi</th>
+                    <th style={{ textAlign: 'right' }}>Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {state.candidates.map((cand) => (
-                    <tr key={cand.id}>
-                      <td>
-                        <strong>{cand.label}</strong>
-                        <small style={{ display: 'block', color: '#526861' }}>{cand.entries.length} penempatan</small>
-                      </td>
-                      <td>
-                        <StatusPill status={cand.report.valid ? 'success' : 'danger'}>
-                          {cand.report.valid ? '100% Lolos' : `${cand.report.hardErrorCount} Isu`}
-                        </StatusPill>
-                      </td>
-                      <td><strong>{cand.score}</strong></td>
-                      <td>
-                        <Button variant="secondary" onClick={() => onChoose(cand.id)}>Terapkan</Button>
-                      </td>
-                    </tr>
-                  ))}
+                  {state.candidates.map((cand) => {
+                    const breakdown = cand.scoreBreakdown ?? scoreScheduleDetailed(state, cand.entries);
+                    const isActiveDraft =
+                      cand.entries.length > 0 &&
+                      buildScheduleFingerprint(cand.entries) === currentDraftFingerprint;
+                    return (
+                      <tr key={cand.id}>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <strong>{cand.label}</strong>
+                            {isActiveDraft && <StatusPill status="success">Aktif di Draf</StatusPill>}
+                          </div>
+                          <small style={{ display: 'block', color: '#526861', marginTop: '2px' }}>
+                            {cand.entries.length} penempatan · {cand.searchNodes.toLocaleString('id-ID')} langkah
+                          </small>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <StatusPill status={cand.report.valid ? 'success' : 'danger'}>
+                              {cand.report.valid ? '100% Lolos' : `${cand.report.hardErrorCount} Isu`}
+                            </StatusPill>
+                            <span style={{ fontSize: '11px', color: '#526861' }}>
+                              +{breakdown.doubleBlockCount} blok 2JP
+                              {breakdown.sameDayPenalty > 0 ? ` · -${breakdown.sameDayPenalty} tumpuk` : ''}
+                              {breakdown.freeSlotPenalty > 0 ? ` · -${breakdown.freeSlotPenalty} kosong` : ''}
+                            </span>
+                          </div>
+                        </td>
+                        <td>
+                          <strong className="s5-tnum">{cand.score}</strong>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div className="s5-action-dock" style={{ display: 'inline-flex', justifyContent: 'flex-end' }}>
+                            <button
+                              type="button"
+                              className="s5-dock-btn primary"
+                              onClick={() => onChoose(cand.id)}
+                              disabled={isActiveDraft}
+                              title={isActiveDraft ? 'Kandidat ini sudah aktif di draf' : 'Terapkan kandidat ke draf jadwal'}
+                            >
+                              {isActiveDraft ? 'Aktif' : 'Terapkan'}
+                            </button>
+                            <button
+                              type="button"
+                              className="s5-dock-btn"
+                              onClick={() => onDeleteCandidate(cand.id)}
+                              title="Hapus kandidat dari riwayat"
+                              style={{ color: '#8F2D24' }}
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -4523,6 +5055,10 @@ function MasterScreen({
     });
   }, [state.classes, search, filterPreset]);
 
+  const globalMaxJP =
+    state.settings.maxWeeklyJP && state.settings.maxWeeklyJP > 0 ? state.settings.maxWeeklyJP : 24;
+  const globalOptimalMin = Math.max(1, Math.round(globalMaxJP * 0.8));
+
   const filteredTeachers = useMemo(() => {
     return state.teachers.filter((item) => {
       const matchSearch = `${item.name} ${item.code} ${item.nip || ''} ${item.roleTitle || ''}`.toLowerCase().includes(search.toLowerCase());
@@ -4532,14 +5068,15 @@ function MasterScreen({
 
       const teacherReqs = state.requirements.filter((r) => r.teacherId === item.id);
       const assignedJP = teacherReqs.reduce((sum, r) => sum + r.requiredJP, 0);
-      const maxJP = item.maxWeeklyJP || 24;
+      const maxJP = item.maxWeeklyJP && item.maxWeeklyJP > 0 ? item.maxWeeklyJP : globalMaxJP;
+      const optimalMin = Math.max(1, Math.round(maxJP * 0.8));
 
       if (filterPreset === 'overload') return assignedJP > maxJP;
-      if (filterPreset === 'optimal') return assignedJP >= 20 && assignedJP <= maxJP;
+      if (filterPreset === 'optimal') return assignedJP >= optimalMin && assignedJP <= maxJP;
       if (filterPreset === 'zero') return assignedJP === 0;
       return true;
     });
-  }, [state.teachers, state.requirements, search, filterPreset]);
+  }, [state.teachers, state.requirements, search, filterPreset, globalMaxJP]);
 
   const filteredSubjects = useMemo(() => {
     return state.subjects.filter((item) => {
@@ -4679,150 +5216,81 @@ function MasterScreen({
         </div>
       </section>
 
-      {/* 2026 Executive Glass Metric Cards */}
-      <div className="master-prestige-metric-grid" role="region" aria-label="Ringkasan Statistik Master">
-        {/* Card 1: Teachers */}
-        <KpiMotionCard className="prestige-metric-card stat-card" index={0}>
-          <div className="prestige-card-top">
-            <div className="prestige-icon-badge emerald">
-              <Users size={18} />
+      {/* Metric Cards Grid (Diselaraskan dengan Beban Guru) */}
+      <div className="stat-grid" role="region" aria-label="Ringkasan Statistik Master">
+        <KpiMotionCard className="stat-card tone-teal" index={0}>
+          <div className="stat-top">
+            <span>Dewan Asatidz &amp; Guru</span>
+            <div className="stat-icon" aria-hidden="true">
+              <Users size={17} />
             </div>
-            <span className="prestige-card-tag">{teacherClassRatio}x Rasio Kelas</span>
           </div>
-          <div>
-            <div className="prestige-val-row">
-              <span className="prestige-val s5-tnum">
-                <KpiAnimatedNumber value={activeTeachers.length} />
-              </span>
-              <span className="prestige-subval">/ {state.teachers.length} terdata</span>
-            </div>
-            <span className="prestige-card-lbl">Dewan Asatidz &amp; Guru</span>
+          <div className="stat-value-row">
+            <strong>
+              <KpiAnimatedNumber value={activeTeachers.length} />
+            </strong>
+            <span className="stat-unit">/ {state.teachers.length} terdata</span>
           </div>
-          <div className="prestige-card-foot">
-            <span>Rata-rata: {avgTeacherJP} JP/minggu</span>
-            <span style={{ fontWeight: 700, color: '#0d5f47' }}>Aktif</span>
-          </div>
-          <div className="prestige-spark-bar">
-            <div
-              className="prestige-spark-fill"
-              style={{
-                width: `${Math.min(100, Math.round((Number(avgTeacherJP) / 24) * 100))}%`,
-                background: '#15803d',
-              }}
-            />
+          <div className="stat-sub">
+            Rata-rata {avgTeacherJP} JP/mgg · {teacherClassRatio}x rasio kelas (maks {globalMaxJP} JP)
           </div>
         </KpiMotionCard>
 
-        {/* Card 2: Classes */}
-        <KpiMotionCard className="prestige-metric-card stat-card" index={1}>
-          <div className="prestige-card-top">
-            <div className="prestige-icon-badge teal">
-              <GraduationCap size={18} />
+        <KpiMotionCard className="stat-card tone-sand" index={1}>
+          <div className="stat-top">
+            <span>Rombongan Belajar</span>
+            <div className="stat-icon" aria-hidden="true">
+              <GraduationCap size={17} />
             </div>
-            <span className="prestige-card-tag">Tingkat VII–IX</span>
           </div>
-          <div>
-            <div className="prestige-val-row">
-              <span className="prestige-val s5-tnum">
-                <KpiAnimatedNumber value={activeClasses.length} />
-              </span>
-              <span className="prestige-subval">Rombel Aktif</span>
-            </div>
-            <span className="prestige-card-lbl">Rombongan Belajar</span>
+          <div className="stat-value-row">
+            <strong>
+              <KpiAnimatedNumber value={activeClasses.length} />
+            </strong>
+            <span className="stat-unit">Rombel · {totalAssignedJP} JP</span>
           </div>
-          <div className="prestige-card-foot">
-            <span>VII: {classesVII} · VIII: {classesVIII} · IX: {classesIX}</span>
-            <span style={{ fontWeight: 700, color: '#0e6b72' }}>{totalAssignedJP} JP</span>
-          </div>
-          <div className="prestige-spark-bar">
-            <div
-              className="prestige-spark-fill"
-              style={{
-                width: `${Math.min(100, Math.round((activeClasses.length / (state.classes.length || 1)) * 100))}%`,
-                background: '#0e6b72',
-              }}
-            />
+          <div className="stat-sub">
+            VII: {classesVII} · VIII: {classesVIII} · IX: {classesIX}
           </div>
         </KpiMotionCard>
 
-        {/* Card 3: Subjects */}
-        <KpiMotionCard className="prestige-metric-card stat-card" index={2}>
-          <div className="prestige-card-top">
-            <div className="prestige-icon-badge amber">
-              <BookOpen size={18} />
+        <KpiMotionCard className="stat-card tone-blue" index={2}>
+          <div className="stat-top">
+            <span>Struktur Kurikulum</span>
+            <div className="stat-icon" aria-hidden="true">
+              <BookOpen size={17} />
             </div>
-            <span className="prestige-card-tag">Kemenag &amp; Nasional</span>
           </div>
-          <div>
-            <div className="prestige-val-row">
-              <span className="prestige-val s5-tnum">
-                <KpiAnimatedNumber value={activeSubjects.length} />
-              </span>
-              <span className="prestige-subval">Mapel Aktif</span>
-            </div>
-            <span className="prestige-card-lbl">Struktur Kurikulum</span>
+          <div className="stat-value-row">
+            <strong>
+              <KpiAnimatedNumber value={activeSubjects.length} />
+            </strong>
+            <span className="stat-unit">Mapel Aktif</span>
           </div>
-          <div className="prestige-card-foot">
-            <span>{missingTeachersInSubjects === 0 ? 'Semua mapel terampu' : `${missingTeachersInSubjects} mapel belum ada guru`}</span>
-            <span style={{ fontWeight: 700, color: missingTeachersInSubjects === 0 ? '#15803d' : '#b45309' }}>
-              {missingTeachersInSubjects === 0 ? 'Lengkap' : 'Perlu Guru'}
-            </span>
-          </div>
-          <div className="prestige-spark-bar">
-            <div
-              className="prestige-spark-fill"
-              style={{
-                width: `${Math.min(100, Math.round(((activeSubjects.length - missingTeachersInSubjects) / (activeSubjects.length || 1)) * 100))}%`,
-                background: '#b45309',
-              }}
-            />
+          <div className="stat-sub">
+            {missingTeachersInSubjects === 0
+              ? 'Semua mata pelajaran terampu'
+              : `${missingTeachersInSubjects} mapel belum ada guru`}
           </div>
         </KpiMotionCard>
 
-        {/* Card 4: Integrity */}
-        <KpiMotionCard className="prestige-metric-card stat-card" index={3}>
-          <div className="prestige-card-top">
-            <div className="prestige-icon-badge jade">
-              <ShieldCheck size={18} />
+        <KpiMotionCard className="stat-card tone-rose" index={3}>
+          <div className="stat-top">
+            <span>Integritas Basis Data</span>
+            <div className="stat-icon" aria-hidden="true">
+              {integrityScore === 100 ? <ShieldCheck size={17} /> : <AlertTriangle size={17} />}
             </div>
-            <span
-              className="prestige-card-tag"
-              style={{
-                color: integrityScore === 100 ? '#166534' : '#b45309',
-                background: integrityScore === 100 ? '#edf7ea' : '#fef6e7',
-                borderColor: integrityScore === 100 ? '#c2e5bc' : '#f9deab',
-              }}
-            >
-              {integrityScore === 100 ? 'Siap Disusun' : 'Perlu Lengkapi'}
-            </span>
           </div>
-          <div>
-            <div className="prestige-val-row">
-              <span className="prestige-val s5-tnum" style={{ color: integrityScore === 100 ? '#166534' : '#0e2e26' }}>
-                <KpiAnimatedNumber value={integrityScore} suffix="%" />
-              </span>
-              <span className="prestige-subval">Skor Kesiapan</span>
-            </div>
-            <span className="prestige-card-lbl">Integritas Basis Data</span>
+          <div className="stat-value-row">
+            <strong>
+              <KpiAnimatedNumber value={integrityScore} suffix="%" />
+            </strong>
+            <span className="stat-unit">{integrityScore === 100 ? 'Valid' : 'Perlu Lengkapi'}</span>
           </div>
-          <div className="prestige-card-foot">
-            <span>
-              {integrityScore === 100
-                ? 'Validasi master terpenuhi'
-                : `${missingTeachersInSubjects + classesWithoutRequirements} catatan kelengkapan`}
-            </span>
-            <span style={{ fontWeight: 700, color: integrityScore === 100 ? '#15803d' : '#b45309' }}>
-              {integrityScore === 100 ? '100% Valid' : 'Perlu Lengkapi'}
-            </span>
-          </div>
-          <div className="prestige-spark-bar">
-            <div
-              className="prestige-spark-fill"
-              style={{
-                width: `${integrityScore}%`,
-                background: integrityScore === 100 ? '#166534' : '#d97706',
-              }}
-            />
+          <div className="stat-sub">
+            {integrityScore === 100
+              ? 'Validasi master terpenuhi'
+              : `${missingTeachersInSubjects + classesWithoutRequirements} catatan kelengkapan`}
           </div>
         </KpiMotionCard>
       </div>
@@ -4952,14 +5420,14 @@ function MasterScreen({
                 className={`master-filter-chip ${filterPreset === 'optimal' ? 'active' : ''}`}
                 onClick={() => setFilterPreset(filterPreset === 'optimal' ? 'all' : 'optimal')}
               >
-                Beban Optimal (20–24 JP)
+                Beban Optimal ({globalOptimalMin}–{globalMaxJP} JP)
               </button>
               <button
                 type="button"
                 className={`master-filter-chip ${filterPreset === 'overload' ? 'active' : ''}`}
                 onClick={() => setFilterPreset(filterPreset === 'overload' ? 'all' : 'overload')}
               >
-                Beban Berlebih (&gt;24 JP)
+                Beban Berlebih (&gt; Batas Guru)
               </button>
               <button
                 type="button"
@@ -5132,7 +5600,7 @@ function MasterScreen({
                 </div>
                 <div className="field-group narrow-field">
                   <label>Batas Maksimum Mengajar (JP/minggu)</label>
-                  <input type="number" min="1" max="50" value={form.maxWeeklyJP} onChange={(e) => setForm({ ...form, maxWeeklyJP: e.target.value })} />
+                  <input type="number" min="1" max="80" value={form.maxWeeklyJP} onChange={(e) => setForm({ ...form, maxWeeklyJP: e.target.value })} />
                 </div>
               </>
             )}
@@ -5277,10 +5745,11 @@ function MasterScreen({
                 {(paginatedList as Teacher[]).map((t) => {
                   const teacherReqs = state.requirements.filter((r) => r.teacherId === t.id);
                   const totalAssignedJP = teacherReqs.reduce((sum, r) => sum + r.requiredJP, 0);
-                  const maxJP = t.maxWeeklyJP || 24;
+                  const maxJP = t.maxWeeklyJP && t.maxWeeklyJP > 0 ? t.maxWeeklyJP : globalMaxJP;
                   const pct = Math.round((totalAssignedJP / maxJP) * 100);
                   const isOverload = totalAssignedJP > maxJP;
-                  const isOptimal = totalAssignedJP >= 20 && totalAssignedJP <= maxJP;
+                  const optimalMin = Math.max(1, Math.round(maxJP * 0.8));
+                  const isOptimal = totalAssignedJP >= optimalMin && totalAssignedJP <= maxJP;
                   const roleVariant = getRoleBadgeVariant(t.roleTitle);
                   const isSelected = selectedSet.has(t.id);
 
@@ -5768,25 +6237,17 @@ function MasterScreen({
 function RequirementsScreen({
   state,
   masterIssues,
-  formOpen,
-  setFormOpen,
-  form,
-  setForm,
-  onSave,
+  onUpdateRequirementJP,
   onDelete,
   onGenerate,
-  onNavigate: _onNavigate,
+  onNavigate,
   onEdit,
   onOpenAddModal,
   onBatchCopyRequirements,
 }: {
   state: AppState;
   masterIssues?: ValidationIssue[];
-  formOpen: boolean;
-  setFormOpen: (value: boolean) => void;
-  form: typeof emptyRequirementForm;
-  setForm: (value: typeof emptyRequirementForm) => void;
-  onSave: (event: FormEvent) => void;
+  onUpdateRequirementJP: (reqId: string, nextJP: number) => void;
   onDelete: (requirement: Requirement) => void;
   onGenerate: () => void;
   onNavigate?: (screen: ScreenId) => void;
@@ -5795,6 +6256,9 @@ function RequirementsScreen({
   onBatchCopyRequirements?: (sourceClassId: string, targetClassId: string) => void;
 }) {
   const [selectedClassFilter, setSelectedClassFilter] = useState<string>('ALL');
+  const [selectedTeacherFilter, setSelectedTeacherFilter] = useState<string>('ALL');
+  const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<string>('ALL');
+  const [sortBy, setSortBy] = useState<'class' | 'subject' | 'teacher' | 'jp-desc'>('class');
   const [onlyIssuesFilter, setOnlyIssuesFilter] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [reqPageSize, setReqPageSize] = useState<number>(10);
@@ -5807,7 +6271,7 @@ function RequirementsScreen({
 
   useEffect(() => {
     setReqPage(1);
-  }, [selectedClassFilter, onlyIssuesFilter, searchQuery]);
+  }, [selectedClassFilter, selectedTeacherFilter, selectedSubjectFilter, sortBy, onlyIssuesFilter, searchQuery]);
 
   // 1. Calculate Total Weekly Slots per Class
   const totalWeeklySlots = useMemo(() => {
@@ -5827,20 +6291,20 @@ function RequirementsScreen({
         const classReqs = state.requirements.filter((r) => r.classId === cls.id);
         const allocatedJP = classReqs.reduce((sum, r) => sum + r.requiredJP, 0);
         const diff = allocatedJP - totalWeeklySlots;
-        const isExact = diff === 0;
-        const isOver = diff > 0;
-        const isUnder = diff < 0;
         return {
           cls,
           allocatedJP,
           diff,
-          isExact,
-          isOver,
-          isUnder,
+          isExact: diff === 0,
+          isOver: diff > 0,
+          isUnder: diff < 0,
           reqCount: classReqs.length,
         };
       });
   }, [state.classes, state.requirements, totalWeeklySlots]);
+
+  const defaultMaxWeeklyJP =
+    state.settings.maxWeeklyJP && state.settings.maxWeeklyJP > 0 ? state.settings.maxWeeklyJP : 24;
 
   // 3. Real-Time Teacher Workload Metrics
   const teacherWorkloadStats = useMemo(() => {
@@ -5848,7 +6312,7 @@ function RequirementsScreen({
     for (const t of state.teachers) {
       const reqs = state.requirements.filter((r) => r.teacherId === t.id);
       const teacherTotalJP = reqs.reduce((sum, r) => sum + r.requiredJP, 0);
-      const maxJP = t.maxWeeklyJP || 24;
+      const maxJP = t.maxWeeklyJP && t.maxWeeklyJP > 0 ? t.maxWeeklyJP : defaultMaxWeeklyJP;
       map.set(t.id, {
         totalJP: teacherTotalJP,
         maxJP,
@@ -5858,7 +6322,18 @@ function RequirementsScreen({
       });
     }
     return map;
-  }, [state.teachers, state.requirements]);
+  }, [state.teachers, state.requirements, defaultMaxWeeklyJP]);
+
+  // Combine split-teacher allocations per (classId, subjectId)
+  const classSubjectTotals = useMemo(() => {
+    const map = new Map<string, { totalJP: number; count: number }>();
+    for (const r of state.requirements) {
+      const key = `${r.classId}|${r.subjectId}`;
+      const existing = map.get(key) ?? { totalJP: 0, count: 0 };
+      map.set(key, { totalJP: existing.totalJP + r.requiredJP, count: existing.count + 1 });
+    }
+    return map;
+  }, [state.requirements]);
 
   // 4. Real-Time Data Master Issues
   const liveIssues = useMemo(() => {
@@ -5868,16 +6343,20 @@ function RequirementsScreen({
   const criticalIssues = useMemo(() => liveIssues.filter((i) => i.severity === 'error'), [liveIssues]);
   const warningIssues = useMemo(() => liveIssues.filter((i) => i.severity === 'warning'), [liveIssues]);
 
-  // Filtered Requirements
+  // Filtered & Sorted Requirements
   const filteredRequirements = useMemo(() => {
-    return state.requirements.filter((r) => {
+    const filtered = state.requirements.filter((r) => {
       if (selectedClassFilter !== 'ALL' && r.classId !== selectedClassFilter) return false;
+      if (selectedTeacherFilter !== 'ALL' && r.teacherId !== selectedTeacherFilter) return false;
+      if (selectedSubjectFilter !== 'ALL' && r.subjectId !== selectedSubjectFilter) return false;
 
       const tStat = teacherWorkloadStats.get(r.teacherId);
       const cStat = classCapacityStats.find((c) => c.cls.id === r.classId);
+      const tch = getTeacher(state, r.teacherId);
+      const isQualified = Boolean(tch?.subjectIds.includes(r.subjectId));
 
       if (onlyIssuesFilter) {
-        const hasIssue = tStat?.isOver || cStat?.isOver || cStat?.isUnder;
+        const hasIssue = Boolean(tStat?.isOver || cStat?.isOver || cStat?.isUnder || !isQualified);
         if (!hasIssue) return false;
       }
 
@@ -5891,29 +6370,36 @@ function RequirementsScreen({
 
       return true;
     });
-  }, [state, selectedClassFilter, onlyIssuesFilter, searchQuery, teacherWorkloadStats, classCapacityStats]);
 
-  // Inline Form Simulation Calculations
-  const simTeacher = state.teachers.find((t) => t.id === form.teacherId);
-  const simClass = state.classes.find((c) => c.id === form.classId);
-  const simSubject = state.subjects.find((s) => s.id === form.subjectId);
-  const simJP = Number(form.requiredJP) || 0;
+    return [...filtered].sort((a, b) => {
+      if (sortBy === 'jp-desc') return b.requiredJP - a.requiredJP;
+      if (sortBy === 'subject') {
+        return (getSubject(state, a.subjectId)?.name ?? '').localeCompare(getSubject(state, b.subjectId)?.name ?? '', 'id');
+      }
+      if (sortBy === 'teacher') {
+        return (getTeacher(state, a.teacherId)?.name ?? '').localeCompare(getTeacher(state, b.teacherId)?.name ?? '', 'id');
+      }
+      const clsCmp = (getClass(state, a.classId)?.name ?? '').localeCompare(getClass(state, b.classId)?.name ?? '', 'id');
+      if (clsCmp !== 0) return clsCmp;
+      return (getSubject(state, a.subjectId)?.name ?? '').localeCompare(getSubject(state, b.subjectId)?.name ?? '', 'id');
+    });
+  }, [
+    state,
+    selectedClassFilter,
+    selectedTeacherFilter,
+    selectedSubjectFilter,
+    sortBy,
+    onlyIssuesFilter,
+    searchQuery,
+    teacherWorkloadStats,
+    classCapacityStats,
+  ]);
 
-  const currentTeacherJP = state.requirements
-    .filter((r) => r.teacherId === form.teacherId)
-    .reduce((sum, r) => sum + r.requiredJP, 0);
-  const nextTeacherJP = currentTeacherJP + simJP;
-  const simTeacherMax = simTeacher?.maxWeeklyJP || 24;
-  const isSimTeacherOver = nextTeacherJP > simTeacherMax;
-
-  const currentClassJP = state.requirements
-    .filter((r) => r.classId === form.classId)
-    .reduce((sum, r) => sum + r.requiredJP, 0);
-  const nextClassJP = currentClassJP + simJP;
-  const isSimClassOver = nextClassJP > totalWeeklySlots;
-  const isSimClassExact = nextClassJP === totalWeeklySlots;
-
-  const isFormTeacherQualified = simTeacher && form.subjectId ? simTeacher.subjectIds.includes(form.subjectId) : false;
+  const activeClassesCount = state.classes.filter((c) => c.isActive).length;
+  const totalCapacityJP = totalWeeklySlots * activeClassesCount;
+  const balanceExact = totalJP === totalCapacityJP;
+  const balanceSurplus = totalJP > totalCapacityJP;
+  const incompleteClassCount = classCapacityStats.filter((c) => !c.isExact).length;
 
   return (
     <>
@@ -5933,13 +6419,13 @@ function RequirementsScreen({
             <Button
               variant={criticalIssues.length > 0 ? 'secondary' : 'primary'}
               icon={WandSparkles}
-              onClick={onGenerate}
+              onClick={() => (criticalIssues.length > 0 && onNavigate ? onNavigate('generator') : onGenerate())}
             >
               Susun Jadwal Otomatis
             </Button>
             <Button
               icon={Plus}
-              onClick={() => (onOpenAddModal ? onOpenAddModal() : setFormOpen(!formOpen))}
+              onClick={() => onOpenAddModal?.()}
             >
               Tambah Alokasi
             </Button>
@@ -5963,7 +6449,7 @@ function RequirementsScreen({
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div>
-                <span style={{ fontSize: '11px', fontWeight: 600, color: '#C5A059', letterSpacing: '0.05em' }}>
+                <span style={{ fontSize: '11px', fontWeight: 600, color: '#92400E', letterSpacing: '0.05em' }}>
                   SALIN ALOKASI PARALEL
                 </span>
                 <h3 style={{ margin: '2px 0 0', fontSize: '16px', fontWeight: 700, color: '#0B2923' }}>
@@ -5995,9 +6481,9 @@ function RequirementsScreen({
                   className="input-select"
                   style={{ width: '100%', height: '38px', borderRadius: '8px' }}
                 >
-                  {state.classes.filter(c => c.isActive).map((c) => {
-                    const reqCount = state.requirements.filter(r => r.classId === c.id).length;
-                    const totalJp = state.requirements.filter(r => r.classId === c.id).reduce((s, r) => s + r.requiredJP, 0);
+                  {state.classes.filter((c) => c.isActive).map((c) => {
+                    const reqCount = state.requirements.filter((r) => r.classId === c.id).length;
+                    const totalJp = state.requirements.filter((r) => r.classId === c.id).reduce((s, r) => s + r.requiredJP, 0);
                     return (
                       <option key={c.id} value={c.id}>
                         Kelas {c.name} ({reqCount} mapel · {totalJp} JP)
@@ -6017,7 +6503,7 @@ function RequirementsScreen({
                   className="input-select"
                   style={{ width: '100%', height: '38px', borderRadius: '8px' }}
                 >
-                  {state.classes.filter(c => c.isActive).map((c) => (
+                  {state.classes.filter((c) => c.isActive).map((c) => (
                     <option key={c.id} value={c.id} disabled={c.id === copySourceClassId}>
                       Kelas {c.name} {c.id === copySourceClassId ? '(Kelas Asal)' : ''}
                     </option>
@@ -6045,249 +6531,145 @@ function RequirementsScreen({
                   setCopyModalOpen(false);
                 }}
               >
-                Terapkan Salinan Alokasi &rarr;
+                Terapkan Salinan Alokasi →
               </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Real-Time Requirements & Capacity KPI Grid */}
-      <div className="requirements-metric-grid">
-        <KpiMotionCard className="req-metric" index={0}>
-          <div className="req-metric-mark">
-            <BookOpen size={18} />
+      {/* Real-Time Requirements & Capacity KPI Grid (Diselaraskan dengan Beban Guru) */}
+      <div className="stat-grid">
+        <KpiMotionCard className="stat-card tone-teal" index={0}>
+          <div className="stat-top">
+            <span>Total Kebutuhan JP</span>
+            <div className="stat-icon" aria-hidden="true">
+              <BookOpen size={17} />
+            </div>
           </div>
-          <div className="req-metric-copy">
-            <span>TOTAL KEBUTUHAN</span>
+          <div className="stat-value-row">
             <strong>
-              <KpiAnimatedNumber value={totalJP} suffix=" JP" />
+              <KpiAnimatedNumber value={totalJP} />
             </strong>
-            <small>{state.requirements.length} Alokasi Mapel Terdata</small>
+            <span className="stat-unit">JP</span>
           </div>
+          <div className="stat-sub">{state.requirements.length} alokasi mapel terdata</div>
         </KpiMotionCard>
 
-        <KpiMotionCard className="req-metric" index={1}>
-          <div className="req-metric-mark blue">
-            <Clock size={18} />
+        <KpiMotionCard className="stat-card tone-sand" index={1}>
+          <div className="stat-top">
+            <span>Kapasitas KBM</span>
+            <div className="stat-icon" aria-hidden="true">
+              <Clock size={17} />
+            </div>
           </div>
-          <div className="req-metric-copy">
-            <span>KAPASITAS KBM</span>
+          <div className="stat-value-row">
             <strong>
-              <KpiAnimatedNumber value={totalWeeklySlots * state.classes.filter((c) => c.isActive).length} suffix=" JP" />
+              <KpiAnimatedNumber value={totalCapacityJP} />
             </strong>
-            <small>{totalWeeklySlots} JP per Rombel / Pekan</small>
+            <span className="stat-unit">JP</span>
           </div>
+          <div className="stat-sub">{totalWeeklySlots} JP per rombel / pekan</div>
         </KpiMotionCard>
 
-        <KpiMotionCard className="req-metric" index={2}>
-          <div className="req-metric-mark amber">
-            <TrendingUp size={18} />
+        <KpiMotionCard
+          className="stat-card tone-blue"
+          index={2}
+        >
+          <div className="stat-top">
+            <span>Keseimbangan Alokasi</span>
+            <div className="stat-icon" aria-hidden="true">
+              <TrendingUp size={17} />
+            </div>
           </div>
-          <div className="req-metric-copy">
-            <span>KESEIMBANGAN ALOKASI</span>
-            <strong
-              style={{
-                color: totalJP === totalWeeklySlots * state.classes.filter((c) => c.isActive).length ? '#1f6850' : '#b24c3d',
-              }}
-            >
-              {totalJP === totalWeeklySlots * state.classes.filter((c) => c.isActive).length ? (
-                <KpiAnimatedNumber value={100} suffix="% Pas" />
-              ) : totalJP > totalWeeklySlots * state.classes.filter((c) => c.isActive).length ? (
+          <div className="stat-value-row">
+            <strong>
+              {balanceExact ? (
+                <KpiAnimatedNumber value={100} suffix="%" />
+              ) : balanceSurplus ? (
                 <>
-                  Surplus +<KpiAnimatedNumber value={totalJP - totalWeeklySlots * state.classes.filter((c) => c.isActive).length} suffix=" JP" />
+                  +<KpiAnimatedNumber value={totalJP - totalCapacityJP} />
                 </>
               ) : (
                 <>
-                  Kurang <KpiAnimatedNumber value={totalWeeklySlots * state.classes.filter((c) => c.isActive).length - totalJP} suffix=" JP" />
+                  -<KpiAnimatedNumber value={totalCapacityJP - totalJP} />
                 </>
               )}
             </strong>
-            <small>
-              {totalJP === totalWeeklySlots * state.classes.filter((c) => c.isActive).length
-                ? 'Seluruh slot KBM terisi pas'
-                : 'Perlu diselaraskan dengan JP KBM'}
-            </small>
+            <span className="stat-unit">
+              {balanceExact ? 'Pas' : balanceSurplus ? 'JP surplus' : 'JP kurang'}
+            </span>
+          </div>
+          <div className="stat-sub">
+            {balanceExact ? 'Seluruh slot KBM terisi pas' : 'Perlu diselaraskan dengan JP KBM'}
           </div>
         </KpiMotionCard>
 
-        <KpiMotionCard className="req-metric" index={3}>
-          <div className="req-metric-mark violet">
-            <CheckCircle2 size={18} />
+        <KpiMotionCard
+          className="stat-card tone-rose"
+          index={3}
+        >
+          <div className="stat-top">
+            <span>Rombel Tuntas</span>
+            <div className="stat-icon" aria-hidden="true">
+              <CheckCircle2 size={17} />
+            </div>
           </div>
-          <div className="req-metric-copy">
-            <span>ROMBEL TUNTAS</span>
+          <div className="stat-value-row">
             <strong>
-              <KpiAnimatedNumber value={classCapacityStats.filter((c) => c.isExact).length} /> / {classCapacityStats.length}
+              <KpiAnimatedNumber value={classCapacityStats.filter((c) => c.isExact).length} />
             </strong>
-            <small>
-              {classCapacityStats.filter((c) => !c.isExact).length === 0
-                ? 'Semua rombel tepat kapasitas'
-                : `${classCapacityStats.filter((c) => !c.isExact).length} rombel butuh penyesuaian`}
-            </small>
+            <span className="stat-unit">/ {classCapacityStats.length} rombel</span>
+          </div>
+          <div className="stat-sub">
+            {incompleteClassCount === 0
+              ? 'Semua rombel tepat kapasitas'
+              : `${incompleteClassCount} rombel butuh penyesuaian`}
           </div>
         </KpiMotionCard>
       </div>
 
-      {/* Live Issue Context Notice (Calm & Compact) */}
+      {/* Live Issue Context Notice */}
       {liveIssues.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', background: '#fefce8', border: '1px solid #fef08a', borderRadius: '10px', marginTop: '14px', fontSize: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#854d0e' }}>
-            <AlertTriangle size={15} />
-            <span>Terdeteksi <strong>{criticalIssues.length} isu kritis</strong> dan <strong>{warningIssues.length} peringatan</strong> alokasi JP.</span>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '8px',
+            padding: '10px 16px',
+            background: '#FFFDF5',
+            border: '1px solid #EAD39C',
+            borderRadius: '10px',
+            marginTop: '14px',
+            fontSize: '12px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#78350F' }}>
+            <AlertTriangle size={15} color="#B45309" />
+            <span>
+              Terdeteksi <strong>{criticalIssues.length} isu kritis</strong> dan <strong>{warningIssues.length} peringatan</strong> data master &amp; alokasi JP.
+            </span>
           </div>
           <button
             type="button"
-            className="button button-quiet"
-            style={{ height: '28px', fontSize: '11.5px' }}
-            onClick={() => setOnlyIssuesFilter(!onlyIssuesFilter)}
+            className="button button-sm button-secondary"
+            onClick={() => setOnlyIssuesFilter((v) => !v)}
           >
-            {onlyIssuesFilter ? 'Tampilkan Semua Alokasi' : 'Saring Hanya Isu'}
+            {onlyIssuesFilter ? 'Tampilkan Semua Alokasi' : 'Saring Hanya Bermasalah'}
           </button>
         </div>
       )}
 
-      {/* 3. INLINE FORM WITH REAL-TIME SIMULATION */}
-      {formOpen && (
-        <Card eyebrow="NEW ALLOCATION" title="Tambah Alokasi JP">
-          <form className="requirement-form-grid" onSubmit={onSave}>
-            <div className="field-group">
-              <label>Kelas</label>
-              <select required value={form.classId} onChange={(e) => setForm({ ...form, classId: e.target.value })}>
-                <option value="">Pilih kelas</option>
-                {state.classes.filter((c) => c.isActive).map((c) => (
-                  <option key={c.id} value={c.id}>Kelas {c.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="field-group">
-              <label>Mata Pelajaran</label>
-              <select
-                required
-                value={form.subjectId}
-                onChange={(e) => {
-                  const sid = e.target.value;
-                  const t = state.teachers.find((tch) => tch.isActive && tch.subjectIds.includes(sid));
-                  setForm({ ...form, subjectId: sid, teacherId: t?.id ?? '' });
-                }}
-              >
-                <option value="">Pilih mapel</option>
-                {state.subjects.filter((s) => s.isActive).map((s) => (
-                  <option key={s.id} value={s.id}>{s.name} ({s.code})</option>
-                ))}
-              </select>
-            </div>
-            <div className="field-group">
-              <label>Guru Pengampu</label>
-              <select required value={form.teacherId} onChange={(e) => setForm({ ...form, teacherId: e.target.value })}>
-                <option value="">Pilih guru</option>
-                {state.teachers.filter((t) => t.isActive && form.subjectId && t.subjectIds.includes(form.subjectId)).length > 0 && (
-                  <optgroup label="Guru Sesuai Kualifikasi Mapel">
-                    {state.teachers
-                      .filter((t) => t.isActive && form.subjectId && t.subjectIds.includes(form.subjectId))
-                      .map((t) => (
-                        <option key={t.id} value={t.id}>{t.name} ({t.code})</option>
-                      ))}
-                  </optgroup>
-                )}
-                <optgroup label="Semua Guru Terdaftar Lainnya (Lintas Mapel)">
-                  {state.teachers
-                    .filter((t) => !form.subjectId || !t.subjectIds.includes(form.subjectId))
-                    .map((t) => (
-                      <option key={t.id} value={t.id}>{t.name} ({t.code})</option>
-                    ))}
-                </optgroup>
-              </select>
-            </div>
-            <div className="field-group">
-              <label>Alokasi (JP/minggu)</label>
-              <input required type="number" min="1" max="50" value={form.requiredJP} onChange={(e) => setForm({ ...form, requiredJP: e.target.value })} />
-            </div>
-            <div className="requirement-form-actions">
-              <Button type="submit" icon={Save}>Simpan Alokasi</Button>
-            </div>
-          </form>
-
-          {/* Real-Time Live Form Simulation Card */}
-          {form.classId && form.teacherId && (
-            <div
-              style={{
-                marginTop: '14px',
-                padding: '12px 14px',
-                background: '#f4f8f5',
-                borderRadius: '9px',
-                border: '1px solid #c9ded2',
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-                gap: '12px',
-              }}
-            >
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '4px' }}>
-                  <span style={{ color: '#274b43' }}>Simulasi Kapasitas Kelas {simClass?.name}:</span>
-                  <strong style={{ color: isSimClassOver ? '#b24c3d' : isSimClassExact ? '#1f6952' : '#173637' }}>
-                    {nextClassJP} / {totalWeeklySlots} JP
-                  </strong>
-                </div>
-                <div style={{ height: '5px', background: '#e0e7e3', borderRadius: '3px', overflow: 'hidden' }}>
-                  <div
-                    style={{
-                      width: `${Math.min(100, (nextClassJP / (totalWeeklySlots || 1)) * 100)}%`,
-                      height: '100%',
-                      background: isSimClassOver ? '#b24c3d' : isSimClassExact ? '#1f6952' : '#2563eb',
-                    }}
-                  />
-                </div>
-                <small style={{ color: isSimClassOver ? '#b24c3d' : '#556663', marginTop: '3px', display: 'block' }}>
-                  {isSimClassOver
-                    ? `⚠️ Alokasi melebihi kapasitas kelas (${nextClassJP - totalWeeklySlots} JP kelebihan)`
-                    : isSimClassExact
-                    ? '✓ Tepat memenuhi kapasitas mingguan'
-                    : `Sisa ${totalWeeklySlots - nextClassJP} slot JP`}
-                </small>
-              </div>
-
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '4px' }}>
-                  <span style={{ color: '#274b43' }}>Simulasi Beban Guru {simTeacher?.name}:</span>
-                  <strong style={{ color: isSimTeacherOver ? '#b24c3d' : '#173637' }}>
-                    {nextTeacherJP} / {simTeacherMax} JP
-                  </strong>
-                </div>
-                <div style={{ height: '5px', background: '#e0e7e3', borderRadius: '3px', overflow: 'hidden' }}>
-                  <div
-                    style={{
-                      width: `${Math.min(100, (nextTeacherJP / (simTeacherMax || 1)) * 100)}%`,
-                      height: '100%',
-                      background: isSimTeacherOver ? '#b24c3d' : nextTeacherJP === simTeacherMax ? '#1f6952' : '#2563eb',
-                    }}
-                  />
-                </div>
-                <small style={{ color: isSimTeacherOver ? '#b24c3d' : '#556663', marginTop: '3px', display: 'block' }}>
-                  {isSimTeacherOver
-                    ? `⚠️ Beban guru melebihi batas maksimum (+${nextTeacherJP - simTeacherMax} JP)`
-                    : `${Math.round((nextTeacherJP / simTeacherMax) * 100)}% dari batas maksimum guru`}
-                </small>
-              </div>
-
-              {!isFormTeacherQualified && simSubject && (
-                <div style={{ gridColumn: '1 / -1', fontSize: '11px', color: '#16483f' }}>
-                  ℹ Guru {simTeacher?.name} belum memiliki kualifikasi {simSubject.name}; sistem akan otomatis menyinkronkannya ke Data Master saat disimpan.
-                </div>
-              )}
-            </div>
-          )}
-        </Card>
-      )}
-
       {/* 4. TOOLBAR & FILTER CONTROLS */}
-      <div className="toolbar-card" style={{ marginTop: '16px', marginBottom: '14px', gap: '12px', flexWrap: 'wrap' }}>
-        <div className="table-search s5-toolbar-search" style={{ flex: 1, minWidth: '220px' }}>
+      <div className="toolbar-card" style={{ marginTop: '14px', marginBottom: '14px', gap: '10px', flexWrap: 'wrap' }}>
+        <div className="table-search s5-toolbar-search" style={{ flex: 1, minWidth: '210px' }}>
           <Search size={15} />
           <input
             type="text"
             aria-label="Cari kelas, mata pelajaran, atau guru"
-            placeholder="Cari kelas, mapel, atau guru..."
+            placeholder="Cari kelas, mapel, atau guru…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -6309,7 +6691,7 @@ function RequirementsScreen({
           className="s5-toolbar-select"
           value={selectedClassFilter}
           onChange={(e) => setSelectedClassFilter(e.target.value)}
-          style={{ minWidth: '190px' }}
+          style={{ minWidth: '175px' }}
         >
           <option value="ALL">Semua Rombel ({classCapacityStats.length})</option>
           {classCapacityStats.map((c) => (
@@ -6319,141 +6701,259 @@ function RequirementsScreen({
           ))}
         </select>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
-          <span className="s5-tnum" style={{ fontSize: '11.5px', color: '#556663', fontWeight: 600 }}>
-            Menampilkan {filteredRequirements.length} dari {state.requirements.length} alokasi
-          </span>
-          {onlyIssuesFilter && (
-            <span style={{ fontSize: '11px', background: '#fdf0ee', color: '#b24c3d', padding: '4px 8px', borderRadius: '6px', fontWeight: 600 }}>
-              Filter Isu Aktif
-            </span>
-          )}
-        </div>
+        <select
+          aria-label="Filter berdasarkan guru pengampu"
+          className="s5-toolbar-select"
+          value={selectedTeacherFilter}
+          onChange={(e) => setSelectedTeacherFilter(e.target.value)}
+          style={{ minWidth: '165px' }}
+        >
+          <option value="ALL">Semua Guru</option>
+          {state.teachers
+            .filter((t) => t.isActive)
+            .map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+        </select>
+
+        <select
+          aria-label="Filter berdasarkan mata pelajaran"
+          className="s5-toolbar-select"
+          value={selectedSubjectFilter}
+          onChange={(e) => setSelectedSubjectFilter(e.target.value)}
+          style={{ minWidth: '165px' }}
+        >
+          <option value="ALL">Semua Mapel</option>
+          {state.subjects
+            .filter((s) => s.isActive)
+            .map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+        </select>
+
+        <select
+          aria-label="Urutkan tabel alokasi"
+          className="s5-toolbar-select"
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as 'class' | 'subject' | 'teacher' | 'jp-desc')}
+          style={{ minWidth: '150px' }}
+        >
+          <option value="class">Urut: Per Kelas</option>
+          <option value="subject">Urut: Per Mapel</option>
+          <option value="teacher">Urut: Per Guru</option>
+          <option value="jp-desc">Urut: JP Terbanyak</option>
+        </select>
+
+        <button
+          type="button"
+          className={`filter-tab-btn ${onlyIssuesFilter ? 'active' : ''}`}
+          onClick={() => setOnlyIssuesFilter((v) => !v)}
+          title="Tampilkan hanya alokasi yang memiliki isu kapasitas atau beban guru"
+        >
+          <Filter size={12} />
+          <span>Hanya Bermasalah</span>
+        </button>
+
+        <span className="s5-tnum" style={{ fontSize: '11.5px', color: '#526861', fontWeight: 600, marginLeft: 'auto' }}>
+          Menampilkan {filteredRequirements.length} dari {state.requirements.length} alokasi
+        </span>
       </div>
 
-      {/* 5. REQUIREMENTS TABLE WITH LIVE DATA MASTER STATUS */}
-      <div className="data-table-wrap">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Kelas &amp; Kapasitas</th>
-              <th>Mata Pelajaran</th>
-              <th>Guru Pengampu &amp; Status Beban</th>
-              <th>Alokasi JP</th>
-              <th style={{ textAlign: 'right' }}>Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            {!filteredRequirements.length ? (
+      {/* 5. REQUIREMENTS TABLE WITH INLINE STEPPER & LIVE DATA MASTER STATUS */}
+      <div className="surface-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="data-table-wrap">
+          <table className="data-table">
+            <thead>
               <tr>
-                <td colSpan={5} style={{ textAlign: 'center', padding: '32px 16px', color: '#526861' }}>
-                  Tidak ada data alokasi yang sesuai dengan filter yang dipilih.
-                </td>
+                <th>Kelas &amp; Kapasitas</th>
+                <th>Mata Pelajaran</th>
+                <th>Guru Pengampu &amp; Status Beban</th>
+                <th>Alokasi JP</th>
+                <th style={{ textAlign: 'right' }}>Aksi</th>
               </tr>
-            ) : (
-              (reqPageSize === 0 ? filteredRequirements : filteredRequirements.slice((reqPage - 1) * reqPageSize, reqPage * reqPageSize)).map((r) => {
-                const cls = getClass(state, r.classId);
-                const sub = getSubject(state, r.subjectId);
-                const tch = getTeacher(state, r.teacherId);
-                const tStat = tch ? teacherWorkloadStats.get(tch.id) : undefined;
-                const cStat = classCapacityStats.find((c) => c.cls.id === r.classId);
-                const isTchOver = tStat?.isOver ?? false;
-                const isClsOver = cStat?.isOver ?? false;
-                const isClsUnder = cStat?.isUnder ?? false;
+            </thead>
+            <tbody>
+              {!filteredRequirements.length ? (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: '32px 16px', color: '#526861' }}>
+                    Tidak ada data alokasi yang sesuai dengan filter yang dipilih.
+                  </td>
+                </tr>
+              ) : (
+                (reqPageSize === 0
+                  ? filteredRequirements
+                  : filteredRequirements.slice((reqPage - 1) * reqPageSize, reqPage * reqPageSize)
+                ).map((r) => {
+                  const cls = getClass(state, r.classId);
+                  const sub = getSubject(state, r.subjectId);
+                  const tch = getTeacher(state, r.teacherId);
+                  const tStat = tch ? teacherWorkloadStats.get(tch.id) : undefined;
+                  const cStat = classCapacityStats.find((c) => c.cls.id === r.classId);
+                  const isTchOver = tStat?.isOver ?? false;
+                  const isClsOver = cStat?.isOver ?? false;
+                  const isClsUnder = cStat?.isUnder ?? false;
+                  const isQualified = Boolean(tch?.subjectIds.includes(r.subjectId));
+                  const splitMeta = classSubjectTotals.get(`${r.classId}|${r.subjectId}`);
 
-                return (
-                  <tr key={r.id}>
-                    <td>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <strong>Kelas {cls?.name}</strong>
-                        <span style={{ fontSize: '11.5px', color: isClsOver ? '#b24c3d' : isClsUnder ? '#9c6f28' : '#1f6952', fontWeight: 600 }}>
-                          {cStat?.allocatedJP ?? 0} / {totalWeeklySlots} JP
-                          {isClsOver && ' (Kelebihan)'}
-                          {isClsUnder && ` (Kurang ${Math.abs(cStat?.diff ?? 0)} JP)`}
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                        <span className="subject-color-swatch" style={{ background: sub?.color, width: '6px', height: '24px', borderRadius: '3px' }} />
-                        <div>
-                          <strong style={{ fontSize: '13px' }}>{sub?.name}</strong>
-                          <span style={{ fontSize: '11px', color: '#526861', display: 'block' }}>Kode: {sub?.code}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                        <strong style={{ fontSize: '13px' }}>{tch?.name}</strong>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  return (
+                    <tr key={r.id}>
+                      <td>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <strong>Kelas {cls?.name}</strong>
                           <span
+                            className="s5-tnum"
                             style={{
-                              fontSize: '11px',
+                              fontSize: '11.5px',
+                              color: isClsOver ? '#9E2A21' : isClsUnder ? '#92400E' : '#166534',
                               fontWeight: 600,
-                              padding: '2px 6px',
-                              borderRadius: '4px',
-                              background: isTchOver ? '#fdf0ee' : tStat?.isFull ? '#e8f5ee' : '#f0f4f8',
-                              color: isTchOver ? '#b24c3d' : tStat?.isFull ? '#1f6952' : '#2563eb',
                             }}
                           >
-                            Beban: {tStat?.totalJP ?? 0} / {tStat?.maxJP ?? 24} JP
-                            {isTchOver && ` ⚠️ Overload (+${(tStat?.totalJP ?? 0) - (tStat?.maxJP ?? 24)} JP)`}
+                            {cStat?.allocatedJP ?? 0} / {totalWeeklySlots} JP
+                            {isClsOver && ' (Kelebihan)'}
+                            {isClsUnder && ` (Kurang ${Math.abs(cStat?.diff ?? 0)} JP)`}
                           </span>
                         </div>
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                        <strong style={{ fontSize: '14px', color: '#173637' }}>{r.requiredJP}</strong>
-                        <span style={{ fontSize: '11px', color: '#556663' }}>JP/minggu</span>
-                      </div>
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div className="s5-action-dock" style={{ display: 'inline-flex', justifyContent: 'flex-end' }}>
-                        {onEdit && (
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span className="subject-color-swatch" style={{ background: sub?.color, width: '6px', height: '24px', borderRadius: '3px', flexShrink: 0 }} />
+                          <div>
+                            <strong style={{ fontSize: '13px' }}>{sub?.name}</strong>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: '11px', color: '#526861' }}>Kode: {sub?.code}</span>
+                              {splitMeta && splitMeta.count > 1 && (
+                                <span
+                                  style={{
+                                    fontSize: '11px',
+                                    color: '#92400E',
+                                    background: '#FEF3C7',
+                                    padding: '1px 6px',
+                                    borderRadius: '4px',
+                                    fontWeight: 600,
+                                  }}
+                                  title="Mapel ini diampu lebih dari 1 guru di kelas yang sama"
+                                >
+                                  Gabungan: {splitMeta.totalJP} JP
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <strong style={{ fontSize: '13px' }}>{tch?.name}</strong>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <span
+                              className="s5-tnum"
+                              style={{
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                padding: '2px 7px',
+                                borderRadius: '4px',
+                                background: isTchOver ? '#FDE8E5' : tStat?.isFull ? '#E1F4EA' : '#EDF3F8',
+                                color: isTchOver ? '#9E2A21' : tStat?.isFull ? '#166534' : '#1E4E6D',
+                              }}
+                            >
+                              Beban: {tStat?.totalJP ?? 0} / {tStat?.maxJP ?? defaultMaxWeeklyJP} JP
+                              {isTchOver && ` (Lebih ${(tStat?.totalJP ?? 0) - (tStat?.maxJP ?? defaultMaxWeeklyJP)} JP)`}
+                            </span>
+                            {!isQualified && (
+                              <span
+                                style={{
+                                  fontSize: '11px',
+                                  fontWeight: 600,
+                                  padding: '2px 7px',
+                                  borderRadius: '4px',
+                                  background: '#FDE8E5',
+                                  color: '#9E2A21',
+                                }}
+                              >
+                                Kualifikasi mapel belum tercatat
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                          <div className="s5-req-stepper">
+                            <button
+                              type="button"
+                              aria-label={`Kurangi JP ${sub?.name}`}
+                              disabled={r.requiredJP <= 1}
+                              onClick={() => onUpdateRequirementJP(r.id, r.requiredJP - 1)}
+                            >
+                              <Minus size={12} />
+                            </button>
+                            <strong>{r.requiredJP}</strong>
+                            <button
+                              type="button"
+                              aria-label={`Tambah JP ${sub?.name}`}
+                              disabled={r.requiredJP >= 50}
+                              onClick={() => onUpdateRequirementJP(r.id, r.requiredJP + 1)}
+                            >
+                              <Plus size={12} />
+                            </button>
+                          </div>
+                          <span style={{ fontSize: '11.5px', color: '#526861' }}>JP/mgg</span>
+                        </div>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div className="s5-action-dock" style={{ display: 'inline-flex', justifyContent: 'flex-end' }}>
+                          {onEdit && (
+                            <button
+                              type="button"
+                              className="s5-dock-btn primary"
+                              onClick={() => onEdit(r)}
+                              title="Edit alokasi kebutuhan"
+                            >
+                              <Edit2 size={13} />
+                              <span>Edit</span>
+                            </button>
+                          )}
                           <button
                             type="button"
-                            className="s5-dock-btn primary"
-                            onClick={() => onEdit(r)}
-                            title="Edit alokasi kebutuhan"
+                            className="s5-dock-btn"
+                            onClick={() => onDelete(r)}
+                            title="Hapus alokasi"
+                            style={{ color: '#8F2D24' }}
                           >
-                            <Edit2 size={13} />
-                            <span>Edit</span>
+                            <Trash2 size={13} />
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          className="s5-dock-btn"
-                          onClick={() => onDelete(r)}
-                          title="Hapus alokasi"
-                          style={{ color: '#8F2D24' }}
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-        <UnifiedPagination
-          totalItems={filteredRequirements.length}
-          page={reqPage}
-          pageSize={reqPageSize}
-          pageSizeOptions={[10, 20, 25, 50]}
-          allowShowAll
-          itemLabel="alokasi"
-          onPageChange={setReqPage}
-          onPageSizeChange={(size) => {
-            setReqPageSize(size);
-            setReqPage(1);
-          }}
-        />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+          <UnifiedPagination
+            totalItems={filteredRequirements.length}
+            page={reqPage}
+            pageSize={reqPageSize}
+            pageSizeOptions={[10, 20, 25, 50]}
+            allowShowAll
+            itemLabel="alokasi"
+            onPageChange={setReqPage}
+            onPageSizeChange={(size) => {
+              setReqPageSize(size);
+              setPageResetIfNeeded(setReqPage);
+            }}
+          />
+        </div>
       </div>
     </>
   );
+}
+
+function setPageResetIfNeeded(setter: (page: number) => void) {
+  setter(1);
 }
 
 /**
@@ -6463,9 +6963,10 @@ function ValidationScreen({
   state,
   report,
   masterIssues,
-  expandedIssue: _expandedIssue,
-  setExpandedIssue: _setExpandedIssue,
+  expandedIssue,
+  setExpandedIssue,
   onNavigate,
+  onNavigateToSlot,
   onValidate,
 }: {
   state: AppState;
@@ -6474,10 +6975,39 @@ function ValidationScreen({
   expandedIssue: string | null;
   setExpandedIssue: (id: string | null) => void;
   onNavigate?: (screen: ScreenId) => void;
+  onNavigateToSlot?: (classId: string, day: Day, jpNo: number) => void;
   onValidate: () => void;
 }) {
-  const combined = [...masterIssues, ...report.issues];
-  const hardErrors = combined.filter((i) => i.severity === 'error');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'teacher' | 'class' | 'time' | 'allocation'>('all');
+  const [severityFilter, setSeverityFilter] = useState<'all' | 'error' | 'warning'>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
+  const combined = useMemo(() => [...masterIssues, ...report.issues], [masterIssues, report.issues]);
+  const hardErrors = useMemo(() => combined.filter((i) => i.severity === 'error'), [combined]);
+  const warningCount = combined.length - hardErrors.length;
+  const complianceScore = Math.max(0, 100 - hardErrors.length * 20 - Math.min(15, warningCount * 2));
+
+  const categoryCounts = useMemo(() => {
+    const counts = { all: combined.length, teacher: 0, class: 0, time: 0, allocation: 0 };
+    for (const issue of combined) {
+      counts[getValidationCategoryGroup(issue)] += 1;
+    }
+    return counts;
+  }, [combined]);
+
+  const visibleIssues = useMemo(() => {
+    return combined.filter((issue) => {
+      if (categoryFilter !== 'all' && getValidationCategoryGroup(issue) !== categoryFilter) return false;
+      if (severityFilter !== 'all' && issue.severity !== severityFilter) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const label = formatValidationCategoryLabel(issue.code).toLowerCase();
+        const hay = `${issue.title} ${issue.message} ${issue.context ?? ''} ${label}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [combined, categoryFilter, severityFilter, searchQuery]);
 
   return (
     <>
@@ -6498,68 +7028,80 @@ function ValidationScreen({
         </div>
         <div>
           <h2>{hardErrors.length ? 'Terdapat Pelanggaran Aturan Wajib' : 'Jadwal Memenuhi Seluruh Aturan Wajib'}</h2>
-          <p>{hardErrors.length ? 'Perbaiki bentrok sebelum menerbitkan jadwal.' : 'Tidak ada konflik guru atau bentrok kelas.'}</p>
+          <p>{hardErrors.length ? 'Perbaiki seluruh bentrok aturan wajib sebelum menerbitkan jadwal resmi.' : 'Tidak ada konflik guru, bentrok kelas, atau ketidaksesuaian alokasi.'}</p>
         </div>
         <div className="validation-banner-count">
-          <strong>{hardErrors.length}</strong>
+          <strong className="s5-tnum">{hardErrors.length}</strong>
           <span>BENTROK WAJIB</span>
         </div>
       </div>
 
-      {/* Real-Time Compliance & Audit KPI Grid */}
-      <div className="validation-summary-grid">
-        <KpiMotionCard index={0}>
-          <div className="validation-summary-icon teal">
-            <ShieldCheck size={20} />
+      {/* Real-Time Compliance & Audit KPI Grid (Diselaraskan dengan Beban Guru) */}
+      <div className="stat-grid">
+        <KpiMotionCard index={0} className="stat-card tone-teal">
+          <div className="stat-top">
+            <span>Skor Kepatuhan</span>
+            <div className="stat-icon" aria-hidden="true">
+              <ShieldCheck size={17} />
+            </div>
           </div>
-          <div>
-            <span>SKOR KEPATUHAN</span>
+          <div className="stat-value-row">
             <strong>
-              <KpiAnimatedNumber
-                value={Math.max(0, Math.min(100, 100 - hardErrors.length * 25 - (combined.length - hardErrors.length) * 5))}
-                suffix="%"
-              />
+              <KpiAnimatedNumber value={complianceScore} suffix="%" />
             </strong>
-            <small>{hardErrors.length === 0 ? 'Lolos Semua Aturan' : `${hardErrors.length} Pelanggaran Wajib`}</small>
+            <span className="stat-unit">kepatuhan</span>
+          </div>
+          <div className="stat-sub">
+            {hardErrors.length === 0 ? 'Lolos semua aturan wajib' : `${hardErrors.length} pelanggaran wajib`}
           </div>
         </KpiMotionCard>
 
-        <KpiMotionCard index={1}>
-          <div className="validation-summary-icon error">
-            <XCircle size={20} />
+        <KpiMotionCard index={1} className="stat-card tone-sand">
+          <div className="stat-top">
+            <span>Bentrok Wajib</span>
+            <div className="stat-icon" aria-hidden="true">
+              <XCircle size={17} />
+            </div>
           </div>
-          <div>
-            <span>BENTROK WAJIB</span>
-            <strong style={{ color: hardErrors.length > 0 ? '#b42318' : '#1f6850' }}>
+          <div className="stat-value-row">
+            <strong>
               <KpiAnimatedNumber value={hardErrors.length} />
             </strong>
-            <small>{hardErrors.length === 0 ? 'Nihil Bentrok' : 'Wajib Diselesaikan'}</small>
+            <span className="stat-unit">temuan</span>
+          </div>
+          <div className="stat-sub">
+            {hardErrors.length === 0 ? 'Nihil bentrok aturan wajib' : 'Wajib diselesaikan sebelum terbit'}
           </div>
         </KpiMotionCard>
 
-        <KpiMotionCard index={2}>
-          <div className="validation-summary-icon warning">
-            <AlertTriangle size={20} />
+        <KpiMotionCard index={2} className="stat-card tone-blue">
+          <div className="stat-top">
+            <span>Saran Optimalisasi</span>
+            <div className="stat-icon" aria-hidden="true">
+              <AlertTriangle size={17} />
+            </div>
           </div>
-          <div>
-            <span>SARAN OPTIMALISASI</span>
-            <strong style={{ color: combined.length - hardErrors.length > 0 ? '#876123' : '#1f6850' }}>
-              <KpiAnimatedNumber value={combined.length - hardErrors.length} />
+          <div className="stat-value-row">
+            <strong>
+              <KpiAnimatedNumber value={warningCount} />
             </strong>
-            <small>Saran Distribusi &amp; Beban</small>
+            <span className="stat-unit">saran</span>
           </div>
+          <div className="stat-sub">Preferensi blok 2 JP &amp; beban</div>
         </KpiMotionCard>
 
-        <KpiMotionCard index={3}>
-          <div className="validation-summary-icon info">
-            <CheckCircle2 size={20} />
+        <KpiMotionCard index={3} className="stat-card tone-rose">
+          <div className="stat-top">
+            <span>Status Kelayakan</span>
+            <div className="stat-icon" aria-hidden="true">
+              <CheckCircle2 size={17} />
+            </div>
           </div>
-          <div>
-            <span>STATUS KELAYAKAN</span>
-            <strong style={{ color: hardErrors.length === 0 ? '#1f6850' : '#b42318' }}>
-              {hardErrors.length === 0 ? 'SIAP TERBIT' : 'DITAHAN'}
-            </strong>
-            <small>{hardErrors.length === 0 ? 'Jadwal Siap Edar' : 'Selesaikan Konflik'}</small>
+          <div className="stat-value-row">
+            <strong>{hardErrors.length === 0 ? 'Siap Terbit' : 'Ditahan'}</strong>
+          </div>
+          <div className="stat-sub">
+            {hardErrors.length === 0 ? 'Jadwal siap edar resmi' : 'Selesaikan bentrok wajib terlebih dahulu'}
           </div>
         </KpiMotionCard>
       </div>
@@ -6573,8 +7115,67 @@ function ValidationScreen({
         />
       )}
 
+      {/* Toolbar & Category Filters when issues exist */}
+      {combined.length > 0 && (
+        <div className="toolbar-card" style={{ marginTop: '16px', marginBottom: '12px', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            {[
+              { id: 'all', label: `Semua (${categoryCounts.all})` },
+              { id: 'teacher', label: `Guru & Beban (${categoryCounts.teacher})` },
+              { id: 'class', label: `Kelas & Blok (${categoryCounts.class})` },
+              { id: 'time', label: `Waktu & Hari (${categoryCounts.time})` },
+              { id: 'allocation', label: `Alokasi & Master (${categoryCounts.allocation})` },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                className={`filter-tab-btn ${categoryFilter === tab.id ? 'active' : ''}`}
+                onClick={() => setCategoryFilter(tab.id as typeof categoryFilter)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto', flexWrap: 'wrap' }}>
+            <select
+              aria-label="Saring tingkat keparahan masalah"
+              className="s5-toolbar-select"
+              value={severityFilter}
+              onChange={(e) => setSeverityFilter(e.target.value as 'all' | 'error' | 'warning')}
+              style={{ minWidth: '150px' }}
+            >
+              <option value="all">Semua Tingkat</option>
+              <option value="error">Wajib Diperbaiki ({hardErrors.length})</option>
+              <option value="warning">Saran Optimalisasi ({warningCount})</option>
+            </select>
+
+            <div className="table-search s5-toolbar-search" style={{ minWidth: '200px' }}>
+              <Search size={14} />
+              <input
+                type="text"
+                aria-label="Cari konflik atau rekomendasi"
+                placeholder="Cari konflik, kelas, guru…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  className="search-clear-btn"
+                  onClick={() => setSearchQuery('')}
+                  aria-label="Hapus pencarian"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {combined.length === 0 ? (
-        <div className="surface-card" style={{ marginTop: '16px', padding: '32px 24px', textAlign: 'center', background: '#f5faf7', border: '1.5px solid #d1fae5' }}>
+        <div className="surface-card" style={{ marginTop: '16px', padding: '32px 24px', textAlign: 'center', background: '#f5faf7', border: '1.5px solid #c3e5d0' }}>
           <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#d1fae5', color: '#065f46', display: 'grid', placeItems: 'center', margin: '0 auto 12px' }}>
             <CheckCircle2 size={26} />
           </div>
@@ -6582,7 +7183,7 @@ function ValidationScreen({
             Audit Kepatuhan: 100% Bebas Bentrok
           </h3>
           <p style={{ margin: '0 0 16px', color: '#16483f', fontSize: '13px', maxWidth: '520px', marginLeft: 'auto', marginRight: 'auto' }}>
-            Seluruh jadwal KBM, kuota mingguan rombel, batas beban guru, dan slot khusus (Upacara/Religi/Istirahat) telah diverifikasi secara menyeluruh tanpa konflik.
+            Seluruh jadwal KBM, kuota mingguan rombel, ketersediaan hari mengajar, batas beban guru, dan slot non-KBM telah diverifikasi tanpa konflik.
           </p>
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
             {onNavigate && (
@@ -6592,57 +7193,105 @@ function ValidationScreen({
             )}
           </div>
         </div>
+      ) : visibleIssues.length === 0 ? (
+        <div className="surface-card" style={{ padding: '28px', textAlign: 'center', color: '#526861' }}>
+          Tidak ada temuan yang cocok dengan filter yang diterapkan.
+        </div>
       ) : (
-        <div className="issue-list" style={{ marginTop: '16px' }}>
-          {combined.map((issue, idx) => (
-            <MotionStaggerItem
-              key={issue.id}
-              index={idx}
-              className="s5-smart-swap-card"
-              style={{
-                borderColor: issue.severity === 'error' ? 'rgba(143, 45, 36, 0.4)' : 'rgba(197, 160, 89, 0.5)',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flex: 1 }}>
+        <div className="issue-list">
+          {visibleIssues.map((issue, idx) => {
+            const isExpanded = expandedIssue === issue.id;
+            const isError = issue.severity === 'error';
+            const categoryLabel = formatValidationCategoryLabel(issue.code);
+            const targetScreen = getTargetScreenForIssue(issue);
+
+            return (
+              <MotionStaggerItem
+                key={issue.id}
+                index={idx}
+                className={`s5-validation-issue-card ${isError ? 'is-error' : 'is-warning'}`}
+              >
                 <div
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '8px',
-                    background: issue.severity === 'error' ? 'var(--s5-status-danger-bg)' : '#FBF7EE',
-                    color: issue.severity === 'error' ? 'var(--s5-status-danger)' : 'var(--s5-gold-metallic)',
-                    display: 'grid',
-                    placeItems: 'center',
-                    flexShrink: 0,
-                    marginTop: '2px',
-                  }}
+                  className="s5-validation-issue-main"
+                  onClick={() => setExpandedIssue(isExpanded ? null : issue.id)}
                 >
-                  {issue.severity === 'error' ? <XCircle size={18} /> : <AlertTriangle size={18} />}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    <strong style={{ fontSize: '13.5px', color: '#0B2923' }}>{issue.title}</strong>
-                    <span className="s5-issue-code-label">· {issue.code}</span>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flex: 1 }}>
+                    <div
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '8px',
+                        background: isError ? '#FDE8E5' : '#FEF3C7',
+                        color: isError ? '#9E2A21' : '#92400E',
+                        display: 'grid',
+                        placeItems: 'center',
+                        flexShrink: 0,
+                        marginTop: '2px',
+                      }}
+                    >
+                      {isError ? <XCircle size={18} /> : <AlertTriangle size={18} />}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <strong style={{ fontSize: '13.5px', color: '#0B2923' }}>{issue.title}</strong>
+                        <span className="s5-issue-code-label">· {categoryLabel}</span>
+                      </div>
+                      <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#465B54', lineHeight: 1.45 }}>
+                        {issue.message}
+                      </p>
+                      {issue.context && (
+                        <span style={{ display: 'inline-block', marginTop: '4px', fontSize: '11.5px', color: isError ? '#9E2A21' : '#92400E', fontWeight: 600 }}>
+                          Konteks: {issue.context}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#556663', lineHeight: 1.45 }}>
-                    {issue.message}
-                  </p>
-                  {issue.context && (
-                    <span style={{ display: 'inline-block', marginTop: '4px', fontSize: '11px', color: '#8F2D24', fontWeight: 600 }}>
-                      Konteks: {issue.context}
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                    {(issue.targetSlot || onNavigate) && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          if (issue.targetSlot && onNavigateToSlot) {
+                            onNavigateToSlot(issue.targetSlot.classId, issue.targetSlot.day, issue.targetSlot.jpNo);
+                          } else if (onNavigate) {
+                            onNavigate(targetScreen);
+                          }
+                        }}
+                      >
+                        {getActionLabelForIssue(issue)} →
+                      </Button>
+                    )}
+                    <button
+                      type="button"
+                      className="icon-button"
+                      aria-label={isExpanded ? 'Tutup detail rekomendasi' : 'Lihat rekomendasi penyelesaian'}
+                      onClick={() => setExpandedIssue(isExpanded ? null : issue.id)}
+                    >
+                      <ChevronDown className={`issue-chevron ${isExpanded ? 'is-open' : ''}`} size={17} />
+                    </button>
+                  </div>
+                </div>
+
+                {isExpanded && (
+                  <div className="s5-validation-expanded">
+                    <div style={{ flex: 1, minWidth: '240px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', color: '#526861', display: 'block' }}>
+                        REKOMENDASI PENYELESAIAN
+                      </span>
+                      <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#0B2923', lineHeight: 1.45 }}>
+                        {issue.action || 'Periksa data terkait pada area sumber dan jalankan Uji Ulang Jadwal.'}
+                      </p>
+                    </div>
+                    <span style={{ fontSize: '11.5px', color: '#526861', fontWeight: 600 }}>
+                      Prioritas: {isError ? 'Wajib diperbaiki sebelum terbit' : 'Optimalisasi opsional'}
                     </span>
-                  )}
-                </div>
-              </div>
-              {onNavigate && (
-                <div style={{ flexShrink: 0 }}>
-                  <Button variant="secondary" size="sm" onClick={() => onNavigate('schedule')}>
-                    Atasi di Jadwal &rarr;
-                  </Button>
-                </div>
-              )}
-            </MotionStaggerItem>
-          ))}
+                  </div>
+                )}
+              </MotionStaggerItem>
+            );
+          })}
         </div>
       )}
     </>

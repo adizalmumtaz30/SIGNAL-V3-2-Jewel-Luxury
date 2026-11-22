@@ -92,13 +92,17 @@ export function EntityEditModal({
       setClassIsActive(item?.isActive ?? true);
     } else if (target.kind === 'teacher') {
       const item = target.item as Teacher | undefined;
+      const defaultMaxWeeklyJP =
+        state.settings.maxWeeklyJP && state.settings.maxWeeklyJP > 0
+          ? state.settings.maxWeeklyJP
+          : 24;
       setTeacherName(item?.name ?? '');
       setTeacherCode(item?.code ?? '');
       setTeacherRoleTitle(item?.roleTitle ?? 'Guru Mapel');
       setTeacherNip(item?.nip ?? '');
       setTeacherGender(item?.gender ?? detectTeacherGender(item?.name ?? '', item?.roleTitle ?? ''));
       setTeacherSubjectIds(item?.subjectIds ?? []);
-      setTeacherMaxJP(String(item?.maxWeeklyJP ?? 24));
+      setTeacherMaxJP(String(item?.maxWeeklyJP && item.maxWeeklyJP > 0 ? item.maxWeeklyJP : defaultMaxWeeklyJP));
       setTeacherIsActive(item?.isActive ?? true);
     } else if (target.kind === 'subject') {
       const item = target.item as Subject | undefined;
@@ -161,7 +165,12 @@ export function EntityEditModal({
         setError('Pilih minimal satu kualifikasi mata pelajaran.');
         return;
       }
-      const maxJP = Math.max(1, Math.min(60, Number(teacherMaxJP) || 24));
+      const parsedMaxJP = Number(teacherMaxJP);
+      if (!Number.isInteger(parsedMaxJP) || parsedMaxJP < 1 || parsedMaxJP > 80) {
+        setError('Batas maksimum beban mengajar harus bilangan bulat antara 1 sampai 80 JP/minggu.');
+        return;
+      }
+      const maxJP = parsedMaxJP;
       const code =
         teacherCode.trim() ||
         (target.item as Teacher)?.code ||
@@ -376,7 +385,7 @@ export function EntityEditModal({
                     nip: teacherNip,
                     gender: teacherGender,
                     subjectIds: teacherSubjectIds,
-                    maxWeeklyJP: 24,
+                    maxWeeklyJP: Number(teacherMaxJP) || (state.settings.maxWeeklyJP ?? 24),
                     isActive: teacherIsActive,
                   }}
                   size={52}
@@ -558,9 +567,10 @@ export function EntityEditModal({
                   <input
                     type="number"
                     min="1"
-                    max="60"
+                    max="80"
                     value={teacherMaxJP}
                     onChange={(e) => setTeacherMaxJP(e.target.value)}
+                    placeholder="Isi manual 1–80 JP"
                   />
                 </div>
                 <div className="field-group">
@@ -727,9 +737,18 @@ export function EntityEditModal({
                   .filter((r) => r.classId === reqClassId && r.id !== currentReqId)
                   .reduce((sum, r) => sum + r.requiredJP, 0);
 
+                const otherClassSubjectReqs = state.requirements.filter(
+                  (r) => r.classId === reqClassId && r.subjectId === reqSubjectId && r.id !== currentReqId,
+                );
+                const otherClassSubjectJP = otherClassSubjectReqs.reduce((sum, r) => sum + r.requiredJP, 0);
+
                 const newJP = Number(reqJP) || 0;
                 const totalTeacherJP = otherTeacherJP + newJP;
-                const teacherMaxJP = selectedTeacher?.maxWeeklyJP || 24;
+                const combinedSubjectClassJP = otherClassSubjectJP + newJP;
+                const teacherMaxJP =
+                  selectedTeacher?.maxWeeklyJP && selectedTeacher.maxWeeklyJP > 0
+                    ? selectedTeacher.maxWeeklyJP
+                    : (state.settings.maxWeeklyJP ?? 24);
                 const isTeacherOver = totalTeacherJP > teacherMaxJP;
 
                 const totalWeeklySlots = state.settings.activeDays.reduce(
@@ -755,16 +774,16 @@ export function EntityEditModal({
                       gap: '10px',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
                       <span style={{ fontSize: '11px', fontWeight: 600, color: '#16483f', letterSpacing: '0.04em' }}>
-                        VALIDASI REAL-TIME DATA MASTER
+                        VALIDASI LANGSUNG DATA MASTER
                       </span>
                       {isTeacherOver || isClassOver ? (
-                        <span style={{ fontSize: '11px', color: '#b24c3d', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ fontSize: '11px', color: '#9e2a21', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <AlertTriangle size={13} /> Berpotensi Melanggar Aturan
                         </span>
                       ) : (
-                        <span style={{ fontSize: '11px', color: '#1f6952', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ fontSize: '11px', color: '#166534', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <CheckCircle2 size={13} /> Sesuai Kapasitas & Beban
                         </span>
                       )}
@@ -775,7 +794,7 @@ export function EntityEditModal({
                       <div style={{ background: '#fff', border: `1px solid ${isClassOver ? '#f8d0c8' : '#e0e7e3'}`, borderRadius: '8px', padding: '8px 10px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '4px' }}>
                           <span style={{ color: '#435e58' }}>Kapasitas Kelas {selectedClass.name}:</span>
-                          <strong style={{ color: isClassOver ? '#b24c3d' : isClassExact ? '#1f6952' : '#173637' }}>
+                          <strong className="s5-tnum" style={{ color: isClassOver ? '#9e2a21' : isClassExact ? '#166534' : '#173637' }}>
                             {totalClassJP} / {totalWeeklySlots} JP
                           </strong>
                         </div>
@@ -788,7 +807,7 @@ export function EntityEditModal({
                             }}
                           />
                         </div>
-                        <span style={{ fontSize: '11px', color: isClassOver ? '#b24c3d' : isClassExact ? '#1f6952' : '#526861', marginTop: '3px', display: 'block' }}>
+                        <span style={{ fontSize: '11px', color: isClassOver ? '#9e2a21' : isClassExact ? '#166534' : '#526861', marginTop: '3px', display: 'block' }}>
                           {isClassOver
                             ? `Kelebihan ${totalClassJP - totalWeeklySlots} JP dari slot mingguan`
                             : isClassExact
@@ -801,7 +820,7 @@ export function EntityEditModal({
                       <div style={{ background: '#fff', border: `1px solid ${isTeacherOver ? '#f8d0c8' : '#e0e7e3'}`, borderRadius: '8px', padding: '8px 10px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '4px' }}>
                           <span style={{ color: '#435e58' }}>Beban Guru {selectedTeacher.code}:</span>
-                          <strong style={{ color: isTeacherOver ? '#b24c3d' : '#173637' }}>
+                          <strong className="s5-tnum" style={{ color: isTeacherOver ? '#9e2a21' : '#173637' }}>
                             {totalTeacherJP} / {teacherMaxJP} JP
                           </strong>
                         </div>
@@ -814,13 +833,22 @@ export function EntityEditModal({
                             }}
                           />
                         </div>
-                        <span style={{ fontSize: '11px', color: isTeacherOver ? '#b24c3d' : '#526861', marginTop: '3px', display: 'block' }}>
+                        <span style={{ fontSize: '11px', color: isTeacherOver ? '#9e2a21' : '#526861', marginTop: '3px', display: 'block' }}>
                           {isTeacherOver
                             ? `Kelebihan beban ${totalTeacherJP - teacherMaxJP} JP dari batas maksimum`
                             : `${Math.round((totalTeacherJP / teacherMaxJP) * 100)}% dari batas maksimum guru`}
                         </span>
                       </div>
                     </div>
+
+                    {otherClassSubjectReqs.length > 0 && (
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '11px', color: '#78350f', background: '#fef9e7', border: '1px solid #f3dc9a', padding: '7px 10px', borderRadius: '6px' }}>
+                        <AlertTriangle size={14} style={{ color: '#b45309', flexShrink: 0 }} />
+                        <span>
+                          Alokasi terpecah: mapel <strong>{selectedSubject.name}</strong> di Kelas {selectedClass.name} sudah memiliki {otherClassSubjectJP} JP pada baris lain ({otherClassSubjectReqs.length} pengampu terpisah). Total gabungan mapel menjadi <strong>{combinedSubjectClassJP} JP/minggu</strong>.
+                        </span>
+                      </div>
+                    )}
 
                     {!isQualified && (
                       <div style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '11px', color: '#16483f', background: '#eaf4ee', padding: '6px 10px', borderRadius: '6px' }}>

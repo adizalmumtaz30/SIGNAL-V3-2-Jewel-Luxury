@@ -56,6 +56,7 @@ import type { NumberingResetMode } from '../domain/persuratan/types';
 export interface SettingsScreenProps {
   state: AppState;
   onSettingsChange: (changes: Partial<AppState['settings']>) => void;
+  onApplyWeeklyLimitToAllTeachers?: (limit: number) => void;
   onReset: () => void;
   onNotify: (message: string, kind?: 'success' | 'warning' | 'error' | 'info') => void;
   saved: boolean;
@@ -191,6 +192,7 @@ function alignSequentialSlots(
 export function SettingsScreen({
   state,
   onSettingsChange,
+  onApplyWeeklyLimitToAllTeachers,
   onReset,
   onNotify,
   saved,
@@ -202,6 +204,8 @@ export function SettingsScreen({
   const [academicYear, setAcademicYear] = useState(state.settings.academicYear);
   const [semester, setSemester] = useState<'Ganjil' | 'Genap'>(state.settings.semester);
   const [periodMinutes, setPeriodMinutes] = useState(String(state.settings.periodMinutes ?? 40));
+  const [maxWeeklyJP, setMaxWeeklyJP] = useState(String(state.settings.maxWeeklyJP ?? 24));
+  const [searchLimit, setSearchLimit] = useState(String(state.settings.searchLimit ?? 65000));
   const [activeDays, setActiveDays] = useState<Day[]>(state.settings.activeDays);
   const [geminiEnabled, setGeminiEnabled] = useState(state.settings.geminiEnabled);
   const [previewDay, setPreviewDay] = useState<Day>(state.settings.activeDays[0] || 'Senin');
@@ -305,6 +309,8 @@ export function SettingsScreen({
     setAcademicYear(nextSettings.academicYear);
     setSemester(nextSettings.semester);
     setPeriodMinutes(String(nextSettings.periodMinutes ?? 40));
+    setMaxWeeklyJP(String(nextSettings.maxWeeklyJP ?? 24));
+    setSearchLimit(String(nextSettings.searchLimit ?? 65000));
     setActiveDays(nextSettings.activeDays);
     setGeminiEnabled(nextSettings.geminiEnabled);
     setPreviewDay(nextSettings.activeDays[0] || 'Senin');
@@ -807,7 +813,11 @@ export function SettingsScreen({
   const handleSave = () => {
     const kbmCount = definitions.filter((d) => d.activityType === 'KBM').length;
     const safeMinVal = Math.max(20, Math.min(90, Number(periodMinutes) || 40));
+    const safeMaxWeeklyVal = Math.max(1, Math.min(80, Math.round(Number(maxWeeklyJP) || 24)));
+    const safeSearchLimitVal = Math.max(1500, Math.min(100000, Math.round(Number(searchLimit) || 65000)));
     setPeriodMinutes(String(safeMinVal));
+    setMaxWeeklyJP(String(safeMaxWeeklyVal));
+    setSearchLimit(String(safeSearchLimitVal));
     onSettingsChange({
       schoolName: schoolName.trim() || DEFAULT_MADRASAH_IDENTITY.schoolName,
       ministry: ministry.trim(),
@@ -834,6 +844,8 @@ export function SettingsScreen({
       academicYear: academicYear.trim() || '2026/2027',
       semester,
       periodMinutes: safeMinVal,
+      maxWeeklyJP: safeMaxWeeklyVal,
+      searchLimit: safeSearchLimitVal,
       activeDays,
       teachingPeriodsPerDay: Math.max(1, kbmCount),
       periodDefinitions: definitions,
@@ -873,6 +885,8 @@ export function SettingsScreen({
     if (academicYear !== s.academicYear) return true;
     if (semester !== s.semester) return true;
     if (periodMinutes !== String(s.periodMinutes ?? 40)) return true;
+    if (maxWeeklyJP !== String(s.maxWeeklyJP ?? 24)) return true;
+    if (searchLimit !== String(s.searchLimit ?? 65000)) return true;
     if (geminiEnabled !== s.geminiEnabled) return true;
     if (JSON.stringify(activeDays) !== JSON.stringify(s.activeDays)) return true;
     if (JSON.stringify(definitions) !== JSON.stringify(savedDefs)) return true;
@@ -910,6 +924,8 @@ export function SettingsScreen({
     academicYear,
     semester,
     periodMinutes,
+    maxWeeklyJP,
+    searchLimit,
     geminiEnabled,
     activeDays,
     definitions,
@@ -952,6 +968,7 @@ export function SettingsScreen({
   }, [onDirtyChange]);
 
   const safeMinutes = Math.max(20, Math.min(90, Number(periodMinutes) || 40));
+  const safeMaxWeeklyJP = Math.max(1, Math.min(80, Math.round(Number(maxWeeklyJP) || (state.settings.maxWeeklyJP ?? 24))));
 
   const typedMinutes = Number(periodMinutes);
   const needsMinutesApply = useMemo(() => {
@@ -1228,6 +1245,101 @@ export function SettingsScreen({
                     </label>
                   );
                 })}
+              </div>
+            </section>
+
+            {/* 1B. Aturan Beban Mengajar Maksimal (JP/Minggu) */}
+            <section className="s5-lux-panel">
+              <div className="s5-calm-panel-head">
+                <div className="s5-panel-title-group">
+                  <div className="s5-panel-crest">
+                    <Users size={16} />
+                  </div>
+                  <div>
+                    <h3 className="s5-calm-panel-title">Aturan Batas Beban Mengajar (JP/Minggu)</h3>
+                    <p className="s5-calm-panel-desc s5-tnum">
+                      Batas acuan guru baru, validasi konflik, dan filter beban (standar Kemenag 24 JP, dapat diisi manual 1–80 JP)
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="s5-duration-bar" style={{ marginBottom: 0 }}>
+                <div className="s5-duration-bar-left">
+                  <span className="s5-duration-label">Batas Maksimal / Pekan</span>
+                  <div className="s5-minute-stepper">
+                    <button
+                      type="button"
+                      className="s5-stepper-btn"
+                      onClick={() => setMaxWeeklyJP(String(Math.max(1, safeMaxWeeklyJP - 1)))}
+                      aria-label="Kurangi 1 JP"
+                    >
+                      <Minus size={13} />
+                    </button>
+                    <input
+                      type="number"
+                      min="1"
+                      max="80"
+                      value={maxWeeklyJP}
+                      onChange={(e) => setMaxWeeklyJP(e.target.value)}
+                      onBlur={() => {
+                        const parsed = Math.round(Number(maxWeeklyJP));
+                        if (!Number.isFinite(parsed) || parsed < 1 || parsed > 80) {
+                          setMaxWeeklyJP(String(state.settings.maxWeeklyJP ?? 24));
+                          onNotify('Batas beban JP harus antara 1 sampai 80 JP/minggu.', 'warning');
+                        } else {
+                          setMaxWeeklyJP(String(parsed));
+                        }
+                      }}
+                      className="s5-tnum"
+                      aria-label="Batas maksimal JP per minggu"
+                    />
+                    <span className="s5-minute-unit">JP</span>
+                    <button
+                      type="button"
+                      className="s5-stepper-btn"
+                      onClick={() => setMaxWeeklyJP(String(Math.min(80, safeMaxWeeklyJP + 1)))}
+                      aria-label="Tambah 1 JP"
+                    >
+                      <Plus size={13} />
+                    </button>
+                  </div>
+
+                  <div className="s5-inline-segment">
+                    {[18, 24, 30, 36].map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        className={`s5-seg-btn ${Number(maxWeeklyJP) === preset ? 'is-active' : ''}`}
+                        onClick={() => setMaxWeeklyJP(String(preset))}
+                      >
+                        {preset} JP{preset === 24 ? ' Standar' : ''}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {onApplyWeeklyLimitToAllTeachers && (
+                  <div className="s5-duration-bar-right">
+                    <button
+                      type="button"
+                      className="s5-apply-kbm-btn s5-tnum"
+                      onClick={() => {
+                        const parsed = Math.round(Number(maxWeeklyJP));
+                        if (!Number.isFinite(parsed) || parsed < 1 || parsed > 80) {
+                          onNotify('Masukkan angka batas JP valid antara 1 sampai 80 sebelum menerapkan.', 'warning');
+                          return;
+                        }
+                        setMaxWeeklyJP(String(parsed));
+                        onApplyWeeklyLimitToAllTeachers(parsed);
+                      }}
+                      data-s5-tooltip="Simpan standar batas JP ini dan perbarui batas seluruh guru aktif sekaligus"
+                    >
+                      <Check size={12} strokeWidth={2.6} />
+                      <span>Terapkan {safeMaxWeeklyJP} JP ke Semua Guru</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </section>
 
@@ -1906,6 +2018,10 @@ export function SettingsScreen({
                 <div className="s5-clean-kv-row">
                   <span>Jam operasional</span>
                   <strong>{liveStats.dailySpan}</strong>
+                </div>
+                <div className="s5-clean-kv-row">
+                  <span>Batas beban guru / pekan</span>
+                  <strong>Maks. {safeMaxWeeklyJP} JP</strong>
                 </div>
               </div>
 
@@ -2588,6 +2704,64 @@ export function SettingsScreen({
                 >
                   <span />
                 </button>
+              </div>
+            </section>
+
+            <section className="s5-lux-panel" style={{ marginTop: '14px' }}>
+              <div className="s5-calm-panel-head" style={{ marginBottom: '12px' }}>
+                <div>
+                  <h3 className="s5-calm-panel-title">Batas Langkah Penyusun Jadwal</h3>
+                  <p className="s5-calm-panel-desc" style={{ marginTop: '3px' }}>
+                    Menentukan kedalaman pencarian kombinasi saat Generator Jadwal otomatis berjalan (rentang aman 1.500 – 100.000 langkah).
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input
+                    type="number"
+                    min={1500}
+                    max={100000}
+                    step={500}
+                    value={searchLimit}
+                    onChange={(e) => setSearchLimit(e.target.value)}
+                    aria-label="Batas langkah pencarian penyusun jadwal"
+                    className="s5-tnum"
+                    style={{
+                      width: '130px',
+                      height: '38px',
+                      padding: '0 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #C5D3CC',
+                      fontSize: '14px',
+                      fontWeight: 700,
+                      color: '#0B2923',
+                      background: '#FFFFFF',
+                    }}
+                  />
+                  <span style={{ fontSize: '12px', color: '#526861', fontWeight: 600 }}>kombinasi</span>
+                </div>
+
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {[
+                    { label: 'Cepat (15.000)', value: '15000' },
+                    { label: 'Standar (65.000)', value: '65000' },
+                    { label: 'Mendalam (100.000)', value: '100000' },
+                  ].map((preset) => {
+                    const isActivePreset = String(Number(searchLimit) || 0) === preset.value;
+                    return (
+                      <button
+                        key={preset.value}
+                        type="button"
+                        className={`filter-tab-btn ${isActivePreset ? 'active' : ''}`}
+                        onClick={() => setSearchLimit(preset.value)}
+                      >
+                        {preset.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </section>
 

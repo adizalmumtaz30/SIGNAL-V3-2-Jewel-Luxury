@@ -288,9 +288,11 @@ export function aggregateTeacherWorkloadFromEntries(
   teachers: readonly Teacher[],
   entries: readonly ScheduleEntry[],
   activeDays: readonly Day[],
-  periodMinutes: number
+  periodMinutes: number,
+  defaultMaxWeeklyJP = 24
 ): TeacherWorkloadStat[] {
   return teachers.map((teacher) => {
+    const maxWeeklyJP = teacher.maxWeeklyJP > 0 ? teacher.maxWeeklyJP : defaultMaxWeeklyJP;
     const teacherEntries = entries.filter((e) => e.teacherId === teacher.id);
     const totalJP = teacherEntries.length;
     const astro = jpToAstronomical(totalJP, periodMinutes);
@@ -336,7 +338,7 @@ export function aggregateTeacherWorkloadFromEntries(
 
     const classesTaught = [...new Set(teacherEntries.map((e) => e.classId))];
     const subjectsTaught = [...new Set(teacherEntries.map((e) => e.subjectId))];
-    const isOverloaded = totalJP > teacher.maxWeeklyJP;
+    const isOverloaded = totalJP > maxWeeklyJP;
     const isUnderloaded = totalJP === 0;
 
     return {
@@ -344,8 +346,8 @@ export function aggregateTeacherWorkloadFromEntries(
       totalJP,
       astroHours: astro.hours,
       astroMinutes: astro.minutes,
-      maxWeeklyJP: teacher.maxWeeklyJP,
-      percentage: Math.round((totalJP / Math.max(1, teacher.maxWeeklyJP)) * 100),
+      maxWeeklyJP,
+      percentage: Math.round((totalJP / Math.max(1, maxWeeklyJP)) * 100),
       dayDist,
       singleBlocks,
       doubleBlocks,
@@ -375,21 +377,23 @@ export function aggregateTeacherWorkloadFromRequirements(
     return true;
   });
 
+  const defaultMaxWeeklyJP = state.settings.maxWeeklyJP && state.settings.maxWeeklyJP > 0 ? state.settings.maxWeeklyJP : 24;
   return teachers.map((teacher) => {
     const reqs = filteredReqs.filter((r) => r.teacherId === teacher.id);
     const plannedJP = reqs.reduce((sum, r) => sum + (Number(r.requiredJP) || 0), 0);
     const astro = jpToAstronomical(plannedJP, periodMinutes);
+    const maxWeeklyJP = teacher.maxWeeklyJP > 0 ? teacher.maxWeeklyJP : defaultMaxWeeklyJP;
     return {
       teacher,
       plannedJP,
       astroHours: astro.hours,
       astroMinutes: astro.minutes,
-      maxWeeklyJP: teacher.maxWeeklyJP,
-      percentage: Math.round((plannedJP / Math.max(1, teacher.maxWeeklyJP)) * 100),
+      maxWeeklyJP,
+      percentage: Math.round((plannedJP / Math.max(1, maxWeeklyJP)) * 100),
       classesPlanned: [...new Set(reqs.map((r) => r.classId))],
       subjectsPlanned: [...new Set(reqs.map((r) => r.subjectId))],
       requirementRowsCount: reqs.length,
-      isOverloaded: plannedJP > teacher.maxWeeklyJP,
+      isOverloaded: plannedJP > maxWeeklyJP,
       isUnplanned: plannedJP === 0,
     };
   });

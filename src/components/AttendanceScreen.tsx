@@ -1581,174 +1581,184 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
         </div>
       </div>
 
-      {/* B. Jewel KPI Cards (Aligned with Persuratan & Arsip) */}
-      <div className="s5-att-kpi-grid" role="region" aria-label="Ringkasan statistik presensi guru">
+      {/* B. KPI Cards (Diselaraskan dengan Desain Beban Guru) */}
+      <div className="stat-grid" role="region" aria-label="Ringkasan statistik presensi guru">
         {activeTab === 'daily' ? (
           <>
-            <KpiMotionCard key="att-daily-0" className="s5-att-kpi-card stat-card" index={0}>
-              <div className="s5-att-kpi-jewel-icon" aria-hidden="true">
-                <UserCheck size={20} />
-              </div>
-              <div className="s5-att-kpi-body">
-                <div className="s5-att-kpi-head">
-                  <span className="s5-att-kpi-label">Guru Hadir Hari Ini</span>
+            <KpiMotionCard key="att-daily-0" className="stat-card tone-teal" index={0}>
+              <div className="stat-top">
+                <span>Guru Hadir Hari Ini</span>
+                <div className="stat-icon" aria-hidden="true">
+                  <UserCheck size={17} />
                 </div>
-                <strong className="s5-att-kpi-value s5-tnum">
-                  <KpiAnimatedNumber value={dailyPresentCount} />{' '}
-                  <span className="s5-att-kpi-denom">/ {activeTeachers.length}</span>
-                </strong>
-                <small className="s5-att-kpi-sub">{formatCompactDate(currentDate)}</small>
               </div>
+              <div className="stat-value-row">
+                <strong>
+                  <KpiAnimatedNumber value={dailyPresentCount} />
+                </strong>
+                <span className="stat-unit">/ {activeTeachers.length} guru</span>
+              </div>
+              <div className="stat-sub">{formatCompactDate(currentDate)}</div>
             </KpiMotionCard>
 
-            <KpiMotionCard key="att-daily-1" className="s5-att-kpi-card stat-card" index={1}>
-              <div className="s5-att-kpi-jewel-ring" aria-hidden="true">
-                <svg width="42" height="42" viewBox="0 0 46 46">
-                  <circle cx="23" cy="23" r={ringRadius} fill="none" stroke="rgba(255, 255, 255, 0.2)" strokeWidth="4.2" />
-                  <motion.circle
-                    cx="23"
-                    cy="23"
-                    r={ringRadius}
-                    fill="none"
-                    stroke={
-                      dailyAttendanceRate >= 90
-                        ? '#F0D99A'
-                        : dailyAttendanceRate >= 75
-                        ? '#E5C97A'
-                        : '#FCA5A5'
-                    }
-                    strokeWidth="4.2"
-                    strokeDasharray={ringCircumference}
-                    strokeLinecap="round"
-                    transform="rotate(-90 23 23)"
-                    initial={shouldReduceMotion ? false : { strokeDashoffset: ringCircumference }}
-                    animate={{ strokeDashoffset: ringOffset }}
-                    transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.68, ease: [0.16, 1, 0.3, 1] }}
-                  />
-                </svg>
-              </div>
-              <div className="s5-att-kpi-body">
-                <div className="s5-att-kpi-head">
-                  <span className="s5-att-kpi-label">Tingkat Kehadiran</span>
+            <KpiMotionCard key="att-daily-1" className="stat-card tone-sand" index={1}>
+              <div className="stat-top">
+                <span>Tingkat Kehadiran</span>
+                <div className="stat-icon" aria-hidden="true">
+                  <svg width="24" height="24" viewBox="0 0 46 46">
+                    <circle cx="23" cy="23" r={ringRadius} fill="none" stroke="rgba(23, 61, 50, 0.16)" strokeWidth="4.5" />
+                    <motion.circle
+                      cx="23"
+                      cy="23"
+                      r={ringRadius}
+                      fill="none"
+                      stroke={
+                        dailyAttendanceRate >= 90
+                          ? '#173D32'
+                          : dailyAttendanceRate >= 75
+                          ? '#74551D'
+                          : '#8F2D24'
+                      }
+                      strokeWidth="4.5"
+                      strokeDasharray={ringCircumference}
+                      strokeLinecap="round"
+                      transform="rotate(-90 23 23)"
+                      initial={shouldReduceMotion ? false : { strokeDashoffset: ringCircumference }}
+                      animate={{ strokeDashoffset: ringOffset }}
+                      transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.68, ease: [0.16, 1, 0.3, 1] }}
+                    />
+                  </svg>
                 </div>
-                <strong className="s5-att-kpi-value s5-tnum">
+              </div>
+              <div className="stat-value-row">
+                <strong>
                   <KpiAnimatedNumber value={dailyAttendanceRate} suffix="%" />
                 </strong>
-                <small className="s5-att-kpi-sub">Rasio kehadiran aktif</small>
+                <span className="stat-unit">hadir</span>
               </div>
+              <div className="stat-sub">Rasio kehadiran pendidik aktif</div>
             </KpiMotionCard>
 
-            <KpiMotionCard key="att-daily-2" className="s5-att-kpi-card stat-card tone-gold" index={2}>
-              <div className="s5-att-kpi-jewel-icon" aria-hidden="true">
-                <BookOpen size={20} />
-              </div>
-              <div className="s5-att-kpi-body">
-                <div className="s5-att-kpi-head">
-                  <span className="s5-att-kpi-label">Dinas Luar / Izin / Sakit</span>
+            <KpiMotionCard key="att-daily-2" className="stat-card tone-blue" index={2}>
+              <div className="stat-top">
+                <span>Dinas Luar / Izin / Sakit</span>
+                <div className="stat-icon" aria-hidden="true">
+                  <BookOpen size={17} />
                 </div>
-                <strong className="s5-att-kpi-value s5-tnum">
+              </div>
+              <div className="stat-value-row">
+                <strong>
                   <KpiAnimatedNumber value={dailyPermitCount} />
                 </strong>
-                <small className="s5-att-kpi-sub">Pendidik dengan keterangan</small>
+                <span className="stat-unit">guru</span>
               </div>
+              <div className="stat-sub">Pendidik dengan keterangan resmi</div>
             </KpiMotionCard>
 
-            <KpiMotionCard key="att-daily-3" className="s5-att-kpi-card stat-card tone-slate" index={3}>
-              <div className="s5-att-kpi-jewel-icon" aria-hidden="true">
-                {dailyAbsentCount > 0 ? <AlertCircle size={20} /> : <CheckCircle2 size={20} />}
-              </div>
-              <div className="s5-att-kpi-body">
-                <div className="s5-att-kpi-head">
-                  <span className="s5-att-kpi-label">Tanpa Keterangan (Alpa)</span>
+            <KpiMotionCard
+              key="att-daily-3"
+              className="stat-card tone-rose"
+              index={3}
+            >
+              <div className="stat-top">
+                <span>Tanpa Keterangan (Alpa)</span>
+                <div className="stat-icon" aria-hidden="true">
+                  {dailyAbsentCount > 0 ? <AlertCircle size={17} /> : <CheckCircle2 size={17} />}
                 </div>
-                <strong className="s5-att-kpi-value s5-tnum">
+              </div>
+              <div className="stat-value-row">
+                <strong>
                   <KpiAnimatedNumber value={dailyAbsentCount} />
                 </strong>
-                <small className="s5-att-kpi-sub">
-                  {dailyAbsentCount === 0 ? 'Tertib seluruh pendidik' : 'Perlu tindak lanjut'}
-                </small>
+                <span className="stat-unit">guru</span>
+              </div>
+              <div className="stat-sub">
+                {dailyAbsentCount === 0 ? 'Tertib seluruh pendidik' : 'Perlu tindak lanjut'}
               </div>
             </KpiMotionCard>
           </>
         ) : (
           <>
-            <KpiMotionCard key="att-recap-0" className="s5-att-kpi-card stat-card" index={0}>
-              <div className="s5-att-kpi-jewel-icon" aria-hidden="true">
-                <Users size={20} />
-              </div>
-              <div className="s5-att-kpi-body">
-                <div className="s5-att-kpi-head">
-                  <span className="s5-att-kpi-label">Pendidik Terpilih</span>
+            <KpiMotionCard key="att-recap-0" className="stat-card tone-teal" index={0}>
+              <div className="stat-top">
+                <span>Pendidik Terpilih</span>
+                <div className="stat-icon" aria-hidden="true">
+                  <Users size={17} />
                 </div>
-                <strong className="s5-att-kpi-value s5-tnum">
-                  <KpiAnimatedNumber value={recapSelectedTeachers.length} />{' '}
-                  <span className="s5-att-kpi-denom">/ {activeTeachers.length}</span>
-                </strong>
-                <small className="s5-att-kpi-sub">Siap direkap &amp; ekspor PDF</small>
               </div>
+              <div className="stat-value-row">
+                <strong>
+                  <KpiAnimatedNumber value={recapSelectedTeachers.length} />
+                </strong>
+                <span className="stat-unit">/ {activeTeachers.length} guru</span>
+              </div>
+              <div className="stat-sub">Siap direkap &amp; ekspor PDF</div>
             </KpiMotionCard>
 
-            <KpiMotionCard key="att-recap-1" className="s5-att-kpi-card stat-card" index={1}>
-              <div className="s5-att-kpi-jewel-icon" aria-hidden="true">
-                <CalendarDays size={20} />
-              </div>
-              <div className="s5-att-kpi-body">
-                <div className="s5-att-kpi-head">
-                  <span className="s5-att-kpi-label">Hari Efektif KBM</span>
+            <KpiMotionCard key="att-recap-1" className="stat-card tone-sand" index={1}>
+              <div className="stat-top">
+                <span>Hari Efektif KBM</span>
+                <div className="stat-icon" aria-hidden="true">
+                  <CalendarDays size={17} />
                 </div>
-                <strong className="s5-att-kpi-value s5-tnum">
+              </div>
+              <div className="stat-value-row">
+                <strong>
                   <KpiAnimatedNumber value={effectiveDaysInMonth} />
                 </strong>
-                <small className="s5-att-kpi-sub">Periode {currentMonth}</small>
+                <span className="stat-unit">hari</span>
               </div>
+              <div className="stat-sub">Periode {currentMonth}</div>
             </KpiMotionCard>
 
-            <KpiMotionCard key="att-recap-2" className="s5-att-kpi-card stat-card tone-gold" index={2}>
-              <div className="s5-att-kpi-jewel-ring" aria-hidden="true">
-                <svg width="42" height="42" viewBox="0 0 46 46">
-                  <circle cx="23" cy="23" r={ringRadius} fill="none" stroke="rgba(23, 61, 50, 0.16)" strokeWidth="4.2" />
-                  <motion.circle
-                    cx="23"
-                    cy="23"
-                    r={ringRadius}
-                    fill="none"
-                    stroke={
-                      overallAvgRate >= 90 ? '#173D32' : overallAvgRate >= 75 ? '#74551D' : '#8F2D24'
-                    }
-                    strokeWidth="4.2"
-                    strokeDasharray={ringCircumference}
-                    strokeLinecap="round"
-                    transform="rotate(-90 23 23)"
-                    initial={shouldReduceMotion ? false : { strokeDashoffset: ringCircumference }}
-                    animate={{ strokeDashoffset: ringOffset }}
-                    transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.68, ease: [0.16, 1, 0.3, 1] }}
-                  />
-                </svg>
-              </div>
-              <div className="s5-att-kpi-body">
-                <div className="s5-att-kpi-head">
-                  <span className="s5-att-kpi-label">Rata-rata Kehadiran</span>
+            <KpiMotionCard key="att-recap-2" className="stat-card tone-blue" index={2}>
+              <div className="stat-top">
+                <span>Rata-rata Kehadiran</span>
+                <div className="stat-icon" aria-hidden="true">
+                  <svg width="24" height="24" viewBox="0 0 46 46">
+                    <circle cx="23" cy="23" r={ringRadius} fill="none" stroke="rgba(255, 255, 255, 0.22)" strokeWidth="4.5" />
+                    <motion.circle
+                      cx="23"
+                      cy="23"
+                      r={ringRadius}
+                      fill="none"
+                      stroke={
+                        overallAvgRate >= 90 ? '#F0D99A' : overallAvgRate >= 75 ? '#E5C97A' : '#FCA5A5'
+                      }
+                      strokeWidth="4.5"
+                      strokeDasharray={ringCircumference}
+                      strokeLinecap="round"
+                      transform="rotate(-90 23 23)"
+                      initial={shouldReduceMotion ? false : { strokeDashoffset: ringCircumference }}
+                      animate={{ strokeDashoffset: ringOffset }}
+                      transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.68, ease: [0.16, 1, 0.3, 1] }}
+                    />
+                  </svg>
                 </div>
-                <strong className="s5-att-kpi-value s5-tnum">
+              </div>
+              <div className="stat-value-row">
+                <strong>
                   <KpiAnimatedNumber value={overallAvgRate} suffix="%" />
                 </strong>
-                <small className="s5-att-kpi-sub">Akumulasi pendidik terpilih</small>
+                <span className="stat-unit">akumulasi</span>
               </div>
+              <div className="stat-sub">Akumulasi pendidik terpilih</div>
             </KpiMotionCard>
 
-            <KpiMotionCard key="att-recap-3" className="s5-att-kpi-card stat-card tone-slate" index={3}>
-              <div className="s5-att-kpi-jewel-icon" aria-hidden="true">
-                <Calendar size={20} />
-              </div>
-              <div className="s5-att-kpi-body">
-                <div className="s5-att-kpi-head">
-                  <span className="s5-att-kpi-label">Tanggal Merah Bulan Ini</span>
+            <KpiMotionCard key="att-recap-3" className="stat-card tone-rose" index={3}>
+              <div className="stat-top">
+                <span>Tanggal Merah Bulan Ini</span>
+                <div className="stat-icon" aria-hidden="true">
+                  <Calendar size={17} />
                 </div>
-                <strong className="s5-att-kpi-value s5-tnum">
+              </div>
+              <div className="stat-value-row">
+                <strong>
                   <KpiAnimatedNumber value={holidaysInMonth.length} />
                 </strong>
-                <small className="s5-att-kpi-sub">Libur madrasah &amp; nasional</small>
+                <span className="stat-unit">hari</span>
               </div>
+              <div className="stat-sub">Libur madrasah &amp; nasional</div>
             </KpiMotionCard>
           </>
         )}
