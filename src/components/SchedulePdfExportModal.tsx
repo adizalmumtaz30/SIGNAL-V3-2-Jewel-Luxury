@@ -3,20 +3,22 @@ import {
   AlignLeft,
   AlertTriangle,
   Award,
-  Download,
   FileEdit,
   FileSpreadsheet,
   GraduationCap,
   Layers,
   Palette,
-  RotateCcw,
+  Printer,
   SlidersHorizontal,
   Sparkles,
   Users,
-  X,
 } from 'lucide-react';
 import type { AppState } from '../domain/types';
-import { MotionModalDialog } from './KpiMotion';
+import {
+  PdfExportStudioShell,
+  PdfKopSignerContentEditor,
+  PdfPreviewKpiStrip,
+} from './PdfExportStudioShell';
 import {
   buildRightSignerTitle,
   compactSubjectName,
@@ -471,69 +473,30 @@ export function SchedulePdfExportModal({
   ];
 
   return (
-    <MotionModalDialog
-      panelClassName="modal-panel s5-export-studio-panel"
+    <PdfExportStudioShell
       ariaLabel="Studio Ekspor PDF Jadwal Pelajaran Resmi"
-      onBackdropMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-        {/* Modal Header */}
-        <div
-          className="modal-head"
-          style={{
-            padding: '15px 22px',
-            borderBottom: '0.75px solid #DCE5DF',
-            background: '#FFFFFF',
-          }}
-        >
-          <div className="modal-title-icon" style={{ background: '#E8F4EE', color: '#124037' }}>
-            <Download size={19} />
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h2 style={{ fontSize: '16px', margin: 0, color: '#0B2923', fontWeight: 700 }}>
-              Studio Dokumen PDF Jadwal Pelajaran ({paperSize.toUpperCase()})
-            </h2>
-            <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#526861' }}>
-              Pratinjau tata letak real-time, pemilihan kertas A4/F4, kop Kemenag, dan pengesahan resmi madrasah
-            </p>
-          </div>
-          <button className="icon-button" onClick={onClose} aria-label="Tutup dialog">
-            <X size={17} />
-          </button>
-        </div>
-
-        {/* Studio Split Body */}
-        <div className="s5-studio-body">
-          <div className="s5-pdf-studio-grid">
-            {/* LEFT PANE: Clean Tabbed Configuration */}
-            <div className="s5-studio-left-pane">
-              {/* Studio Primary Switcher */}
-              <div className="s5-studio-tabs" role="tablist" aria-label="Kategori Pengaturan Ekspor">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={studioTab === 'layout'}
-                  className={`s5-studio-tab-btn ${studioTab === 'layout' ? 'is-active' : ''}`}
-                  onClick={() => setStudioTab('layout')}
-                >
-                  <SlidersHorizontal size={14} />
-                  <span>Format &amp; Tata Letak</span>
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={studioTab === 'content'}
-                  className={`s5-studio-tab-btn ${studioTab === 'content' ? 'is-active' : ''}`}
-                  onClick={() => setStudioTab('content')}
-                >
-                  <FileEdit size={14} />
-                  <span>Kop, Judul &amp; Pejabat</span>
-                </button>
-              </div>
-
-              {studioTab === 'layout' ? (
-                <>
+      title={`Studio Dokumen PDF Jadwal Pelajaran (${paperSize.toUpperCase()})`}
+      subtitle="Pratinjau langsung A4/F4, kop resmi madrasah, dan lembar pengesahan."
+      headerIcon={<Printer size={19} />}
+      tabs={[
+        { id: 'layout', label: 'Format & Tata Letak', icon: <SlidersHorizontal size={14} /> },
+        { id: 'content', label: 'Kop, Judul & Pejabat', icon: <FileEdit size={14} /> },
+      ]}
+      activeTab={studioTab}
+      onTabChange={setStudioTab}
+      tabAriaLabel="Kategori Pengaturan Ekspor"
+      footerMeta={
+        <>
+          Format Cetak: <strong>{paperLabel}</strong> ({paperDimensionText})
+        </>
+      }
+      onClose={onClose}
+      onExport={handleDownload}
+      isExporting={isExporting}
+      exportLabel={`Unduh Dokumen PDF Resmi (${paperSize.toUpperCase()})`}
+      leftPaneContent={
+        studioTab === 'layout' ? (
+          <>
                   {/* Card 1: Format Dokumen */}
                   <div className="s5-studio-card">
                     <div className="s5-studio-section-head">
@@ -824,386 +787,97 @@ export function SchedulePdfExportModal({
                   </div>
                 </>
               ) : (
-                /* TAB 2: Kop Surat, Judul & Pejabat Pengesah */
-                <div className="s5-studio-card">
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: '10px',
-                      paddingBottom: '10px',
-                      borderBottom: '0.75px solid #E8EFEA',
-                      flexWrap: 'wrap',
-                    }}
-                  >
-                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                      {(
-                        [
-                          { id: 'kop', label: 'Kop Madrasah' },
-                          { id: 'title', label: 'Judul & Periode' },
-                          { id: 'signer', label: 'Pejabat & TTD' },
-                        ] as const
-                      ).map((tab) => (
-                        <button
-                          key={tab.id}
-                          type="button"
-                          onClick={() => setContentSubTab(tab.id)}
-                          className={`s5-studio-preset-btn ${contentSubTab === tab.id ? 'is-active' : ''}`}
-                          style={{ height: '30px', padding: '0 12px', fontSize: '12px' }}
-                        >
-                          {tab.label}
-                        </button>
-                      ))}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={handleResetToSettings}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px',
-                        height: '30px',
-                        padding: '0 10px',
-                        borderRadius: '8px',
-                        border: '0.75px solid #E8CFCB',
-                        background: '#FDF6F5',
-                        color: '#9F352B',
-                        fontSize: '11.5px',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <RotateCcw size={12} />
-                      <span>Reset Default</span>
-                    </button>
-                  </div>
-
-                  {contentSubTab === 'kop' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                      <div className="field-group" style={{ gridColumn: 'span 2' }}>
-                        <label style={{ fontSize: '11px' }}>Mode Tampilan Kop Surat</label>
-                        <div style={{ display: 'flex', gap: '6px' }}>
-                          <button
-                            type="button"
-                            onClick={() => setKopMode('structured')}
-                            className={`s5-studio-preset-btn ${kopMode === 'structured' ? 'is-active' : ''}`}
-                            style={{ flex: 1, height: '32px', fontSize: '11.5px' }}
-                          >
-                            Kop Terstruktur (Editable)
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setKopMode('image')}
-                            className={`s5-studio-preset-btn ${kopMode === 'image' ? 'is-active' : ''}`}
-                            style={{ flex: 1, height: '32px', fontSize: '11.5px' }}
-                          >
-                            Gambar Kop Resmi Penuh
-                          </button>
-                        </div>
-                      </div>
-                      <div className="field-group" style={{ gridColumn: 'span 2' }}>
-                        <label style={{ fontSize: '11px' }}>Nama Resmi Madrasah</label>
-                        <input
-                          value={schoolName}
-                          onChange={(e) => setSchoolName(e.target.value)}
-                          style={{ height: '34px', fontSize: '12px', fontWeight: 700 }}
-                        />
-                      </div>
-                      <div className="field-group" style={{ gridColumn: 'span 2' }}>
-                        <label style={{ fontSize: '11px' }}>Yayasan / Lembaga Menaungi</label>
-                        <input
-                          value={ministry}
-                          onChange={(e) => setMinistry(e.target.value)}
-                          style={{ height: '34px', fontSize: '12px' }}
-                        />
-                      </div>
-                      <div className="field-group" style={{ gridColumn: 'span 2' }}>
-                        <label style={{ fontSize: '11px' }}>Akte Notaris / SK Pendirian</label>
-                        <input
-                          value={regionalOffice}
-                          onChange={(e) => setRegionalOffice(e.target.value)}
-                          style={{ height: '34px', fontSize: '12px' }}
-                        />
-                      </div>
-                      <div className="field-group" style={{ gridColumn: 'span 2' }}>
-                        <label style={{ fontSize: '11px' }}>Keputusan Menkumham / SK Legalitas</label>
-                        <input
-                          value={legalDecree}
-                          onChange={(e) => setLegalDecree(e.target.value)}
-                          style={{ height: '34px', fontSize: '12px' }}
-                        />
-                      </div>
-                      <div className="field-group">
-                        <label style={{ fontSize: '11px' }}>NSM</label>
-                        <input
-                          value={nsm}
-                          onChange={(e) => setNsm(e.target.value)}
-                          style={{ height: '34px', fontSize: '12px' }}
-                        />
-                      </div>
-                      <div className="field-group">
-                        <label style={{ fontSize: '11px' }}>NPSN</label>
-                        <input
-                          value={npsn}
-                          onChange={(e) => setNpsn(e.target.value)}
-                          style={{ height: '34px', fontSize: '12px' }}
-                        />
-                      </div>
-                      <div className="field-group" style={{ gridColumn: 'span 2' }}>
-                        <label style={{ fontSize: '11px' }}>Status Akreditasi</label>
-                        <input
-                          value={accreditation}
-                          onChange={(e) => setAccreditation(e.target.value)}
-                          style={{ height: '34px', fontSize: '12px' }}
-                        />
-                      </div>
-                      <div className="field-group" style={{ gridColumn: 'span 2' }}>
-                        <label style={{ fontSize: '11px' }}>Alamat Lengkap</label>
-                        <input
-                          value={address}
-                          onChange={(e) => setAddress(e.target.value)}
-                          style={{ height: '34px', fontSize: '12px' }}
-                        />
-                      </div>
-                      <div className="field-group">
-                        <label style={{ fontSize: '11px' }}>Kota / Kabupaten</label>
-                        <input
-                          value={city}
-                          onChange={(e) => setCity(e.target.value)}
-                          style={{ height: '34px', fontSize: '12px' }}
-                        />
-                      </div>
-                      <div className="field-group">
-                        <label style={{ fontSize: '11px' }}>Telepon</label>
-                        <input
-                          value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
-                          style={{ height: '34px', fontSize: '12px' }}
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {contentSubTab === 'title' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                      <div className="field-group" style={{ gridColumn: 'span 2' }}>
-                        <label style={{ fontSize: '11px' }}>Judul Utama Dokumen</label>
-                        <input
-                          value={documentTitle}
-                          onChange={(e) => setDocumentTitle(e.target.value)}
-                          style={{ height: '36px', fontSize: '12.5px', fontWeight: 700 }}
-                        />
-                      </div>
-                      <div className="field-group">
-                        <label style={{ fontSize: '11px' }}>Tahun Ajaran</label>
-                        <input
-                          value={academicYear}
-                          onChange={(e) => setAcademicYear(e.target.value)}
-                          style={{ height: '34px', fontSize: '12px' }}
-                        />
-                      </div>
-                      <div className="field-group">
-                        <label style={{ fontSize: '11px' }}>Semester</label>
-                        <select
-                          value={semester}
-                          onChange={(e) => setSemester(e.target.value as 'Ganjil' | 'Genap')}
-                          style={{ height: '34px', fontSize: '12px' }}
-                        >
-                          <option value="Ganjil">Semester Ganjil</option>
-                          <option value="Genap">Semester Genap</option>
-                        </select>
-                      </div>
-                      <div className="field-group" style={{ gridColumn: 'span 2' }}>
-                        <label style={{ fontSize: '11px' }}>Catatan Tambahan Dokumen (Opsional)</label>
-                        <input
-                          value={extraNotes}
-                          onChange={(e) => setExtraNotes(e.target.value)}
-                          placeholder="Contoh: Berlaku efektif mulai 20 Juli 2026"
-                          style={{ height: '34px', fontSize: '12px' }}
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {contentSubTab === 'signer' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '11px' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                        <div className="field-group">
-                          <label style={{ fontSize: '11px' }}>Kota Titimangsa</label>
-                          <input
-                            value={signerCity}
-                            onChange={(e) => setSignerCity(e.target.value)}
-                            style={{ height: '34px', fontSize: '12px' }}
-                          />
-                        </div>
-                        <div className="field-group">
-                          <label style={{ fontSize: '11px' }}>Tanggal Pengesahan</label>
-                          <input
-                            value={signerDate}
-                            onChange={(e) => setSignerDate(e.target.value)}
-                            style={{ height: '34px', fontSize: '12px' }}
-                          />
-                        </div>
-                      </div>
-
-                      <div
-                        style={{
-                          padding: '10px 12px',
-                          background: '#F7FAF8',
-                          borderRadius: '10px',
-                          border: '0.75px solid #D8E2DC',
-                          display: 'grid',
-                          gridTemplateColumns: '1fr 1fr',
-                          gap: '8px',
-                        }}
-                      >
-                        <div
-                          style={{
-                            gridColumn: 'span 2',
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            color: '#124037',
-                          }}
-                        >
-                          Penandatangan Kiri (Pemeriksa)
-                        </div>
-                        <div className="field-group">
-                          <label style={{ fontSize: '11px' }}>Jabatan</label>
-                          <input
-                            value={coordinatorTitle}
-                            onChange={(e) => setCoordinatorTitle(e.target.value)}
-                            style={{ height: '32px', fontSize: '12px' }}
-                          />
-                        </div>
-                        <div className="field-group">
-                          <label style={{ fontSize: '11px' }}>Nama &amp; Gelar</label>
-                          <input
-                            value={coordinatorName}
-                            onChange={(e) => setCoordinatorName(e.target.value)}
-                            style={{ height: '32px', fontSize: '12px' }}
-                          />
-                        </div>
-                        <div className="field-group" style={{ gridColumn: 'span 2' }}>
-                          <label style={{ fontSize: '11px' }}>NIP / NPK</label>
-                          <input
-                            value={coordinatorNip}
-                            onChange={(e) => setCoordinatorNip(e.target.value)}
-                            style={{ height: '32px', fontSize: '12px' }}
-                          />
-                        </div>
-                      </div>
-
-                      <div
-                        style={{
-                          padding: '10px 12px',
-                          background: '#FBF9F4',
-                          borderRadius: '10px',
-                          border: '0.75px solid #E5DCC9',
-                          display: 'grid',
-                          gridTemplateColumns: '1fr 1fr',
-                          gap: '8px',
-                        }}
-                      >
-                        <div
-                          style={{
-                            gridColumn: 'span 2',
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            color: '#7A5B25',
-                          }}
-                        >
-                          Penandatangan Kanan (Pengesah Utama)
-                        </div>
-                        <div className="field-group">
-                          <label style={{ fontSize: '11px' }}>Jabatan</label>
-                          <input
-                            value={principalTitle}
-                            onChange={(e) => setPrincipalTitle(e.target.value)}
-                            style={{ height: '32px', fontSize: '12px' }}
-                          />
-                        </div>
-                        <div className="field-group">
-                          <label style={{ fontSize: '11px' }}>Nama &amp; Gelar</label>
-                          <input
-                            value={principalName}
-                            onChange={(e) => setPrincipalName(e.target.value)}
-                            style={{ height: '32px', fontSize: '12px' }}
-                          />
-                        </div>
-                        <div className="field-group" style={{ gridColumn: 'span 2' }}>
-                          <label style={{ fontSize: '11px' }}>NIP / NPK</label>
-                          <input
-                            value={principalNip}
-                            onChange={(e) => setPrincipalNip(e.target.value)}
-                            style={{ height: '32px', fontSize: '12px' }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                <PdfKopSignerContentEditor
+                  subTab={contentSubTab}
+                  onSubTabChange={setContentSubTab}
+                  onResetDefault={handleResetToSettings}
+                  kopMode={kopMode}
+                  onKopModeChange={setKopMode}
+                  schoolName={schoolName}
+                  onSchoolNameChange={setSchoolName}
+                  ministry={ministry}
+                  onMinistryChange={setMinistry}
+                  regionalOffice={regionalOffice}
+                  onRegionalOfficeChange={setRegionalOffice}
+                  legalDecree={legalDecree}
+                  onLegalDecreeChange={setLegalDecree}
+                  nsm={nsm}
+                  onNsmChange={setNsm}
+                  npsn={npsn}
+                  onNpsnChange={setNpsn}
+                  accreditation={accreditation}
+                  onAccreditationChange={setAccreditation}
+                  address={address}
+                  onAddressChange={setAddress}
+                  city={city}
+                  onCityChange={setCity}
+                  phone={phone}
+                  onPhoneChange={setPhone}
+                  documentTitle={documentTitle}
+                  onDocumentTitleChange={setDocumentTitle}
+                  academicYear={academicYear}
+                  onAcademicYearChange={setAcademicYear}
+                  semester={semester}
+                  onSemesterChange={setSemester}
+                  extraNotes={extraNotes}
+                  onExtraNotesChange={setExtraNotes}
+                  showSignerDateFields
+                  signerCity={signerCity}
+                  onSignerCityChange={setSignerCity}
+                  signerDate={signerDate}
+                  onSignerDateChange={setSignerDate}
+                  leftSignerTitle={coordinatorTitle}
+                  onLeftSignerTitleChange={setCoordinatorTitle}
+                  leftSignerName={coordinatorName}
+                  onLeftSignerNameChange={setCoordinatorName}
+                  leftSignerNip={coordinatorNip}
+                  onLeftSignerNipChange={setCoordinatorNip}
+                  rightSignerTitle={principalTitle}
+                  onRightSignerTitleChange={setPrincipalTitle}
+                  rightSignerName={principalName}
+                  onRightSignerNameChange={setPrincipalName}
+                  rightSignerNip={principalNip}
+                  onRightSignerNipChange={setPrincipalNip}
+                />
+              )
+      }
+      rightPaneContent={
+        <LivePreviewViewport
+          title="Pratinjau Dokumen Jadwal (Live)"
+          metaText={`${paperLabel} · ${paperDimensionText}`}
+          paperWidthMm={paperWidthMm}
+          paperHeightMm={paperHeightMm}
+          compactMaxHeight={485}
+          sheetMode="stack"
+          ariaLabel="Pratinjau dokumen jadwal siap cetak"
+          topSlot={
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {(hardErrorCount > 0 || warningCount > 0) && (
+                <div className="lpv-conflict-warning-banner" role="status">
+                  <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: '1px', color: '#B45309' }} />
+                  <span>
+                    <strong>Mode Cetak Draf Aktif:</strong> Jadwal masih memiliki{' '}
+                    <span className="s5-tnum" style={{ fontWeight: 700 }}>
+                      {hardErrorCount > 0 ? `${hardErrorCount} bentrok keras` : ''}
+                      {hardErrorCount > 0 && warningCount > 0 ? ' & ' : ''}
+                      {warningCount > 0 ? `${warningCount} catatan` : ''}
+                    </span>
+                    . Dokumen tetap dapat dicetak sebagai draf koreksi.
+                  </span>
                 </div>
               )}
+
+              <PdfPreviewKpiStrip
+                items={[
+                  { label: 'ALOKASI', value: `${classPreviewStats.totalJp} JP` },
+                  { label: 'ASTRONOMIS', value: classPreviewStats.astroFormatted },
+                  { label: 'PENDIDIK', value: `${classPreviewStats.teacherCount} Guru` },
+                  { label: 'ESTIMASI', value: `${classPreviewStats.pageEstimate} Hal`, tone: 'accent' },
+                ]}
+              />
             </div>
-
-            {/* RIGHT PANE: Real-Live WYSIWYG Document Viewport */}
-            <div className="s5-pdf-paper-stage" style={{ padding: 0, overflow: 'hidden', border: 'none', background: 'transparent' }}>
-              <LivePreviewViewport
-                title="Pratinjau Dokumen Jadwal (Live)"
-                metaText={`${paperLabel} · ${paperDimensionText}`}
-                paperWidthMm={paperWidthMm}
-                paperHeightMm={paperHeightMm}
-                compactMaxHeight={485}
-                sheetMode="stack"
-                ariaLabel="Pratinjau dokumen jadwal siap cetak"
-                topSlot={
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {(hardErrorCount > 0 || warningCount > 0) && (
-                      <div className="lpv-conflict-warning-banner" role="status">
-                        <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: '1px', color: '#B45309' }} />
-                        <span>
-                          <strong>Mode Cetak Draf Aktif:</strong> Jadwal masih memiliki{' '}
-                          <span className="s5-tnum" style={{ fontWeight: 700 }}>
-                            {hardErrorCount > 0 ? `${hardErrorCount} bentrok keras` : ''}
-                            {hardErrorCount > 0 && warningCount > 0 ? ' & ' : ''}
-                            {warningCount > 0 ? `${warningCount} catatan` : ''}
-                          </span>
-                          . Anda tetap dapat meninjau, mencetak, dan mengunduh PDF/CSV kapan saja untuk koreksi lapangan.
-                        </span>
-                      </div>
-                    )}
-
-                    {/* 4 Live Document KPI Strip */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '8px' }}>
-                      <div style={{ padding: '7px 10px', background: '#FFFFFF', borderRadius: '9px', border: '0.75px solid #D5E0DA' }}>
-                        <div style={{ fontSize: '10px', color: '#526861', fontWeight: 600 }}>ALOKASI</div>
-                        <strong className="s5-tnum" style={{ fontSize: '13.5px', color: '#0B2923' }}>
-                          {classPreviewStats.totalJp} JP
-                        </strong>
-                      </div>
-                      <div style={{ padding: '7px 10px', background: '#FFFFFF', borderRadius: '9px', border: '0.75px solid #D5E0DA' }}>
-                        <div style={{ fontSize: '10px', color: '#526861', fontWeight: 600 }}>ASTRONOMIS</div>
-                        <strong className="s5-tnum" style={{ fontSize: '12px', color: '#0B2923' }}>
-                          {classPreviewStats.astroFormatted}
-                        </strong>
-                      </div>
-                      <div style={{ padding: '7px 10px', background: '#FFFFFF', borderRadius: '9px', border: '0.75px solid #D5E0DA' }}>
-                        <div style={{ fontSize: '10px', color: '#526861', fontWeight: 600 }}>PENDIDIK</div>
-                        <strong className="s5-tnum" style={{ fontSize: '13.5px', color: '#0B2923' }}>
-                          {classPreviewStats.teacherCount} Guru
-                        </strong>
-                      </div>
-                      <div style={{ padding: '7px 10px', background: '#FFFFFF', borderRadius: '9px', border: '0.75px solid #D5E0DA' }}>
-                        <div style={{ fontSize: '10px', color: '#526861', fontWeight: 600 }}>ESTIMASI</div>
-                        <strong className="s5-tnum" style={{ fontSize: '13px', color: '#1B5E43' }}>
-                          {classPreviewStats.pageEstimate} Hal
-                        </strong>
-                      </div>
-                    </div>
-                  </div>
-                }
-              >
+          }
+        >
                 {(() => {
                   const kopOverrides = {
                     schoolName,
@@ -1902,39 +1576,7 @@ export function SchedulePdfExportModal({
                   );
                 })()}
               </LivePreviewViewport>
-            </div>
-          </div>
-        </div>
-
-        {/* Sticky Footer */}
-        <div className="s5-studio-footer">
-          <span className="s5-tnum" style={{ fontSize: '12px', color: '#526861' }}>
-            Format Cetak: <strong>{paperLabel}</strong> ({paperDimensionText})
-          </span>
-
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button
-              type="button"
-              className="button button-secondary"
-              onClick={onClose}
-              style={{ height: '38px', fontSize: '12.5px' }}
-            >
-              Batal
-            </button>
-            <button
-              type="button"
-              className="button button-primary"
-              onClick={handleDownload}
-              disabled={isExporting}
-              style={{ height: '38px', padding: '0 18px', fontSize: '12.5px' }}
-            >
-              <Download size={15} />
-              {isExporting
-                ? 'Memproses PDF…'
-                : `Unduh Dokumen PDF Resmi (${paperSize.toUpperCase()})`}
-            </button>
-          </div>
-        </div>
-    </MotionModalDialog>
+      }
+    />
   );
 }

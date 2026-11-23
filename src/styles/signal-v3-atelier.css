@@ -1,3 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+@layer legacy-atelier {
 /* ========================================================================= */
 /* SIGNAL V3 — THE GRAND ACADEMIC ATELIER                                    */
 /* Expressive Jewel Luxury Design System                                     */
@@ -5,8 +8,6 @@
 /*         Antique Gold, Gold Light, Warm Ivory, Paper, Soft Sage, Ink.      */
 /* Typography: Fraunces Display Serif + Inter Operational Sans               */
 /* ========================================================================= */
-
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
 :root {
   /* 1. Signature Jewel Palette */
@@ -470,21 +471,21 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 }
 
 .btn.primary, .button-primary {
-  background: var(--green) !important;
-  border-color: var(--green) !important;
-  color: #ffffff !important;
+  background: var(--green);
+  border-color: var(--green);
+  color: #ffffff;
   box-shadow: 0 2px 8px rgba(36, 87, 72, 0.2);
 }
 
 .btn.primary:hover, .button-primary:hover {
-  background: var(--hover) !important;
-  border-color: var(--hover) !important;
+  background: var(--hover);
+  border-color: var(--hover);
 }
 
 .btn.gold {
-  background: var(--gold) !important;
-  border-color: var(--gold) !important;
-  color: #173d32 !important;
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #173d32;
   font-weight: 700;
 }
 
@@ -493,46 +494,46 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 }
 
 .btn.dark {
-  background: var(--night) !important;
-  border-color: var(--night) !important;
-  color: #ffffff !important;
+  background: var(--night);
+  border-color: var(--night);
+  color: #ffffff;
 }
 
 .btn.plum {
-  background: var(--plum) !important;
-  border-color: var(--plum) !important;
-  color: #ffffff !important;
+  background: var(--plum);
+  border-color: var(--plum);
+  color: #ffffff;
 }
 
 .button-secondary {
-  background: var(--paper) !important;
-  border: 1px solid var(--line) !important;
-  color: var(--ink) !important;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  color: var(--ink);
 }
 
 .button-secondary:hover {
-  background: var(--ivory) !important;
+  background: var(--ivory);
 }
 
 .button-quiet {
-  background: transparent !important;
-  border: 1px solid transparent !important;
-  color: var(--muted) !important;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
 }
 
 .button-quiet:hover {
-  background: rgba(45, 128, 102, 0.08) !important;
-  color: var(--emerald) !important;
+  background: rgba(45, 128, 102, 0.08);
+  color: var(--emerald);
 }
 
 .button-danger, .btn.danger {
-  background: #fee2e2 !important;
-  border-color: #fecaca !important;
-  color: #b91c1c !important;
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #b91c1c;
 }
 
 .button-danger:hover, .btn.danger:hover {
-  background: #fecaca !important;
+  background: #fecaca;
 }
 
 /* ========================================================================= */
@@ -934,23 +935,23 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 
 /* Category Tints (Plates 02-04) */
 .cell-jewel-math {
-  background: #E6F0E8 !important;
-  border-left: 3.5px solid var(--emerald) !important;
+  background: #E6F0E8;
+  border-left: 3.5px solid var(--emerald);
 }
 
 .cell-jewel-blue {
-  background: #EAF0F5 !important;
-  border-left: 3.5px solid var(--blue) !important;
+  background: #EAF0F5;
+  border-left: 3.5px solid var(--blue);
 }
 
 .cell-jewel-plum {
-  background: #F0EAF1 !important;
-  border-left: 3.5px solid var(--mauve) !important;
+  background: #F0EAF1;
+  border-left: 3.5px solid var(--mauve);
 }
 
 .cell-jewel-gold {
-  background: #F5EEDD !important;
-  border-left: 3.5px solid var(--gold) !important;
+  background: #F5EEDD;
+  border-left: 3.5px solid var(--gold);
 }
 
 /* Empty slots: calm & quiet */
@@ -1132,7 +1133,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
     display: block;
   }
   .main-shell {
-    margin-left: 0 !important;
+    margin-left: 0;
   }
   .stats, .overview-kpi-strip {
     grid-template-columns: repeat(2, 1fr);
@@ -1156,4 +1157,5 @@ button:focus-visible, input:focus-visible, select:focus-visible {
     font-size: 130px;
     top: -20px;
   }
+}
 }

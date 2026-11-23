@@ -7,7 +7,6 @@ import {
   BookOpen,
   CalendarDays,
   CheckCircle2,
-  Clock,
   ClipboardList,
   Download,
   FileCheck2,
@@ -33,6 +32,8 @@ import { exportScheduleTeacherPDF } from '../utils/pdfExport';
 import { MadrasahTeacherAvatar } from './MadrasahTeacherAvatar';
 import { KpiAnimatedNumber, KpiMotionCard } from './KpiMotion';
 import { UnifiedPagination } from './UnifiedPagination';
+import { EditorialPageHeader } from './EditorialPageHeader';
+import { TableRowActions } from './TableRowActions';
 
 export interface WorkloadDashboardProps {
   state: AppState;
@@ -293,32 +294,53 @@ export function WorkloadDashboard({
 
   return (
     <div className="workload-dashboard-page">
-      {/* Top Banner / Hero */}
-      <div className="workload-hero">
-        <div className="workload-hero-copy">
-          <div className="eyebrow">
-            <span className="eyebrow-line" />
-            ANALISIS BEBAN MENGAJAR
-          </div>
-          <div>
-            <h2 style={{ margin: 0 }}>Statistik &amp; Distribusi Beban Guru</h2>
-            <p className="s5-workload-hero-desc">
-              Pemisahan jelas antara beban mengajar dari Jadwal Terbit Resmi, Pratinjau Draf, dan Rencana Kebutuhan JP.
-            </p>
-          </div>
-        </div>
-        <div className="s5-hero-meta-strip">
-          <div className="s5-hero-meta-item">
-            <Clock size={14} />
-            <span className="s5-tnum">1 JP = {periodMinutes} Menit Astronomis</span>
-          </div>
-          <span className="s5-hero-meta-sep" aria-hidden="true" />
-          <div className="s5-hero-meta-item">
-            <CalendarDays size={14} />
-            <span className="s5-tnum">{activeDays.length} Hari KBM Aktif</span>
-          </div>
-        </div>
-      </div>
+      {/* Unified Editorial Header */}
+      <EditorialPageHeader
+        kicker="ANALISIS BEBAN MENGAJAR"
+        title="Beban Mengajar Guru"
+        subtitle="Pantau distribusi jam resmi, draf, dan rencana JP."
+        meta={
+          <>
+            <span>1 JP = {periodMinutes} menit</span>
+            <span className="s5-editorial-meta-sep" aria-hidden="true">·</span>
+            <span>{activeDays.length} hari KBM aktif</span>
+            <span className="s5-editorial-meta-sep" aria-hidden="true">·</span>
+            <span>{assignmentSummary.totalActive} tugas tambahan aktif</span>
+          </>
+        }
+        ruleInfo={{
+          title: 'Sumber Data Beban Guru',
+          items: [
+            'Jadwal Terbit (Resmi) adalah satu-satunya acuan sah untuk SK Pembagian Tugas Mengajar.',
+            'Pratinjau Draf dan Rencana JP hanya bersifat simulasi perencanaan sebelum terbit.',
+            `Tercatat ${assignmentSummary.totalActive} penugasan administratif terpisah (${assignmentSummary.nonTeachingActiveCount} non-mengajar).`,
+          ],
+        }}
+        secondaryAction={
+          onNavigateToMaster
+            ? {
+                label: 'Data Master',
+                icon: <Users size={15} />,
+                onClick: onNavigateToMaster,
+              }
+            : undefined
+        }
+        primaryAction={
+          onLaunchTeachingSk && sourceResolution.mode === 'PUBLISHED' && sourceResolution.selectedVersion
+            ? {
+                label: 'Buat SK Mengajar',
+                icon: <FileCheck2 size={15} />,
+                onClick: () => onLaunchTeachingSk(sourceResolution.selectedVersion!.version.id),
+              }
+            : onNavigateToSchedule
+            ? {
+                label: 'Buka Jadwal',
+                icon: <CalendarDays size={15} />,
+                onClick: onNavigateToSchedule,
+              }
+            : undefined
+        }
+      />
 
       {/* Explicit Workload Source Switcher + Version Selector */}
       <div
@@ -627,7 +649,7 @@ export function WorkloadDashboard({
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="toolbar-card" style={{ marginTop: '16px' }}>
+      <div className="toolbar-card s5-workload-filter-bar">
         <div className="class-selector-wrap">
           <label htmlFor="filter-teacher">FILTER GURU</label>
           <div className="select-with-icon">
@@ -1226,24 +1248,21 @@ export function WorkloadDashboard({
                         </div>
                       </td>
 
-                      <td>
-                        <div className="s5-action-dock" style={{ display: 'inline-flex' }}>
-                          <button
-                            type="button"
-                            className="s5-dock-btn primary"
-                            disabled={!sourceResolution.pdfExportAllowed}
-                            onClick={() => handleTeacherPdfExport(stat.teacher.id)}
-                            title={
+                      <td style={{ textAlign: 'right' }}>
+                        <TableRowActions
+                          primary={{
+                            label: sourceMode === 'DRAFT' ? 'PDF Draft' : 'PDF',
+                            icon: <Download size={13} />,
+                            disabled: !sourceResolution.pdfExportAllowed,
+                            onClick: () => handleTeacherPdfExport(stat.teacher.id),
+                            title:
                               sourceResolution.pdfExportBlockedReason ??
                               (sourceMode === 'DRAFT'
                                 ? 'Unduh Pratinjau PDF Draft Guru'
-                                : 'Unduh Jadwal Resmi Guru PDF')
-                            }
-                          >
-                            <Download size={13} />
-                            <span>{sourceMode === 'DRAFT' ? 'PDF Draft' : 'PDF Resmi'}</span>
-                          </button>
-                        </div>
+                                : 'Unduh Jadwal Resmi Guru PDF'),
+                          }}
+                          items={[]}
+                        />
                       </td>
                     </tr>
                   );
@@ -1279,15 +1298,14 @@ export function WorkloadDashboard({
         />
       </div>
 
-      {/* Verification & Administrative Assignment Separation Notice */}
+      {/* Compact Footer Cross-Link */}
       <div
         className="inline-info"
         style={{
-          marginTop: '16px',
+          marginTop: '24px',
           padding: '12px 16px',
           background: '#f8faf7',
-          borderRadius: '12px',
-          border: '1px solid #dce4dc',
+          borderRadius: '10px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -1295,13 +1313,9 @@ export function WorkloadDashboard({
           flexWrap: 'wrap',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', flex: '1 1 360px' }}>
-          <CheckCircle2 size={16} style={{ color: '#387468', flexShrink: 0, marginTop: '2px' }} />
-          <div style={{ fontSize: '11.5px', color: '#405a54', lineHeight: 1.5 }}>
-            <strong>Prinsip Pemisahan Sumber Beban &amp; Penugasan:</strong> Rekap JP resmi untuk dasar SK hanya diambil dari{' '}
-            <strong>Jadwal Resmi Terbit</strong> di riwayat versi (bukan Rencana Kebutuhan JP, bukan Draf Sementara, dan bukan catatan penugasan tambahan). Tercatat terpisah{' '}
-            <strong>{assignmentSummary.totalActive} catatan penugasan administratif</strong> aktif ({assignmentSummary.nonTeachingActiveCount} tugas non-mengajar).
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#405a54' }}>
+          <CheckCircle2 size={15} style={{ color: '#1b5e43', flexShrink: 0 }} />
+          <span>Dasar SK hanya mengambil jam dari Jadwal Terbit Resmi.</span>
         </div>
         {onNavigateToMaster && (
           <button type="button" className="button button-sm button-secondary" onClick={onNavigateToMaster}>

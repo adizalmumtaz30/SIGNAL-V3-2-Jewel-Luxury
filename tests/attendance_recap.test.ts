@@ -289,13 +289,13 @@ describe('Rekap Kehadiran Guru & Input Massal (Anti-Penalti 96% Palsu)', () => {
       }),
     );
 
-    expect(html).toContain('s5-att-kpi-grid');
-    expect(html).toContain('s5-att-kpi-card stat-card');
-    expect(html).toContain('tone-gold');
-    expect(html).toContain('tone-slate');
-    expect(html).toContain('s5-att-kpi-jewel-icon');
-    expect(html).toContain('s5-att-kpi-jewel-ring');
-    expect(html).toContain('s5-att-kpi-body');
+    expect(html).toContain('stat-grid');
+    expect(html).toContain('stat-card tone-teal');
+    expect(html).toContain('tone-sand');
+    expect(html).toContain('tone-blue');
+    expect(html).toContain('tone-rose');
+    expect(html).toContain('stat-icon');
+    expect(html).toContain('stat-value-row');
     expect(html).toContain('Guru Hadir Hari Ini');
     expect(html).toContain('Tingkat Kehadiran');
     expect(html).toContain('Dinas Luar / Izin / Sakit');

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import type { AppState, Teacher, SchoolClass, Subject, Day } from '../domain/types';
 import { MadrasahTeacherAvatar, detectTeacherGender } from './MadrasahTeacherAvatar';
+import { TeacherGenderToggle } from './TeacherGenderToggle';
 
 export type InspectorTarget =
   | { type: 'teacher'; data: Teacher }
@@ -246,39 +247,12 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
                   />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
-                    <button
-                      type="button"
-                      onClick={() => setTeacherGender('male')}
-                      style={{
-                        padding: '4px 8px',
-                        borderRadius: '6px',
-                        border: teacherGender === 'male' ? '1.5px solid #124037' : '1px solid #CCD8D2',
-                        background: teacherGender === 'male' ? '#E8F2EE' : '#FFFFFF',
-                        color: teacherGender === 'male' ? '#0B2923' : '#687E77',
-                        fontWeight: teacherGender === 'male' ? 700 : 500,
-                        fontSize: '11px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      👳‍♂️ Asatidz
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTeacherGender('female')}
-                      style={{
-                        padding: '4px 8px',
-                        borderRadius: '6px',
-                        border: teacherGender === 'female' ? '1.5px solid #124037' : '1px solid #CCD8D2',
-                        background: teacherGender === 'female' ? '#E8F2EE' : '#FFFFFF',
-                        color: teacherGender === 'female' ? '#0B2923' : '#687E77',
-                        fontWeight: teacherGender === 'female' ? 700 : 500,
-                        fontSize: '11px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      🧕 Ustadzah
-                    </button>
+                  <div style={{ marginBottom: '8px' }}>
+                    <TeacherGenderToggle
+                      value={teacherGender}
+                      onChange={setTeacherGender}
+                      compact
+                    />
                   </div>
                   <label
                     style={{

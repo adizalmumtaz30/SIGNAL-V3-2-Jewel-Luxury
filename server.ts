@@ -49,12 +49,12 @@ app.get(['/healthz', '/health'], (_req: Request, res: Response) => {
 });
 
 app.get('/api/health', (_req: Request, res: Response) => {
-  res.json({ ok: true, app: 'SIGNAL', version: '1.2.0', aiAvailable: Boolean(ai) });
+  res.json({ ok: true, app: 'SAKALA', version: '1.2.0', aiAvailable: Boolean(ai) });
 });
 
 app.post('/api/ai/explain', rateLimit, async (req: Request, res: Response) => {
   if (!ai) {
-    res.status(503).json({ error: 'Asisten Gemini belum diaktifkan. SIGNAL tetap berfungsi tanpa AI.' });
+    res.status(503).json({ error: 'Asisten AI belum diaktifkan. SAKALA tetap berfungsi penuh tanpa AI.' });
     return;
   }
   const issue = typeof req.body?.issue === 'string' ? req.body.issue.trim().slice(0, 2000) : '';
@@ -64,7 +64,7 @@ app.post('/api/ai/explain', rateLimit, async (req: Request, res: Response) => {
     return;
   }
   const prompt = [
-    'Anda adalah asisten penjelas untuk aplikasi penjadwalan sekolah SIGNAL.',
+    'Anda adalah asisten penjelas untuk aplikasi penjadwalan sekolah SAKALA.',
     'Jelaskan masalah secara ringkas dalam bahasa Indonesia, lalu berikan 1-3 langkah pemeriksaan yang aman.',
     'Jangan pernah menyatakan jadwal valid, menerbitkan jadwal, mengubah data, atau mengesampingkan aturan deterministik.',
     'Jangan meminta nama lengkap siswa, data pribadi, kredensial, atau data rahasia.',
@@ -74,10 +74,10 @@ app.post('/api/ai/explain', rateLimit, async (req: Request, res: Response) => {
   ].filter(Boolean).join('\n\n');
   try {
     const result = await ai.models.generateContent({ model, contents: prompt, config: { maxOutputTokens: 350, temperature: 0.2 } });
-    res.json({ answer: result.text || 'Gemini tidak mengembalikan penjelasan. Gunakan hasil validator deterministik.' });
+    res.json({ answer: result.text || 'Gemini tidak mengembalikan penjelasan. Gunakan hasil validator aplikasi.' });
   } catch (error) {
     console.error('Gemini request failed:', error instanceof Error ? error.message : 'unknown error');
-    res.status(502).json({ error: 'Asisten AI tidak tersedia saat ini. Fungsi inti SIGNAL tetap dapat digunakan.' });
+    res.status(502).json({ error: 'Asisten AI tidak tersedia saat ini. Fungsi inti SAKALA tetap dapat digunakan.' });
   }
 });
 
@@ -101,7 +101,7 @@ async function startServer() {
   }
 
   app.listen(port, '0.0.0.0', () => {
-    console.log(`SIGNAL server listening on http://0.0.0.0:${port}`);
+    console.log(`SAKALA server listening on http://0.0.0.0:${port}`);
     if (!ai) console.log('Gemini assistant OFF. Core scheduling features do not require an API key.');
   });
 }

@@ -27,7 +27,7 @@ export interface CommandPaletteModalProps {
   isOpen: boolean;
   onClose: () => void;
   state: AppState;
-  onNavigate: (view: 'schedule' | 'master' | 'workload' | 'attendance' | 'settings' | 'persuratan') => void;
+  onNavigate: (view: 'schedule' | 'master' | 'workload' | 'attendance' | 'settings' | 'persuratan' | 'history' | 'backup') => void;
   onLaunchPersuratan?: (request: PersuratanLaunchRequest) => void;
   onLaunchTeachingSk?: () => void;
   onSelectTeacher?: (teacher: Teacher) => void;
@@ -211,12 +211,24 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
       {
         id: 'act-time-machine',
         category: 'Aksi Cepat',
-        title: 'Buka Riwayat Versi & Cadangan',
+        title: 'Buka Riwayat Versi & Snapshot',
         subtitle: 'Pulihkan data dari titik pemulihan atau berkas cadangan .sakala / .signal',
         icon: <Clock size={16} color="#C5A059" aria-hidden="true" />,
         action: () => {
           onClose();
           onOpenTimeMachine?.();
+        },
+      },
+      {
+        id: 'nav-backup-center',
+        category: 'Aksi Cepat',
+        title: 'Ekspor & Pulihkan Cadangan Data',
+        subtitle: 'Unduh cadangan penuh JSON, ekspor jadwal CSV, atau pulihkan arsip lokal',
+        searchTokens: 'backup cadangan ekspor json csv pulihkan restore',
+        icon: <Archive size={16} color="#124037" aria-hidden="true" />,
+        action: () => {
+          onNavigate('backup');
+          onClose();
         },
       },
       {

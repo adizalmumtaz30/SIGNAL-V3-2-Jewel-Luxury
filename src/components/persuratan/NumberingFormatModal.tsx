@@ -300,7 +300,7 @@ export function NumberingFormatModal({
             </span>
           </label>
 
-          {/* Pattern Editor */}
+          {/* Pattern Presets & Progressive Disclosure for Token Pattern */}
           <div className="nfm-field">
             <div className="nfm-label-row">
               <label htmlFor="nfm-pattern">Pola Format Nomor</label>
@@ -318,30 +318,42 @@ export function NumberingFormatModal({
                 ))}
               </div>
             </div>
-            <input
-              id="nfm-pattern"
-              type="text"
-              className="nfm-input nfm-mono"
-              value={formatPattern}
-              onChange={(e) => setFormatPattern(e.target.value)}
-            />
-            <div className="nfm-token-row">
-              {PATTERN_TOKENS.map((t) => (
-                <button
-                  key={t.token}
-                  type="button"
-                  data-tooltip={`Sisipkan variabel ${t.token}`}
-                  className="nfm-token-btn"
-                  onClick={() =>
-                    setFormatPattern((prev) =>
-                      prev.endsWith('/') || !prev.trim() ? `${prev}${t.token}` : `${prev}/${t.token}`
-                    )
-                  }
-                >
-                  + {t.label}
-                </button>
-              ))}
-            </div>
+            <details className="p5-luxury-disclosure nfm-kinds-disclosure">
+              <summary>
+                <span className="nfm-kinds-head">
+                  <Hash size={14} aria-hidden="true" />
+                  <span>Pola Kustom & Variabel Token</span>
+                  <span className="nfm-kinds-count nfm-mono">{formatPattern}</span>
+                </span>
+                <ChevronDown size={15} className="p5-disclosure-caret" aria-hidden="true" />
+              </summary>
+              <div className="p5-disclosure-body" style={{ display: 'grid', gap: '10px' }}>
+                <input
+                  id="nfm-pattern"
+                  type="text"
+                  className="nfm-input nfm-mono"
+                  value={formatPattern}
+                  onChange={(e) => setFormatPattern(e.target.value)}
+                />
+                <div className="nfm-token-row">
+                  {PATTERN_TOKENS.map((t) => (
+                    <button
+                      key={t.token}
+                      type="button"
+                      data-tooltip={`Sisipkan variabel ${t.token}`}
+                      className="nfm-token-btn"
+                      onClick={() =>
+                        setFormatPattern((prev) =>
+                          prev.endsWith('/') || !prev.trim() ? `${prev}${t.token}` : `${prev}/${t.token}`
+                        )
+                      }
+                    >
+                      + {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </details>
           </div>
 
           {/* Classification Codes per Document Kind (Collapsible Disclosure) */}

@@ -1,17 +1,22 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Sparkles,
   RefreshCw,
   AlertTriangle,
   Send,
   CheckCircle2,
+  ArrowRight,
+  ShieldCheck,
 } from 'lucide-react';
 import type { ValidationIssue } from '../domain/types';
 import { formatValidationCategoryLabel } from '../domain/validationLabels';
 
+export type AiHealthStatus = 'checking' | 'available' | 'unavailable';
+
 interface AiConflictHelperProps {
   issues: ValidationIssue[];
   geminiEnabledInSettings?: boolean;
+  initialHealthAvailable?: boolean;
   onNavigateToScreen?: (screen: 'schedule' | 'master' | 'requirements' | 'settings') => void;
   compact?: boolean;
 }
@@ -19,19 +24,69 @@ interface AiConflictHelperProps {
 export function AiConflictHelper({
   issues,
   geminiEnabledInSettings = true,
+  initialHealthAvailable,
   onNavigateToScreen,
   compact = false,
 }: AiConflictHelperProps) {
+  const [healthStatus, setHealthStatus] = useState<AiHealthStatus>(() => {
+    if (!geminiEnabledInSettings) return 'unavailable';
+    if (typeof initialHealthAvailable === 'boolean') {
+      return initialHealthAvailable ? 'available' : 'unavailable';
+    }
+    return 'checking';
+  });
   const [loading, setLoading] = useState(false);
   const [answer, setAnswer] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [customQuestion, setCustomQuestion] = useState('');
   const [lastAskedQuestion, setLastAskedQuestion] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!geminiEnabledInSettings) {
+      setHealthStatus('unavailable');
+      return;
+    }
+    if (typeof initialHealthAvailable === 'boolean') {
+      setHealthStatus(initialHealthAvailable ? 'available' : 'unavailable');
+      return;
+    }
+    if (typeof window === 'undefined' || typeof fetch !== 'function') {
+      setHealthStatus('unavailable');
+      return;
+    }
+
+    const controller = new AbortController();
+    let cancelled = false;
+    setHealthStatus('checking');
+
+    fetch('/api/health', { signal: controller.signal })
+      .then(async (res) => {
+        if (!res.ok) return { aiAvailable: false };
+        return (await res.json()) as { ok?: boolean; aiAvailable?: boolean };
+      })
+      .then((data) => {
+        if (!cancelled) {
+          setHealthStatus(data?.aiAvailable === true ? 'available' : 'unavailable');
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setHealthStatus('unavailable');
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [geminiEnabledInSettings, initialHealthAvailable]);
+
+  const canInvokeAi = geminiEnabledInSettings && healthStatus === 'available';
   const hardErrors = issues.filter((i) => i.severity === 'error');
   const warnings = issues.filter((i) => i.severity === 'warning');
 
   const handleAskAI = async (overrideQuestion?: string) => {
+    if (!canInvokeAi) return;
     setLoading(true);
     setErrorMessage(null);
 
@@ -66,6 +121,9 @@ export function AiConflictHelper({
 
       const data = (await res.json()) as { answer?: string; error?: string };
       if (!res.ok) {
+        if (res.status === 503) {
+          setHealthStatus('unavailable');
+        }
         throw new Error(data.error || `Permintaan ke asisten AI gagal (${res.status}).`);
       }
       setAnswer(data.answer || 'Asisten tidak mengembalikan tanggapan.');
@@ -83,124 +141,73 @@ export function AiConflictHelper({
   };
 
   return (
-    <div
-      className="ai-conflict-helper-box"
-      style={{
-        border: '1px solid #dbe6e0',
-        borderRadius: '12px',
-        background: 'linear-gradient(135deg, #f7faf9 0%, #fffdf8 100%)',
-        padding: compact ? '14px' : '18px',
-        marginTop: '16px',
-        boxShadow: '0 2px 8px rgba(36, 99, 94, 0.04)',
-      }}
-    >
-      {/* Header with status badge */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '8px',
-          marginBottom: '12px',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div
-            style={{
-              width: '30px',
-              height: '30px',
-              borderRadius: '8px',
-              background: '#24635e',
-              color: '#f6f3eb',
-              display: 'grid',
-              placeItems: 'center',
-            }}
-          >
+    <div className={`ai-conflict-helper-box s5-ai-helper ${compact ? 'is-compact' : ''}`}>
+      {/* Header with live-verified /api/health status badge */}
+      <div className="s5-ai-helper-head">
+        <div className="s5-ai-helper-brand">
+          <div className="s5-ai-helper-icon" aria-hidden="true">
             <Sparkles size={16} />
           </div>
           <div>
-            <h4
-              style={{
-                margin: 0,
-                fontSize: '13px',
-                fontWeight: 700,
-                color: '#173637',
-                letterSpacing: '-0.01em',
-              }}
-            >
-              Asisten Analisis Konflik (Gemini)
-            </h4>
-            <span style={{ fontSize: '11px', color: '#688279' }}>
-              Konsultasi pemecahan bentrok jadwal & saran alternatif
+            <h4 className="s5-ai-helper-title">Asisten Analisis Konflik (Gemini)</h4>
+            <span className="s5-ai-helper-sub">
+              Konsultasi pemecahan bentrok jadwal &amp; saran alternatif
             </span>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          {geminiEnabledInSettings ? (
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '3px 8px',
-                borderRadius: '6px',
-                fontSize: '11px',
-                fontWeight: 600,
-                background: '#e9f5ee',
-                color: '#1f6952',
-                border: '1px solid #b8e3cd',
-              }}
-            >
-              <CheckCircle2 size={12} /> AI Tersedia
+        <div aria-live="polite">
+          {!geminiEnabledInSettings ? (
+            <span className="s5-ai-status-pill is-off">AI Standby (OFF)</span>
+          ) : healthStatus === 'checking' ? (
+            <span className="s5-ai-status-pill is-checking">
+              <RefreshCw size={12} className="spin-animation" /> Memeriksa Server AI…
+            </span>
+          ) : healthStatus === 'available' ? (
+            <span className="s5-ai-status-pill is-active">
+              <CheckCircle2 size={12} /> AI Aktif
             </span>
           ) : (
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '3px 8px',
-                borderRadius: '6px',
-                fontSize: '11px',
-                fontWeight: 600,
-                background: '#f4f5f1',
-                color: '#526861',
-                border: '1px solid #dcded5',
-              }}
-            >
-              AI Standby (OFF)
+            <span className="s5-ai-status-pill is-unavailable">
+              <AlertTriangle size={12} /> Server AI Belum Terhubung
             </span>
           )}
         </div>
       </div>
 
+      {/* Honest Server Availability Banner when inactive or unreachable */}
+      {(!geminiEnabledInSettings || healthStatus === 'unavailable') && (
+        <div className="s5-ai-unavailable-banner" role="status">
+          <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: 1 }} aria-hidden="true" />
+          <div>
+            {!geminiEnabledInSettings
+              ? 'Asisten AI nonaktif. Pemeriksaan jadwal tetap berjalan otomatis.'
+              : 'Layanan AI pada server belum terhubung.'}
+          </div>
+        </div>
+      )}
+
       {/* Description / Info */}
-      <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: '#556d65', lineHeight: 1.5 }}>
-        AI membantu menerjemahkan bentrok yang rumit menjadi langkah aksi konkret.
-        <strong style={{ color: '#173637' }}>
-          {' '}
-          Keputusan akhir tetap diverifikasi oleh validator deterministik SAKALA.
-        </strong>
+      <p className="s5-ai-helper-desc">
+        Bantuan saran langkah perbaikan konflik jadwal.{' '}
+        <strong>Keputusan akhir tetap mengacu pada aturan jadwal.</strong>
       </p>
 
       {/* Trigger Buttons */}
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+      <div className="s5-ai-helper-actions">
         <button
           type="button"
-          className="button button-primary"
+          className="button button-primary button-sm"
           onClick={() => handleAskAI()}
-          disabled={loading}
-          style={{ fontSize: '12px', padding: '7px 12px' }}
+          disabled={loading || !canInvokeAi}
         >
           {loading ? (
             <>
-              <RefreshCw size={14} className="spin-animation" /> Menganalisis dengan Gemini…
+              <RefreshCw size={14} className="spin-animation" /> Menganalisis…
             </>
           ) : (
             <>
-              <Sparkles size={14} /> Minta Saran Penyelesaian Bentrok
+              <Sparkles size={14} /> Minta Saran Penyelesaian
             </>
           )}
         </button>
@@ -208,14 +215,13 @@ export function AiConflictHelper({
         {hardErrors.length > 0 && (
           <button
             type="button"
-            className="button button-secondary"
+            className="button button-secondary button-sm"
             onClick={() =>
               handleAskAI(
                 'Fokus pada bentrok guru dan bentrok jam KBM: guru mana yang paling mendesak dipindahkan jamnya?'
               )
             }
-            disabled={loading}
-            style={{ fontSize: '12px', padding: '7px 12px' }}
+            disabled={loading || !canInvokeAi}
           >
             Prioritaskan Bentrok Guru
           </button>
@@ -223,42 +229,30 @@ export function AiConflictHelper({
       </div>
 
       {/* Operator Custom Question Box */}
-      <div
-        style={{
-          display: 'flex',
-          gap: '8px',
-          alignItems: 'center',
-          marginTop: '8px',
-        }}
-      >
+      <div className="s5-ai-query-row">
         <input
           type="text"
-          placeholder="Tanyakan hal spesifik ke AI (misal: 'Bagaimana menukar jam di kelas VIIA?')"
+          className="s5-ai-query-input"
+          placeholder={
+            canInvokeAi
+              ? "Tanyakan spesifik ke AI (misal: 'Bagaimana menukar jam di kelas VIIA?')"
+              : 'Pertanyaan AI tersedia saat Server AI aktif'
+          }
           value={customQuestion}
           onChange={(e) => setCustomQuestion(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && customQuestion.trim() && !loading) {
+            if (e.key === 'Enter' && customQuestion.trim() && !loading && canInvokeAi) {
               e.preventDefault();
               handleAskAI();
             }
           }}
-          disabled={loading}
-          style={{
-            flex: 1,
-            height: '34px',
-            padding: '0 10px',
-            fontSize: '11px',
-            borderRadius: '6px',
-            border: '1px solid #d6ded7',
-            background: '#ffffff',
-          }}
+          disabled={loading || !canInvokeAi}
         />
         <button
           type="button"
-          className="button button-secondary"
-          disabled={loading || !customQuestion.trim()}
+          className="button button-secondary button-sm"
+          disabled={loading || !canInvokeAi || !customQuestion.trim()}
           onClick={() => handleAskAI()}
-          style={{ height: '34px', padding: '0 12px', fontSize: '11px' }}
         >
           <Send size={13} /> Tanya
         </button>
@@ -266,38 +260,17 @@ export function AiConflictHelper({
 
       {/* Error state */}
       {errorMessage && (
-        <div
-          style={{
-            marginTop: '12px',
-            padding: '10px 14px',
-            borderRadius: '8px',
-            background: '#fdf0ee',
-            border: '1px solid #f7c8c1',
-            color: '#9e3223',
-            fontSize: '12px',
-          }}
-        >
+        <div className="s5-ai-error-box">
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}>
             <AlertTriangle size={15} /> Bantuan AI Tidak Tersedia
           </div>
-          <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#68251c' }}>
-            {errorMessage}
-          </p>
+          <p style={{ margin: '4px 0 0', fontSize: '11.5px', color: '#68251c' }}>{errorMessage}</p>
         </div>
       )}
 
       {/* AI Answer Box */}
       {answer && (
-        <div
-          style={{
-            marginTop: '14px',
-            padding: '14px 16px',
-            borderRadius: '9px',
-            background: '#ffffff',
-            border: '1px solid #bfe0d6',
-            boxShadow: '0 2px 6px rgba(36, 99, 94, 0.06)',
-          }}
-        >
+        <div className="s5-ai-answer-box">
           <div
             style={{
               display: 'flex',
@@ -309,26 +282,17 @@ export function AiConflictHelper({
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Sparkles size={14} color="#24635e" />
-              <strong style={{ fontSize: '12px', color: '#173637' }}>
-                Rekomendasi Penyelesaian
-              </strong>
+              <Sparkles size={14} color="#124037" />
+              <strong style={{ fontSize: '12px', color: '#0b2923' }}>Rekomendasi Penyelesaian</strong>
             </div>
             {lastAskedQuestion && (
               <span style={{ fontSize: '11px', color: '#526861' }}>
-                Topik: "{lastAskedQuestion.slice(0, 45)}…"
+                Topik: &quot;{lastAskedQuestion.slice(0, 45)}…&quot;
               </span>
             )}
           </div>
 
-          <div
-            style={{
-              fontSize: '12.5px',
-              color: '#28473e',
-              lineHeight: 1.6,
-              whiteSpace: 'pre-wrap',
-            }}
-          >
+          <div style={{ fontSize: '12.5px', color: '#28473e', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
             {answer}
           </div>
 
@@ -340,28 +304,22 @@ export function AiConflictHelper({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              fontSize: '11px',
+              gap: '8px',
+              fontSize: '11.5px',
               color: '#526861',
             }}
           >
-            <span>
-              🛡️ Verifikasi perubahan dengan menekan tombol <strong>Uji Ulang Jadwal</strong>.
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+              <ShieldCheck size={13} color="#124037" aria-hidden="true" />
+              Verifikasi perubahan dengan tombol <strong>Uji Ulang Jadwal</strong>.
             </span>
             {onNavigateToScreen && (
               <button
                 type="button"
+                className="text-link"
                 onClick={() => onNavigateToScreen('schedule')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#24635e',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  textDecoration: 'underline',
-                  padding: 0,
-                }}
               >
-                Buka Meja Jadwal →
+                Buka Meja Jadwal <ArrowRight size={13} />
               </button>
             )}
           </div>

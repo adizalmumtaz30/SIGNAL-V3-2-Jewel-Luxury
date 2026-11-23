@@ -20,6 +20,7 @@ import type {
 import { teachingPeriodsForDay } from '../domain/time';
 import { COMMON_TEACHER_POSITIONS } from '../utils/madrasahLogo';
 import { MadrasahTeacherAvatar, detectTeacherGender } from './MadrasahTeacherAvatar';
+import { TeacherGenderToggle } from './TeacherGenderToggle';
 import { MotionModalDialog } from './KpiMotion';
 
 export type EntityKind = 'class' | 'teacher' | 'subject' | 'requirement';
@@ -395,42 +396,7 @@ export function EntityEditModal({
                   <span style={{ fontSize: '12px', fontWeight: 700, color: '#16483f', display: 'block', marginBottom: '6px' }}>
                     Tipe Avatar Madrasah
                   </span>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button
-                      type="button"
-                      onClick={() => setTeacherGender('male')}
-                      style={{
-                        padding: '5px 12px',
-                        borderRadius: '6px',
-                        border: teacherGender === 'male' ? '1.5px solid #16483f' : '1px solid #d4d7cc',
-                        background: teacherGender === 'male' ? '#ffffff' : 'transparent',
-                        color: teacherGender === 'male' ? '#0b3435' : '#4b635c',
-                        fontWeight: teacherGender === 'male' ? 700 : 500,
-                        fontSize: '11.5px',
-                        cursor: 'pointer',
-                        boxShadow: teacherGender === 'male' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                      }}
-                    >
-                      👳‍♂️ Asatidz (Songkok / Peci)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTeacherGender('female')}
-                      style={{
-                        padding: '5px 12px',
-                        borderRadius: '6px',
-                        border: teacherGender === 'female' ? '1.5px solid #16483f' : '1px solid #d4d7cc',
-                        background: teacherGender === 'female' ? '#ffffff' : 'transparent',
-                        color: teacherGender === 'female' ? '#0b3435' : '#4b635c',
-                        fontWeight: teacherGender === 'female' ? 700 : 500,
-                        fontSize: '11.5px',
-                        cursor: 'pointer',
-                        boxShadow: teacherGender === 'female' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                      }}
-                    >
-                      🧕 Ustadzah (Hijab / Jilbab)
-                    </button>
-                  </div>
+                  <TeacherGenderToggle value={teacherGender} onChange={setTeacherGender} />
                 </div>
               </div>
 

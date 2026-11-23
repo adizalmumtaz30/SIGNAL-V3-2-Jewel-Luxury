@@ -45,6 +45,8 @@ import { AttendancePdfExportModal } from './AttendancePdfExportModal';
 import { MadrasahTeacherAvatar } from './MadrasahTeacherAvatar';
 import { KpiAnimatedNumber, KpiMotionCard } from './KpiMotion';
 import { UnifiedPagination } from './UnifiedPagination';
+import { EditorialPageHeader } from './EditorialPageHeader';
+import { TableRowActions } from './TableRowActions';
 
 interface AttendanceScreenProps {
   state: AppState;
@@ -1532,54 +1534,35 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
 
   return (
     <div className="attendance-screen">
-      {/* A. Sovereign Executive Command Hero Bar + Bespoke Neo-Heritage Geometric Crest */}
-      <div className="s5-att-hero-bar">
-        <svg
-          className="s5-att-hero-ornament"
-          viewBox="0 0 180 180"
-          fill="none"
-          aria-hidden="true"
-        >
-          <g stroke="currentColor" strokeWidth="1.2">
-            <rect x="42" y="42" width="96" height="96" rx="4" />
-            <rect x="42" y="42" width="96" height="96" rx="4" transform="rotate(45 90 90)" />
-            <circle cx="90" cy="90" r="34" />
-            <circle cx="90" cy="90" r="62" strokeDasharray="4 4" />
-          </g>
-        </svg>
-
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <div className="s5-page-kicker">PRESENSI PENDIDIK &amp; KALENDER KEMENAG RI</div>
-          <h2 className="s5-page-title">Presensi Guru</h2>
-          <p className="s5-page-subtitle">
-            Catat kehadiran harian, presensi massal anti-tanggal merah, dan sinkronisasi kalender resmi Kemenag.
-          </p>
-        </div>
-
-        <div className="page-actions" style={{ position: 'relative', zIndex: 1 }}>
-          <button
-            type="button"
-            className="button button-secondary"
-            onClick={() => {
-              setActiveTab('holidays');
-              setHolidayPage(1);
-            }}
-            data-s5-tooltip="Lihat daftar otomatis Tanggal Merah 2025–2028 & Kaldik Kemenag"
-          >
-            <CalendarCheck2 size={15} />
-            <span>Kalender Kemenag</span>
-          </button>
-          <button
-            type="button"
-            className="button button-primary"
-            onClick={() => setPdfModalOpen(true)}
-            data-s5-tooltip="Cetak laporan resmi rekap kehadiran A4 / F4"
-          >
-            <Download size={15} />
-            <span>Ekspor PDF Resmi</span>
-          </button>
-        </div>
-      </div>
+      {/* A. Unified Editorial Header */}
+      <EditorialPageHeader
+        kicker="PRESENSI PENDIDIK"
+        title="Presensi Guru"
+        subtitle="Catat kehadiran harian dan rekap bulanan guru."
+        ruleInfo={{
+          title: 'Aturan Presensi & Kalender',
+          items: [
+            'Presensi massal otomatis melewati hari libur nasional, cuti bersama, dan kalender Kemenag.',
+            'Status kehadiran mendukung Hadir, Dinas Luar, Izin, Sakit, dan Alpa.',
+            'Rekap bulanan dapat diekspor menjadi laporan PDF resmi A4 / F4.',
+          ],
+        }}
+        secondaryAction={{
+          label: 'Kalender Kemenag',
+          icon: <CalendarCheck2 size={15} />,
+          onClick: () => {
+            setActiveTab('holidays');
+            setHolidayPage(1);
+          },
+          title: 'Lihat daftar hari libur Kemenag 2025–2028',
+        }}
+        primaryAction={{
+          label: 'Ekspor PDF Resmi',
+          icon: <Download size={15} />,
+          onClick: () => setPdfModalOpen(true),
+          title: 'Cetak laporan resmi rekap kehadiran A4 / F4',
+        }}
+      />
 
       {/* B. KPI Cards (Diselaraskan dengan Desain Beban Guru) */}
       <div className="stat-grid" role="region" aria-label="Ringkasan statistik presensi guru">
@@ -3898,28 +3881,25 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
                               {hol.date}
                             </td>
                             <td style={{ fontWeight: 600, color: '#0F201C' }}>{hol.name}</td>
-                            <td style={{ textAlign: 'center' }}>
-                              <div className="s5-action-dock">
-                                <button
-                                  type="button"
-                                  className="s5-dock-btn primary"
-                                  onClick={() => handleStartEditHoliday(hol)}
-                                  data-s5-tooltip="Edit hari libur"
-                                  aria-label={`Edit ${hol.name}`}
-                                >
-                                  <Edit2 size={13} />
-                                </button>
-                                <button
-                                  type="button"
-                                  className="s5-dock-btn"
-                                  style={{ color: '#A63A2E' }}
-                                  onClick={() => handleDeleteHoliday(hol.id)}
-                                  data-s5-tooltip="Hapus hari libur"
-                                  aria-label={`Hapus ${hol.name}`}
-                                >
-                                  <Trash2 size={13} />
-                                </button>
-                              </div>
+                            <td style={{ textAlign: 'right' }}>
+                              <TableRowActions
+                                ariaLabel={`Opsi ${hol.name}`}
+                                primary={{
+                                  label: 'Edit',
+                                  icon: <Edit2 size={13} />,
+                                  onClick: () => handleStartEditHoliday(hol),
+                                  ariaLabel: `Edit ${hol.name}`,
+                                }}
+                                items={[
+                                  {
+                                    id: 'delete',
+                                    label: 'Hapus Hari Libur',
+                                    icon: <Trash2 size={13} />,
+                                    tone: 'danger',
+                                    onClick: () => handleDeleteHoliday(hol.id),
+                                  },
+                                ]}
+                              />
                             </td>
                           </tr>
                         );

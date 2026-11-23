@@ -29,6 +29,7 @@ import {
 import type { ActivityType, AppState, Day, PeriodDefinition } from '../domain/types';
 import { DAYS } from '../domain/types';
 import { MotionModalDialog } from './KpiMotion';
+import { EditorialPageHeader } from './EditorialPageHeader';
 import {
   clockToMinutes,
   createDefaultPeriodDefinitions,
@@ -227,8 +228,11 @@ export function SettingsScreen({
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
 
   const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [showCascadeControls, setShowCascadeControls] = useState(false);
+  const [showNumberingTechnical, setShowNumberingTechnical] = useState(false);
+  const [showSolverTechnical, setShowSolverTechnical] = useState(false);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
-  const headerRef = useRef<HTMLElement | null>(null);
+  const headerRef = useRef<HTMLDivElement | null>(null);
 
   // Madrasah Profile & Document Integration
   const [ministry, setMinistry] = useState(
@@ -1098,55 +1102,43 @@ export function SettingsScreen({
 
   return (
     <div className="s5-settings-screen">
-      {/* A. Sovereign Atelier Luxury Header (Refined Porcelain & Champagne Gold) */}
-      <header ref={headerRef} className="s5-settings-lux-header">
-        <svg className="s5-settings-lux-ornament" viewBox="0 0 180 180" fill="none" aria-hidden="true">
-          <g stroke="currentColor" strokeWidth="1.1">
-            <rect x="42" y="42" width="96" height="96" rx="6" />
-            <rect x="42" y="42" width="96" height="96" rx="6" transform="rotate(45 90 90)" />
-            <circle cx="90" cy="90" r="34" />
-            <circle cx="90" cy="90" r="62" strokeDasharray="3 4" />
-          </g>
-        </svg>
-
-        <div className="s5-settings-lux-copy">
-          <h2 className="s5-settings-title">Pengaturan Workspace</h2>
-          <p className="s5-settings-subtitle s5-tnum">
+      {/* A. Unified Editorial Header */}
+      <div ref={headerRef}>
+      <EditorialPageHeader
+        kicker="KONFIGURASI MADRASAH"
+        title="Pengaturan Workspace"
+        subtitle="Kelola jadwal harian, identitas madrasah, dan preferensi sistem."
+        meta={
+          <>
             <span>{schoolName || 'Madrasah'}</span>
-            <span aria-hidden="true">·</span>
+            <span className="s5-editorial-meta-sep" aria-hidden="true">·</span>
             <span>T.A. {academicYear}</span>
-            <span aria-hidden="true">·</span>
+            <span className="s5-editorial-meta-sep" aria-hidden="true">·</span>
             <span>Semester {semester}</span>
-          </p>
-        </div>
-
-        <div className="s5-settings-header-actions">
+          </>
+        }
+        rightSlot={
           <span className={`s5-sync-state ${isDirty ? 'is-dirty' : ''}`}>
             {isDirty ? 'Perubahan belum disimpan' : saved ? 'Tersimpan' : 'Tersinkronisasi'}
           </span>
-
-          {isDirty && (
-            <button
-              type="button"
-              className="button button-quiet"
-              onClick={handleDiscardChanges}
-              data-s5-tooltip="Batalkan perubahan terakhir"
-            >
-              <RotateCcw size={14} />
-              <span>Kembalikan</span>
-            </button>
-          )}
-
-          <button
-            type="button"
-            className="button button-primary s5-lux-save-btn"
-            onClick={handleSave}
-          >
-            <Save size={14} />
-            <span>Simpan Pengaturan</span>
-          </button>
-        </div>
-      </header>
+        }
+        secondaryAction={
+          isDirty
+            ? {
+                label: 'Kembalikan',
+                icon: <RotateCcw size={14} />,
+                onClick: handleDiscardChanges,
+                title: 'Batalkan perubahan terakhir',
+              }
+            : undefined
+        }
+        primaryAction={{
+          label: 'Simpan Pengaturan',
+          icon: <Save size={14} />,
+          onClick: handleSave,
+        }}
+      />
+      </div>
 
       {/* B. Sovereign Segmented Tabs + Quiet Live Readout */}
       <div className="s5-settings-nav-bar">
@@ -1500,38 +1492,63 @@ export function SettingsScreen({
                     </button>
                   )}
                 </div>
+              </div>
 
-                <div className="s5-duration-bar-right">
-                  <button
-                    type="button"
-                    className={`s5-auto-cascade-btn ${autoCascade ? 'is-on' : ''}`}
-                    onClick={() => {
-                      const next = !autoCascade;
-                      setAutoCascade(next);
-                      onNotify(
-                        next
-                          ? 'Mode Auto-geser aktif: baris di bawahnya otomatis menyesuaikan jam.'
-                          : 'Mode Auto-geser nonaktif: jam tiap baris dapat diatur bebas.',
-                        'info',
-                      );
-                    }}
-                    aria-pressed={autoCascade}
-                    data-s5-tooltip="Otomatis geser jam baris setelahnya saat Anda mengubah durasi atau urutan"
-                  >
-                    <WandSparkles size={13} />
-                    <span>Auto-geser: {autoCascade ? 'Aktif' : 'Manual'}</span>
-                  </button>
+              {/* Progressive Disclosure: Cascade Interval & Sinkronisasi Teknis */}
+              <div className={`s5-collapsible-section ${showCascadeControls ? 'is-open' : ''}`} style={{ marginBottom: '14px' }}>
+                <button
+                  type="button"
+                  className="s5-collapsible-trigger"
+                  aria-expanded={showCascadeControls}
+                  onClick={() => setShowCascadeControls((v) => !v)}
+                >
+                  <span className="s5-collapsible-trigger-left">
+                    <span className="s5-panel-crest">
+                      <WandSparkles size={15} />
+                    </span>
+                    <span>
+                      <span className="s5-collapsible-trigger-title">Parameter Teknis Interval &amp; Cascade</span>
+                      <span className="s5-collapsible-trigger-summary s5-tnum">
+                        Auto-geser: {autoCascade ? 'Aktif' : 'Manual'} · Penyelarasan jam berurutan otomatis
+                      </span>
+                    </span>
+                  </span>
+                  <ChevronDown size={16} className="s5-collapsible-chevron" aria-hidden="true" />
+                </button>
 
-                  <button
-                    type="button"
-                    className="s5-ghost-action"
-                    onClick={() => handleCascadeSequentialTimes()}
-                    data-s5-tooltip="Urutkan seluruh jam mulai dan selesai secara berurutan tanpa celah"
-                  >
-                    <RefreshCw size={13} />
-                    <span>Sinkronkan Jam</span>
-                  </button>
-                </div>
+                {showCascadeControls && (
+                  <div className="s5-collapsible-body">
+                    <div className="s5-duration-bar-right" style={{ justifyContent: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
+                      <button
+                        type="button"
+                        className={`s5-auto-cascade-btn ${autoCascade ? 'is-on' : ''}`}
+                        onClick={() => {
+                          const next = !autoCascade;
+                          setAutoCascade(next);
+                          onNotify(
+                            next
+                              ? 'Mode Auto-geser aktif: baris di bawahnya otomatis menyesuaikan jam.'
+                              : 'Mode Auto-geser nonaktif: jam tiap baris dapat diatur bebas.',
+                            'info',
+                          );
+                        }}
+                        aria-pressed={autoCascade}
+                      >
+                        <WandSparkles size={13} />
+                        <span>Auto-geser: {autoCascade ? 'Aktif' : 'Manual'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        className="s5-ghost-action"
+                        onClick={() => handleCascadeSequentialTimes()}
+                      >
+                        <RefreshCw size={13} />
+                        <span>Sinkronkan Jam Berurutan</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Luxury Slots Table */}
@@ -2388,66 +2405,76 @@ export function SettingsScreen({
             </section>
 
             {/* 4. Aturan Penomoran Surat Otomatis Persuratan S05 */}
-            <section className="s5-lux-panel">
-              <div className="s5-calm-panel-head">
-                <div className="s5-panel-title-group">
-                  <div className="s5-panel-crest">
+            <section className={`s5-collapsible-section ${showNumberingTechnical ? 'is-open' : ''}`}>
+              <button
+                type="button"
+                className="s5-collapsible-trigger"
+                aria-expanded={showNumberingTechnical}
+                onClick={() => setShowNumberingTechnical((v) => !v)}
+              >
+                <span className="s5-collapsible-trigger-left">
+                  <span className="s5-panel-crest">
                     <FileText size={16} />
-                  </div>
-                  <div>
-                    <h3 className="s5-calm-panel-title">Aturan Penomoran Surat Otomatis</h3>
-                    <p className="s5-calm-panel-desc">
-                      Format nomor urut resmi saat finalisasi dokumen persuratan &amp; SK.
-                    </p>
-                  </div>
-                </div>
-              </div>
+                  </span>
+                  <span>
+                    <span className="s5-collapsible-trigger-title">Parameter Teknis Penomoran Surat Otomatis</span>
+                    <span className="s5-collapsible-trigger-summary s5-tnum">
+                      Kode: {numberingMadrasahCode || 'MTs.DA'} · Pola: {numberingPattern || DEFAULT_NUMBERING_PATTERN}
+                    </span>
+                  </span>
+                </span>
+                <ChevronDown size={16} className="s5-collapsible-chevron" aria-hidden="true" />
+              </button>
 
-              <div className="s5-form-grid">
-                <div className="s5-form-field">
-                  <label htmlFor="num-madrasah-code">Kode Singkatan Madrasah</label>
-                  <input
-                    id="num-madrasah-code"
-                    value={numberingMadrasahCode}
-                    onChange={(e) => setNumberingMadrasahCode(e.target.value)}
-                    placeholder="MTs.DAH"
-                  />
+              {showNumberingTechnical && (
+                <div className="s5-collapsible-body">
+                  <div className="s5-form-grid">
+                    <div className="s5-form-field">
+                      <label htmlFor="num-madrasah-code">Kode Singkatan Madrasah</label>
+                      <input
+                        id="num-madrasah-code"
+                        value={numberingMadrasahCode}
+                        onChange={(e) => setNumberingMadrasahCode(e.target.value)}
+                        placeholder="MTs.DAH"
+                      />
+                    </div>
+                    <div className="s5-form-field">
+                      <label htmlFor="num-reset-mode">Periode Reset Urutan</label>
+                      <select
+                        id="num-reset-mode"
+                        value={numberingResetMode}
+                        onChange={(e) => setNumberingResetMode(e.target.value as NumberingResetMode)}
+                      >
+                        <option value="YEARLY">Reset per Tahun</option>
+                        <option value="MONTHLY">Reset per Bulan</option>
+                        <option value="CONTINUOUS">Berlanjut (Tanpa Reset)</option>
+                      </select>
+                    </div>
+                    <div className="s5-form-field">
+                      <label htmlFor="num-seq-padding">Digit Angka Urut</label>
+                      <select
+                        id="num-seq-padding"
+                        value={numberingPadding}
+                        onChange={(e) => setNumberingPadding(Number(e.target.value) || 3)}
+                      >
+                        <option value={2}>2 digit (01)</option>
+                        <option value={3}>3 digit (001)</option>
+                        <option value={4}>4 digit (0001)</option>
+                      </select>
+                    </div>
+                    <div className="s5-form-field s5-span-2">
+                      <label htmlFor="num-pattern">Pola Format Nomor (Token)</label>
+                      <input
+                        id="num-pattern"
+                        className="s5-tnum"
+                        value={numberingPattern}
+                        onChange={(e) => setNumberingPattern(e.target.value)}
+                        placeholder={DEFAULT_NUMBERING_PATTERN}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="s5-form-field">
-                  <label htmlFor="num-reset-mode">Periode Reset Urutan</label>
-                  <select
-                    id="num-reset-mode"
-                    value={numberingResetMode}
-                    onChange={(e) => setNumberingResetMode(e.target.value as NumberingResetMode)}
-                  >
-                    <option value="YEARLY">Reset per Tahun</option>
-                    <option value="MONTHLY">Reset per Bulan</option>
-                    <option value="CONTINUOUS">Berlanjut (Tanpa Reset)</option>
-                  </select>
-                </div>
-                <div className="s5-form-field">
-                  <label htmlFor="num-seq-padding">Digit Angka Urut</label>
-                  <select
-                    id="num-seq-padding"
-                    value={numberingPadding}
-                    onChange={(e) => setNumberingPadding(Number(e.target.value) || 3)}
-                  >
-                    <option value={2}>2 digit (01)</option>
-                    <option value={3}>3 digit (001)</option>
-                    <option value={4}>4 digit (0001)</option>
-                  </select>
-                </div>
-                <div className="s5-form-field s5-span-2">
-                  <label htmlFor="num-pattern">Pola Format Nomor</label>
-                  <input
-                    id="num-pattern"
-                    className="s5-tnum"
-                    value={numberingPattern}
-                    onChange={(e) => setNumberingPattern(e.target.value)}
-                    placeholder={DEFAULT_NUMBERING_PATTERN}
-                  />
-                </div>
-              </div>
+              )}
             </section>
           </div>
 
@@ -2690,7 +2717,7 @@ export function SettingsScreen({
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <h3 className="s5-calm-panel-title">Asisten Penjelasan Konflik Jadwal (Gemini)</h3>
                     <p className="s5-calm-panel-desc" style={{ marginTop: '4px', lineHeight: 1.55 }}>
-                      Memberikan ringkasan solusi konflik jadwal secara opsional. Validator deterministik tetap menjadi penentu tunggal saat publikasi jadwal, tanpa API key di sisi browser.
+                      Ringkasan solusi konflik opsional tanpa kunci API di browser.
                     </p>
                   </div>
                 </div>
@@ -2708,62 +2735,80 @@ export function SettingsScreen({
               </div>
             </section>
 
-            <section className="s5-lux-panel" style={{ marginTop: '14px' }}>
-              <div className="s5-calm-panel-head" style={{ marginBottom: '12px' }}>
-                <div>
-                  <h3 className="s5-calm-panel-title">Batas Langkah Penyusun Jadwal</h3>
-                  <p className="s5-calm-panel-desc" style={{ marginTop: '3px' }}>
-                    Menentukan kedalaman pencarian kombinasi saat Generator Jadwal otomatis berjalan (rentang aman 1.500 – 100.000 langkah).
+            <section className={`s5-collapsible-section ${showSolverTechnical ? 'is-open' : ''}`} style={{ marginTop: '14px' }}>
+              <button
+                type="button"
+                className="s5-collapsible-trigger"
+                aria-expanded={showSolverTechnical}
+                onClick={() => setShowSolverTechnical((v) => !v)}
+              >
+                <span className="s5-collapsible-trigger-left">
+                  <span className="s5-panel-crest">
+                    <Layers size={16} />
+                  </span>
+                  <span>
+                    <span className="s5-collapsible-trigger-title">Parameter Teknis Penyusun Jadwal (Search Limit)</span>
+                    <span className="s5-collapsible-trigger-summary s5-tnum">
+                      Batas saat ini: {Number(searchLimit || 65000).toLocaleString('id-ID')} kombinasi (1.500 – 100.000)
+                    </span>
+                  </span>
+                </span>
+                <ChevronDown size={16} className="s5-collapsible-chevron" aria-hidden="true" />
+              </button>
+
+              {showSolverTechnical && (
+                <div className="s5-collapsible-body">
+                  <p className="s5-calm-panel-desc" style={{ marginBottom: '12px' }}>
+                    Kedalaman pencarian kombinasi otomatis saat menyusun jadwal bentrok padat.
                   </p>
-                </div>
-              </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input
+                        type="number"
+                        min={1500}
+                        max={100000}
+                        step={500}
+                        value={searchLimit}
+                        onChange={(e) => setSearchLimit(e.target.value)}
+                        aria-label="Batas langkah pencarian penyusun jadwal"
+                        className="s5-tnum"
+                        style={{
+                          width: '130px',
+                          height: '38px',
+                          padding: '0 12px',
+                          borderRadius: '8px',
+                          border: '1px solid #C5D3CC',
+                          fontSize: '14px',
+                          fontWeight: 700,
+                          color: '#0B2923',
+                          background: '#FFFFFF',
+                        }}
+                      />
+                      <span style={{ fontSize: '12px', color: '#526861', fontWeight: 600 }}>kombinasi</span>
+                    </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <input
-                    type="number"
-                    min={1500}
-                    max={100000}
-                    step={500}
-                    value={searchLimit}
-                    onChange={(e) => setSearchLimit(e.target.value)}
-                    aria-label="Batas langkah pencarian penyusun jadwal"
-                    className="s5-tnum"
-                    style={{
-                      width: '130px',
-                      height: '38px',
-                      padding: '0 12px',
-                      borderRadius: '8px',
-                      border: '1px solid #C5D3CC',
-                      fontSize: '14px',
-                      fontWeight: 700,
-                      color: '#0B2923',
-                      background: '#FFFFFF',
-                    }}
-                  />
-                  <span style={{ fontSize: '12px', color: '#526861', fontWeight: 600 }}>kombinasi</span>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      {[
+                        { label: 'Cepat (15.000)', value: '15000' },
+                        { label: 'Standar (65.000)', value: '65000' },
+                        { label: 'Mendalam (100.000)', value: '100000' },
+                      ].map((preset) => {
+                        const isActivePreset = String(Number(searchLimit) || 0) === preset.value;
+                        return (
+                          <button
+                            key={preset.value}
+                            type="button"
+                            className={`filter-tab-btn ${isActivePreset ? 'active' : ''}`}
+                            onClick={() => setSearchLimit(preset.value)}
+                          >
+                            {preset.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
-
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  {[
-                    { label: 'Cepat (15.000)', value: '15000' },
-                    { label: 'Standar (65.000)', value: '65000' },
-                    { label: 'Mendalam (100.000)', value: '100000' },
-                  ].map((preset) => {
-                    const isActivePreset = String(Number(searchLimit) || 0) === preset.value;
-                    return (
-                      <button
-                        key={preset.value}
-                        type="button"
-                        className={`filter-tab-btn ${isActivePreset ? 'active' : ''}`}
-                        onClick={() => setSearchLimit(preset.value)}
-                      >
-                        {preset.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              )}
             </section>
 
             <div className="s5-system-divider">
