@@ -466,7 +466,7 @@ export function DocumentStudio({
     return {
       includeKop: initialGeneration.includeKopSurat,
       schoolName: overrides.schoolName ?? state.settings.schoolName,
-      city: overrides.city ?? state.settings.city ?? 'Depok',
+      city: overrides.city ?? state.settings.city ?? '[Kota Madrasah]',
       signatoryTitle: pickStr('signatoryTitle') ?? 'Kepala Madrasah',
       signatoryName: pickStr('signatoryName') ?? state.settings.headmasterName ?? 'Kepala Madrasah',
       signatoryNip: pickStr('signatoryNip') ?? state.settings.headmasterNip ?? '',
@@ -1137,7 +1137,7 @@ export function DocumentStudio({
         const msg =
           error instanceof Error
             ? error.message
-            : 'Gagal menyimpan naskah Document Studio ke penyimpanan lokal.';
+            : 'Gagal menyimpan naskah Editor Naskah ke penyimpanan lokal.';
         setSaveError(msg);
         setSaveMode('error');
         if (!isAuto) {
@@ -1262,7 +1262,7 @@ export function DocumentStudio({
   const handleFocusPlaceholderToken = (tokenKey: string) => {
     const needle = `{{${tokenKey}}}`;
     if (!editor) {
-      onNotify?.(`Token ${needle} dapat disunting langsung pada naskah Document Studio.`, 'info');
+      onNotify?.(`Token ${needle} dapat disunting langsung pada naskah Editor Naskah.`, 'info');
       return;
     }
 
@@ -1564,8 +1564,7 @@ export function DocumentStudio({
           {(onPersistState && onFinalizedToArchive) || onOpenPreview ? (
             <button
               type="button"
-              className="s02-btn-primary"
-              style={{ height: '32px', padding: '0 13px', fontSize: '12.25px' }}
+              className="s04-cta-compact"
               disabled={isSaving}
               onClick={() => void handleOpenExpressFinalize()}
             >
@@ -2674,7 +2673,7 @@ export function DocumentStudio({
 
         {/* Collapsible Right Properties & Inspector Drawer */}
         {drawerOpen && (
-          <aside className="s04-drawer" aria-label="Panel informasi & properti Document Studio">
+          <aside className="s04-drawer" aria-label="Panel informasi & properti Editor Naskah">
             <div className="s04-drawer-tabs" role="tablist" aria-label="Tab panel properti naskah">
               <button
                 type="button"
@@ -2809,7 +2808,7 @@ export function DocumentStudio({
                           multiple
                           accept=".pdf,.png,.jpg,.jpeg,.webp"
                           style={{ display: 'none' }}
-                          aria-label="Tambah lampiran di Document Studio"
+                          aria-label="Tambah lampiran di Editor Naskah"
                           onChange={(e) => {
                             if (e.target.files?.length) {
                               void handleAttachFilesInStudio(e.target.files);

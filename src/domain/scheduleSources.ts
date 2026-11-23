@@ -195,12 +195,12 @@ export function resolveWorkloadSource(
         canUseAsOfficialSKBasis: false,
         hasUnpublishedDraft,
         statusTone: 'empty',
-        statusBannerTitle: 'Belum ada jadwal yang dipublikasikan (ScheduleVersion resmi)',
+        statusBannerTitle: 'Belum ada jadwal yang dipublikasikan (jadwal terbit resmi)',
         statusBannerMessage: hasLooseActiveSchedule
           ? 'Terdapat jadwal aktif kerja lokal tanpa versi terbit resmi di riwayat publikasi. Data ini belum sah dan tidak dapat digunakan sebagai dasar resmi SK; publikasikan jadwal terlebih dahulu.'
           : 'Belum ada versi jadwal yang diterbitkan di riwayat. Publikasikan jadwal yang tervalidasi sebelum memakai rekap ini sebagai dasar resmi SK.',
         pdfExportAllowed: false,
-        pdfExportBlockedReason: 'Belum ada ScheduleVersion terbit yang valid untuk dicetak sebagai dokumen resmi.',
+        pdfExportBlockedReason: 'Belum ada versi jadwal terbit yang valid untuk dicetak sebagai dokumen resmi.',
       };
     }
 
@@ -214,10 +214,10 @@ export function resolveWorkloadSource(
         canUseAsOfficialSKBasis: false,
         hasUnpublishedDraft,
         statusTone: 'error',
-        statusBannerTitle: `Verifikasi integritas ScheduleVersion v${selectedVersion.version.version} gagal`,
+        statusBannerTitle: `Verifikasi integritas versi jadwal v${selectedVersion.version.version} gagal`,
         statusBannerMessage: `${selectedVersion.integrityIssues.join(' ')} Versi ini ditolak dan tidak dapat digunakan sebagai dasar resmi beban mengajar atau SK.`,
         pdfExportAllowed: false,
-        pdfExportBlockedReason: 'Versi jadwal terpilih gagal verifikasi integritas fingerprint/jumlah entri.',
+        pdfExportBlockedReason: 'Versi jadwal terpilih gagal verifikasi integritas.',
       };
     }
 
@@ -232,8 +232,8 @@ export function resolveWorkloadSource(
       statusTone: 'official',
       statusBannerTitle: `Sumber Resmi: Jadwal Terbit Versi ${selectedVersion.version.version}`,
       statusBannerMessage: hasUnpublishedDraft
-        ? 'Perhatian: terdapat draft jadwal yang belum diterbitkan di editor, namun perhitungan di bawah tetap mengacu strictly pada versi jadwal resmi terpilih.'
-        : 'Seluruh beban JP di bawah diambil langsung dari snapshot ScheduleVersion terbit yang telah terverifikasi integritasnya.',
+        ? 'Perhatian: terdapat draft jadwal yang belum diterbitkan di editor, namun perhitungan di bawah tetap mengacu pada versi jadwal resmi terpilih.'
+        : 'Seluruh beban JP di bawah diambil langsung dari arsip versi jadwal terbit resmi yang telah terverifikasi.',
       pdfExportAllowed: true,
       pdfExportBlockedReason: null,
     };
@@ -258,7 +258,7 @@ export function resolveWorkloadSource(
       statusTone: hasAnyDraft ? 'draft' : 'empty',
       statusBannerTitle: 'PRATINJAU DRAFT — BELUM DITERBITKAN; BUKAN DASAR SK RESMI',
       statusBannerMessage: hasAnyDraft
-        ? 'Data ini merupakan pratinjau rancangan kerja yang belum dipublikasikan sebagai ScheduleVersion resmi. Dokumen PDF dari mode ini ditandai sebagai DRAFT / PRATINJAU.'
+        ? 'Data ini merupakan pratinjau rancangan kerja yang belum dipublikasikan sebagai jadwal terbit resmi. Dokumen PDF dari mode ini ditandai sebagai DRAFT / PRATINJAU.'
         : 'Saat ini tidak ada draft perubahan yang belum diterbitkan. Gunakan mode Jadwal Terbit (Resmi) atau buat perubahan di Jadwal Pelajaran.',
       pdfExportAllowed: hasAnyDraft,
       pdfExportBlockedReason: hasAnyDraft

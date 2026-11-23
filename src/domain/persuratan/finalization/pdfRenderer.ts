@@ -154,6 +154,109 @@ function collectInlineRuns(
   return runs;
 }
 
+function extractRasterImageDimensions(
+  dataUrl: string
+): { width: number; height: number } | null {
+  try {
+    const commaIdx = dataUrl.indexOf(',');
+    if (commaIdx === -1) return null;
+    const b64 = dataUrl.slice(commaIdx + 1).replace(/\s+/g, '');
+    if (!b64) return null;
+    // Decode up to ~64KB header slice cleanly on base64 4-char boundary
+    const sliceLen = Math.min(b64.length, 87380);
+    const alignedLen = sliceLen - (sliceLen % 4);
+    if (alignedLen < 16 || typeof atob !== 'function') return null;
+    const bin = atob(b64.slice(0, alignedLen));
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i += 1) {
+      bytes[i] = bin.charCodeAt(i);
+    }
+
+    // PNG signature: 89 50 4E 47, IHDR width@16, height@20
+    if (
+      bytes.length >= 24 &&
+      bytes[0] === 0x89 &&
+      bytes[1] === 0x50 &&
+      bytes[2] === 0x4e &&
+      bytes[3] === 0x47
+    ) {
+      const width =
+        ((bytes[16] << 24) | (bytes[17] << 16) | (bytes[18] << 8) | bytes[19]) >>> 0;
+      const height =
+        ((bytes[20] << 24) | (bytes[21] << 16) | (bytes[22] << 8) | bytes[23]) >>> 0;
+      if (width > 0 && height > 0) return { width, height };
+    }
+
+    // JPEG signature: FF D8
+    if (bytes.length >= 4 && bytes[0] === 0xff && bytes[1] === 0xd8) {
+      let offset = 2;
+      while (offset + 9 < bytes.length) {
+        if (bytes[offset] !== 0xff) {
+          offset += 1;
+          continue;
+        }
+        const marker = bytes[offset + 1];
+        if (marker === 0xd8 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) {
+          offset += 2;
+          continue;
+        }
+        if (marker === 0xd9 || marker === 0xda) break;
+        const isSof =
+          (marker >= 0xc0 && marker <= 0xc3) ||
+          (marker >= 0xc5 && marker <= 0xc7) ||
+          (marker >= 0xc9 && marker <= 0xcb) ||
+          (marker >= 0xcd && marker <= 0xcf);
+        if (isSof) {
+          const height = (bytes[offset + 5] << 8) | bytes[offset + 6];
+          const width = (bytes[offset + 7] << 8) | bytes[offset + 8];
+          if (width > 0 && height > 0) return { width, height };
+          break;
+        }
+        const segLen = (bytes[offset + 2] << 8) | bytes[offset + 3];
+        if (segLen < 2) break;
+        offset += 2 + segLen;
+      }
+    }
+
+    // WEBP signature: RIFF....WEBP
+    if (
+      bytes.length >= 30 &&
+      bytes[0] === 0x52 &&
+      bytes[1] === 0x49 &&
+      bytes[2] === 0x46 &&
+      bytes[3] === 0x46 &&
+      bytes[8] === 0x57 &&
+      bytes[9] === 0x45 &&
+      bytes[10] === 0x42 &&
+      bytes[11] === 0x50
+    ) {
+      const chunkTag = String.fromCharCode(bytes[12], bytes[13], bytes[14], bytes[15]);
+      if (chunkTag === 'VP8X' && bytes.length >= 30) {
+        const width = 1 + (bytes[24] | (bytes[25] << 8) | (bytes[26] << 16));
+        const height = 1 + (bytes[27] | (bytes[28] << 8) | (bytes[29] << 16));
+        if (width > 0 && height > 0) return { width, height };
+      }
+      if (chunkTag === 'VP8L' && bytes.length >= 25) {
+        const b0 = bytes[21];
+        const b1 = bytes[22];
+        const b2 = bytes[23];
+        const b3 = bytes[24];
+        const width = 1 + (((b1 & 0x3f) << 8) | b0);
+        const height = 1 + (((b3 & 0x0f) << 10) | (b2 << 2) | ((b1 & 0xc0) >> 6));
+        if (width > 0 && height > 0) return { width, height };
+      }
+      if (chunkTag === 'VP8 ' && bytes.length >= 30) {
+        const width = (bytes[26] | (bytes[27] << 8)) & 0x3fff;
+        const height = (bytes[28] | (bytes[29] << 8)) & 0x3fff;
+        if (width > 0 && height > 0) return { width, height };
+      }
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 function collectPlainTextWithStyle(node: TipTapJSONNode): {
   text: string;
   hasBold: boolean;
@@ -698,21 +801,30 @@ export async function renderOfficialDocumentPdf(params: {
     if (node.type === 'docImage') {
       const src = typeof node.attrs?.src === 'string' ? node.attrs.src : '';
       if (!src) return;
-      const widthReq =
+      let imgWidth =
         typeof node.attrs?.widthMm === 'number' && Number.isFinite(node.attrs.widthMm)
           ? Math.min(contentWidth, Math.max(10, node.attrs.widthMm))
           : 26;
-      const imgHeight = widthReq;
+      const naturalDims = extractRasterImageDimensions(src);
+      let imgHeight = naturalDims
+        ? imgWidth * (naturalDims.height / naturalDims.width)
+        : imgWidth;
+      const maxPageImgHeight = Math.max(40, bottomLimitY - topStartY - 8);
+      if (imgHeight > maxPageImgHeight) {
+        const shrinkRatio = maxPageImgHeight / imgHeight;
+        imgHeight = maxPageImgHeight;
+        imgWidth *= shrinkRatio;
+      }
       ensureSpace(imgHeight + 4);
       const alignAttr = node.attrs?.align;
       const xPos =
         alignAttr === 'center'
-          ? marginLeft + (contentWidth - widthReq) / 2
+          ? marginLeft + (contentWidth - imgWidth) / 2
           : alignAttr === 'right'
-          ? marginLeft + contentWidth - widthReq
+          ? marginLeft + contentWidth - imgWidth
           : marginLeft;
       try {
-        doc.addImage(src, detectImageFormat(src), xPos, cursorY, widthReq, imgHeight);
+        doc.addImage(src, detectImageFormat(src), xPos, cursorY, imgWidth, imgHeight);
         cursorY += imgHeight + 3;
       } catch {
         cursorY += 4;

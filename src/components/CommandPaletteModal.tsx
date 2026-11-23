@@ -282,7 +282,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
         id: `tpl-${tpl.id}`,
         category: 'Template Surat',
         title: tpl.name,
-        subtitle: `${tpl.code} · ${tpl.source === 'SYSTEM' ? 'Bawaan SAKALA' : 'Template Madrasah'} · ${tpl.initialPageSettings.paperSize.toUpperCase()}`,
+        subtitle: `${tpl.code} · ${tpl.source === 'SYSTEM' ? 'Template Bawaan' : 'Template Madrasah'} · ${tpl.initialPageSettings.paperSize.toUpperCase()}`,
         searchTokens: `${tpl.code} ${tpl.description} ${tpl.purpose} ${tpl.category}`,
         icon: <FilePlus2 size={15} color="#124037" aria-hidden="true" />,
         action: () =>

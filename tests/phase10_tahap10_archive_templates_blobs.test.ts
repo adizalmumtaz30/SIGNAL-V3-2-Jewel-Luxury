@@ -484,10 +484,10 @@ describe('Tahap 10 — S06 Archive Detail, S07 Template Manager, Attachment Blob
       updateCustomTemplateInState(finalizedState, systemTpl.id, { name: 'Ubah Paksa' })
     ).toThrow(/baca-saja/i);
     expect(() => toggleCustomTemplateStatusInState(finalizedState, systemTpl.id)).toThrow(
-      /Template bawaan SAKALA/i
+      /Template bawaan/i
     );
     expect(() => deleteCustomTemplateInState(finalizedState, systemTpl.id)).toThrow(
-      /Template bawaan SAKALA/i
+      /Template bawaan/i
     );
 
     // Validation catches unbalanced placeholders and duplicate field keys

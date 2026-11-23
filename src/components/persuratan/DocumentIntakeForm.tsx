@@ -58,6 +58,7 @@ import { LivePreviewViewport } from '../LivePreviewViewport';
 import { OfficialKopSuratPreview } from '../OfficialKopSuratPreview';
 import { FinalizationSlideDrawer } from './FinalizationSlideDrawer';
 import { BatchIssueModal } from './BatchIssueModal';
+import { renderTextWithTokens } from './TemplateGallery';
 import './DocumentIntakeForm.css';
 
 export interface DocumentIntakeFormProps {
@@ -95,7 +96,7 @@ function renderMiniInline(nodes: TipTapJSONNode[] | undefined) {
     if (child.type !== 'text') return null;
     const text = child.text ?? '';
     const marks = new Set((child.marks ?? []).map((m) => m.type));
-    let el: React.ReactNode = text;
+    let el: React.ReactNode = text.includes('{{') ? renderTextWithTokens(text) : text;
     if (marks.has('underline')) el = <u>{el}</u>;
     if (marks.has('italic')) el = <em>{el}</em>;
     if (marks.has('bold')) el = <strong>{el}</strong>;
@@ -1270,7 +1271,7 @@ export function DocumentIntakeForm({
             <span>{getCategoryLabel(template.category)}</span>
             <span aria-hidden="true">·</span>
             <span className={isMadrasahTpl ? 's03-meta-madrasah' : 's03-meta-system'}>
-              {isMadrasahTpl ? 'Template Madrasah' : 'Bawaan SAKALA'}
+              {isMadrasahTpl ? 'Template Madrasah' : 'Template Bawaan'}
             </span>
           </div>
           <h1 className="s03-title">{template.name}</h1>
@@ -1284,7 +1285,6 @@ export function DocumentIntakeForm({
             <button
               type="button"
               className="s03-btn-danger-outline"
-              style={{ height: '38px' }}
               onClick={() => setIsDeleteConfirmOpen(true)}
             >
               <Trash2 size={14} aria-hidden="true" />
@@ -1295,7 +1295,6 @@ export function DocumentIntakeForm({
             <button
               type="button"
               className="s03-btn-secondary"
-              style={{ height: '38px' }}
               onClick={() => setIsBatchModalOpen(true)}
               data-tooltip="Buat banyak surat sekaligus dengan format identik"
               data-tooltip-pos="bottom"

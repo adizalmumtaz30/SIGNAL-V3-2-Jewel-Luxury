@@ -13,7 +13,6 @@ import {
   Power,
   Search,
   ShieldCheck,
-  Sparkles,
   Trash2,
 } from 'lucide-react';
 import type { AppState } from '../../domain/types';
@@ -45,6 +44,11 @@ import { TemplateVisualEditor } from './TemplateVisualEditor';
 import { NumberingFormatModal } from './NumberingFormatModal';
 import { LivePreviewViewport } from '../LivePreviewViewport';
 import { OfficialKopSuratPreview } from '../OfficialKopSuratPreview';
+import {
+  formatTokenSlotLabel,
+  renderPaperDocumentHeader,
+  renderPreviewBlock,
+} from './TemplateGallery';
 import './TemplateManager.css';
 
 export interface TemplateManagerProps {
@@ -209,7 +213,7 @@ export function TemplateManager({
   const openEditForm = (tpl: DocumentTemplate) => {
     if (tpl.source === 'SYSTEM' || tpl.isReadOnly) {
       onNotify?.(
-        'Template bawaan SAKALA bersifat baca-saja. Klik "Kloning ke Madrasah" untuk membuat salinan yang dapat diedit.',
+        'Template bawaan bersifat baca-saja. Klik "Kloning ke Madrasah" untuk membuat salinan yang dapat diedit.',
         'info'
       );
       return;
@@ -383,9 +387,7 @@ export function TemplateManager({
     <section className="s07-shell" aria-label="Template Manager Madrasah">
       <header className="s07-header">
         <div>
-          <div className="s05-kicker" style={{ marginBottom: '2px' }}>
-            PENGATURAN TEMPLATE · FORMAT NASKAH
-          </div>
+          <div className="s5-page-kicker">PENGATURAN TEMPLATE · FORMAT NASKAH</div>
           <h1 className="s5-page-title">Kelola Template Madrasah</h1>
           <p className="s5-page-subtitle">
             {systemCount} template bawaan &amp; {madrasahCount} template khusus madrasah. Perubahan tidak memengaruhi arsip lama.
@@ -477,7 +479,7 @@ export function TemplateManager({
             {filteredList.length === 0 ? (
               <div className="s02-empty-box">
                 <h3>Tidak ada template pada tampilan ini</h3>
-                <p>Buat template khusus madrasah baru atau kloning salah satu dari 30 template bawaan SAKALA.</p>
+                <p>Buat template khusus madrasah baru atau kloning salah satu dari 30 template bawaan sistem.</p>
               </div>
             ) : (
               filteredList.map((tpl) => {
@@ -904,7 +906,7 @@ export function TemplateManager({
                 <span style={{ fontSize: '11.5px', color: '#4b635d', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                   {selectedTemplate.source === 'SYSTEM' ? (
                     <>
-                      <Lock size={12} /> Bawaan SAKALA (Aman/Baca-Saja)
+                      <Lock size={12} /> Template Bawaan (Aman/Baca-Saja)
                     </>
                   ) : (
                     `Madrasah · v${selectedTemplate.version} · ${selectedTemplate.status}`
@@ -924,7 +926,7 @@ export function TemplateManager({
                     style={{ flex: 1 }}
                     onClick={() => onUseTemplate(selectedTemplate)}
                   >
-                    <Sparkles size={14} />
+                    <FilePlus2 size={14} aria-hidden="true" />
                     <span>Pakai Template Ini</span>
                   </button>
                 )}
@@ -970,8 +972,11 @@ export function TemplateManager({
                       {check.valid ? 'Struktur Tervalidasi' : 'Perlu Perbaikan'} ·{' '}
                       {check.detectedPlaceholders.length} Placeholder
                     </strong>
-                    <div style={{ fontSize: '11.5px', fontFamily: 'var(--font-mono)' }}>
-                      {check.detectedPlaceholders.slice(0, 8).join(', ') || 'Tanpa placeholder eksplisit'}
+                    <div style={{ fontSize: '11.5px', color: '#445e56' }}>
+                      {check.detectedPlaceholders
+                        .slice(0, 8)
+                        .map((tok) => formatTokenSlotLabel(tok))
+                        .join(', ') || 'Tanpa isian variabel eksplisit'}
                     </div>
                   </div>
                 );
@@ -1006,97 +1011,8 @@ export function TemplateManager({
                           <OfficialKopSuratPreview settings={state.settings} variant="full" />
                         </div>
                       )}
-                      <div className="s02-paper-doc-title">{selectedTemplate.documentHeader.title}</div>
-                      <div className="s02-paper-doc-num">
-                        {selectedTemplate.documentHeader.numberPlaceholder}
-                      </div>
-                      {selectedTemplate.previewBlocks.map((blk, i) => {
-                        if (blk.type === 'heading') {
-                          return (
-                            <div
-                              key={i}
-                              style={{
-                                fontWeight: 700,
-                                fontSize: '12pt',
-                                textAlign: blk.align ?? 'left',
-                                marginTop: '4px',
-                              }}
-                            >
-                              {blk.text}
-                            </div>
-                          );
-                        }
-                        if (blk.type === 'paragraph') {
-                          return (
-                            <p key={i} style={{ margin: 0 }}>
-                              {blk.text}
-                            </p>
-                          );
-                        }
-                        if (blk.type === 'meta_grid') {
-                          return (
-                            <div key={i} className="s02-paper-meta-grid">
-                              {blk.rows.map((row, rIdx) => (
-                                <div key={rIdx} style={{ display: 'contents' }}>
-                                  <span style={{ color: '#4c625c', fontWeight: 600 }}>{row.label}</span>
-                                  <span>: {row.value}</span>
-                                </div>
-                              ))}
-                            </div>
-                          );
-                        }
-                        if (blk.type === 'list') {
-                          const ListTag = blk.ordered ? 'ol' : 'ul';
-                          return (
-                            <ListTag key={i} style={{ margin: '0 0 0 18px', padding: 0 }}>
-                              {blk.items.map((item, iIdx) => (
-                                <li key={iIdx} style={{ marginBottom: '2px' }}>
-                                  {item}
-                                </li>
-                              ))}
-                            </ListTag>
-                          );
-                        }
-                        if (blk.type === 'table') {
-                          return (
-                            <table key={i} className="s02-paper-table">
-                              <thead>
-                                <tr>
-                                  {blk.columns.map((col, cIdx) => (
-                                    <th key={cIdx}>{col}</th>
-                                  ))}
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {blk.sampleRows.map((row, rIdx) => (
-                                  <tr key={rIdx}>
-                                    {row.map((cell, cIdx) => (
-                                      <td key={cIdx}>{cell}</td>
-                                    ))}
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          );
-                        }
-                        return (
-                          <div key={i} className="s02-paper-sig-row">
-                            {blk.leftTitle && (
-                              <div className="s02-paper-sig-box">
-                                <div>{blk.leftTitle}</div>
-                                <div style={{ height: '24px' }} />
-                                <div style={{ fontWeight: 700 }}>{blk.leftName ?? ''}</div>
-                              </div>
-                            )}
-                            <div className={`s02-paper-sig-box ${!blk.leftTitle ? 'is-right' : ''}`}>
-                              <div>{blk.rightTitle}</div>
-                              <div style={{ height: '24px' }} />
-                              <div style={{ fontWeight: 700 }}>{blk.rightName}</div>
-                              {blk.rightIdLabel && <div>{blk.rightIdLabel}</div>}
-                            </div>
-                          </div>
-                        );
-                      })}
+                      {renderPaperDocumentHeader(selectedTemplate.documentHeader)}
+                      {selectedTemplate.previewBlocks.map((blk, i) => renderPreviewBlock(blk, i))}
                     </div>
                   </LivePreviewViewport>
                 );

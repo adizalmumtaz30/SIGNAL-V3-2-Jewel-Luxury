@@ -18,6 +18,11 @@ import {
   toggleFavoriteTemplate,
 } from '../src/domain/persuratan/templates/selectors';
 import { createDemoState, createEmptyState } from '../src/domain/seed';
+import {
+  createInitialIntakeFormValues,
+  saveIntakeDraftToState,
+} from '../src/domain/persuratan/intake/draftEngine';
+import { buildInitialStudioContentFromDraft } from '../src/domain/persuratan/studio/contentGenerator';
 import type { AppState } from '../src/domain/types';
 import { computeCanonicalSha256 } from '../src/storage/checksum';
 import {
@@ -106,7 +111,7 @@ describe('Tahap 3A — Galeri Template S02 & Katalog 30 Template', () => {
 
     const byPurpose = filterTemplates(
       SYSTEM_DOCUMENT_TEMPLATES,
-      { ...DEFAULT_TEMPLATE_FILTERS, searchQuery: 'ScheduleVersion' },
+      { ...DEFAULT_TEMPLATE_FILTERS, searchQuery: 'Jadwal Resmi' },
       DEFAULT_TEMPLATE_PREFERENCES
     );
     expect(byPurpose.some((t) => t.id === 'SYS-TPL-03')).toBe(true);
@@ -197,7 +202,7 @@ describe('Tahap 3A — Galeri Template S02 & Katalog 30 Template', () => {
     expect(notaDinas.legalNotice).toMatch(/PMA/i);
     expect(notaDinas.legalNotice).toMatch(/kewenangan/i);
     expect(rekomendasi.legalNotice).toMatch(/kewenangan/i);
-    expect(skTugas.legalNotice).toMatch(/ScheduleVersion/i);
+    expect(skTugas.legalNotice).toMatch(/jadwal resmi/i);
   });
 
   it('7. Persistensi customTemplates & templatePreferences bertahan penuh lewat backup JSON & kontainer .signal ber-SHA-256', async () => {
@@ -281,7 +286,7 @@ describe('Tahap 3A — Galeri Template S02 & Katalog 30 Template', () => {
     expect(galleryHtml).toContain('Penugasan &amp; Keputusan');
     expect(galleryHtml).toContain('Korespondensi');
     expect(galleryHtml).toContain('Template Madrasah');
-    expect(galleryHtml).toContain('Bawaan SAKALA');
+    expect(galleryHtml).toContain('Template Bawaan');
     expect(galleryHtml).toContain('Gunakan Template');
     expect(galleryHtml).not.toContain('s02-future-btn');
     expect(galleryHtml).not.toContain('Impor DOCX');
@@ -302,5 +307,64 @@ describe('Tahap 3A — Galeri Template S02 & Katalog 30 Template', () => {
     // Pastikan App shell merender aman dan hanya memiliki tepat 1 menu sidebar Persuratan & Arsip
     const appHtml = renderToStaticMarkup(createElement(App));
     expect(appHtml).toContain('SAKALA');
+  });
+
+  it('10. Audit Anti-AI-Slop: katalog bebas titik-tengah (·) metadata, kloning SK memakai builder otentik tanpa bocor Depok/Daruttafsir, dan pratinjau formal bebas token mentah', () => {
+    for (const tpl of SYSTEM_DOCUMENT_TEMPLATES) {
+      expect(tpl.documentHeader.numberPlaceholder).not.toContain('·');
+      for (const blk of tpl.previewBlocks) {
+        if (blk.type === 'meta_grid') {
+          for (const row of blk.rows) {
+            expect(row.value).not.toContain('·');
+          }
+        }
+      }
+    }
+
+    const demo = createDemoState();
+    const neutralState: AppState = {
+      ...demo,
+      settings: {
+        ...demo.settings,
+        ministry: 'Yayasan Pendidikan Contoh Nusantara',
+        schoolName: 'MTs Contoh Nusantara',
+        city: '',
+        address: 'Jl. Pendidikan No. 1',
+        regionalOffice: 'Kantor Kementerian Agama Kab. Contoh',
+        headmasterName: 'Ahmad Contoh, M.Pd',
+        headmasterNip: '197901012005011001',
+      },
+    };
+
+    const skSource = SYSTEM_DOCUMENT_TEMPLATES.find((t) => t.id === 'SYS-TPL-04')!;
+    const skClone = cloneTemplateToMadrasah(skSource, 'SK Tugas Tambahan Kustom Madrasah', []);
+    const baseValues = createInitialIntakeFormValues(skClone, neutralState);
+    const saved = saveIntakeDraftToState(
+      { ...neutralState, customTemplates: [skClone] },
+      skClone,
+      {
+        ...baseValues,
+        daftar_penugasan: [demo.teachers[0]!.id],
+        tmt_berlaku: '2026-07-13',
+        tanggal_penetapan: '2026-07-01',
+      },
+      { timestamp: '2026-11-23T08:00:00.000Z' }
+    );
+
+    const generated = buildInitialStudioContentFromDraft(saved.draft, {
+      activeTemplates: collectAllTemplates([skClone]),
+    });
+    const serialized = JSON.stringify(generated.content);
+    expect(serialized).toContain('MEMUTUSKAN');
+    expect(serialized).toContain('[Kota Madrasah]');
+    expect(serialized).toContain('Kantor Kementerian Agama Kab. Contoh');
+    expect(serialized).not.toContain('Depok');
+    expect(serialized).not.toContain('Daruttafsir');
+    expect(serialized).not.toContain('[Belum diisi]');
+
+    const galleryHtml = renderToStaticMarkup(createElement(TemplateGallery, { state: neutralState }));
+    expect(galleryHtml).toContain('s02-paper-slot');
+    expect(galleryHtml).not.toContain('s02-paper-token');
+    expect(galleryHtml).not.toContain('Bawaan SAKALA');
   });
 });

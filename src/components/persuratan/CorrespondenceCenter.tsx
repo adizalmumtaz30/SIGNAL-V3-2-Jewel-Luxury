@@ -1839,7 +1839,7 @@ export function CorrespondenceCenter({
                     type="text"
                     className="s01-input"
                     required
-                    placeholder="Contoh: Kantor Kementerian Agama Kota Depok"
+                    placeholder="Contoh: Kantor Kementerian Agama Kabupaten/Kota"
                     value={incomingSender}
                     onChange={(e) => setIncomingSender(e.target.value)}
                   />

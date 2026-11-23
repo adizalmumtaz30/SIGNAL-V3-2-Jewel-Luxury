@@ -124,20 +124,21 @@
 .bim-segment {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px;
-  padding: 4px;
-  border-radius: 12px;
-  background: #eef3f0;
-  border: 0.75px solid rgba(18, 64, 55, 0.08);
+  gap: 3px;
+  padding: 3px;
+  height: 38px;
+  border-radius: 10px;
+  background: #ecf2ee;
+  border: 1px solid #d5e0da;
 }
 
 .bim-seg-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  height: 36px;
-  border-radius: 9px;
+  gap: 6px;
+  height: 30px;
+  border-radius: 7px;
   border: none;
   background: transparent;
   color: #4f645d;

@@ -223,13 +223,18 @@ export function MotionPageTransition({
   const shouldReduceMotion = useReducedMotion();
 
   if (shouldReduceMotion) {
-    return <div key={screenKey}>{children}</div>;
+    return (
+      <div key={screenKey} className="s5-screen-stack">
+        {children}
+      </div>
+    );
   }
 
   return (
     <AnimatePresence mode="wait" initial={false}>
       <motion.div
         key={screenKey}
+        className="s5-screen-stack"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -5 }}

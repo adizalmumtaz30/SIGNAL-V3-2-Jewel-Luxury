@@ -155,22 +155,22 @@ const SYSTEM_SCHEMA_OVERRIDES: Record<string, SchemaPatchBuilder> = {
     controls: [
       {
         key: 'schedule_version_id',
-        label: 'Versi Jadwal Resmi Terbit (ScheduleVersion)',
+        label: 'Versi Jadwal Resmi Terbit',
         controlType: 'schedule_version',
         provenance: 'OPERATOR_INPUT',
         required: true,
-        sourceHint: 'Riwayat Jadwal Terbit Terverifikasi (History)',
+        sourceHint: 'Riwayat Jadwal Resmi Terbit',
         helperText:
-          'Wajib memilih ScheduleVersion terbit dengan fingerprint tervalidasi. Draft kerja, activeSchedule tanpa versi, dan Rencana Kebutuhan JP ditolak sebagai dasar SK.',
+          'Wajib memilih jadwal resmi yang sudah diterbitkan dan tervalidasi. Rancangan sementara (draft) dan Rencana Kebutuhan JP tidak dapat dijadikan dasar SK.',
       },
       {
         key: 'daftar_beban_jp',
-        label: 'Lampiran Rekap Beban JP per Guru (Snapshot ScheduleVersion)',
+        label: 'Lampiran Rekap Beban JP per Guru',
         controlType: 'auto_system',
         provenance: 'AUTO_SYSTEM',
         required: true,
         autoSourceKey: 'schedule_workload',
-        sourceHint: 'ScheduleVersion Terpilih',
+        sourceHint: 'Jadwal Resmi Terpilih',
       },
       {
         key: 'tanggal_penetapan',
@@ -201,7 +201,7 @@ const SYSTEM_SCHEMA_OVERRIDES: Record<string, SchemaPatchBuilder> = {
         provenance: 'OPERATOR_INPUT',
         required: true,
         minItems: 1,
-        sourceHint: 'Data Master Guru Aktif / TeacherAssignment',
+        sourceHint: 'Data Master Guru Aktif / Penugasan Guru',
         helperText: 'Pilih guru aktif yang ditetapkan dalam SK Tugas Tambahan (Wali Kelas, Pembina, Koordinator).',
       },
       {
@@ -264,7 +264,7 @@ const SYSTEM_SCHEMA_OVERRIDES: Record<string, SchemaPatchBuilder> = {
         controlType: 'textarea',
         provenance: 'OPERATOR_INPUT',
         required: false,
-        placeholder: 'Catatan pembagian Ketua, Sekretaris, Bendahara, dan Seksi untuk disusun di Document Studio.',
+        placeholder: 'Catatan pembagian Ketua, Sekretaris, Bendahara, dan Seksi untuk disusun di Editor Naskah.',
       },
       DEFAULT_KOP_CONTROL,
     ],
@@ -362,7 +362,7 @@ const SYSTEM_SCHEMA_OVERRIDES: Record<string, SchemaPatchBuilder> = {
       },
       {
         key: 'schedule_version_id',
-        label: 'Rujukan ScheduleVersion Beban Mengajar (Opsional)',
+        label: 'Rujukan Jadwal Resmi Beban Mengajar (Opsional)',
         controlType: 'schedule_version',
         provenance: 'OPERATOR_INPUT',
         required: false,
@@ -414,10 +414,49 @@ const SYSTEM_SCHEMA_OVERRIDES: Record<string, SchemaPatchBuilder> = {
       },
       {
         key: 'schedule_version_id',
-        label: 'Rujukan ScheduleVersion Terbit (Opsional)',
+        label: 'Rujukan Jadwal Resmi Terbit (Opsional)',
         controlType: 'schedule_version',
         provenance: 'OPERATOR_INPUT',
         required: false,
+      },
+      DEFAULT_KOP_CONTROL,
+    ],
+  }),
+
+  'SYS-TPL-13': () => ({
+    supportsAttachmentNotice: false,
+    controls: [
+      {
+        key: 'penerima',
+        label: 'Instansi / Pejabat Penerima',
+        controlType: 'text',
+        provenance: 'OPERATOR_INPUT',
+        required: true,
+        placeholder: 'Misal: Kepala Kantor Kemenag Kabupaten',
+      },
+      {
+        key: 'daftar_berkas',
+        label: 'Daftar Naskah / Berkas yang Dikirim',
+        controlType: 'textarea',
+        provenance: 'OPERATOR_INPUT',
+        required: true,
+        placeholder: 'Tuliskan satu jenis berkas per baris atau pisahkan dengan titik koma.',
+      },
+      {
+        key: 'banyaknya_satuan',
+        label: 'Banyaknya / Satuan Berkas (Opsional)',
+        controlType: 'text',
+        provenance: 'OPERATOR_INPUT',
+        required: false,
+        placeholder: 'Misal: 1 berkas (kosongkan jika bervariasi)',
+      },
+      {
+        key: 'keterangan_pengantar',
+        label: 'Keterangan Pengiriman (Opsional)',
+        controlType: 'text',
+        provenance: 'OPERATOR_INPUT',
+        required: false,
+        placeholder: 'Misal: Sebagai bahan laporan semester / Untuk ditindaklanjuti',
       },
       DEFAULT_KOP_CONTROL,
     ],
@@ -497,6 +536,19 @@ const SYSTEM_SCHEMA_OVERRIDES: Record<string, SchemaPatchBuilder> = {
         controlType: 'date',
         provenance: 'OPERATOR_INPUT',
         required: true,
+      },
+      {
+        key: 'kondisi_barang',
+        label: 'Kondisi Objek / Berkas saat Serah Terima (Opsional)',
+        controlType: 'select',
+        provenance: 'OPERATOR_INPUT',
+        required: false,
+        options: [
+          { value: 'Baik dan lengkap', label: 'Baik dan lengkap' },
+          { value: 'Baik dengan catatan', label: 'Baik dengan catatan' },
+          { value: 'Perlu pemeriksaan / perbaikan', label: 'Perlu pemeriksaan / perbaikan' },
+          { value: 'Sesuai rincian terlampir', label: 'Sesuai rincian terlampir' },
+        ],
       },
       DEFAULT_KOP_CONTROL,
     ],
@@ -601,6 +653,135 @@ const SYSTEM_SCHEMA_OVERRIDES: Record<string, SchemaPatchBuilder> = {
       {
         key: 'ringkasan_materi',
         label: 'Ringkasan Materi & Rencana Implementasi',
+        controlType: 'textarea',
+        provenance: 'OPERATOR_INPUT',
+        required: true,
+      },
+      DEFAULT_KOP_CONTROL,
+    ],
+  }),
+
+  'SYS-TPL-19': () => ({
+    supportsAttachmentNotice: false,
+    controls: [
+      {
+        key: 'judul_rapat',
+        label: 'Judul / Agenda Rapat',
+        controlType: 'text',
+        provenance: 'OPERATOR_INPUT',
+        required: true,
+      },
+      {
+        key: 'pimpinan_notulis',
+        label: 'Pimpinan Rapat & Notulis',
+        controlType: 'text',
+        provenance: 'OPERATOR_INPUT',
+        required: true,
+      },
+      {
+        key: 'ringkasan_bahasan',
+        label: 'Ringkasan Pembahasan & Tindak Lanjut',
+        controlType: 'textarea',
+        provenance: 'OPERATOR_INPUT',
+        required: true,
+      },
+      {
+        key: 'pj_tindak_lanjut',
+        label: 'Penanggung Jawab Tindak Lanjut (Opsional)',
+        controlType: 'text',
+        provenance: 'OPERATOR_INPUT',
+        required: false,
+        placeholder: 'Misal: Waka Kurikulum / Panitia Terkait',
+      },
+      {
+        key: 'target_waktu_rtl',
+        label: 'Target Waktu Tindak Lanjut (Opsional)',
+        controlType: 'text',
+        provenance: 'OPERATOR_INPUT',
+        required: false,
+        placeholder: 'Misal: Pekan kedua bulan berjalan',
+      },
+      DEFAULT_KOP_CONTROL,
+    ],
+  }),
+
+  'SYS-TPL-20': () => ({
+    supportsAttachmentNotice: false,
+    controls: [
+      {
+        key: 'nama_kegiatan',
+        label: 'Nama Kegiatan',
+        controlType: 'text',
+        provenance: 'OPERATOR_INPUT',
+        required: true,
+      },
+      {
+        key: 'pelaksanaan',
+        label: 'Waktu, Lokasi & Sasaran',
+        controlType: 'text',
+        provenance: 'OPERATOR_INPUT',
+        required: true,
+      },
+      {
+        key: 'capaian',
+        label: 'Hasil, Kendala & Tindak Lanjut',
+        controlType: 'textarea',
+        provenance: 'OPERATOR_INPUT',
+        required: true,
+      },
+      {
+        key: 'status_realisasi',
+        label: 'Status Realisasi Kegiatan (Opsional)',
+        controlType: 'select',
+        provenance: 'OPERATOR_INPUT',
+        required: false,
+        options: [
+          { value: 'Terlaksana penuh', label: 'Terlaksana penuh' },
+          { value: 'Terlaksana sebagian', label: 'Terlaksana sebagian' },
+          { value: 'Tertunda / Dijadwalkan ulang', label: 'Tertunda / Dijadwalkan ulang' },
+          { value: 'Selesai dengan catatan evaluasi', label: 'Selesai dengan catatan evaluasi' },
+        ],
+      },
+      {
+        key: 'catatan_evaluasi',
+        label: 'Catatan Evaluasi Khusus (Opsional)',
+        controlType: 'text',
+        provenance: 'OPERATOR_INPUT',
+        required: false,
+        placeholder: 'Catatan kendala lapangan atau tindak lanjut evaluasi',
+      },
+      DEFAULT_KOP_CONTROL,
+    ],
+  }),
+
+  'SYS-TPL-22': () => ({
+    supportsAttachmentNotice: false,
+    controls: [
+      {
+        key: 'jenis_ujian',
+        label: 'Jenis & Tahun Ujian',
+        controlType: 'text',
+        provenance: 'OPERATOR_INPUT',
+        required: true,
+      },
+      {
+        key: 'rekap_kelas',
+        label: 'Rekap Peserta per Rombel',
+        controlType: 'textarea',
+        provenance: 'OPERATOR_INPUT',
+        required: true,
+      },
+      {
+        key: 'tingkat_kehadiran',
+        label: 'Persentase Kehadiran Rata-rata (Opsional)',
+        controlType: 'text',
+        provenance: 'OPERATOR_INPUT',
+        required: false,
+        placeholder: 'Misal: 98,5% atau sesuai daftar hadir ruang',
+      },
+      {
+        key: 'evaluasi',
+        label: 'Catatan Kendala & Rekomendasi',
         controlType: 'textarea',
         provenance: 'OPERATOR_INPUT',
         required: true,
@@ -997,8 +1178,8 @@ export function validateIntakeForm(
           ctrl.key,
           ctrl.label,
           autoData.verifiedScheduleVersions.length === 0
-            ? 'Belum ada ScheduleVersion terbit yang sah. Publikasikan jadwal resmi terlebih dahulu sebelum membuat SK Pembagian Tugas Mengajar.'
-            : 'Pilih salah satu ScheduleVersion resmi terverifikasi sebagai dasar beban mengajar SK.'
+            ? 'Belum ada jadwal resmi terbit yang sah. Publikasikan jadwal resmi terlebih dahulu sebelum membuat SK Pembagian Tugas Mengajar.'
+            : 'Pilih salah satu jadwal resmi terbit yang terverifikasi sebagai dasar beban mengajar SK.'
         );
         continue;
       }
@@ -1006,7 +1187,7 @@ export function validateIntakeForm(
         pushError(
           ctrl.key,
           ctrl.label,
-          'Versi jadwal yang dipilih tidak sah, rusak/fingerprint gagal, atau berasal dari draft non-resmi.'
+          'Versi jadwal yang dipilih tidak sah, gagal verifikasi keutuhan data, atau berasal dari draft non-resmi.'
         );
       }
       continue;
@@ -1036,7 +1217,7 @@ export function validateIntakeForm(
           pushError(
             ctrl.key,
             ctrl.label,
-            'Rekap beban JP otomatis memerlukan ScheduleVersion terverifikasi yang valid.'
+            'Rekap beban JP otomatis memerlukan jadwal resmi terbit yang terverifikasi.'
           );
         }
       }

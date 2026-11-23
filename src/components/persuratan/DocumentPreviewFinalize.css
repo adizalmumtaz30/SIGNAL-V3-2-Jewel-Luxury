@@ -9,29 +9,45 @@
 }
 
 .s05-topbar {
+  position: relative;
+  overflow: visible;
+  z-index: 20;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 20px;
   flex-wrap: wrap;
-  padding: 14px 18px;
-  background: #ffffff;
-  border: 1px solid #d5e0db;
-  border-radius: 14px;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #FFFFFF 0%, #F7FAF8 60%, #FBF7EE 100%);
+  border: 0.75px solid rgba(197, 160, 89, 0.36);
+  border-radius: 16px;
+  box-shadow: var(--s5-shadow-resting, 0 2px 10px rgba(11, 41, 35, 0.04)), inset 0 1px 0 rgba(255, 255, 255, 0.96);
+}
+
+.s05-topbar::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 24px;
+  right: 24px;
+  height: 1.5px;
+  background: linear-gradient(90deg, rgba(18, 64, 55, 0.45), rgba(197, 160, 89, 0.65), transparent);
 }
 
 .s05-topbar-meta {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
+  flex: 1 1 380px;
 }
 
 .s05-kicker {
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #16483f;
+  color: var(--s5-gold-muted, #8E7035);
 }
 
 .s05-title-row {
@@ -43,9 +59,12 @@
 
 .s05-title-row h1 {
   margin: 0;
-  font-family: var(--font-display, 'Fraunces', serif);
-  font-size: 20px;
-  color: #0b2923;
+  font-family: var(--font-serif);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--s5-emerald-obsidian, #0b2923);
 }
 
 .s05-status-tag {
@@ -82,20 +101,21 @@
 .s05-topbar-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
 .s05-split-cta-group {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .s05-btn-outline-emerald {
-  height: 36px;
-  padding: 0 13px;
+  height: 38px;
+  min-height: 38px;
+  padding: 0 14px;
   border-radius: 10px;
   border: 1px solid #124037;
   background: #ffffff;
@@ -411,7 +431,7 @@
 
 @media (max-width: 680px) {
   .s05-topbar {
-    padding: 12px 14px;
+    padding: 16px 18px;
     flex-direction: column;
     align-items: flex-start;
   }

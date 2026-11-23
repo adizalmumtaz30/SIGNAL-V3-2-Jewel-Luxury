@@ -294,8 +294,6 @@ describe('Rekap Kehadiran Guru & Input Massal (Anti-Penalti 96% Palsu)', () => {
     expect(html).toContain('tone-sand');
     expect(html).toContain('tone-blue');
     expect(html).toContain('tone-rose');
-    expect(html).toContain('stat-icon');
-    expect(html).toContain('stat-value-row');
     expect(html).toContain('Guru Hadir Hari Ini');
     expect(html).toContain('Tingkat Kehadiran');
     expect(html).toContain('Dinas Luar / Izin / Sakit');

@@ -78,12 +78,8 @@ export function AtelierEmptyArchiveSvg({ className = '' }: { className?: string 
         strokeLinejoin="round"
       />
 
-      {/* Fine architectural sparkle accents */}
-      <path
-        d="M27 34L28.4 37.6L32 39L28.4 40.4L27 44L25.6 40.4L22 39L25.6 37.6L27 34Z"
-        fill="#C5A059"
-        fillOpacity="0.65"
-      />
+      {/* Subtle gold architectural accent */}
+      <circle cx="27" cy="39" r="1.8" fill="#C5A059" fillOpacity="0.45" />
       <circle cx="109" cy="29" r="2.2" fill="#C5A059" fillOpacity="0.55" />
     </svg>
   );

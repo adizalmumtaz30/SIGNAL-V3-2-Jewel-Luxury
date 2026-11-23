@@ -229,7 +229,7 @@ export function resolveTemplateBlocksForDraft(
       previewBlocks: [
         {
           type: 'paragraph',
-          text: draft.subject || 'Silakan lanjutkan penyusunan naskah dokumen di Document Studio.',
+          text: draft.subject || 'Silakan lanjutkan penyusunan naskah dokumen di Editor Naskah.',
         },
         {
           type: 'signature',
@@ -462,7 +462,7 @@ function buildExplicitTokenAliasMap(draft: DocumentIntakeDraft): Record<string, 
     JUDUL_RAPAT: strOrNull(fv.judul_rapat),
     WAKTU_TEMPAT_RAPAT: strOrNull(fv.waktu_tempat) ?? `${docDayDate ?? ''}, bertempat di ${kopSchool}`,
     JUMLAH_PESERTA: strOrNull(fv.jumlah_peserta) ?? 'seluruh',
-    BUTIR_KEPUTUSAN_1: keputusanLines[0] ?? strOrNull(fv.hasil_keputusan) ?? 'Seluruh agenda rapat disepakati bersama.',
+    BUTIR_KEPUTUSAN_1: keputusanLines[0] ?? strOrNull(fv.hasil_keputusan) ?? 'Ketentuan dan keputusan rapat dicatat sesuai hasil musyawarah.',
     BUTIR_KEPUTUSAN_2: keputusanLines[1] ?? 'Keputusan mulai berlaku sejak tanggal ditetapkan.',
     NAMA_MAPEL: subjectName ?? strOrNull(fv.mapel) ?? '-',
     HARI_TANGGAL_SESI: docDayDate ?? docLongDate,
@@ -470,7 +470,7 @@ function buildExplicitTokenAliasMap(draft: DocumentIntakeDraft): Record<string, 
     JUMLAH_HADIR: strOrNull(fv.rekap_peserta) ?? '-',
     JUMLAH_TERDAFTAR: 'terdaftar',
     CATATAN_KEJADIAN_KHUSUS:
-      strOrNull(fv.kejadian_khusus) ?? 'Pelaksanaan ujian berlangsung tertib, aman, dan lancar.',
+      strOrNull(fv.kejadian_khusus) ?? 'Sesuai catatan pengawas ruang.',
     PIMPINAN_RAPAT: pimpinanParts[0] ?? kopName ?? kopTitle,
     NAMA_NOTULIS: pimpinanParts[1] ?? 'Notulis Rapat',
     LATAR_BELAKANG_DAN_TUJUAN_KEGIATAN:
@@ -508,6 +508,8 @@ function buildExplicitTokenAliasMap(draft: DocumentIntakeDraft): Record<string, 
     BUTIR_PERNYATAAN_1: pernyataanLines[0] ?? strOrNull(fv.isi_pernyataan) ?? 'Data yang disampaikan adalah benar dan dapat dipertanggungjawabkan.',
     BUTIR_PERNYATAAN_2: pernyataanLines[1] ?? 'Apabila di kemudian hari ditemukan ketidaksesuaian, saya bersedia mempertanggungjawabkannya sesuai ketentuan.',
     JUDUL_DOKUMEN_BEBAS: strOrNull(fv.judul_dokumen) ?? strOrNull(draft.title),
+    ISI_NASKAH_DOKUMEN:
+      'Tuliskan isi naskah dokumen resmi madrasah pada bagian ini.',
     KONTEN_DOKUMEN_BEBAS_DIMULAI_DI_DOCUMENT_STUDIO:
       'Tuliskan isi naskah dokumen resmi madrasah pada bagian ini.',
   };
@@ -563,11 +565,11 @@ function interpolateTokens(
       return '';
     }
     unresolvedTracker.add(tokenName);
-    // Nomor dokumen resmi ditampilkan rapi tanpa label "[Belum diisi]" yang mengganggu kertas
+    // Tampilkan token bersih agar checklist dapat melacak kekosongan tanpa teks teknis "[Belum diisi]" di kertas surat
     if (NUMBER_TOKENS.has(tokenName)) {
       return `{{${tokenName}}}`;
     }
-    return `{{${tokenName}}} [Belum diisi]`;
+    return `{{${tokenName}}}`;
   });
 }
 
@@ -698,7 +700,7 @@ function buildKopSuratNodes(draft: DocumentIntakeDraft): TipTapJSONNode[] {
 
   const nodes: TipTapJSONNode[] = [];
   nodes.push(
-    createParagraphNode((strOrNull(kop.schoolName) ?? '{{NAMA_MADRASAH}} [Belum diisi]').toUpperCase(), {
+    createParagraphNode((strOrNull(kop.schoolName) ?? '{{NAMA_MADRASAH}}').toUpperCase(), {
       align: 'center',
       bold: true,
     })
@@ -850,56 +852,64 @@ function buildExpandedTableRows(
   // 6. Tabel Surat Pengantar (SYS-TPL-13)
   if (firstSampleJoined.includes('{{NAMA_BERKAS_1}}')) {
     const items = splitOperatorLines(strOrNull(fv.daftar_berkas), ['Berkas Administrasi Madrasah']);
+    const qtyText = strOrNull(fv.banyaknya_satuan) ?? '1 berkas';
+    const noteText = strOrNull(fv.keterangan_pengantar) ?? 'Terlampir';
     return items.map((item, idx) => [
       String(idx + 1),
       item,
-      '1 berkas',
-      'Disampaikan dengan hormat untuk dipergunakan sebagaimana mestinya',
+      qtyText,
+      noteText,
     ]);
   }
 
   // 7. Tabel Berita Acara Serah Terima (SYS-TPL-16)
   if (firstSampleJoined.includes('{{OBJEK_ITEM_1}}')) {
     const items = splitOperatorLines(strOrNull(fv.objek_serah_terima), ['Dokumen / Barang Inventaris']);
+    const condText = strOrNull(fv.kondisi_barang) ?? 'Sesuai pemeriksaan fisik';
     return items.map((item, idx) => [
       String(idx + 1),
       item,
       '1 unit/berkas',
-      'Baik dan lengkap',
+      condText,
     ]);
   }
 
   // 8. Tabel Notula Rapat (SYS-TPL-19)
   if (firstSampleJoined.includes('{{TINDAK_LANJUT_1}}')) {
     const items = splitOperatorLines(strOrNull(fv.ringkasan_bahasan), ['Tindak lanjut hasil rapat']);
+    const pjText = strOrNull(fv.pj_tindak_lanjut) ?? 'Penanggung jawab terkait';
+    const targetText = strOrNull(fv.target_waktu_rtl) ?? 'Sesuai kesepakatan';
     return items.map((item, idx) => [
       String(idx + 1),
       item,
-      'Unit / Panitia Terkait',
-      'Sesuai jadwal madrasah',
+      pjText,
+      targetText,
     ]);
   }
 
   // 9. Tabel Laporan Kegiatan (SYS-TPL-20)
   if (firstSampleJoined.includes('{{INDIKATOR_1}}')) {
     const items = splitOperatorLines(strOrNull(fv.capaian), ['Keterlaksanaan program sesuai rencana']);
+    const realisasiText = strOrNull(fv.status_realisasi) ?? 'Sesuai laporan pelaksanaan';
+    const evalText = strOrNull(fv.catatan_evaluasi) ?? 'Tercatat dalam laporan';
     return items.map((item) => [
       item,
-      'Terlaksana 100%',
-      'Terlaksana dengan baik',
-      'Sesuai jadwal dan tujuan kegiatan',
+      'Sesuai rencana kerja',
+      realisasiText,
+      evalText,
     ]);
   }
 
   // 10. Tabel Laporan Ujian (SYS-TPL-22)
   if (firstSampleJoined.includes('{{ROMBEL_1}}')) {
     const items = splitOperatorLines(strOrNull(fv.rekap_kelas), ['Seluruh Rombel Aktif']);
+    const attendanceText = strOrNull(fv.tingkat_kehadiran) ?? 'Sesuai daftar hadir';
     return items.map((item, idx) => [
       String(idx + 1),
       item,
       'Sesuai daftar peserta',
-      '100%',
-      'Tertib dan lancar',
+      attendanceText,
+      'Sesuai berita acara ruang',
     ]);
   }
 
@@ -925,7 +935,7 @@ function buildSignatureNodes(
 ): TipTapJSONNode[] {
   const kopSnap = findSnapshot(draft, 'settings.madrasah_identity_signatory');
   const kop = (kopSnap?.capturedValue ?? {}) as FrozenKopSnapshot;
-  const city = strOrNull(kop.city) ?? 'Depok';
+  const city = strOrNull(kop.city) ?? '[Kota Madrasah]';
   const dateText = formatIndonesianLongDate(draft.documentDate) ?? draft.documentDate;
   const titimangsa = `${city}, ${dateText}`;
 
@@ -1106,7 +1116,7 @@ function buildSpecializedAuthenticNodes(params: {
   const scheduleVer = (verSnap?.capturedValue ?? null) as FrozenScheduleVersionSnapshot | null;
 
   const schoolName = strOrNull(kop.schoolName) ?? 'Madrasah Tsanawiyah';
-  const city = strOrNull(kop.city) ?? 'Depok';
+  const city = strOrNull(kop.city) ?? '[Kota Madrasah]';
   const dateText = formatIndonesianLongDate(draft.documentDate) ?? draft.documentDate;
   const titimangsa = `${city}, ${dateText}`;
   const academicYear = strOrNull(kop.academicYear) ?? '-';
@@ -1266,12 +1276,15 @@ function buildSpecializedAuthenticNodes(params: {
       ])
     );
 
+    const regionalOffice = strOrNull(kop.regionalOffice);
     nodes.push(
       ...buildSignatureNodes(sigBlock, draft, aliasMap, resolvedSet, unresolvedSet, {
         ditetapkanStyle: true,
         tembusan: [
-          'Ketua Yayasan Pondok Pesantren Daruttafsir Al-Husaini',
-          'Pengawas Madrasah Kantor Kementerian Agama Kota Depok',
+          'Ketua Yayasan / Penyelenggara Madrasah',
+          regionalOffice
+            ? `Pengawas Madrasah ${regionalOffice}`
+            : 'Pengawas Madrasah Kantor Kementerian Agama Setempat',
           'Yang bersangkutan untuk dilaksanakan sebagaimana mestinya',
           'Arsip',
         ],
@@ -1732,7 +1745,7 @@ function buildSpecializedAuthenticNodes(params: {
       ...buildSignatureNodes(sigBlock, draft, aliasMap, resolvedSet, unresolvedSet, {
         ditetapkanStyle: true,
         tembusan: [
-          'Ketua Yayasan Pondok Pesantren Daruttafsir Al-Husaini',
+          'Ketua Yayasan / Penyelenggara Madrasah',
           'Yang bersangkutan untuk dilaksanakan sebagaimana mestinya',
           'Arsip',
         ],
@@ -1984,14 +1997,16 @@ function buildSpecializedAuthenticNodes(params: {
     nodes.push(...buildRecipientAddressBlock(penerima, 'Tempat'));
     nodes.push(createHeadingNode('SURAT PENGANTAR', 2, 'center', true));
     nodes.push(createParagraphNode(''));
+    const qtyText = strOrNull(fv.banyaknya_satuan) ?? '1 berkas';
+    const pengantarNote = strOrNull(fv.keterangan_pengantar) ?? 'Terlampir';
     nodes.push(
       buildTableNode(
         ['No', 'Jenis Naskah / Berkas yang Dikirim', 'Banyaknya', 'Keterangan'],
         items.map((item, idx) => [
           String(idx + 1),
           item,
-          '1 berkas',
-          'Disampaikan dengan hormat untuk dipergunakan sebagaimana mestinya',
+          qtyText,
+          pengantarNote,
         ])
       )
     );
@@ -2055,10 +2070,11 @@ function buildSpecializedAuthenticNodes(params: {
           { align: 'justify' }
         )
       );
+      const baCondition = strOrNull(fv.kondisi_barang) ?? 'Sesuai pemeriksaan fisik';
       nodes.push(
         buildTableNode(
           ['No', 'Uraian Objek / Dokumen', 'Jumlah', 'Kondisi / Keterangan'],
-          items.map((item, idx) => [String(idx + 1), item, '1 unit/berkas', 'Baik dan lengkap'])
+          items.map((item, idx) => [String(idx + 1), item, '1 unit/berkas', baCondition])
         )
       );
       nodes.push(
@@ -2157,7 +2173,7 @@ function buildSpecializedAuthenticNodes(params: {
     const mapelName = strOrNull(subj?.name) ?? strOrNull(fv.mapel) ?? '-';
     const ruangUjian = strOrNull(fv.ruang_ujian) ?? '-';
     const rekapPeserta = strOrNull(fv.rekap_peserta) ?? '-';
-    const kejadian = strOrNull(fv.kejadian_khusus) ?? 'Ujian berlangsung tertib, aman, dan lancar (nihil kejadian khusus).';
+    const kejadian = strOrNull(fv.kejadian_khusus) ?? 'Sesuai catatan berita acara ruang.';
 
     nodes.push(createHeadingNode('BERITA ACARA PELAKSANAAN UJIAN', 1, 'center', true));
     nodes.push(
@@ -2420,14 +2436,16 @@ function buildSpecializedAuthenticNodes(params: {
       )
     );
     nodes.push(createHeadingNode('II. KESIMPULAN & RENCANA TINDAK LANJUT', 2, 'left'));
+    const pjNotula = strOrNull(fv.pj_tindak_lanjut) ?? 'Penanggung jawab terkait';
+    const targetNotula = strOrNull(fv.target_waktu_rtl) ?? 'Sesuai kesepakatan';
     nodes.push(
       buildTableNode(
         ['No', 'Pokok Bahasan / Tindak Lanjut', 'Penanggung Jawab', 'Target Waktu'],
         bahasanItems.map((item, idx) => [
           String(idx + 1),
           item,
-          'Unit / Panitia Terkait',
-          'Sesuai jadwal madrasah',
+          pjNotula,
+          targetNotula,
         ])
       )
     );
@@ -2485,14 +2503,16 @@ function buildSpecializedAuthenticNodes(params: {
       ])
     );
     nodes.push(createHeadingNode('III. HASIL CAPAIAN, KENDALA & EVALUASI', 2, 'left'));
+    const realisasiLap = strOrNull(fv.status_realisasi) ?? 'Sesuai laporan pelaksanaan';
+    const evalLap = strOrNull(fv.catatan_evaluasi) ?? 'Tercatat dalam laporan';
     nodes.push(
       buildTableNode(
         ['No', 'Aspek / Uraian Capaian', 'Realisasi', 'Catatan Evaluasi'],
         capaianItems.map((item, idx) => [
           String(idx + 1),
           item,
-          'Terlaksana',
-          'Berjalan tertib dan lancar',
+          realisasiLap,
+          evalLap,
         ])
       )
     );
@@ -2621,6 +2641,7 @@ function buildSpecializedAuthenticNodes(params: {
       )
     );
     nodes.push(createHeadingNode('II. REKAPITULASI PESERTA PER ROMBEL', 2, 'left'));
+    const attendanceUjian = strOrNull(fv.tingkat_kehadiran) ?? 'Sesuai daftar hadir';
     nodes.push(
       buildTableNode(
         ['No', 'Tingkat / Rombel', 'Jumlah Peserta', 'Hadir (%)', 'Keterangan'],
@@ -2628,8 +2649,8 @@ function buildSpecializedAuthenticNodes(params: {
           String(idx + 1),
           line,
           'Sesuai daftar peserta',
-          '100%',
-          'Tertib dan lancar',
+          attendanceUjian,
+          'Sesuai berita acara ruang',
         ])
       )
     );
@@ -2755,9 +2776,18 @@ export function buildInitialStudioContentFromDraft(
     nodes.push(...buildKopSuratNodes(draft));
   }
 
-  // 2. Gunakan builder Tata Naskah Dinas autentik untuk template sistem baku (hanya jika tidak dikustomisasi struktur bloknya)
-  const isPureSystemSource = draft.templateSnapshot?.source === 'SYSTEM';
-  const specialized = isPureSystemSource
+  // 2. Gunakan builder Tata Naskah Dinas autentik untuk template sistem baku maupun kloningan yang strukturnya belum diubah
+  const systemOriginTpl = baseTplId.startsWith('SYS-TPL-')
+    ? SYSTEM_DOCUMENT_TEMPLATES.find((t) => t.id === baseTplId) ?? null
+    : null;
+  const isUnmodifiedClone =
+    draft.templateSnapshot?.source === 'MADRASAH' &&
+    systemOriginTpl !== null &&
+    JSON.stringify(draft.templateSnapshot.previewBlocks ?? []) ===
+      JSON.stringify(systemOriginTpl.previewBlocks);
+  const canUseSpecialized =
+    draft.templateSnapshot?.source === 'SYSTEM' || isUnmodifiedClone;
+  const specialized = canUseSpecialized
     ? buildSpecializedAuthenticNodes({
         baseTplId,
         draft,
@@ -2770,24 +2800,71 @@ export function buildInitialStudioContentFromDraft(
   if (specialized) {
     nodes.push(...specialized);
   } else {
-    // 2B. Judul Dokumen & Placeholder Nomor Resmi (untuk SK Tugas Tambahan, Surat Keterangan, BA, Notula, Laporan, Custom)
-    const rawHeaderTitle = draft.templateSnapshot?.documentHeader?.title || draft.title;
-    const titleLines = interpolateTokens(rawHeaderTitle, aliasMap, resolvedSet, unresolvedSet)
-      .split('\n')
-      .map((l) => l.trim())
-      .filter(Boolean);
-
-    const underlineTitle = titleLines.length === 1 && baseTplId !== 'SYS-TPL-30';
-    titleLines.forEach((line, idx) => {
-      nodes.push(createHeadingNode(line, idx === 0 ? 1 : 2, 'center', idx === 0 && underlineTitle));
-    });
+    // 2B. Fallback tata letak baku untuk template kustom / termodifikasi
+    const kopSnapFallback = findSnapshot(draft, 'settings.madrasah_identity_signatory');
+    const kopFallback = (kopSnapFallback?.capturedValue ?? {}) as FrozenKopSnapshot;
+    const cityFallback = strOrNull(kopFallback.city) ?? '[Kota Madrasah]';
+    const dateFallback = formatIndonesianLongDate(draft.documentDate) ?? draft.documentDate;
+    const titimangsaFallback = `${cityFallback}, ${dateFallback}`;
 
     const rawNumberLine = draft.templateSnapshot?.documentHeader?.numberPlaceholder;
-    if (rawNumberLine) {
-      const numLine = interpolateTokens(rawNumberLine, aliasMap, resolvedSet, unresolvedSet);
-      nodes.push(createParagraphNode(numLine, { align: 'center' }));
+    const numSegments = rawNumberLine
+      ? interpolateTokens(rawNumberLine, aliasMap, resolvedSet, unresolvedSet)
+          .split(/\r?\n|\s*·\s*/g)
+          .map((seg) => seg.trim())
+          .filter(Boolean)
+      : [];
+    const isCorrespondenceDoc =
+      draft.templateSnapshot?.documentKind === 'SURAT_KELUAR' ||
+      draft.templateSnapshot?.documentKind === 'UNDANGAN';
+    const hasLetterHeaderMetadata =
+      isCorrespondenceDoc &&
+      numSegments.length > 1 &&
+      numSegments.some((seg) => /^(Sifat|Lampiran|Hal)\s*:/i.test(seg));
+
+    if (hasLetterHeaderMetadata) {
+      let nomorVal = '{{NOMOR_SURAT}}';
+      let sifatVal: string | null = null;
+      let lampiranVal: string | null = null;
+      let halVal = draft.subject || draft.title;
+      for (const seg of numSegments) {
+        if (/^Nomor\s*:/i.test(seg)) {
+          nomorVal = seg.replace(/^Nomor\s*:\s*/i, '').trim() || nomorVal;
+        } else if (/^Sifat\s*:/i.test(seg)) {
+          sifatVal = seg.replace(/^Sifat\s*:\s*/i, '').trim() || null;
+        } else if (/^Lampiran\s*:/i.test(seg)) {
+          lampiranVal = seg.replace(/^Lampiran\s*:\s*/i, '').trim() || null;
+        } else if (/^Hal\s*:/i.test(seg)) {
+          halVal = seg.replace(/^Hal\s*:\s*/i, '').trim() || halVal;
+        }
+      }
+      nodes.push(
+        buildCorrespondenceLetterHeader({
+          numberToken: nomorVal,
+          sifat: sifatVal,
+          lampiran: lampiranVal,
+          hal: halVal,
+          titimangsa: titimangsaFallback,
+        })
+      );
+      nodes.push(createParagraphNode(''));
+    } else {
+      const rawHeaderTitle = draft.templateSnapshot?.documentHeader?.title || draft.title;
+      const titleLines = interpolateTokens(rawHeaderTitle, aliasMap, resolvedSet, unresolvedSet)
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean);
+
+      const underlineTitle = titleLines.length === 1 && baseTplId !== 'SYS-TPL-30';
+      titleLines.forEach((line, idx) => {
+        nodes.push(createHeadingNode(line, idx === 0 ? 1 : 2, 'center', idx === 0 && underlineTitle));
+      });
+
+      if (numSegments.length > 0) {
+        nodes.push(createParagraphNode(numSegments.join('\n'), { align: 'center' }));
+      }
+      nodes.push(createParagraphNode(''));
     }
-    nodes.push(createParagraphNode(''));
 
     // 3. Konversi deterministik setiap TemplatePreviewBlock -> node TipTap autentik
     const fv = draft.fieldValues ?? {};
@@ -2911,7 +2988,8 @@ export function stripAutoGeneratedKopNodes(
   if (
     (schoolKey && leadingText.includes(schoolKey)) ||
     leadingText.includes('MADRASAH TSANAWIYAH') ||
-    leadingText.includes('DARUTTAFSIR') ||
+    leadingText.includes('MADRASAH ALIYAH') ||
+    leadingText.includes('MADRASAH IBTIDAIYAH') ||
     leadingText.includes('KEMENTERIAN AGAMA')
   ) {
     return nodes.slice(firstHrIdx + 1);

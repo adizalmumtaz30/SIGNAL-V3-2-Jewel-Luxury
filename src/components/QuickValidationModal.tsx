@@ -147,7 +147,7 @@ export function QuickValidationModal({
         </div>
 
         {/* Category Filter Tabs */}
-        <div style={{ display: 'flex', gap: '6px', padding: '14px 20px 0', overflowX: 'auto' }}>
+        <div style={{ display: 'flex', gap: '8px', padding: '14px 20px 0', overflowX: 'auto' }}>
           <button
             type="button"
             className={`filter-tab-btn ${activeCategory === 'all' ? 'active' : ''}`}
@@ -161,7 +161,7 @@ export function QuickValidationModal({
             onClick={() => setActiveCategory('teacher_clash')}
           >
             <Users size={12} />
-            Bentrok Guru ({categorized.teacher_clash.length})
+            Guru &amp; Beban ({categorized.teacher_clash.length})
           </button>
           <button
             type="button"
@@ -169,21 +169,21 @@ export function QuickValidationModal({
             onClick={() => setActiveCategory('class_clash')}
           >
             <GraduationCap size={12} />
-            Bentrok Kelas ({categorized.class_clash.length})
+            Kelas &amp; Blok ({categorized.class_clash.length})
           </button>
           <button
             type="button"
             className={`filter-tab-btn ${activeCategory === 'time_activity' ? 'active' : ''}`}
             onClick={() => setActiveCategory('time_activity')}
           >
-            Waktu & Kegiatan ({categorized.time_activity.length})
+            Waktu &amp; Hari ({categorized.time_activity.length})
           </button>
           <button
             type="button"
             className={`filter-tab-btn ${activeCategory === 'coverage' ? 'active' : ''}`}
             onClick={() => setActiveCategory('coverage')}
           >
-            Alokasi & Kualifikasi ({categorized.coverage.length})
+            Alokasi &amp; Master ({categorized.coverage.length})
           </button>
         </div>
 
@@ -206,6 +206,15 @@ export function QuickValidationModal({
               <CheckCircle2 size={32} color="#1f6952" />
               <h3>Kategori ini bersih dari masalah</h3>
               <p>Tidak ada konflik atau peringatan yang ditemukan pada kelompok ini.</p>
+              {activeCategory !== 'all' && allIssues.length > 0 && (
+                <button
+                  type="button"
+                  className="button button-sm button-secondary"
+                  onClick={() => setActiveCategory('all')}
+                >
+                  Tampilkan Semua Temuan ({allIssues.length})
+                </button>
+              )}
             </div>
           ) : (
             <div className="issue-list">

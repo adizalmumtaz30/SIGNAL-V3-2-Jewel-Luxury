@@ -228,7 +228,7 @@ export function exportAgendaRegisterPdf(
     doc.addPage();
     sigY = 24;
   }
-  const city = state.settings.city?.trim() || 'Depok';
+  const city = state.settings.city?.trim() || '[Kota Madrasah]';
   const headTitle = state.settings.headmasterTitle?.trim() || 'Kepala Madrasah';
   const headmaster = state.settings.headmasterName?.trim() || 'Kepala Madrasah';
   const headNip = state.settings.headmasterNip?.trim() || '';

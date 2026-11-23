@@ -179,9 +179,11 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
       {
         type: 'meta_grid',
         rows: [
-          { label: 'Nama / Jabatan', value: '{{NAMA_PEGAWAI}} · {{JABATAN_PEGAWAI}}' },
+          { label: 'Nama', value: '{{NAMA_PEGAWAI}}' },
+          { label: 'Jabatan', value: '{{JABATAN_PEGAWAI}}' },
           { label: 'Keperluan', value: '{{AGENDA_KEGIATAN_DINAS}}' },
-          { label: 'Waktu', value: '{{TANGGAL_TUGAS}} · {{PUKUL_TUGAS}}' },
+          { label: 'Hari / Tanggal', value: '{{TANGGAL_TUGAS}}' },
+          { label: 'Pukul', value: '{{PUKUL_TUGAS}}' },
           { label: 'Tempat', value: '{{TEMPAT_TUJUAN}}' },
         ],
       },
@@ -207,11 +209,11 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
     sourceTemplateVersion: null,
     createdAt: null,
     updatedAt: null,
-    autoDataSources: ['ScheduleVersion Terbit (History)', 'Data Master Guru & Mapel', 'Identitas & Tahun Ajaran Madrasah'],
-    requiredInputs: ['Pilihan ScheduleVersion terbit tervalidasi', 'Konsideran tambahan (bila ada)', 'Tanggal penetapan SK'],
+    autoDataSources: ['Jadwal Pelajaran Resmi Terbit', 'Data Master Guru & Mapel', 'Identitas & Tahun Ajaran Madrasah'],
+    requiredInputs: ['Pilihan jadwal resmi terbit tervalidasi', 'Konsideran tambahan (bila ada)', 'Tanggal penetapan SK'],
     fields: [
-      { key: 'schedule_version_id', label: 'Versi Jadwal Resmi (ScheduleVersion)', kind: 'AUTO_SYSTEM', required: true, sourceHint: 'Riwayat Jadwal Terbit (History)' },
-      { key: 'daftar_beban_jp', label: 'Lampiran Rekap Beban JP per Guru', kind: 'AUTO_SYSTEM', required: true, sourceHint: 'ScheduleVersion Tervalidasi' },
+      { key: 'schedule_version_id', label: 'Versi Jadwal Resmi Terbit', kind: 'AUTO_SYSTEM', required: true, sourceHint: 'Riwayat Jadwal Resmi Terbit' },
+      { key: 'daftar_beban_jp', label: 'Lampiran Rekap Beban JP per Guru', kind: 'AUTO_SYSTEM', required: true, sourceHint: 'Jadwal Resmi Tervalidasi' },
       { key: 'tanggal_penetapan', label: 'Tanggal Penetapan SK', kind: 'OPERATOR_INPUT', required: true },
       { key: 'dasar_hukum', label: 'Rujukan Regulasi & Rapat Dewan Guru', kind: 'OPERATOR_INPUT', required: false },
     ],
@@ -227,7 +229,7 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
         type: 'list',
         ordered: true,
         items: [
-          'Pembagian tugas guru dalam kegiatan belajar mengajar Tahun Ajaran {{TAHUN_AJARAN}} Semester {{SEMESTER}} merujuk pada {{VERSI_JADWAL_TERBIT}} (Fingerprint: {{FINGERPRINT_JADWAL}}).',
+          'Pembagian tugas guru dalam kegiatan belajar mengajar Tahun Ajaran {{TAHUN_AJARAN}} Semester {{SEMESTER}} merujuk pada {{VERSI_JADWAL_TERBIT}}.',
           'Rekapitulasi alokasi mata pelajaran, kelas rombel, dan jumlah JP per minggu tercantum pada Lampiran Keputusan ini.',
         ],
       },
@@ -241,7 +243,7 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
       },
       stdSignature('{{JABATAN_KEPALA_MADRASAH}}'),
     ],
-    legalNotice: 'Dasar resmi SK Pembagian Tugas wajib bersumber dari ScheduleVersion yang telah diterbitkan dan lolos validasi (bukan draft atau rencana requirements). Verifikasi format SK terhadap PMA 12/2026 sebelum finalisasi.',
+    legalNotice: 'Dasar resmi SK Pembagian Tugas wajib bersumber dari jadwal resmi yang telah diterbitkan dan lolos validasi (bukan rancangan sementara atau kebutuhan JP). Verifikasi format SK terhadap PMA Nomor 12 Tahun 2026 sebelum pengesahan.',
   },
   {
     id: 'SYS-TPL-04',
@@ -250,7 +252,7 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
     name: 'SK Tugas Tambahan Guru (Wali Kelas, Pembina, Koordinator)',
     category: 'PENUGASAN',
     description: 'Penetapan penugasan tambahan seperti wali kelas, wakil kepala, kepala lab/perpustakaan, dan pembina.',
-    purpose: 'Mendokumentasikan penugasan non-tatap-muka atau struktural internal secara terstruktur dalam TeacherAssignment.',
+    purpose: 'Mendokumentasikan penugasan non-tatap-muka atau struktural internal secara resmi dalam daftar penugasan guru.',
     documentKind: 'SK',
     version: '1.0.0',
     status: 'ACTIVE',
@@ -260,10 +262,10 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
     sourceTemplateVersion: null,
     createdAt: null,
     updatedAt: null,
-    autoDataSources: ['TeacherAssignment Aktif', 'Data Master Guru & Rombel', 'Identitas Madrasah'],
+    autoDataSources: ['Daftar Penugasan Guru Aktif', 'Data Master Guru & Rombel', 'Identitas Madrasah'],
     requiredInputs: ['Daftar guru & tugas tambahan', 'TMT / masa berlaku penugasan', 'Tanggal penetapan'],
     fields: [
-      { key: 'daftar_penugasan', label: 'Daftar Penugasan Tambahan', kind: 'OPERATOR_INPUT', required: true, sourceHint: 'TeacherAssignment / Master' },
+      { key: 'daftar_penugasan', label: 'Daftar Penugasan Tambahan', kind: 'OPERATOR_INPUT', required: true, sourceHint: 'Data Master & Penugasan Guru' },
       { key: 'tmt_berlaku', label: 'Masa Berlaku / TMT', kind: 'OPERATOR_INPUT', required: true },
       { key: 'tanggal_penetapan', label: 'Tanggal Penetapan', kind: 'OPERATOR_INPUT', required: true },
     ],
@@ -408,7 +410,7 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
     documentHeader: {
       includeKopSurat: true,
       title: 'UNDANGAN RAPAT',
-      numberPlaceholder: 'Nomor: {{NOMOR_SURAT}} · Lampiran: {{LAMPIRAN}} · Hal: {{PERIHAL_RAPAT}}',
+      numberPlaceholder: 'Nomor: {{NOMOR_SURAT}}\nLampiran: {{LAMPIRAN}}\nHal: {{PERIHAL_RAPAT}}',
     },
     previewBlocks: [
       { type: 'paragraph', text: 'Kepada Yth. {{PENERIMA_UNDANGAN}} di {{TEMPAT_TUJUAN}}' },
@@ -454,7 +456,7 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
     documentHeader: {
       includeKopSurat: true,
       title: 'SURAT DINAS',
-      numberPlaceholder: 'Nomor: {{NOMOR_SURAT}} · Sifat: {{SIFAT_SURAT}} · Hal: {{PERIHAL}}',
+      numberPlaceholder: 'Nomor: {{NOMOR_SURAT}}\nSifat: {{SIFAT_SURAT}}\nHal: {{PERIHAL}}',
     },
     previewBlocks: [
       { type: 'paragraph', text: 'Yth. {{PEJABAT_INSTANSI_TUJUAN}} di {{ALAMAT_TUJUAN}}' },
@@ -545,7 +547,8 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
           { label: 'Yth.', value: '{{PEJABAT_PENERIMA_INTERNAL}}' },
           { label: 'Dari', value: '{{PEJABAT_PENGIRIM_INTERNAL}}' },
           { label: 'Tanggal', value: '{{TANGGAL_NOTA}}' },
-          { label: 'Sifat / Hal', value: '{{SIFAT_NOTA}} · {{HAL_NOTA}}' },
+          { label: 'Sifat', value: '{{SIFAT_NOTA}}' },
+          { label: 'Hal', value: '{{HAL_NOTA}}' },
         ],
       },
       { type: 'paragraph', text: '{{ISI_KOORDINASI_INTERNAL_MADRASAH}}' },
@@ -574,7 +577,7 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
     sourceTemplateVersion: null,
     createdAt: null,
     updatedAt: null,
-    autoDataSources: ['Identitas & Kop Madrasah', 'Data Master Guru', 'ScheduleVersion Terbit (Rujukan JP Opsional)'],
+    autoDataSources: ['Identitas & Kop Madrasah', 'Data Master Guru', 'Jadwal Resmi Terbit (Rujukan JP Opsional)'],
     requiredInputs: ['Guru bersangkutan', 'Keperluan keterangan', 'TMT aktif mengajar'],
     fields: [
       { key: 'teacher_id', label: 'Pendidik Bersangkutan', kind: 'OPERATOR_INPUT', required: true, sourceHint: 'Data Master Guru' },
@@ -609,7 +612,7 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
     name: 'Surat Keterangan Tugas Guru',
     category: 'KETERANGAN',
     description: 'Menerangkan rincian tugas mengajar dan/atau tugas tambahan yang sedang dijalankan guru.',
-    purpose: 'Verifikasi rincian penugasan pendidik beserta dasar SK/ScheduleVersion terkait.',
+    purpose: 'Verifikasi rincian penugasan pendidik beserta dasar SK/jadwal resmi terkait.',
     documentKind: 'SURAT_KETERANGAN',
     version: '1.0.0',
     status: 'ACTIVE',
@@ -619,7 +622,7 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
     sourceTemplateVersion: null,
     createdAt: null,
     updatedAt: null,
-    autoDataSources: ['Identitas Madrasah', 'Data Master Guru', 'TeacherAssignment & ScheduleVersion Terbit'],
+    autoDataSources: ['Identitas Madrasah', 'Data Master Guru', 'Penugasan Guru & Jadwal Resmi Terbit'],
     requiredInputs: ['Guru bersangkutan', 'Uraian tugas yang diterangkan', 'Nomor SK rujukan (bila ada)'],
     fields: [
       { key: 'teacher_id', label: 'Pendidik Bersangkutan', kind: 'OPERATOR_INPUT', required: true, sourceHint: 'Data Master Guru' },
@@ -637,7 +640,8 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
       {
         type: 'meta_grid',
         rows: [
-          { label: 'Nama / NIP', value: '{{NAMA_GURU}} · {{NIP_GURU}}' },
+          { label: 'Nama Pendidik', value: '{{NAMA_GURU}}' },
+          { label: 'NIP / NPK', value: '{{NIP_GURU}}' },
           { label: 'Tugas Pokok / Tambahan', value: '{{URAIAN_TUGAS_GURU}}' },
           { label: 'Dasar Penetapan', value: '{{NOMOR_SK_RUJUKAN}}' },
         ],
@@ -727,7 +731,8 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
           { label: 'Nama Siswa', value: '{{NAMA_LENGKAP_SISWA}}' },
           { label: 'NIS / NISN', value: '{{NOMOR_INDUK_SISWA}}' },
           { label: 'Tempat, Tgl Lahir', value: '{{TTL_SISWA}}' },
-          { label: 'Kelas / Tahun Ajaran', value: '{{NAMA_KELAS}} · T.A. {{TAHUN_AJARAN}}' },
+          { label: 'Kelas / Rombel', value: '{{NAMA_KELAS}}' },
+          { label: 'Tahun Ajaran', value: '{{TAHUN_AJARAN}}' },
         ],
       },
       { type: 'paragraph', text: 'Adalah benar peserta didik aktif pada {{NAMA_MADRASAH}} dan surat keterangan ini diterbitkan untuk keperluan {{KEPERLUAN_SISWA}}.' },
@@ -909,9 +914,10 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
       {
         type: 'meta_grid',
         rows: [
-          { label: 'Jenis Ujian / Mapel', value: '{{NAMA_UJIAN}} · {{NAMA_MAPEL}}' },
+          { label: 'Jenis Ujian / Mapel', value: '{{NAMA_UJIAN}} ({{NAMA_MAPEL}})' },
           { label: 'Hari / Tanggal / Sesi', value: '{{HARI_TANGGAL_SESI}}' },
-          { label: 'Ruang / Peserta Hadir', value: '{{RUANG_UJIAN}} · {{JUMLAH_HADIR}} dari {{JUMLAH_TERDAFTAR}} peserta' },
+          { label: 'Ruang Ujian', value: '{{RUANG_UJIAN}}' },
+          { label: 'Kehadiran Peserta', value: '{{JUMLAH_HADIR}} dari {{JUMLAH_TERDAFTAR}} peserta' },
           { label: 'Catatan Khusus', value: '{{CATATAN_KEJADIAN_KHUSUS}}' },
         ],
       },
@@ -1051,7 +1057,8 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
         type: 'meta_grid',
         rows: [
           { label: 'Nama Pelaksana', value: '{{NAMA_PELAKSANA}}' },
-          { label: 'Kegiatan / Penyelenggara', value: '{{NAMA_PELATIHAN}} · {{PENYELENGGARA}}' },
+          { label: 'Nama Kegiatan', value: '{{NAMA_PELATIHAN}}' },
+          { label: 'Penyelenggara', value: '{{PENYELENGGARA}}' },
           { label: 'Dasar Penugasan', value: 'Surat Tugas No. {{NOMOR_SURAT_TUGAS}}' },
         ],
       },
@@ -1134,7 +1141,7 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
     documentHeader: {
       includeKopSurat: true,
       title: 'SURAT PERMOHONAN IZIN KEGIATAN',
-      numberPlaceholder: 'Nomor: {{NOMOR_SURAT}} · Hal: Permohonan Izin {{NAMA_KEGIATAN}}',
+      numberPlaceholder: 'Nomor: {{NOMOR_SURAT}}\nHal: Permohonan Izin {{NAMA_KEGIATAN}}',
     },
     previewBlocks: [
       { type: 'paragraph', text: 'Yth. {{PIHAK_PEMBERI_IZIN}} di {{TEMPAT_TUJUAN}}' },
@@ -1170,7 +1177,7 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
     documentHeader: {
       includeKopSurat: true,
       title: 'SURAT PERMOHONAN NARASUMBER',
-      numberPlaceholder: 'Nomor: {{NOMOR_SURAT}} · Hal: Permohonan Narasumber',
+      numberPlaceholder: 'Nomor: {{NOMOR_SURAT}}\nHal: Permohonan Narasumber',
     },
     previewBlocks: [
       { type: 'paragraph', text: 'Kepada Yth. {{NAMA_ATAU_INSTANSI_NARASUMBER}}, kami bermaksud mengundang Bapak/Ibu sebagai narasumber dalam kegiatan {{NAMA_ACARA}}:' },
@@ -1178,7 +1185,8 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
         type: 'meta_grid',
         rows: [
           { label: 'Tema Materi', value: '{{TEMA_MATERI}}' },
-          { label: 'Waktu & Tempat', value: '{{WAKTU_SESI}} · {{TEMPAT_ACARA}}' },
+          { label: 'Waktu', value: '{{WAKTU_SESI}}' },
+          { label: 'Tempat', value: '{{TEMPAT_ACARA}}' },
           { label: 'Peserta', value: '{{SASARAN_PESERTA}}' },
         ],
       },
@@ -1213,7 +1221,7 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
     documentHeader: {
       includeKopSurat: true,
       title: 'UNDANGAN WALI MURID',
-      numberPlaceholder: 'Nomor: {{NOMOR_SURAT}} · Hal: Undangan Pertemuan Wali Murid',
+      numberPlaceholder: 'Nomor: {{NOMOR_SURAT}}\nHal: Undangan Pertemuan Wali Murid',
     },
     previewBlocks: [
       { type: 'paragraph', text: 'Yth. Bapak/Ibu Orang Tua/Wali Peserta Didik {{KELAS_SASARAN}} {{NAMA_MADRASAH}}.' },
@@ -1221,7 +1229,8 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
         type: 'meta_grid',
         rows: [
           { label: 'Hari / Tanggal', value: '{{HARI_TANGGAL_PERTEMUAN}}' },
-          { label: 'Waktu / Tempat', value: '{{PUKUL_PERTEMUAN}} · {{TEMPAT_PERTEMUAN}}' },
+          { label: 'Pukul', value: '{{PUKUL_PERTEMUAN}}' },
+          { label: 'Tempat', value: '{{TEMPAT_PERTEMUAN}}' },
           { label: 'Agenda', value: '{{AGENDA_PERTEMUAN_WALI}}' },
         ],
       },
@@ -1256,7 +1265,7 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
     documentHeader: {
       includeKopSurat: true,
       title: 'SURAT PANGGILAN ORANG TUA / WALI',
-      numberPlaceholder: 'Nomor: {{NOMOR_SURAT}} · Sifat: Penting / Rahasia',
+      numberPlaceholder: 'Nomor: {{NOMOR_SURAT}}\nSifat: Penting\nHal: Panggilan Orang Tua / Wali',
     },
     previewBlocks: [
       { type: 'paragraph', text: 'Mengharap kehadiran Bapak/Ibu Orang Tua/Wali dari peserta didik {{NAMA_SISWA}} ({{NAMA_KELAS}}) untuk keperluan konsultasi pembinaan pada:' },
@@ -1264,7 +1273,8 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
         type: 'meta_grid',
         rows: [
           { label: 'Hari / Tanggal / Pukul', value: '{{WAKTU_PANGGILAN}}' },
-          { label: 'Tempat / Menemui', value: '{{RUANG_KONSULTASI}} · {{PEJABAT_YANG_DITEMUI}}' },
+          { label: 'Tempat', value: '{{RUANG_KONSULTASI}}' },
+          { label: 'Menemui', value: '{{PEJABAT_YANG_DITEMUI}}' },
         ],
       },
       stdSignature('{{JABATAN_KEPALA_MADRASAH}}'),
@@ -1333,7 +1343,7 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
     documentHeader: {
       includeKopSurat: true,
       title: 'SURAT PERMOHONAN KERJA SAMA',
-      numberPlaceholder: 'Nomor: {{NOMOR_SURAT}} · Hal: Permohonan Kerja Sama Program',
+      numberPlaceholder: 'Nomor: {{NOMOR_SURAT}}\nHal: Permohonan Kerja Sama Program',
     },
     previewBlocks: [
       { type: 'paragraph', text: 'Yth. Pimpinan {{INSTANSI_CALON_MITRA}} di {{LOKASI_MITRA}}' },
@@ -1393,7 +1403,7 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
     name: 'Template Dokumen Kosong dengan Kop Opsional',
     category: 'ADMINISTRASI',
     description: 'Kanvas naskah dinas bebas mulai dari kertas kosong dengan opsi menyertakan atau menyembunyikan Kop Surat Madrasah.',
-    purpose: 'Memberi kebebasan penuh menyusun dokumen khusus di Document Studio tanpa terikat struktur isi tetap.',
+    purpose: 'Memberi kebebasan penuh menyusun dokumen khusus di editor naskah tanpa terikat struktur isi tetap.',
     documentKind: 'LAINNYA',
     version: '1.0.0',
     status: 'ACTIVE',
@@ -1416,10 +1426,10 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
       numberPlaceholder: 'Nomor (Opsional): {{NOMOR_DOKUMEN}}',
     },
     previewBlocks: [
-      { type: 'paragraph', text: '{{KONTEN_DOKUMEN_BEBAS_DIMULAI_DI_DOCUMENT_STUDIO}}' },
+      { type: 'paragraph', text: '{{ISI_NASKAH_DOKUMEN}}' },
       stdSignature('{{JABATAN_PENANDATANGAN_OPSIONAL}}'),
     ],
-    legalNotice: 'Template kosong mendukung penyertaan atau penyembunyian Kop Surat serta pengaturan ukuran kertas A4/F4 saat masuk Document Studio (Tahap 5–6).',
+    legalNotice: 'Template kosong mendukung penyertaan atau penyembunyian Kop Surat serta pengaturan ukuran kertas A4/F4 saat menyusun dan menyunting naskah hingga pengesahan.',
   },
 ];
 

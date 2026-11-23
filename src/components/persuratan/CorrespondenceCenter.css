@@ -14,7 +14,7 @@
 }
 
 .s01-header {
-  margin-bottom: 4px !important;
+  margin-bottom: 0 !important;
 }
 
 .s01-header-actions {
@@ -732,14 +732,17 @@
 .s01-row-detail-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
-  padding: 6px 11px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 11px;
   border-radius: 8px;
   border: 1px solid #d2ddd7;
   background: #ffffff;
   color: var(--s5-emerald-primary, #124037);
   font-family: var(--font-sans);
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
@@ -1320,14 +1323,18 @@
 .s01-resume-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 6px 12px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 12px;
   border-radius: 8px;
   border: 1px solid rgba(18, 64, 55, 0.22);
   background: #ffffff;
   color: #124037;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
 }
 

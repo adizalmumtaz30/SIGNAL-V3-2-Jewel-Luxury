@@ -8,13 +8,13 @@ import {
   CheckCircle2,
   Copy,
   FilePenLine,
+  FilePlus2,
   FileText,
   Info,
   Lock,
   RotateCcw,
   Search,
   SlidersHorizontal,
-  Sparkles,
   Star,
   X,
 } from 'lucide-react';
@@ -74,12 +74,47 @@ function getPopularCategoryIcon(category: TemplateCategory) {
   }
 }
 
-function renderTextWithTokens(text: string) {
+const UPPERCASE_SLOT_ACRONYMS = new Set([
+  'SK',
+  'NIP',
+  'NIK',
+  'NISN',
+  'NSM',
+  'NPSN',
+  'JP',
+  'TA',
+  'RTL',
+  'MA',
+  'MTs',
+  'MI',
+  'RA',
+  'PPDB',
+  'KUA',
+  'PMA',
+  'RDM',
+  'EMIS',
+]);
+
+export function formatTokenSlotLabel(rawToken: string): string {
+  const inner = rawToken.replace(/^\{\{/, '').replace(/\}\}$/, '').trim();
+  if (!inner) return rawToken;
+  const words = inner
+    .split('_')
+    .filter(Boolean)
+    .map((word) => {
+      if (UPPERCASE_SLOT_ACRONYMS.has(word)) return word;
+      if (/^\d+$/.test(word)) return word;
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    });
+  return `[${words.join(' ')}]`;
+}
+
+export function renderTextWithTokens(text: string) {
   const parts = text.split(/(\{\{[A-Z0-9_]+\}\})/g);
   return parts.map((part, idx) =>
     part.startsWith('{{') && part.endsWith('}}') ? (
-      <span key={idx} className="s02-paper-token">
-        {part}
+      <span key={idx} className="s02-paper-slot">
+        {formatTokenSlotLabel(part)}
       </span>
     ) : (
       <span key={idx}>{part}</span>
@@ -87,14 +122,59 @@ function renderTextWithTokens(text: string) {
   );
 }
 
-function renderPreviewBlock(block: TemplatePreviewBlock, idx: number) {
+export function renderPaperDocumentHeader(documentHeader: DocumentTemplate['documentHeader']) {
+  const rawNum = documentHeader.numberPlaceholder ?? '';
+  const hasCorrespondenceMeta = /\b(Sifat|Lampiran|Hal|Perihal)\s*:/i.test(rawNum);
+  if (hasCorrespondenceMeta) {
+    const lines = rawNum
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    return (
+      <>
+        {documentHeader.title.trim() && !/^(SURAT|UNDANGAN|EDARAN|PEMBERITAHUAN)/i.test(documentHeader.title.trim()) && (
+          <div className="s02-paper-doc-title">{renderTextWithTokens(documentHeader.title)}</div>
+        )}
+        <div className="s02-paper-letter-head">
+          {lines.map((line, idx) => {
+            const colonIdx = line.indexOf(':');
+            if (colonIdx > 0) {
+              const label = line.slice(0, colonIdx).trim();
+              const value = line.slice(colonIdx + 1).trim();
+              return (
+                <div key={idx} style={{ display: 'contents' }}>
+                  <span style={{ fontWeight: 600 }}>{label}</span>
+                  <span>:</span>
+                  <span>{renderTextWithTokens(value)}</span>
+                </div>
+              );
+            }
+            return (
+              <div key={idx} style={{ gridColumn: '1 / -1' }}>
+                {renderTextWithTokens(line)}
+              </div>
+            );
+          })}
+        </div>
+      </>
+    );
+  }
+  return (
+    <>
+      <div className="s02-paper-doc-title">{renderTextWithTokens(documentHeader.title)}</div>
+      <div className="s02-paper-doc-num">{renderTextWithTokens(documentHeader.numberPlaceholder)}</div>
+    </>
+  );
+}
+
+export function renderPreviewBlock(block: TemplatePreviewBlock, idx: number) {
   if (block.type === 'heading') {
     return (
       <div
         key={idx}
         style={{
           fontWeight: 700,
-          fontSize: '10px',
+          fontSize: '10.5pt',
           textAlign: block.align ?? 'left',
           marginTop: '4px',
         }}
@@ -125,7 +205,7 @@ function renderPreviewBlock(block: TemplatePreviewBlock, idx: number) {
   if (block.type === 'list') {
     const ListTag = block.ordered ? 'ol' : 'ul';
     return (
-      <ListTag key={idx} style={{ margin: '0 0 0 14px', padding: 0 }}>
+      <ListTag key={idx} style={{ margin: '0 0 0 16px', padding: 0 }}>
         {block.items.map((item, iIdx) => (
           <li key={iIdx} style={{ marginBottom: '2px' }}>
             {renderTextWithTokens(item)}
@@ -359,7 +439,7 @@ export function TemplateGallery({
     setCloneSource(null);
     setCloneError(null);
     onNotify?.(
-      `Salinan "${cloned.name}" berhasil dibuat di Template Madrasah. Template bawaan SAKALA tetap utuh.`,
+      `Salinan "${cloned.name}" berhasil dibuat di Template Madrasah. Template bawaan tetap utuh.`,
       'success'
     );
   };
@@ -381,11 +461,11 @@ export function TemplateGallery({
     },
     MADRASAH: {
       title: 'Belum ada Template Madrasah',
-      desc: 'Template bawaan SAKALA bersifat baca-saja. Klik "Kloning" pada template mana saja untuk membuat salinan khusus madrasah.',
+      desc: 'Template bawaan bersifat baca-saja. Klik "Kloning" pada template mana saja untuk membuat salinan khusus madrasah.',
     },
     SYSTEM: {
       title: 'Tidak ada template bawaan yang cocok',
-      desc: 'Coba bersihkan filter pencarian untuk melihat 30 template bawaan SAKALA.',
+      desc: 'Coba bersihkan filter pencarian untuk melihat 30 template bawaan sistem.',
     },
   };
 
@@ -394,13 +474,14 @@ export function TemplateGallery({
       {/* Header — Clean Quiet Authority */}
       <header className="s02-header">
         <div>
+          <div className="s5-page-kicker">KATALOG NASKAH DINAS</div>
           <h1 className="s5-page-title">Galeri Template Persuratan</h1>
           <p className="s5-page-subtitle">
             Pilih dari {allTemplates.length} katalog naskah dinas siap pakai.
           </p>
         </div>
         {(onOpenTemplateManager || onBackToCenter) && (
-          <div className="s02-header-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <div className="s02-header-actions">
             {onOpenTemplateManager && (
               <button type="button" className="s02-btn-secondary" onClick={onOpenTemplateManager}>
                 <SlidersHorizontal size={15} aria-hidden="true" />
@@ -529,7 +610,7 @@ export function TemplateGallery({
             })}
           </div>
           <span style={{ fontSize: '11.5px', color: '#5c726b' }}>
-            Bawaan SAKALA bersifat baca-saja · Salinan Madrasah independen
+            Template bawaan bersifat baca-saja · Salinan Madrasah dapat diubah bebas
           </span>
         </div>
       </div>
@@ -620,7 +701,7 @@ export function TemplateGallery({
                           <span className="s5-tnum">v{tpl.version}</span>
                           <span aria-hidden="true">·</span>
                           <span className={`s02-source-label ${isMadrasah ? 'is-madrasah' : ''}`}>
-                            {isMadrasah ? 'Salinan Madrasah' : 'Bawaan SAKALA'}
+                            {isMadrasah ? 'Salinan Madrasah' : 'Template Bawaan'}
                           </span>
                         </div>
                         <button
@@ -711,7 +792,10 @@ export function TemplateGallery({
                 </p>
                 {previewTemplate.sourceTemplateId && (
                   <div style={{ fontSize: '11px', color: '#145343', marginTop: '4px', fontWeight: 600 }}>
-                    Disalin dari {previewTemplate.sourceTemplateId} (v{previewTemplate.sourceTemplateVersion ?? '1.0.0'})
+                    Disalin dari{' '}
+                    {allTemplates.find((t) => t.id === previewTemplate.sourceTemplateId)?.name ??
+                      'Template Bawaan'}{' '}
+                    (v{previewTemplate.sourceTemplateVersion ?? '1.0.0'})
                   </div>
                 )}
               </div>
@@ -724,7 +808,7 @@ export function TemplateGallery({
                   style={{ flex: 1 }}
                   onClick={() => handleUseTemplate(previewTemplate)}
                 >
-                  <Sparkles size={15} aria-hidden="true" />
+                  <FilePlus2 size={15} aria-hidden="true" />
                   <span>Gunakan Template</span>
                 </button>
                 <button
@@ -771,12 +855,7 @@ export function TemplateGallery({
                           <OfficialKopSuratPreview settings={state.settings} variant="full" />
                         </div>
                       )}
-                      <div className="s02-paper-doc-title">
-                        {renderTextWithTokens(previewTemplate.documentHeader.title)}
-                      </div>
-                      <div className="s02-paper-doc-num">
-                        {renderTextWithTokens(previewTemplate.documentHeader.numberPlaceholder)}
-                      </div>
+                      {renderPaperDocumentHeader(previewTemplate.documentHeader)}
                       {previewTemplate.previewBlocks.map((block, idx) => renderPreviewBlock(block, idx))}
                     </div>
                   </LivePreviewViewport>
@@ -872,7 +951,7 @@ export function TemplateGallery({
                 </div>
                 <div>
                   <h2 id="s02-clone-modal-title">Kloning Template ke Koleksi Madrasah</h2>
-                  <p>Template bawaan SAKALA tetap baca-saja; salinan baru berdiri independen.</p>
+                  <p>Template bawaan tetap baca-saja; salinan baru berdiri independen untuk madrasah.</p>
                 </div>
               </div>
               <button
@@ -917,11 +996,11 @@ export function TemplateGallery({
                 )}
               </div>
 
-              <div className="s01-modal-foot" style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <div className="s01-modal-foot" style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                 <button type="button" className="s02-btn-secondary" onClick={closeCloneModal}>
                   Batal
                 </button>
-                <button type="submit" className="s02-btn-primary" style={{ height: '36px' }}>
+                <button type="submit" className="s02-btn-primary">
                   <Copy size={14} aria-hidden="true" />
                   <span>Simpan Salinan Madrasah</span>
                 </button>

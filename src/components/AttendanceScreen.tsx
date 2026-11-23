@@ -1836,26 +1836,24 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
             <button
               type="button"
-              className="button button-secondary"
+              className="button button-secondary button-sm"
               onClick={() =>
                 handleBatchImportHolidays(
                   unaddedOfficialRedDatesInMonth,
                   `Bulan ${activeViewMonth}`,
                 )
               }
-              style={{ height: '34px', fontSize: '12px' }}
             >
               <CheckCircle2 size={14} /> Tambah Semua ({unaddedOfficialRedDatesInMonth.length})
             </button>
             <button
               type="button"
-              className="button button-quiet"
+              className="button button-quiet button-sm"
               onClick={() => {
                 setCatalogYear(Number(activeViewMonth.slice(0, 4)) || 2026);
                 setCatalogMonth(Number(activeViewMonth.slice(5, 7)) || 'ALL');
                 setActiveTab('holidays');
               }}
-              style={{ height: '34px', fontSize: '12px' }}
             >
               Buka Katalog
             </button>

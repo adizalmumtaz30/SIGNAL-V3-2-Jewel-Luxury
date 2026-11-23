@@ -67,12 +67,12 @@ export function evaluateFinalizationChecklist(params: {
   const textAnalysis = extractPlainTextAndTokens(content);
   items.push({
     id: 'content_meaningful',
-    label: 'Kelengkapan Naskah Document Studio (S04)',
+    label: 'Kelengkapan Naskah Surat',
     severity: textAnalysis.hasMeaningfulText ? 'ok' : 'blocker',
     passed: textAnalysis.hasMeaningfulText,
     detail: textAnalysis.hasMeaningfulText
       ? 'Naskah dokumen terisi dan siap diperiksa sebelum pengesahan.'
-      : 'Naskah Document Studio masih kosong. Isi badan surat pada S04 terlebih dahulu.',
+      : 'Naskah surat masih kosong. Isi badan surat pada Editor Naskah terlebih dahulu.',
     fixTarget: textAnalysis.hasMeaningfulText ? null : 's04',
   });
 
@@ -172,16 +172,16 @@ export function evaluateFinalizationChecklist(params: {
 
     items.push({
       id: 'published_schedule_source',
-      label: 'Validasi Sumber Jadwal Resmi (ScheduleVersion)',
+      label: 'Validasi Sumber Jadwal Resmi',
       severity: scheduleOk ? 'ok' : 'blocker',
       passed: scheduleOk,
       detail: scheduleOk && matchedVersion
-        ? `Terikat resmi ke Jadwal Terbit v${matchedVersion.version} (${matchedVersion.id} · ${matchedVersion.fingerprint}).`
+        ? `Terikat resmi ke Jadwal Terbit v${matchedVersion.version} (${matchedVersion.label}).`
         : !targetScheduleId
-        ? 'Dokumen SK/Penugasan Jadwal belum terikat ke ScheduleVersion terbit resmi (tidak diperbolehkan memakai jadwal draft).'
+        ? 'Dokumen SK/Penugasan Jadwal belum terikat ke jadwal terbit resmi (tidak diperbolehkan memakai jadwal draft).'
         : !matchedVersion
-        ? `ScheduleVersion rujukan "${targetScheduleId}" tidak ditemukan di riwayat jadwal terbit.`
-        : `ScheduleVersion "${targetScheduleId}" tidak lolos verifikasi integritas: ${
+        ? `Versi jadwal rujukan "${targetScheduleId}" tidak ditemukan di riwayat jadwal terbit.`
+        : `Versi jadwal "${targetScheduleId}" tidak lolos verifikasi integritas: ${
             verification?.integrityIssues.join('; ') ?? 'data tidak valid'
           }.`,
       fixTarget: scheduleOk ? null : 's03',

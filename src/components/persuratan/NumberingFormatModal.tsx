@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, ChevronDown, Hash, RotateCcw, Sparkles, X } from 'lucide-react';
+import { Check, ChevronDown, Hash, RotateCcw, X } from 'lucide-react';
 import type { AppState } from '../../domain/types';
 import type {
   DocumentKind,
@@ -218,7 +218,7 @@ export function NumberingFormatModal({
             <AtelierPlaqueFiligree />
             <div className="nfm-preview-top">
               <span className="nfm-preview-label">
-                <Sparkles size={12} aria-hidden="true" />
+                <Hash size={12} aria-hidden="true" />
                 Pratinjau Nomor Berikutnya · {DOCUMENT_KIND_LABELS[previewKind]}
               </span>
               <span className="nfm-preview-pill">Otomatis</span>

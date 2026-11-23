@@ -406,9 +406,10 @@
 
 .fsd-archive-only-btn {
   width: 100%;
-  height: 36px;
+  height: 38px;
+  min-height: 38px;
   padding: 0 12px;
-  border-radius: 9px;
+  border-radius: 10px;
   border: 1px solid #cddbd4;
   background: #f3f7f5;
   color: var(--s5-emerald-primary, #124037);
