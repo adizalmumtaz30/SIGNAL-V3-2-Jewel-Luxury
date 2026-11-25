@@ -293,11 +293,13 @@
 }
 
 .s03-opt-tag {
-  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.6875rem;
   font-weight: 600;
   color: var(--s5-ink-tertiary, #526861);
   background: var(--s5-canvas-subtle, #f0f4f1);
-  padding: 2px 7px;
+  padding: 0.18em 0.64em;
   border-radius: 6px;
 }
 
@@ -405,12 +407,12 @@
   align-items: center;
   gap: 5px;
   height: 34px;
-  padding: 0 10px;
+  padding: 0 0.83em;
   border-radius: 10px;
   border: 1px solid #cbd7d1;
   background: #ffffff;
   color: var(--s5-emerald-primary, #124037);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
@@ -431,12 +433,12 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 8px;
+  padding: 0.33em 0.67em;
   border-radius: 6px;
   background: var(--s5-emerald-subtle, #e8f2ee);
   border: 1px solid #8ab4a4;
   color: var(--s5-emerald-obsidian, #0b2923);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
 }
 
@@ -923,9 +925,9 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 8px;
+  padding: 0.26em 0.7em;
   border-radius: 6px;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   font-weight: 700;
   border: 1px solid;
 }
@@ -991,12 +993,12 @@
   gap: 6px;
   height: 38px;
   min-height: 38px;
-  padding: 0 12px;
+  padding: 0 0.94em;
   border-radius: 10px;
   border: 1px solid transparent;
   background: transparent;
   color: #4b615b;
-  font-size: 12.75px;
+  font-size: 0.796875rem;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
@@ -1015,12 +1017,12 @@
   gap: 6px;
   height: 38px;
   min-height: 38px;
-  padding: 0 15px;
+  padding: 0 1.15em;
   border-radius: 10px;
   border: 1px solid #c3d2cb;
   background: #ffffff;
   color: #163a32;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
@@ -1039,12 +1041,12 @@
   gap: 7px;
   height: 38px;
   min-height: 38px;
-  padding: 0 20px;
+  padding: 0 1.54em;
   border-radius: 10px;
   border: 1px solid rgba(197, 160, 89, 0.7);
   background: linear-gradient(135deg, #124037 0%, #0b2923 100%);
   color: #ffffff;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
@@ -1143,12 +1145,12 @@
   gap: 6px;
   height: 38px;
   min-height: 38px;
-  padding: 0 14px;
+  padding: 0 1.1em;
   border-radius: 10px;
   border: 1px solid #e7b5af;
   background: #fff9f8;
   color: var(--s5-status-danger, #8f2d24);
-  font-size: 12.75px;
+  font-size: 0.796875rem;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;

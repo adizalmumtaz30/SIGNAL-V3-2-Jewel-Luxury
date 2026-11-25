@@ -3682,7 +3682,6 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
                   background: '#F8FAF8',
                   border: '0.75px solid #D5E0DA',
                   borderRadius: '12px',
-                  marginBottom: '8px',
                 }}
               >
                 <div className="s5-field-chip">
@@ -3739,7 +3738,7 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
               {detectedOfficialManualDate && !editingHolidayId ? (
                 <div
                   className="s5-holiday-alert-banner calm"
-                  style={{ marginBottom: '8px', padding: '8px 12px' }}
+                  style={{ padding: '8px 12px' }}
                 >
                   <span style={{ fontSize: '11.5px', color: '#124037', fontWeight: 600 }}>
                     {formatCompactDate(detectedOfficialManualDate.date)}:{' '}
@@ -3763,7 +3762,6 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
                       alignItems: 'center',
                       gap: '6px',
                       flexWrap: 'wrap',
-                      marginBottom: '8px',
                     }}
                   >
                     <span style={{ fontSize: '11px', fontWeight: 600, color: '#526861' }}>
@@ -3787,7 +3785,7 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
               )}
 
               {/* Compact Search Bar */}
-              <div className="s5-att-toolbar" style={{ padding: '7px 10px', marginBottom: '8px' }}>
+              <div className="s5-att-toolbar" style={{ padding: '7px 10px' }}>
                 <div className="s5-field-chip" style={{ flex: 1 }}>
                   <div className="s5-input-shell" style={{ width: '100%', height: '32px' }}>
                     <Search size={14} color="#687E77" />

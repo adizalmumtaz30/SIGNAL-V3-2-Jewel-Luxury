@@ -226,7 +226,7 @@ export const TimeMachineDrawer: React.FC<TimeMachineDrawerProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="s5-time-machine-title"
-        style={{ width: '480px', maxWidth: '100vw' }}
+        style={{ width: '480px', maxWidth: '100%' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

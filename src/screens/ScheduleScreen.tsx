@@ -685,7 +685,7 @@ export function ScheduleScreen({
                                 className={`master-non-kbm-slot ${actClass}`}
                                 title={`${label} (${day}, ${timeStr} WIB): Non-KBM / Terkunci`}
                               >
-                                <LockKeyhole size={10} style={{ display: 'inline', marginRight: 3, verticalAlign: -1 }} />
+                                <LockKeyhole size={10} style={{ display: 'inline-block', marginRight: 3, verticalAlign: -1 }} />
                                 {label}
                               </div>
                             </td>

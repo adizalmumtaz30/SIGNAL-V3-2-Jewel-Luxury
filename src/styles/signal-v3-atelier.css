@@ -322,14 +322,14 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 }
 
 .sakala-context-badge {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 10px;
+  padding: 0.45em 0.9em;
   background: var(--ivory);
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 600;
   color: var(--ink);
 }
@@ -543,9 +543,9 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3.5px 8.5px;
+  padding: 0.32em 0.78em;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 700;
   background: #edf0eb;
   color: var(--muted);

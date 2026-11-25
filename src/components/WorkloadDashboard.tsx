@@ -346,7 +346,6 @@ export function WorkloadDashboard({
       <div
         className="surface-card"
         style={{
-          marginTop: '16px',
           padding: '16px 18px',
           display: 'flex',
           flexDirection: 'column',
@@ -561,7 +560,7 @@ export function WorkloadDashboard({
       </div>
 
       {/* Metric Cards Grid */}
-      <div className="stat-grid" style={{ marginTop: '16px' }}>
+      <div className="stat-grid">
         <KpiMotionCard className="stat-card tone-teal" index={0}>
           <div className="stat-top">
             <span>
@@ -942,7 +941,7 @@ export function WorkloadDashboard({
       )}
 
       {/* Main Table */}
-      <div className="surface-card" style={{ marginTop: '16px' }}>
+      <div className="surface-card">
         <div className="card-heading">
           <div>
             <div className="card-eyebrow">
@@ -1302,7 +1301,6 @@ export function WorkloadDashboard({
       <div
         className="inline-info"
         style={{
-          marginTop: '24px',
           padding: '12px 16px',
           background: '#f8faf7',
           borderRadius: '10px',

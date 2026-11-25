@@ -1497,7 +1497,7 @@ export function SettingsScreen({
               </div>
 
               {/* Progressive Disclosure: Cascade Interval & Sinkronisasi Teknis */}
-              <div className={`s5-collapsible-section ${showCascadeControls ? 'is-open' : ''}`} style={{ marginBottom: '14px' }}>
+              <div className={`s5-collapsible-section ${showCascadeControls ? 'is-open' : ''}`}>
                 <button
                   type="button"
                   className="s5-collapsible-trigger"
@@ -2737,7 +2737,7 @@ export function SettingsScreen({
               </div>
             </section>
 
-            <section className={`s5-collapsible-section ${showSolverTechnical ? 'is-open' : ''}`} style={{ marginTop: '14px' }}>
+            <section className={`s5-collapsible-section ${showSolverTechnical ? 'is-open' : ''}`}>
               <button
                 type="button"
                 className="s5-collapsible-trigger"

@@ -88,12 +88,12 @@
   align-items: center;
   gap: 6px;
   height: 38px;
-  padding: 0 12px;
+  padding: 0 0.92em;
   border-radius: 10px;
   border: none;
   background: transparent;
   color: #4f645d;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
 }
@@ -188,13 +188,13 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 11px 12px;
+  padding: 0.85em 0.92em;
   margin-bottom: -1px;
   border: none;
   border-bottom: 2px solid transparent;
   background: transparent;
   color: #556a63;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;

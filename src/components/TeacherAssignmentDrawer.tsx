@@ -245,7 +245,7 @@ export const TeacherAssignmentDrawer: React.FC<TeacherAssignmentDrawerProps> = (
         role="dialog"
         aria-modal="true"
         aria-labelledby="teacher-assignment-drawer-title"
-        style={{ width: 'min(540px, 100vw)' }}
+        style={{ width: 'min(540px, 100%)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="s5-drawer-header">

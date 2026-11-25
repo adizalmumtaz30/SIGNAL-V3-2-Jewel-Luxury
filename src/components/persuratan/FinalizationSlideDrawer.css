@@ -15,7 +15,7 @@
 }
 
 .fsd-panel {
-  width: min(468px, 100vw);
+  width: min(468px, 100%);
   height: 100%;
   background: #ffffff;
   border-left: 1px solid #c9d8d1;
@@ -324,12 +324,12 @@
 .fsd-primary-btn {
   width: 100%;
   height: 42px;
-  padding: 0 12px;
+  padding: 0 0.94em;
   border-radius: 10px;
   border: 1px solid rgba(197, 160, 89, 0.72);
   background: #124037;
   color: #ffffff;
-  font-size: 12.75px;
+  font-size: 0.796875rem;
   font-weight: 700;
   white-space: nowrap;
   display: inline-flex;
@@ -352,12 +352,12 @@
 .fsd-primary-outline-btn {
   width: 100%;
   height: 42px;
-  padding: 0 12px;
+  padding: 0 0.94em;
   border-radius: 10px;
   border: 1px solid #124037;
   background: #ffffff;
   color: #0b2923;
-  font-size: 12.75px;
+  font-size: 0.796875rem;
   font-weight: 700;
   white-space: nowrap;
   display: inline-flex;
@@ -408,12 +408,12 @@
   width: 100%;
   height: 38px;
   min-height: 38px;
-  padding: 0 12px;
+  padding: 0 1em;
   border-radius: 10px;
   border: 1px solid #cddbd4;
   background: #f3f7f5;
   color: var(--s5-emerald-primary, #124037);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
@@ -438,6 +438,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
 }
 

@@ -80,13 +80,15 @@
 }
 
 .s07-studio-mode-badge {
-  font-size: 11.5px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.71875rem;
   font-weight: 700;
   letter-spacing: 0.03em;
   color: #124037;
   background: #e8f2ee;
   border: 0.75px solid rgba(197, 160, 89, 0.4);
-  padding: 5px 12px;
+  padding: 0.43em 1.04em;
   border-radius: 999px;
 }
 

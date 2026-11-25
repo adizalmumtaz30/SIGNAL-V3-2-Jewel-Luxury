@@ -35,13 +35,16 @@
   padding: 10px 16px;
   box-shadow: 0 2px 8px rgba(22, 53, 44, 0.04);
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
 }
 
 .schedule-view-switcher {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   background: #edf3ef;
   border: 1px solid #dce6e0;
   border-radius: 10px;
@@ -53,11 +56,11 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 6px 14px;
+  padding: 0.5em 1.15em;
   border-radius: 7px;
   border: none;
   background: transparent;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   color: #4b665d;
   cursor: pointer;
@@ -140,9 +143,9 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 12px;
+  padding: 0.42em 1.05em;
   border-radius: 9999px;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   font-weight: 600;
   cursor: pointer;
   border: 1px solid transparent;
@@ -426,8 +429,10 @@
 
 .master-matrix-row-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: 8px 12px;
   margin-bottom: 12px;
   padding-bottom: 10px;
   border-bottom: 1px solid #edf2ee;
@@ -435,15 +440,18 @@
 
 .row-title-area {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
 
 .row-badge {
-  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.6875rem;
   font-weight: 700;
   letter-spacing: 0.06em;
-  padding: 2px 7px;
+  padding: 0.2em 0.65em;
   background: #e3ede7;
   color: #174e40;
   border-radius: 6px;
@@ -489,8 +497,10 @@
 
 .master-class-block-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: 8px 10px;
   padding: 9px 12px;
   background: linear-gradient(180deg, #f7faf8 0%, #edf4f0 100%);
   border-bottom: 1px solid #dce6e0;
@@ -504,15 +514,17 @@
 
 .class-name {
   margin: 0;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 700;
   color: #154236;
 }
 
 .class-level-tag {
-  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.6875rem;
   font-weight: 700;
-  padding: 1px 6px;
+  padding: 0.12em 0.55em;
   background: #ffffff;
   border: 1px solid #d2ded7;
   border-radius: 6px;
@@ -522,16 +534,19 @@
 .class-stats {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
 .class-stats .jp-counter {
-  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.6875rem;
   font-weight: 700;
   color: #215446;
   font-variant-numeric: tabular-nums;
   background: #ffffff;
-  padding: 2px 7px;
+  padding: 0.2em 0.65em;
   border-radius: 6px;
   border: 1px solid #d5e2da;
 }
@@ -541,12 +556,12 @@
   align-items: center;
   gap: 4px;
   height: 32px;
-  padding: 0 10px;
+  padding: 0 0.87em;
   border-radius: 8px;
   border: 1px solid #c9d8ce;
   background: #ffffff;
   color: #195243;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.12s ease;
@@ -1128,20 +1143,22 @@ table.schedule-table tbody td,
 }
 
 .cell-subject-code {
-  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.6875rem;
   font-weight: 700;
   letter-spacing: 0.03em;
   color: #2b554a;
   font-family: var(--font-mono);
   background: rgba(23, 54, 55, 0.08);
-  padding: 1px 4px;
+  padding: 0.1em 0.4em;
   border-radius: 4px;
   line-height: 1.2;
 }
 
 .cell-subject-title,
 .schedule-cell strong {
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   font-weight: 700;
   color: #14352b;
   line-height: 1.25;
@@ -1164,11 +1181,11 @@ table.schedule-table tbody td,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 700;
   font-family: var(--font-mono);
   letter-spacing: 0.03em;
-  padding: 0 4px;
+  padding: 0 0.38em;
   height: 16px;
   border-radius: 4px;
   background: rgba(23, 54, 55, 0.08);
@@ -2421,13 +2438,13 @@ table.schedule-table tbody td,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 700;
   color: #47665b;
   background: #edf3ef;
   border: 1px solid #d4dfd8;
   border-radius: 6px;
-  padding: 0 6px;
+  padding: 0 0.55em;
   height: 20px;
   cursor: help;
 }
@@ -2509,9 +2526,9 @@ table.schedule-table tbody td,
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 700;
-  padding: 3px 8px;
+  padding: 0.27em 0.72em;
   border-radius: 6px;
   white-space: nowrap;
 }
@@ -2560,19 +2577,21 @@ table.schedule-table tbody td,
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 700;
 }
 
 .workload-jp-val {
   font-variant-numeric: tabular-nums;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
 }
 
 .workload-pct-badge {
-  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.6875rem;
   font-weight: 700;
-  padding: 1px 6px;
+  padding: 0.12em 0.55em;
   border-radius: 6px;
   font-variant-numeric: tabular-nums;
 }
@@ -2614,11 +2633,11 @@ table.schedule-table tbody td,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 700;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  padding: 2px 7px;
+  padding: 0.2em 0.65em;
   border-radius: 6px;
   letter-spacing: 0.04em;
 }
@@ -2687,9 +2706,9 @@ table.schedule-table tbody td,
   background: #f3f7f5;
   border: 1px solid #dce6e1;
   color: #415e54;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
-  padding: 0 12px;
+  padding: 0 1em;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -2730,14 +2749,14 @@ table.schedule-table tbody td,
 }
 
 .master-empty-title {
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 700;
   color: #0f2c25;
   margin: 0 0 6px 0;
 }
 
 .master-empty-desc {
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: #627c73;
   max-width: 420px;
   margin: 0 0 16px 0;
@@ -2753,9 +2772,9 @@ table.schedule-table tbody td,
   min-height: 38px;
   background: linear-gradient(135deg, #164D42 0%, #0E362D 100%);
   color: #ffffff;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
-  padding: 0 16px;
+  padding: 0 1.25em;
   border-radius: 10px;
   border: 1px solid rgba(197, 160, 89, 0.48);
   cursor: pointer;
@@ -2822,6 +2841,7 @@ table.schedule-table tbody td,
 
 .scv-bottom-zoom-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -2829,6 +2849,15 @@ table.schedule-table tbody td,
   background: #f4f8f5;
   border-top: 1px solid #d3e0d9;
   flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .scv-class-block.is-matrix-card,
+  .master-class-weekly-block {
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+  }
 }
 
 .scv-popover-note {
