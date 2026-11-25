@@ -262,14 +262,8 @@
 
 .s03-fields-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
   gap: 16px;
-}
-
-@media (max-width: 760px) {
-  .s03-fields-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 .s03-field {
@@ -358,14 +352,8 @@
 /* Date range sub-grid */
 .s03-date-range-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
   gap: 10px;
-}
-
-@media (max-width: 640px) {
-  .s03-date-range-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* Teacher Multi-select Picker */
@@ -472,15 +460,9 @@
   max-height: 220px;
   overflow-y: auto;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 6px;
   padding-right: 2px;
-}
-
-@media (max-width: 720px) {
-  .s03-teacher-list {
-    grid-template-columns: 1fr;
-  }
 }
 
 .s03-teacher-option {

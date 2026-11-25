@@ -63,18 +63,21 @@ describe('Phase 22: 5 SEDANG Polish, Operator Efficiency & Modularity Improvemen
     expect(masterSource).toContain('master-unified-search');
 
     const demo = createDemoState();
-    const settingsHtml = renderToStaticMarkup(
-      React.createElement(SettingsScreen, {
-        state: demo,
-        onSettingsChange: () => {},
-        onApplyWeeklyLimitToAllTeachers: () => {},
-        onReset: () => {},
-        onNotify: () => {},
-        saved: true,
-        onDirtyChange: () => {},
-        onRegisterSave: () => {},
-      })
-    );
+    const renderSettingsTab = (initialTab: 'time' | 'general' | 'ai') =>
+      renderToStaticMarkup(
+        React.createElement(SettingsScreen, {
+          state: demo,
+          initialTab,
+          onSettingsChange: () => {},
+          onApplyWeeklyLimitToAllTeachers: () => {},
+          onReset: () => {},
+          onNotify: () => {},
+          saved: true,
+          onDirtyChange: () => {},
+          onRegisterSave: () => {},
+        })
+      );
+    const settingsHtml = `${renderSettingsTab('time')}${renderSettingsTab('general')}${renderSettingsTab('ai')}`;
     expect(settingsHtml).toContain('s5-collapsible-section');
     expect(settingsHtml).toContain('s5-collapsible-trigger');
     expect(settingsHtml).toContain('Parameter Teknis Interval &amp; Cascade');
@@ -83,7 +86,7 @@ describe('Phase 22: 5 SEDANG Polish, Operator Efficiency & Modularity Improvemen
     expect(settingsHtml).toContain('aria-expanded="false"');
 
     const numberingModalSource = readWorkspaceFile('src/components/persuratan/NumberingFormatModal.tsx');
-    expect(numberingModalSource).toContain('Pola Kustom &amp; Variabel Token');
+    expect(numberingModalSource).toContain('Pola Kustom & Variabel Token');
     expect(numberingModalSource).toContain('nfm-kinds-disclosure');
 
     const workloadSource = readWorkspaceFile('src/components/WorkloadDashboard.tsx');

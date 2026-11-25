@@ -9,6 +9,7 @@ import {
   Filter,
   Minus,
   Plus,
+  RotateCcw,
   Search,
   Trash2,
   TrendingUp,
@@ -188,11 +189,35 @@ export function RequirementsScreen({
     classCapacityStats,
   ]);
 
+  const classCapacityMap = useMemo(() => {
+    const map = new Map<string, (typeof classCapacityStats)[number]>();
+    for (const c of classCapacityStats) {
+      map.set(c.cls.id, c);
+    }
+    return map;
+  }, [classCapacityStats]);
+
+  const issueRowCount = useMemo(() => {
+    return state.requirements.filter((r) => {
+      const tStat = teacherWorkloadStats.get(r.teacherId);
+      const cStat = classCapacityMap.get(r.classId);
+      const tch = getTeacher(state, r.teacherId);
+      const isQualified = Boolean(tch?.subjectIds.includes(r.subjectId));
+      return Boolean(tStat?.isOver || cStat?.isOver || cStat?.isUnder || !isQualified);
+    }).length;
+  }, [state, teacherWorkloadStats, classCapacityMap]);
+
   const activeClassesCount = state.classes.filter((c) => c.isActive).length;
   const totalCapacityJP = totalWeeklySlots * activeClassesCount;
   const balanceExact = totalJP === totalCapacityJP;
   const balanceSurplus = totalJP > totalCapacityJP;
   const incompleteClassCount = classCapacityStats.filter((c) => !c.isExact).length;
+  const hasActiveReqFilters =
+    selectedClassFilter !== 'ALL' ||
+    selectedTeacherFilter !== 'ALL' ||
+    selectedSubjectFilter !== 'ALL' ||
+    onlyIssuesFilter ||
+    searchQuery.trim().length > 0;
 
   return (
     <>
@@ -445,27 +470,28 @@ export function RequirementsScreen({
             background: '#FFFDF5',
             border: '1px solid #EAD39C',
             borderRadius: '10px',
-            marginTop: '14px',
             fontSize: '12px',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#78350F' }}>
             <AlertTriangle size={15} color="#B45309" />
             <span>
-              Terdeteksi <strong>{criticalIssues.length} isu kritis</strong> dan <strong>{warningIssues.length} peringatan</strong> data master &amp; alokasi JP.
+              Terdeteksi <strong>{criticalIssues.length} isu kritis</strong> dan <strong>{warningIssues.length} peringatan</strong> pada alokasi &amp; kapasitas data master.
             </span>
           </div>
-          <button
-            type="button"
-            className="button button-sm button-secondary"
-            onClick={() => setOnlyIssuesFilter((v) => !v)}
-          >
-            {onlyIssuesFilter ? 'Tampilkan Semua Alokasi' : 'Saring Hanya Bermasalah'}
-          </button>
+          {onNavigate && (
+            <button
+              type="button"
+              className="button button-sm button-secondary"
+              onClick={() => onNavigate('validation')}
+            >
+              Lihat Audit Validasi →
+            </button>
+          )}
         </div>
       )}
 
-      <div className="toolbar-card" style={{ marginTop: '14px', marginBottom: '14px', gap: '10px', flexWrap: 'wrap' }}>
+      <div className="toolbar-card" style={{ gap: '10px', flexWrap: 'wrap' }}>
         <div className="table-search s5-toolbar-search" style={{ flex: 1, minWidth: '210px' }}>
           <Search size={15} />
           <input
@@ -553,14 +579,32 @@ export function RequirementsScreen({
         <button
           type="button"
           className={`filter-tab-btn ${onlyIssuesFilter ? 'active' : ''}`}
+          aria-pressed={onlyIssuesFilter}
           onClick={() => setOnlyIssuesFilter((v) => !v)}
           title="Tampilkan hanya alokasi yang memiliki isu kapasitas atau beban guru"
         >
-          <Filter size={12} />
-          <span>Hanya Bermasalah</span>
+          <Filter size={13} />
+          <span>Bermasalah ({issueRowCount})</span>
         </button>
 
-        <span className="s5-tnum" style={{ fontSize: '11.5px', color: '#526861', fontWeight: 600, marginLeft: 'auto' }}>
+        {hasActiveReqFilters && (
+          <button
+            type="button"
+            className="button matrix-reset-filter-btn"
+            onClick={() => {
+              setSelectedClassFilter('ALL');
+              setSelectedTeacherFilter('ALL');
+              setSelectedSubjectFilter('ALL');
+              setOnlyIssuesFilter(false);
+              setSearchQuery('');
+            }}
+          >
+            <RotateCcw size={13} />
+            <span>Reset Filter</span>
+          </button>
+        )}
+
+        <span className="s5-tnum" style={{ fontSize: '12px', color: '#526861', fontWeight: 600, marginLeft: 'auto' }}>
           Menampilkan {filteredRequirements.length} dari {state.requirements.length} alokasi
         </span>
       </div>
@@ -581,7 +625,24 @@ export function RequirementsScreen({
               {!filteredRequirements.length ? (
                 <tr>
                   <td colSpan={5} style={{ textAlign: 'center', padding: '32px 16px', color: '#526861' }}>
-                    Tidak ada data alokasi yang sesuai dengan filter yang dipilih.
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                      <span>Tidak ada data alokasi yang sesuai dengan filter yang dipilih.</span>
+                      {hasActiveReqFilters && (
+                        <button
+                          type="button"
+                          className="button button-sm button-secondary"
+                          onClick={() => {
+                            setSelectedClassFilter('ALL');
+                            setSelectedTeacherFilter('ALL');
+                            setSelectedSubjectFilter('ALL');
+                            setOnlyIssuesFilter(false);
+                            setSearchQuery('');
+                          }}
+                        >
+                          <RotateCcw size={13} /> Reset Semua Filter
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ) : (
@@ -593,7 +654,7 @@ export function RequirementsScreen({
                   const sub = getSubject(state, r.subjectId);
                   const tch = getTeacher(state, r.teacherId);
                   const tStat = tch ? teacherWorkloadStats.get(tch.id) : undefined;
-                  const cStat = classCapacityStats.find((c) => c.cls.id === r.classId);
+                  const cStat = classCapacityMap.get(r.classId);
                   const isTchOver = tStat?.isOver ?? false;
                   const isClsOver = cStat?.isOver ?? false;
                   const isClsUnder = cStat?.isUnder ?? false;
@@ -624,18 +685,11 @@ export function RequirementsScreen({
                           <span className="subject-color-swatch" style={{ background: sub?.color, width: '6px', height: '24px', borderRadius: '3px', flexShrink: 0 }} />
                           <div>
                             <strong style={{ fontSize: '13px' }}>{sub?.name}</strong>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
                               <span style={{ fontSize: '11px', color: '#526861' }}>Kode: {sub?.code}</span>
                               {splitMeta && splitMeta.count > 1 && (
                                 <span
-                                  style={{
-                                    fontSize: '11px',
-                                    color: '#92400E',
-                                    background: '#FEF3C7',
-                                    padding: '1px 6px',
-                                    borderRadius: '4px',
-                                    fontWeight: 600,
-                                  }}
+                                  className="s5-inline-badge tone-warn"
                                   title="Mapel ini diampu lebih dari 1 guru di kelas yang sama"
                                 >
                                   Gabungan: {splitMeta.totalJP} JP
@@ -646,34 +700,19 @@ export function RequirementsScreen({
                         </div>
                       </td>
                       <td>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                           <strong style={{ fontSize: '13px' }}>{tch?.name}</strong>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                             <span
-                              className="s5-tnum"
-                              style={{
-                                fontSize: '11px',
-                                fontWeight: 600,
-                                padding: '2px 7px',
-                                borderRadius: '4px',
-                                background: isTchOver ? '#FDE8E5' : tStat?.isFull ? '#E1F4EA' : '#EDF3F8',
-                                color: isTchOver ? '#9E2A21' : tStat?.isFull ? '#166534' : '#1E4E6D',
-                              }}
+                              className={`s5-inline-badge ${
+                                isTchOver ? 'tone-danger' : tStat?.isFull ? 'tone-ok' : 'tone-info'
+                              }`}
                             >
                               Beban: {tStat?.totalJP ?? 0} / {tStat?.maxJP ?? defaultMaxWeeklyJP} JP
                               {isTchOver && ` (Lebih ${(tStat?.totalJP ?? 0) - (tStat?.maxJP ?? defaultMaxWeeklyJP)} JP)`}
                             </span>
                             {!isQualified && (
-                              <span
-                                style={{
-                                  fontSize: '11px',
-                                  fontWeight: 600,
-                                  padding: '2px 7px',
-                                  borderRadius: '4px',
-                                  background: '#FDE8E5',
-                                  color: '#9E2A21',
-                                }}
-                              >
+                              <span className="s5-inline-badge tone-danger">
                                 Kualifikasi mapel belum tercatat
                               </span>
                             )}
@@ -691,7 +730,20 @@ export function RequirementsScreen({
                             >
                               <Minus size={12} />
                             </button>
-                            <strong>{r.requiredJP}</strong>
+                            <input
+                              type="number"
+                              min={1}
+                              max={50}
+                              className="s5-req-stepper-input"
+                              aria-label={`Jumlah JP ${sub?.name} kelas ${cls?.name}`}
+                              value={r.requiredJP}
+                              onChange={(e) => {
+                                const val = Number(e.target.value);
+                                if (Number.isFinite(val) && val >= 1 && val <= 50) {
+                                  onUpdateRequirementJP(r.id, Math.round(val));
+                                }
+                              }}
+                            />
                             <button
                               type="button"
                               aria-label={`Tambah JP ${sub?.name}`}

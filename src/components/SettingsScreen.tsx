@@ -62,6 +62,7 @@ export interface SettingsScreenProps {
   onReset: () => void;
   onNotify: (message: string, kind?: 'success' | 'warning' | 'error' | 'info') => void;
   saved: boolean;
+  initialTab?: SettingsTab;
   onDirtyChange?: (dirty: boolean) => void;
   onRegisterSave?: (fn: (() => void) | null) => void;
 }
@@ -198,10 +199,11 @@ export function SettingsScreen({
   onReset,
   onNotify,
   saved,
+  initialTab = 'time',
   onDirtyChange,
   onRegisterSave,
 }: SettingsScreenProps) {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('time');
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [schoolName, setSchoolName] = useState(state.settings.schoolName);
   const [academicYear, setAcademicYear] = useState(state.settings.academicYear);
   const [semester, setSemester] = useState<'Ganjil' | 'Genap'>(state.settings.semester);

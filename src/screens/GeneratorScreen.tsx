@@ -4,7 +4,9 @@ import {
   BookOpen,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
   Clock,
+  Eye,
   LoaderCircle,
   ShieldCheck,
   Sparkles,
@@ -13,7 +15,7 @@ import {
   X,
   XCircle,
 } from 'lucide-react';
-import type { AppState, GeneratorStatus } from '../domain/types';
+import type { AppState, GeneratorStatus, ScheduleCandidate } from '../domain/types';
 import { teachingPeriodsForDay } from '../domain/time';
 import {
   buildScheduleFingerprint,
@@ -22,7 +24,7 @@ import {
 } from '../domain/validator';
 import { getActionLabelForIssue, getTargetScreenForIssue } from '../domain/validationLabels';
 import { EditorialPageHeader } from '../components/EditorialPageHeader';
-import { KpiAnimatedNumber, KpiMotionCard } from '../components/KpiMotion';
+import { KpiAnimatedNumber, KpiMotionCard, MotionModalDialog } from '../components/KpiMotion';
 import { Button, Card, EmptyState, StatusPill, type ScreenId } from '../components/ScreenPrimitives';
 
 export function GeneratorScreen({
@@ -51,6 +53,8 @@ export function GeneratorScreen({
     Math.max(1500, Math.min(100000, state.settings.searchLimit ?? 65000)),
   );
   const [autoOpenSchedule, setAutoOpenSchedule] = useState<boolean>(false);
+  const [showPreflightDetails, setShowPreflightDetails] = useState<boolean>(false);
+  const [previewCandidate, setPreviewCandidate] = useState<ScheduleCandidate | null>(null);
 
   const statuses: Record<GeneratorStatus, { label: string; tone: 'success' | 'warning' | 'danger' | 'neutral' | 'info' }> = {
     QUEUED: { label: 'Menunggu', tone: 'neutral' },
@@ -231,7 +235,7 @@ export function GeneratorScreen({
         </KpiMotionCard>
       </div>
 
-      <div className="surface-card" style={{ padding: '16px 20px', marginBottom: '18px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <div className="surface-card" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div
@@ -241,16 +245,16 @@ export function GeneratorScreen({
                 borderRadius: '9px',
                 display: 'grid',
                 placeItems: 'center',
-                background: preflightErrors.length > 0 ? '#FDE8E5' : '#E1F4EA',
-                color: preflightErrors.length > 0 ? '#9E2A21' : '#166534',
+                background: preflightErrors.length > 0 ? '#FDE8E5' : preflightWarnings.length > 0 ? '#FEF3C7' : '#E1F4EA',
+                color: preflightErrors.length > 0 ? '#9E2A21' : preflightWarnings.length > 0 ? '#92400E' : '#166534',
               }}
             >
-              {preflightErrors.length > 0 ? <AlertTriangle size={16} /> : <ShieldCheck size={16} />}
+              {preflightErrors.length > 0 || preflightWarnings.length > 0 ? <AlertTriangle size={16} /> : <ShieldCheck size={16} />}
             </div>
             <div>
               <strong style={{ fontSize: '13.5px', color: '#0B2923', display: 'block' }}>
                 {preflightErrors.length > 0
-                  ? `Prasyarat Belum Lengkap (${preflightErrors.length} Masalah Kritis)`
+                  ? `Prasyarat Belum Lengkap (${preflightErrors.length} Masalah Kritis${preflightWarnings.length ? ` · ${preflightWarnings.length} Catatan` : ''})`
                   : 'Pemeriksaan Prasyarat Data Master & Alokasi Lolos'}
               </strong>
               <span style={{ fontSize: '12px', color: '#526861' }}>
@@ -263,8 +267,24 @@ export function GeneratorScreen({
             </div>
           </div>
 
-          {preflightErrors.length > 0 && onNavigate && (
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+            {preflightIssues.length > 0 && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowPreflightDetails((v) => !v)}
+              >
+                {showPreflightDetails ? 'Tutup Rincian' : `Lihat Semua Rincian (${preflightIssues.length})`}
+                <ChevronDown
+                  size={13}
+                  style={{
+                    transform: showPreflightDetails ? 'rotate(180deg)' : 'none',
+                    transition: 'transform 0.15s',
+                  }}
+                />
+              </Button>
+            )}
+            {preflightErrors.length > 0 && onNavigate && (
               <Button
                 variant="secondary"
                 size="sm"
@@ -272,9 +292,37 @@ export function GeneratorScreen({
               >
                 {getActionLabelForIssue(preflightErrors[0])} →
               </Button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
+
+        {showPreflightDetails && preflightIssues.length > 0 && (
+          <div className="s5-preflight-checklist">
+            {preflightIssues.map((issue) => {
+              const isErr = issue.severity === 'error';
+              return (
+                <div key={issue.id} className={`s5-preflight-row ${isErr ? 'is-error' : 'is-warning'}`}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flex: 1, minWidth: '220px' }}>
+                    {isErr ? <XCircle size={15} style={{ marginTop: '2px', flexShrink: 0 }} /> : <AlertTriangle size={15} style={{ marginTop: '2px', flexShrink: 0 }} />}
+                    <div>
+                      <strong style={{ display: 'block', fontSize: '12.5px' }}>{issue.title}</strong>
+                      <span>{issue.message}</span>
+                    </div>
+                  </div>
+                  {onNavigate && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => onNavigate(getTargetScreenForIssue(issue))}
+                    >
+                      {getActionLabelForIssue(issue)} →
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         <div style={{ height: '1px', background: '#E4ECE7' }} />
 
@@ -312,13 +360,14 @@ export function GeneratorScreen({
                 onChange={(e) => setSeedInput(e.target.value.replace(/[^\d]/g, ''))}
                 className="s5-tnum"
                 style={{
-                  width: '132px',
-                  height: '36px',
-                  padding: '0 10px',
-                  borderRadius: '8px',
-                  border: '1px solid #C8D7D0',
+                  width: '140px',
+                  height: '38px',
+                  padding: '0 12px',
+                  borderRadius: '10px',
+                  border: '1px solid #C9D7D0',
                   fontSize: '12.5px',
-                  color: '#0B2923',
+                  fontWeight: 600,
+                  color: '#163830',
                   background: '#FFFFFF',
                 }}
               />
@@ -429,7 +478,17 @@ export function GeneratorScreen({
           </div>
         </Card>
 
-        <Card eyebrow="RIWAYAT KANDIDAT" title="Kandidat Tersimpan">
+        <Card
+          eyebrow="RIWAYAT KANDIDAT"
+          title="Kandidat Tersimpan"
+          action={
+            state.candidates.length > 0 ? (
+              <span style={{ fontSize: '11.5px', color: '#526861', fontWeight: 500 }}>
+                Skor dihitung dari bonus blok 2 JP dikurangi penalti tumpuk &amp; jam kosong
+              </span>
+            ) : undefined
+          }
+        >
           {!state.candidates.length ? (
             <EmptyState icon={WandSparkles} title="Belum ada kandidat" description="Kandidat jadwal yang lolos seluruh aturan wajib akan tersimpan di sini untuk dibandingkan." />
           ) : (
@@ -449,6 +508,12 @@ export function GeneratorScreen({
                     const isActiveDraft =
                       cand.entries.length > 0 &&
                       buildScheduleFingerprint(cand.entries) === currentDraftFingerprint;
+                    const createdLabel = (() => {
+                      const d = new Date(cand.createdAt);
+                      return Number.isNaN(d.getTime())
+                        ? ''
+                        : d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                    })();
                     return (
                       <tr key={cand.id}>
                         <td>
@@ -456,8 +521,9 @@ export function GeneratorScreen({
                             <strong>{cand.label}</strong>
                             {isActiveDraft && <StatusPill status="success">Aktif di Draf</StatusPill>}
                           </div>
-                          <small style={{ display: 'block', color: '#526861', marginTop: '2px' }}>
-                            {cand.entries.length} penempatan · {cand.searchNodes.toLocaleString('id-ID')} langkah
+                          <small className="s5-tnum" style={{ display: 'block', color: '#526861', marginTop: '2px' }}>
+                            {cand.entries.length} slot · {cand.searchNodes.toLocaleString('id-ID')} langkah · Seed #{cand.seed}
+                            {createdLabel ? ` · ${createdLabel}` : ''}
                           </small>
                         </td>
                         <td>
@@ -477,6 +543,15 @@ export function GeneratorScreen({
                         </td>
                         <td style={{ textAlign: 'right' }}>
                           <div className="s5-action-dock" style={{ display: 'inline-flex', justifyContent: 'flex-end' }}>
+                            <button
+                              type="button"
+                              className="s5-dock-btn"
+                              onClick={() => setPreviewCandidate(cand)}
+                              title="Lihat rincian skor & ringkasan kandidat sebelum menerapkan"
+                            >
+                              <Eye size={13} />
+                              <span>Pratinjau</span>
+                            </button>
                             <button
                               type="button"
                               className="s5-dock-btn primary"
@@ -506,6 +581,110 @@ export function GeneratorScreen({
           )}
         </Card>
       </div>
+
+      {/* Candidate Preview Modal before overwriting Draft */}
+      {previewCandidate && (() => {
+        const bd = previewCandidate.scoreBreakdown ?? scoreScheduleDetailed(state, previewCandidate.entries);
+        const isCurrentActive =
+          previewCandidate.entries.length > 0 &&
+          buildScheduleFingerprint(previewCandidate.entries) === currentDraftFingerprint;
+        const activeClasses = state.classes.filter((c) => c.isActive);
+        return (
+          <MotionModalDialog
+            ariaLabel={`Pratinjau ${previewCandidate.label}`}
+            panelStyle={{ maxWidth: '640px', width: '92vw' }}
+            onBackdropMouseDown={(e) => e.target === e.currentTarget && setPreviewCandidate(null)}
+          >
+            <div className="modal-head" style={{ borderBottom: '1px solid #e7e5da', paddingBottom: '14px' }}>
+              <div className="modal-title-icon" style={{ background: '#e9f5ee' }}>
+                <Eye size={20} color="#164D42" />
+              </div>
+              <div>
+                <h2 style={{ fontSize: '17px', margin: 0, color: '#0B2923' }}>Pratinjau {previewCandidate.label}</h2>
+                <p className="s5-tnum" style={{ margin: '2px 0 0', fontSize: '12px', color: '#526861' }}>
+                  Seed #{previewCandidate.seed} · {previewCandidate.entries.length} penempatan · {previewCandidate.searchNodes.toLocaleString('id-ID')} kombinasi diperiksa
+                </p>
+              </div>
+              <button type="button" className="icon-button" onClick={() => setPreviewCandidate(null)} aria-label="Tutup pratinjau">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 120px), 1fr))', gap: '10px' }}>
+                <div style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid #DCE6E0', background: '#F8FAF7' }}>
+                  <span style={{ fontSize: '11px', color: '#526861', display: 'block', fontWeight: 600 }}>Skor Total</span>
+                  <strong className="s5-tnum" style={{ fontSize: '20px', color: '#0B2923' }}>{previewCandidate.score}</strong>
+                </div>
+                <div style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid #B4DEC9', background: '#F6FBF8' }}>
+                  <span style={{ fontSize: '11px', color: '#166534', display: 'block', fontWeight: 600 }}>Bonus Blok 2 JP</span>
+                  <strong className="s5-tnum" style={{ fontSize: '20px', color: '#166534' }}>+{bd.doubleBlockBonus}</strong>
+                  <small style={{ fontSize: '11px', color: '#526861', display: 'block' }}>{bd.doubleBlockCount} blok berurutan</small>
+                </div>
+                <div style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid #EAD39C', background: '#FFFDF5' }}>
+                  <span style={{ fontSize: '11px', color: '#92400E', display: 'block', fontWeight: 600 }}>Penalti Tumpuk</span>
+                  <strong className="s5-tnum" style={{ fontSize: '20px', color: '#92400E' }}>-{bd.sameDayPenalty}</strong>
+                  <small style={{ fontSize: '11px', color: '#78350F', display: 'block' }}>Mapel sama terpisah</small>
+                </div>
+                <div style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid #F3C4BE', background: '#FFF8F7' }}>
+                  <span style={{ fontSize: '11px', color: '#9E2A21', display: 'block', fontWeight: 600 }}>Penalti Kosong</span>
+                  <strong className="s5-tnum" style={{ fontSize: '20px', color: '#9E2A21' }}>-{bd.freeSlotPenalty}</strong>
+                  <small style={{ fontSize: '11px', color: '#7E1E16', display: 'block' }}>Celah kosong kelas</small>
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: '#0B2923', marginBottom: '8px' }}>
+                  Ringkasan Cakupan Per Rombel ({activeClasses.length} kelas)
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 175px), 1fr))', gap: '8px', maxHeight: '220px', overflowY: 'auto' }}>
+                  {activeClasses.map((cls) => {
+                    const placed = previewCandidate.entries.filter((e) => e.classId === cls.id).length;
+                    const target = state.requirements.filter((r) => r.classId === cls.id).reduce((s, r) => s + r.requiredJP, 0);
+                    const isExact = placed === target;
+                    return (
+                      <div
+                        key={cls.id}
+                        style={{
+                          padding: '8px 10px',
+                          borderRadius: '8px',
+                          border: `1px solid ${isExact ? '#B4DEC9' : '#EAD39C'}`,
+                          background: isExact ? '#F6FBF8' : '#FFFDF5',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          fontSize: '12px',
+                        }}
+                      >
+                        <strong style={{ color: '#0B2923' }}>Kelas {cls.name}</strong>
+                        <span className={`s5-inline-badge ${isExact ? 'tone-ok' : 'tone-warn'}`}>
+                          {placed}/{target} JP
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-actions" style={{ padding: '14px 20px', background: '#faf8f2', borderRadius: '0 0 14px 14px' }}>
+              <Button variant="secondary" onClick={() => setPreviewCandidate(null)}>
+                Tutup
+              </Button>
+              <Button
+                disabled={isCurrentActive}
+                onClick={() => {
+                  const id = previewCandidate.id;
+                  setPreviewCandidate(null);
+                  onChoose(id);
+                }}
+              >
+                {isCurrentActive ? 'Sudah Aktif di Draf' : 'Terapkan ke Draf & Buka Jadwal →'}
+              </Button>
+            </div>
+          </MotionModalDialog>
+        );
+      })()}
     </>
   );
 }

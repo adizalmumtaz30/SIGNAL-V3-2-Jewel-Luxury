@@ -593,7 +593,7 @@ html, body {
 
 .overview-kpi-strip {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 205px), 1fr));
   gap: 14px;
   margin-bottom: 20px;
 }
@@ -907,7 +907,7 @@ html, body {
 
 .cp-stat-numbers-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 90px), 1fr));
   gap: 8px;
   text-align: center;
   padding-top: 10px;
@@ -930,10 +930,10 @@ html, body {
   color: var(--text-title);
 }
 
-/* 4. Four Compact Metric Tiles (2x2 Grid) */
+/* 4. Four Compact Metric Tiles (Intrinsic Responsive Grid) */
 .cp-metric-tiles-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
   gap: 14px;
 }
 
@@ -1937,7 +1937,7 @@ table.data-table tbody tr:hover td {
 
 .validation-summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
   gap: 14px;
   margin-bottom: 20px;
 }
@@ -2107,7 +2107,7 @@ table.data-table tbody tr:hover td {
 
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 205px), 1fr));
   gap: 14px;
   margin-bottom: 20px;
 }
@@ -2267,7 +2267,7 @@ table.data-table tbody tr:hover td {
 /* ========================================================================= */
 .backup-actions-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
   gap: 16px;
   margin-bottom: 20px;
 }
@@ -2383,7 +2383,7 @@ table.data-table tbody tr:hover td {
 
 .day-toggle-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 90px), 1fr));
   gap: 10px;
   margin-top: 12px;
 }
@@ -2445,7 +2445,7 @@ table.data-table tbody tr:hover td {
 /* ========================================================================= */
 .requirements-metric-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
   gap: 14px;
   margin-bottom: 20px;
 }
@@ -2476,7 +2476,7 @@ table.data-table tbody tr:hover td {
 
 .qualification-check-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
   gap: 10px;
   margin-top: 8px;
 }
@@ -2618,7 +2618,7 @@ table.data-table tbody tr:hover td {
 /* Schedule Generator Metrics & Cards */
 .generator-metrics {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
   gap: 14px;
   margin-bottom: 20px;
 }
@@ -2702,7 +2702,7 @@ table.data-table tbody tr:hover td {
 
 .result-stats {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
@@ -2801,9 +2801,6 @@ table.data-table tbody tr:hover td {
     border-radius: 0;
     border: none;
     min-height: 100vh;
-  }
-  .cp-metric-tiles-grid {
-    grid-template-columns: 1fr;
   }
   .sakala-topbar {
     padding: 16px;

@@ -47,7 +47,7 @@
 
   .s5-editorial-summary-bar {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 205px), 1fr));
     border: var(--sakala-border-hairline);
     border-radius: var(--sakala-radius-lg);
     background: var(--sakala-surface-subtle);
@@ -60,15 +60,11 @@
     gap: 4px;
     padding: 14px 18px;
     border: none;
-    border-right: 1px solid #e2ebe6;
+    box-shadow: 1px 0 0 0 #e2ebe6, 0 1px 0 0 #e2ebe6;
     background: transparent;
     text-align: left;
     cursor: pointer;
     transition: background-color 150ms ease;
-  }
-
-  .s5-editorial-stat:last-child {
-    border-right: none;
   }
 
   .s5-editorial-stat:hover {
@@ -121,38 +117,6 @@
     border-radius: var(--sakala-radius-md);
     background: #f9fbf9;
     border: 1px dashed #cdd9d3;
-  }
-
-  @media (max-width: 960px) {
-    .s5-editorial-summary-bar {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .s5-editorial-stat {
-      border-bottom: 1px solid #e2ebe6;
-    }
-
-    .s5-editorial-stat:nth-child(2n) {
-      border-right: none;
-    }
-
-    .s5-editorial-stat:nth-last-child(-n + 2) {
-      border-bottom: none;
-    }
-  }
-
-  @media (max-width: 560px) {
-    .s5-editorial-summary-bar {
-      grid-template-columns: 1fr;
-    }
-
-    .s5-editorial-stat {
-      border-right: none;
-    }
-
-    .s5-editorial-stat:nth-last-child(2) {
-      border-bottom: 1px solid #e2ebe6;
-    }
   }
 
   /* ------------------------------------------------------------------------
@@ -252,7 +216,7 @@
 
   .s5-schedule-filter-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 175px), 1fr));
     gap: 12px;
   }
 
@@ -274,12 +238,6 @@
   .s5-schedule-filter-field .master-filter-select {
     width: 100%;
     min-width: 0;
-  }
-
-  @media (max-width: 600px) {
-    .s5-schedule-filter-grid {
-      grid-template-columns: 1fr;
-    }
   }
 
   /* ------------------------------------------------------------------------
@@ -933,6 +891,32 @@
   /* ------------------------------------------------------------------------
      8. WHITESPACE SCALE, GENEROUS ROW HEIGHTS & FLAT NON-NESTED SURFACES
      ------------------------------------------------------------------------ */
+  .s5-screen-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sakala-gap-section);
+    width: 100%;
+    min-width: 0;
+  }
+
+  .s5-screen-stack > .s5-editorial-header,
+  .s5-screen-stack > .stat-grid,
+  .s5-screen-stack > .toolbar-card,
+  .s5-screen-stack > .validation-banner,
+  .s5-screen-stack > .ai-conflict-helper-box,
+  .s5-screen-stack > .s5-solver-radar-wrap,
+  .s5-screen-stack > .master-prestige-metric-grid,
+  .s5-screen-stack > .workload-hero,
+  .s5-screen-stack > .s5-segmented-nav,
+  .s5-screen-stack > .surface-card,
+  .s5-screen-stack > .panel,
+  .s5-screen-stack > .dashboard-grid,
+  .s5-screen-stack > .schedule-workspace,
+  .s5-screen-stack > .s5-overview-split {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
   .stat-grid {
     gap: 18px;
     margin-bottom: var(--sakala-gap-section);
@@ -1312,12 +1296,12 @@
 
   .s5-pdf-field-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 155px), 1fr));
     gap: 10px;
   }
 
   .s5-pdf-field-grid .field-group.is-span-2 {
-    grid-column: span 2;
+    grid-column: 1 / -1;
   }
 
   .s5-pdf-field-grid .field-group label {
@@ -1357,7 +1341,7 @@
     padding: 11px 12px;
     border-radius: 10px;
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 145px), 1fr));
     gap: 8px;
   }
 
@@ -1372,7 +1356,7 @@
   }
 
   .s5-pdf-signer-box-title {
-    grid-column: span 2;
+    grid-column: 1 / -1;
     font-size: 11px;
     font-weight: 700;
   }
@@ -1386,7 +1370,7 @@
   }
 
   .s5-pdf-signer-box .field-group.is-span-2 {
-    grid-column: span 2;
+    grid-column: 1 / -1;
   }
 
   .s5-pdf-signer-box .field-group label {
@@ -1400,7 +1384,7 @@
 
   .s5-pdf-kpi-strip {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 135px), 1fr));
     gap: 8px;
   }
 

@@ -284,10 +284,11 @@ export function QuickValidationModal({
 
         {/* Modal Foot Actions */}
         <div
+          className="modal-actions"
           style={{
             borderTop: '1px solid #e7e5da',
             padding: '12px 20px',
-            display: 'flex',
+            marginTop: 0,
             justifyContent: 'space-between',
             alignItems: 'center',
             gap: '10px',

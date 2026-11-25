@@ -8,6 +8,7 @@ import {
   FileSpreadsheet,
   FileText,
   RefreshCw,
+  RotateCcw,
   Search,
   ShieldCheck,
   X,
@@ -67,7 +68,7 @@ export function ValidationScreen({
   }, [combined]);
 
   const visibleIssues = useMemo(() => {
-    return combined.filter((issue) => {
+    const filtered = combined.filter((issue) => {
       if (categoryFilter !== 'all' && getValidationCategoryGroup(issue) !== categoryFilter) return false;
       if (severityFilter !== 'all' && issue.severity !== severityFilter) return false;
       if (searchQuery.trim()) {
@@ -78,7 +79,14 @@ export function ValidationScreen({
       }
       return true;
     });
+    return [...filtered].sort((a, b) => {
+      if (a.severity === b.severity) return 0;
+      return a.severity === 'error' ? -1 : 1;
+    });
   }, [combined, categoryFilter, severityFilter, searchQuery]);
+
+  const hasActiveValidationFilters =
+    categoryFilter !== 'all' || severityFilter !== 'all' || searchQuery.trim().length > 0;
 
   return (
     <>
@@ -125,23 +133,25 @@ export function ValidationScreen({
         }}
       />
 
-      <div className={`validation-banner ${hardErrors.length ? 'validation-banner-warning' : 'validation-banner-good'}`}>
-        <div className="validation-banner-mark">
-          {hardErrors.length ? <AlertTriangle size={24} /> : <ShieldCheck size={24} />}
+      {combined.length > 0 && (
+        <div className={`validation-banner ${hardErrors.length ? 'validation-banner-warning' : 'validation-banner-good'}`}>
+          <div className="validation-banner-mark">
+            {hardErrors.length ? <AlertTriangle size={24} /> : <ShieldCheck size={24} />}
+          </div>
+          <div>
+            <h2>{hardErrors.length ? 'Terdapat Pelanggaran Aturan Wajib' : 'Jadwal Lolos Aturan Wajib dengan Catatan'}</h2>
+            <p>
+              {hardErrors.length
+                ? 'Selesaikan bentrok aturan wajib sebelum menerbitkan versi resmi. Pencetakan & ekspor PDF/CSV draf tetap tersedia tanpa hambatan.'
+                : `Tidak ada bentrok wajib. Tersedia ${warningCount} saran optimalisasi opsional yang dapat Anda tinjau di bawah.`}
+            </p>
+          </div>
+          <div className="validation-banner-count">
+            <strong className="s5-tnum">{hardErrors.length}</strong>
+            <span>BENTROK WAJIB</span>
+          </div>
         </div>
-        <div>
-          <h2>{hardErrors.length ? 'Terdapat Pelanggaran Aturan Wajib' : 'Jadwal Memenuhi Seluruh Aturan Wajib'}</h2>
-          <p>
-            {hardErrors.length
-              ? 'Selesaikan bentrok wajib sebelum menerbitkan versi resmi.'
-              : 'Bebas konflik guru, kelas, dan alokasi.'}
-          </p>
-        </div>
-        <div className="validation-banner-count">
-          <strong className="s5-tnum">{hardErrors.length}</strong>
-          <span>BENTROK WAJIB</span>
-        </div>
-      </div>
+      )}
 
       <div className="stat-grid">
         <KpiMotionCard index={0} className="stat-card tone-teal">
@@ -221,8 +231,8 @@ export function ValidationScreen({
       )}
 
       {combined.length > 0 && (
-        <div className="toolbar-card" style={{ marginTop: '16px', marginBottom: '12px', gap: '10px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+        <div className="toolbar-card" style={{ gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {[
               { id: 'all', label: `Semua (${categoryCounts.all})` },
               { id: 'teacher', label: `Guru & Beban (${categoryCounts.teacher})` },
@@ -234,6 +244,7 @@ export function ValidationScreen({
                 key={tab.id}
                 type="button"
                 className={`filter-tab-btn ${categoryFilter === tab.id ? 'active' : ''}`}
+                aria-pressed={categoryFilter === tab.id}
                 onClick={() => setCategoryFilter(tab.id as typeof categoryFilter)}
               >
                 {tab.label}
@@ -274,12 +285,27 @@ export function ValidationScreen({
                 </button>
               )}
             </div>
+
+            {hasActiveValidationFilters && (
+              <button
+                type="button"
+                className="button matrix-reset-filter-btn"
+                onClick={() => {
+                  setCategoryFilter('all');
+                  setSeverityFilter('all');
+                  setSearchQuery('');
+                }}
+              >
+                <RotateCcw size={13} />
+                <span>Reset Filter</span>
+              </button>
+            )}
           </div>
         </div>
       )}
 
       {combined.length === 0 ? (
-        <div className="surface-card" style={{ marginTop: '16px', padding: '32px 24px', textAlign: 'center', background: '#f5faf7', border: '1.5px solid #c3e5d0' }}>
+        <div className="surface-card" style={{ padding: '32px 24px', textAlign: 'center', background: '#f5faf7', border: '1.5px solid #c3e5d0' }}>
           <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#d1fae5', color: '#065f46', display: 'grid', placeItems: 'center', margin: '0 auto 12px' }}>
             <CheckCircle2 size={26} />
           </div>
@@ -298,8 +324,21 @@ export function ValidationScreen({
           </div>
         </div>
       ) : visibleIssues.length === 0 ? (
-        <div className="surface-card" style={{ padding: '28px', textAlign: 'center', color: '#526861' }}>
-          Tidak ada temuan yang cocok dengan filter yang diterapkan.
+        <div className="surface-card" style={{ padding: '28px', textAlign: 'center', color: '#526861', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+          <span>Tidak ada temuan yang cocok dengan filter yang diterapkan.</span>
+          {hasActiveValidationFilters && (
+            <button
+              type="button"
+              className="button button-sm button-secondary"
+              onClick={() => {
+                setCategoryFilter('all');
+                setSeverityFilter('all');
+                setSearchQuery('');
+              }}
+            >
+              <RotateCcw size={13} /> Reset Semua Filter
+            </button>
+          )}
         </div>
       ) : (
         <div className="issue-list">
@@ -308,13 +347,21 @@ export function ValidationScreen({
             const isError = issue.severity === 'error';
             const categoryLabel = formatValidationCategoryLabel(issue.code);
             const targetScreen = getTargetScreenForIssue(issue);
+            const prevIssue = idx > 0 ? visibleIssues[idx - 1] : null;
+            const showGroupHeading =
+              severityFilter === 'all' && (!prevIssue || prevIssue.severity !== issue.severity);
 
             return (
-              <MotionStaggerItem
-                key={issue.id}
-                index={idx}
-                className={`s5-validation-issue-card ${isError ? 'is-error' : 'is-warning'}`}
-              >
+              <div key={issue.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {showGroupHeading && (
+                  <div className="s5-issue-group-heading">
+                    <span>{isError ? 'Prioritas 1 · Wajib Diperbaiki Sebelum Terbit' : 'Prioritas 2 · Saran Optimalisasi Opsional'}</span>
+                  </div>
+                )}
+                <MotionStaggerItem
+                  index={idx}
+                  className={`s5-validation-issue-card ${isError ? 'is-error' : 'is-warning'}`}
+                >
                 <div
                   className="s5-validation-issue-main"
                   onClick={() => setExpandedIssue(isExpanded ? null : issue.id)}
@@ -394,6 +441,7 @@ export function ValidationScreen({
                   </div>
                 )}
               </MotionStaggerItem>
+              </div>
             );
           })}
         </div>

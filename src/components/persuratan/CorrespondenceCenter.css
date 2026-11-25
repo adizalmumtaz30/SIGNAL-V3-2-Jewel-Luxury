@@ -157,7 +157,7 @@
 /* 4 Clickable Jewel KPI Cards (Exact Model of Validasi & Konflik Jadwal) */
 .s01-stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 205px), 1fr));
   gap: 14px;
 }
 
@@ -566,7 +566,7 @@
 /* Collapsible Advanced Filters */
 .s01-advanced-filters {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 12px;
   padding-top: 12px;
   border-top: 1px dashed #dce4df;
@@ -965,7 +965,7 @@
 
 .s01-meta-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
   gap: 12px 16px;
 }
 
@@ -993,28 +993,6 @@
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-}
-
-/* Responsive Breakpoints (preserving zero overflow on 1280px & smaller) */
-@media (max-width: 1100px) {
-  .s01-stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .s01-advanced-filters {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 680px) {
-  .s01-stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .s01-advanced-filters,
-  .s01-meta-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* ==========================================================================
@@ -1432,7 +1410,7 @@
 
 .s01-incoming-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 12px;
 }
 
@@ -1489,10 +1467,4 @@
   border: 1px dashed #9cb5a9;
   background: #f8fbf9;
   font-weight: 500;
-}
-
-@media (max-width: 600px) {
-  .s01-incoming-grid {
-    grid-template-columns: 1fr;
-  }
 }

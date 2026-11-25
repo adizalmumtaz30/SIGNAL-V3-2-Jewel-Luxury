@@ -512,7 +512,7 @@ export function WorkloadDashboard({
             style={{
               margin: 0,
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 170px), 1fr))',
               gap: '10px',
               padding: '10px 12px',
               borderRadius: '10px',

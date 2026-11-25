@@ -2315,7 +2315,7 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 210px), 1fr))',
               gap: '14px',
               padding: '16px',
               background: '#F8FAF8',
@@ -2596,7 +2596,7 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 210px), 1fr))',
                   gap: '8px',
                   maxHeight: '165px',
                   overflowY: 'auto',

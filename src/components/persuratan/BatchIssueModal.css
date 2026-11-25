@@ -218,14 +218,8 @@
   max-height: 210px;
   overflow-y: auto;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
   gap: 8px;
-}
-
-@media (max-width: 560px) {
-  .bim-teacher-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 .bim-teacher-item {
@@ -278,7 +272,7 @@
 
 .bim-mode-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 10px;
 }
 
