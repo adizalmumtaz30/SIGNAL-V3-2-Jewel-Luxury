@@ -393,14 +393,14 @@ function renderStaticPreviewNodes(nodes: TipTapJSONNode[]) {
         </table>
       );
     }
-    const isEmptyPara = !text;
-    return (
-      <p key={idx} style={{ textAlign: align, ...(isEmptyPara ? { minHeight: '1.15em' } : {}) }}>
-        {isEmptyPara ? '\u00A0' : renderStaticInlineNodes(node.content)}
-      </p>
-    );
-  });
-}
+      const isEmptyPara = !text;
+      return (
+        <p key={idx} style={{ textAlign: align, ...(isEmptyPara ? { minHeight: '1.1em' } : {}) }}>
+          {isEmptyPara ? '\u00A0' : renderStaticInlineNodes(node.content)}
+        </p>
+      );
+    });
+  }
 
 export function DocumentStudio({
   state,
@@ -1010,7 +1010,7 @@ export function DocumentStudio({
     ro.observe(paperEl);
     if (vpEl) ro.observe(vpEl);
     return () => ro.disconnect();
-  }, [pageSettings.paperSize, pageSettings.orientation, docJson, drawerOpen, outlineOpen]);
+  }, [pageSettings.paperSize, pageSettings.orientation, docJson, drawerOpen, outlineOpen, isCanvasMaximized, zoomMode]);
 
   const textStats = useMemo(() => extractPlainTextAndTokens(docJson), [docJson]);
   const docOutline = useMemo(() => extractDocumentOutline(docJson), [docJson]);
@@ -1042,10 +1042,10 @@ export function DocumentStudio({
   );
 
   const paperNominalWidthPx = paperSizePx?.width ?? paperDims.widthMm * MM_TO_PX;
-  const availableViewportWidth = Math.max(300, viewportWidthPx - 44);
+  const availableViewportWidth = Math.max(260, viewportWidthPx - 44);
   const autoFitScale =
     viewportWidthPx > 0
-      ? Math.min(1, Math.max(0.5, Number((availableViewportWidth / paperNominalWidthPx).toFixed(3))))
+      ? Math.min(1, Math.max(0.35, Number((availableViewportWidth / paperNominalWidthPx).toFixed(3))))
       : 1;
   const effectiveScale = zoomMode === 'fit' ? autoFitScale : zoomMode;
   const zoomPercentLabel = Math.round(effectiveScale * 100);
@@ -2376,30 +2376,6 @@ export function DocumentStudio({
             </span>
 
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <div className="s04-zoom-group" role="group" aria-label="Skala tampilan kertas">
-                {(
-                  [
-                    { id: 'fit' as const, label: `Pas (${zoomMode === 'fit' ? `${zoomPercentLabel}%` : 'Auto'})` },
-                    { id: 0.85 as const, label: '85%' },
-                    { id: 1 as const, label: '100%' },
-                    { id: 1.15 as const, label: '115%' },
-                  ]
-                ).map((opt) => {
-                  const isActive = zoomMode === opt.id;
-                  return (
-                    <button
-                      key={String(opt.id)}
-                      type="button"
-                      className={`s04-zoom-btn ${isActive ? 'is-active' : ''}`}
-                      aria-pressed={isActive}
-                      onClick={() => setZoomMode(opt.id)}
-                    >
-                      {opt.label}
-                    </button>
-                  );
-                })}
-              </div>
-
               <button
                 type="button"
                 className={`lpv-max-btn ${isCanvasMaximized ? 'is-active' : ''}`}
@@ -2407,12 +2383,12 @@ export function DocumentStudio({
                 aria-label={
                   isCanvasMaximized
                     ? 'Perkecil kembali ke pratinjau editor normal'
-                    : 'Maksimalkan kanvas ke ukuran cetak asli (100%)'
+                    : 'Maksimalkan kanvas ke ukuran cetak asli'
                 }
                 title={
                   isCanvasMaximized
                     ? 'Perkecil kanvas (Esc)'
-                    : 'Maksimalkan ke ukuran real siap cetak (100%)'
+                    : 'Maksimalkan ke ukuran real siap cetak'
                 }
               >
                 {isCanvasMaximized ? (
@@ -2423,7 +2399,7 @@ export function DocumentStudio({
                 ) : (
                   <>
                     <Maximize2 size={13} aria-hidden="true" />
-                    <span>Maksimalkan (100%)</span>
+                    <span>Maksimalkan</span>
                   </>
                 )}
               </button>
@@ -2611,10 +2587,10 @@ export function DocumentStudio({
               <button
                 type="button"
                 className="lpv-zoom-step-btn"
-                onClick={() => handleStepZoomPct(-10, zoomPercentLabel)}
+                onClick={() => handleStepZoomPct(-5, zoomPercentLabel)}
                 disabled={zoomPercentLabel <= 35}
                 aria-label="Perkecil zoom naskah"
-                title="Perkecil (-10%)"
+                title="Perkecil (-5%)"
               >
                 <Minus size={13} aria-hidden="true" />
               </button>
@@ -2631,10 +2607,10 @@ export function DocumentStudio({
               <button
                 type="button"
                 className="lpv-zoom-step-btn"
-                onClick={() => handleStepZoomPct(10, zoomPercentLabel)}
+                onClick={() => handleStepZoomPct(5, zoomPercentLabel)}
                 disabled={zoomPercentLabel >= 160}
                 aria-label="Perbesar zoom naskah"
-                title="Perbesar (+10%)"
+                title="Perbesar (+5%)"
               >
                 <Plus size={13} aria-hidden="true" />
               </button>
@@ -2643,20 +2619,6 @@ export function DocumentStudio({
               <span className="lpv-zoom-readout s5-tnum" aria-live="polite">
                 {zoomPercentLabel}%
               </span>
-              <button
-                type="button"
-                className={`lpv-zoom-chip ${zoomMode === 'fit' ? 'is-active' : ''}`}
-                onClick={() => setZoomMode('fit')}
-              >
-                Pas
-              </button>
-              <button
-                type="button"
-                className={`lpv-zoom-chip ${zoomMode === 1 ? 'is-active' : ''}`}
-                onClick={() => setZoomMode(1)}
-              >
-                100%
-              </button>
               {isCanvasMaximized && (
                 <button
                   type="button"
@@ -2664,7 +2626,7 @@ export function DocumentStudio({
                   onClick={handleToggleCanvasMaximize}
                 >
                   <RotateCcw size={11} aria-hidden="true" />
-                  <span>Mini</span>
+                  <span>Perkecil</span>
                 </button>
               )}
             </div>

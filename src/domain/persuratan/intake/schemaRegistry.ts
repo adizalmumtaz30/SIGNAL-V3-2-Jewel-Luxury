@@ -440,7 +440,7 @@ const SYSTEM_SCHEMA_OVERRIDES: Record<string, SchemaPatchBuilder> = {
         controlType: 'textarea',
         provenance: 'OPERATOR_INPUT',
         required: true,
-        placeholder: 'Tuliskan satu jenis berkas per baris atau pisahkan dengan titik koma.',
+        placeholder: 'Satu baris per berkas (opsional pakai "|": Nama Berkas | Banyaknya | Keterangan).',
       },
       {
         key: 'banyaknya_satuan',
@@ -529,6 +529,7 @@ const SYSTEM_SCHEMA_OVERRIDES: Record<string, SchemaPatchBuilder> = {
         controlType: 'textarea',
         provenance: 'OPERATOR_INPUT',
         required: true,
+        placeholder: 'Satu baris per objek (opsional pakai "|": Uraian | Jumlah | Kondisi).',
       },
       {
         key: 'tanggal_ba',
@@ -684,6 +685,7 @@ const SYSTEM_SCHEMA_OVERRIDES: Record<string, SchemaPatchBuilder> = {
         controlType: 'textarea',
         provenance: 'OPERATOR_INPUT',
         required: true,
+        placeholder: 'Satu baris per bahasan (opsional pakai "|": Pokok Bahasan | Penanggung Jawab | Target).',
       },
       {
         key: 'pj_tindak_lanjut',
@@ -728,6 +730,7 @@ const SYSTEM_SCHEMA_OVERRIDES: Record<string, SchemaPatchBuilder> = {
         controlType: 'textarea',
         provenance: 'OPERATOR_INPUT',
         required: true,
+        placeholder: 'Satu baris per capaian (opsional pakai "|": Uraian Capaian | Realisasi | Evaluasi).',
       },
       {
         key: 'status_realisasi',
@@ -770,6 +773,7 @@ const SYSTEM_SCHEMA_OVERRIDES: Record<string, SchemaPatchBuilder> = {
         controlType: 'textarea',
         provenance: 'OPERATOR_INPUT',
         required: true,
+        placeholder: 'Satu baris per rombel (opsional pakai "|": Rombel | Jumlah Peserta | Hadir % | Ket).',
       },
       {
         key: 'tingkat_kehadiran',

@@ -1477,6 +1477,30 @@ table.s5-figma-table tbody tr.s5-row-selected:hover td {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
+
+  .sakala-header-controls > [data-s5-tooltip]:last-child::after,
+  [data-s5-tooltip].s5-tooltip-end::after {
+    left: auto;
+    right: 0;
+    text-align: right;
+    transform: translateY(4px);
+  }
+
+  .sakala-header-controls > [data-s5-tooltip]:last-child.s5-tooltip-bottom::after,
+  [data-s5-tooltip].s5-tooltip-end.s5-tooltip-bottom::after {
+    left: auto;
+    right: 0;
+    text-align: right;
+    transform: translateY(-4px);
+  }
+
+  .sakala-header-controls > [data-s5-tooltip]:last-child:hover::after,
+  .sakala-header-controls > [data-s5-tooltip]:last-child:focus-visible::after,
+  [data-s5-tooltip].s5-tooltip-end:hover::after,
+  [data-s5-tooltip].s5-tooltip-end:focus-visible::after {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (max-width: 1120px) {
@@ -4808,11 +4832,16 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 }
 
 /* Right Obsidian Priority Workflow Panel */
-.s5-priority-panel {
+.panel.s5-priority-panel {
   display: flex !important;
   flex-direction: column !important;
   justify-content: space-between !important;
   gap: 16px !important;
+  width: 464.576px !important;
+  max-width: 100% !important;
+  padding-left: 23px !important;
+  margin-left: 1px !important;
+  margin-top: 3px !important;
 }
 
 .s5-priority-badge {

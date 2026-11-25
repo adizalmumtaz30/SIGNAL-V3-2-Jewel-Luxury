@@ -279,7 +279,7 @@ export function buildSourceSnapshots(
     const ver = autoData.verifiedScheduleVersions.find((v) => v.id === meta.scheduleVersionId);
     snapshots.push({
       sourceKey: 'history.schedule_version',
-      sourceLabel: 'Versi Jadwal Terbit Resmi (ScheduleVersion)',
+      sourceLabel: 'Versi Jadwal Terbit Resmi',
       provenance: schema.controls.some((c) => c.key === 'daftar_beban_jp')
         ? 'AUTO_SYSTEM'
         : 'OPERATOR_INPUT',

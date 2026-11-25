@@ -122,7 +122,7 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
       { type: 'paragraph', text: 'Yang bertanda tangan di bawah ini, {{JABATAN_KEPALA_MADRASAH}} {{NAMA_MADRASAH}}, berdasarkan {{DASAR_PENUGASAN}}, dengan ini menugaskan kepada:' },
       {
         type: 'table',
-        columns: ['No', 'Nama Pendidik / Pegawai', 'NIP / NUPTK', 'Jabatan / Peran'],
+        columns: ['No', 'Nama Pendidik / Pegawai', 'Kode Pegawai', 'Jabatan / Peran'],
         sampleRows: [
           ['1', '{{NAMA_PESERTA_1}}', '{{IDENTITAS_PESERTA_1}}', '{{JABATAN_PESERTA_1}}'],
           ['2', '{{NAMA_PESERTA_2}}', '{{IDENTITAS_PESERTA_2}}', '{{JABATAN_PESERTA_2}}'],
@@ -596,7 +596,7 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
         type: 'meta_grid',
         rows: [
           { label: 'Nama Pendidik', value: '{{NAMA_GURU}}' },
-          { label: 'NIP / NPK', value: '{{IDENTITAS_KEPEGAWAIAN_GURU}}' },
+          { label: 'Kode Pegawai', value: '{{IDENTITAS_KEPEGAWAIAN_GURU}}' },
           { label: 'Mata Pelajaran', value: '{{MAPEL_DIAMPUNYA}}' },
           { label: 'Status Keaktifan', value: 'Aktif mengajar sejak {{TMT_MENGAJAR}} pada T.A. {{TAHUN_AJARAN}}' },
         ],
@@ -641,7 +641,7 @@ const RAW_SYSTEM_TEMPLATES: DocumentTemplate[] = [
         type: 'meta_grid',
         rows: [
           { label: 'Nama Pendidik', value: '{{NAMA_GURU}}' },
-          { label: 'NIP / NPK', value: '{{NIP_GURU}}' },
+          { label: 'Kode Pegawai', value: '{{NIP_GURU}}' },
           { label: 'Tugas Pokok / Tambahan', value: '{{URAIAN_TUGAS_GURU}}' },
           { label: 'Dasar Penetapan', value: '{{NOMOR_SK_RUJUKAN}}' },
         ],

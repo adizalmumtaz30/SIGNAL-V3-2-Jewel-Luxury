@@ -285,7 +285,7 @@ export function buildStudioSnippetNodes(
         headName: ctx.headName,
         headNip: ctx.headNip,
         leftTitle: 'Mengetahui / Pihak Kedua,',
-        leftName: '( Nama Pejabat / Pihak Terkait )',
+        leftName: '( .................................... )',
       }),
     ];
   }

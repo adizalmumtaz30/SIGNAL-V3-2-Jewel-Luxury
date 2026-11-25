@@ -24,8 +24,6 @@ import {
   Trash2,
   Undo2,
   WandSparkles,
-  ZoomIn,
-  ZoomOut,
 } from 'lucide-react';
 import type { AppState, Day, ScheduleEntry } from '../domain/types';
 import { getTimelineRows, isSlotBlocked } from '../domain/time';
@@ -35,6 +33,7 @@ import { compactSubjectName, compactTeacherName, getPrintableCellColor } from '.
 import { groupClassesForMasterMatrix } from '../utils/matrixGrouping';
 import { EditorialPageHeader } from '../components/EditorialPageHeader';
 import { MotionPopover } from '../components/KpiMotion';
+import { ScheduleClassViewport } from '../components/ScheduleClassViewport';
 import {
   Button,
   EmptyState,
@@ -90,6 +89,12 @@ export function ScheduleScreen({
 }) {
   const [draggedSlot, setDraggedSlot] = useState<{ classId: string; day: Day; jpNo: number } | null>(null);
   const [draggedUnplaced, setDraggedUnplaced] = useState<{ subjectId: string; teacherId: string } | null>(null);
+  const [selectedUnplaced, setSelectedUnplaced] = useState<{
+    requirementId: string;
+    subjectId: string;
+    teacherId: string;
+    subjectName: string;
+  } | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<{ classId?: string; day: Day; jpNo: number } | null>(null);
   const [hoveredCoordinate, setHoveredCoordinate] = useState<{ day: Day; jpNo: number } | null>(null);
   const [cellMenu, setCellMenu] = useState<{ classId: string; day: Day; jpNo: number; x: number; y: number } | null>(null);
@@ -114,23 +119,12 @@ export function ScheduleScreen({
   const [filterSubjectId, setFilterSubjectId] = useState<string>('');
   const [colorizeCells, setColorizeCells] = useState<boolean>(true);
   const [compactLabels, setCompactLabels] = useState<boolean>(true);
-  const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [filterLevel, setFilterLevel] = useState<string>('all');
   const [filterRombelRow, setFilterRombelRow] = useState<string>('all');
-  const [density, setDensity] = useState<'compact' | 'standard' | 'comfortable'>(() => {
-    try {
-      const saved = localStorage.getItem('signal_schedule_density');
-      if (saved === 'compact' || saved === 'standard' || saved === 'comfortable') return saved;
-    } catch {}
-    return 'standard';
-  });
 
-  const handleDensityChange = (d: 'compact' | 'standard' | 'comfortable') => {
-    setDensity(d);
-    try {
-      localStorage.setItem('signal_schedule_density', d);
-    } catch {}
-  };
+  useEffect(() => {
+    setSelectedUnplaced(null);
+  }, [selectedClass, viewMode]);
 
   const [viewOptionsOpen, setViewOptionsOpen] = useState<boolean>(false);
   const [filterPopoverOpen, setFilterPopoverOpen] = useState<boolean>(false);
@@ -597,7 +591,7 @@ export function ScheduleScreen({
               type="button"
               className={`button button-secondary ${viewOptionsOpen ? 'is-active' : ''}`}
               onClick={() => setViewOptionsOpen((v) => !v)}
-              title="Sesuaikan kerapatan baris, zoom, dan warna jadwal"
+              title="Sesuaikan tampilan warna dan label sel jadwal"
             >
               <SlidersHorizontal size={14} />
               <span>Tampilan</span>
@@ -612,120 +606,30 @@ export function ScheduleScreen({
 
             <MotionPopover isOpen={viewOptionsOpen} className="view-options-popover">
               <div>
-                <div className="view-popover-title">Kerapatan Baris Tabel</div>
-                <div
-                  className="density-button-group"
-                  style={{
-                    display: 'flex',
-                    width: '100%',
-                    background: '#edf3ef',
-                    padding: '3px',
-                    borderRadius: '8px',
-                    gap: '3px',
-                  }}
-                >
-                  <button
-                    type="button"
-                    className={`density-btn ${density === 'compact' ? 'active' : ''}`}
-                    style={{ flex: 1, textAlign: 'center' }}
-                    onClick={() => handleDensityChange('compact')}
-                    title="Kompak: hemat ruang untuk layar kecil atau banyak rombel"
-                  >
-                    Kompak
-                  </button>
-                  <button
-                    type="button"
-                    className={`density-btn ${density === 'standard' ? 'active' : ''}`}
-                    style={{ flex: 1, textAlign: 'center' }}
-                    onClick={() => handleDensityChange('standard')}
-                    title="Standar: kerapatan proporsional default"
-                  >
-                    Standar
-                  </button>
-                  <button
-                    type="button"
-                    className={`density-btn ${density === 'comfortable' ? 'active' : ''}`}
-                    style={{ flex: 1, textAlign: 'center' }}
-                    onClick={() => handleDensityChange('comfortable')}
-                    title="Lega: ruang baca longgar dan santai"
-                  >
-                    Lega
-                  </button>
+                <div className="view-popover-title">Format Visual Sel</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label className="master-toggle-label">
+                    <input
+                      type="checkbox"
+                      checked={colorizeCells}
+                      onChange={(e) => setColorizeCells(e.target.checked)}
+                    />
+                    <span>Warnai latar sel mapel</span>
+                  </label>
+                  <label className="master-toggle-label">
+                    <input
+                      type="checkbox"
+                      checked={compactLabels}
+                      onChange={(e) => setCompactLabels(e.target.checked)}
+                    />
+                    <span>Singkatkan nama guru &amp; mapel</span>
+                  </label>
                 </div>
               </div>
-
-              {viewMode === 'all' && (
-                <>
-                  <div className="view-popover-divider" />
-                  <div>
-                    <div className="view-popover-title">Skala Zoom Matriks</div>
-                    <div
-                      className="matrix-zoom-controls"
-                      style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}
-                    >
-                      <button
-                        type="button"
-                        className="matrix-zoom-btn"
-                        style={{ flex: 1 }}
-                        onClick={() => setZoomLevel((z) => Math.max(50, z - 10))}
-                        title="Perkecil (-10%)"
-                      >
-                        <ZoomOut size={13} />
-                      </button>
-                      <button
-                        type="button"
-                        className="matrix-zoom-btn zoom-text"
-                        style={{ flex: 1.5 }}
-                        onClick={() => setZoomLevel(100)}
-                        title="Reset ke 100%"
-                      >
-                        {zoomLevel}%
-                      </button>
-                      <button
-                        type="button"
-                        className="matrix-zoom-btn"
-                        style={{ flex: 1 }}
-                        onClick={() => setZoomLevel((z) => Math.min(150, z + 10))}
-                        title="Perbesar (+10%)"
-                      >
-                        <ZoomIn size={13} />
-                      </button>
-                      <button
-                        type="button"
-                        className="matrix-zoom-btn"
-                        style={{ flex: 1 }}
-                        onClick={() => setZoomLevel(100)}
-                        title="Reset Zoom"
-                      >
-                        <RotateCcw size={12} />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="view-popover-divider" />
-                  <div>
-                    <div className="view-popover-title">Format Visual</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <label className="master-toggle-label">
-                        <input
-                          type="checkbox"
-                          checked={colorizeCells}
-                          onChange={(e) => setColorizeCells(e.target.checked)}
-                        />
-                        <span>Warnai latar sel mapel</span>
-                      </label>
-                      <label className="master-toggle-label">
-                        <input
-                          type="checkbox"
-                          checked={compactLabels}
-                          onChange={(e) => setCompactLabels(e.target.checked)}
-                        />
-                        <span>Singkatkan nama guru &amp; mapel</span>
-                      </label>
-                    </div>
-                  </div>
-                </>
-              )}
+              <div className="view-popover-divider" />
+              <p className="scv-popover-note">
+                Kontrol zoom <strong>- / +</strong> dan tombol <strong>Maksimalkan</strong> tersedia langsung pada tiap kartu jadwal kelas.
+              </p>
             </MotionPopover>
           </div>
 
@@ -735,436 +639,482 @@ export function ScheduleScreen({
         </div>
       </div>
 
-      <div className={`schedule-workspace density-${density}`}>
-        {viewMode === 'all' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div
-            className="master-matrix-workspace"
-            style={{
-              transform: zoomLevel !== 100 ? `scale(${zoomLevel / 100})` : undefined,
-              transformOrigin: 'top left',
-              width: zoomLevel !== 100 ? `${(100 / (zoomLevel / 100)).toFixed(2)}%` : '100%',
-            }}
-          >
-            {visibleRombelRows.length === 0 ? (
-              <div className="surface-card" style={{ padding: '36px', textAlign: 'center', color: '#687a75' }}>
-                <p style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>
-                  Tidak ada kelas yang sesuai dengan filter yang dipilih.
-                </p>
-                <button
-                  type="button"
-                  className="button button-quiet"
-                  style={{ marginTop: '12px' }}
-                  onClick={() => {
-                    setFilterLevel('all');
-                    setFilterRombelRow('all');
-                  }}
-                >
-                  Tampilkan Semua Kelas
-                </button>
-              </div>
-            ) : (
-              visibleRombelRows.map((row) => (
-                <div key={row.rowId} className="master-matrix-row-container">
-                  <div className="master-matrix-row-header">
-                    <div className="row-title-area">
-                      <span className="row-badge">PARALEL</span>
-                      <h3 className="row-title">{row.label}</h3>
-                      <span className="row-count">
-                        ({row.classes.length} Kelas Berdampingan:{' '}
-                        {row.classes.map((c) => c.name).join(' | ')})
-                      </span>
-                    </div>
-                    <div className="row-legend-hint">
-                      Senin &ndash; {activeDays[activeDays.length - 1]} &bull; Disusun horizontal per tingkat
-                    </div>
-                  </div>
+      <div className="schedule-workspace">
+        {(() => {
+          const renderWeeklyMatrixTable = (clsId: string, clsName: string, interactiveMode: 'matrix' | 'single') => (
+            <table className={`master-class-weekly-table ${interactiveMode === 'single' ? 'is-single-mode' : ''}`}>
+              <thead>
+                <tr>
+                  <th className="col-time-th">JP / WAKTU</th>
+                  {activeDays.map((day) => (
+                    <th
+                      key={day}
+                      className={hoveredCoordinate?.day === day ? 'ruler-col-active' : ''}
+                    >
+                      {day}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {timelineRows.map((tRow) => {
+                  const timeStr = `${tRow.start}-${tRow.end}`;
+                  if (!tRow.isKbm) {
+                    return (
+                      <tr key={`agenda-${tRow.order}`}>
+                        <th className="jp-row-header non-kbm">
+                          <strong>{tRow.defaultLabel}</strong>
+                          <small>{timeStr}</small>
+                        </th>
+                        {activeDays.map((day) => {
+                          const slotDef = state.slots.find(
+                            (s) => s.day === day && s.order === tRow.order,
+                          );
+                          const actType = (slotDef?.activityType || tRow.activityType || '').toLowerCase();
+                          const actClass = actType.includes('upacara')
+                            ? 'upacara'
+                            : actType.includes('religi') || actType.includes('sholat')
+                            ? 'religi'
+                            : actType.includes('istirahat')
+                            ? 'istirahat'
+                            : 'lainnya';
+                          const label = slotDef?.activityName || slotDef?.label || tRow.defaultLabel;
+                          return (
+                            <td key={day}>
+                              <div
+                                className={`master-non-kbm-slot ${actClass}`}
+                                title={`${label} (${day}, ${timeStr} WIB): Non-KBM / Terkunci`}
+                              >
+                                <LockKeyhole size={10} style={{ display: 'inline', marginRight: 3, verticalAlign: -1 }} />
+                                {label}
+                              </div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  }
 
-                  <div className="master-matrix-horizontal-track">
-                    {row.classes.map((cls) => {
-                      const classEntries = scheduleEntries.filter((e) => e.classId === cls.id);
-                      const classReqJp = state.requirements
-                        .filter((r) => r.classId === cls.id)
-                        .reduce((sum, r) => sum + r.requiredJP, 0);
+                  const jpNo = tRow.jpNo!;
+                  return (
+                    <tr key={jpNo}>
+                      <th
+                        className={`jp-row-header ${hoveredCoordinate?.jpNo === jpNo ? 'ruler-row-active' : ''}`}
+                      >
+                        <strong>JP {String(jpNo).padStart(2, '0')}</strong>
+                        <small>{timeStr}</small>
+                      </th>
 
-                      return (
-                        <div key={cls.id} className="master-class-weekly-block">
-                          <div className="master-class-block-header">
-                            <div className="class-identity">
-                              <h4 className="class-name">Kelas {cls.name}</h4>
-                              <span className="class-level-tag">Tingkat {cls.level}</span>
-                            </div>
-                            <div className="class-stats">
-                              <span className="jp-counter">
-                                {classEntries.length} / {classReqJp > 0 ? classReqJp : classEntries.length} JP
-                              </span>
+                      {activeDays.map((day) => {
+                        const slotDef = state.slots.find(
+                          (s) => s.day === day && s.kind === 'TEACHING' && s.jpNo === jpNo,
+                        );
+                        const blocked = isSlotBlocked(slotDef);
+                        const isCrosshair =
+                          hoveredCoordinate?.day === day &&
+                          hoveredCoordinate?.jpNo === jpNo;
+                        const isOver =
+                          (interactiveMode === 'single' || dragOverTarget?.classId === clsId) &&
+                          dragOverTarget?.day === day &&
+                          dragOverTarget?.jpNo === jpNo;
+                        const preview = isOver ? getDropPreviewStatus(clsId, day, jpNo) : null;
+                        const isTargetHighlighted =
+                          highlightedSlot?.classId === clsId &&
+                          highlightedSlot?.day === day &&
+                          highlightedSlot?.jpNo === jpNo;
+
+                        if (blocked) {
+                          const isOutOfKbm = !slotDef;
+                          const actType = (slotDef?.activityType || '').toLowerCase();
+                          const actClass = actType.includes('upacara')
+                            ? 'upacara'
+                            : actType.includes('religi') || actType.includes('sholat')
+                            ? 'religi'
+                            : actType.includes('istirahat')
+                            ? 'istirahat'
+                            : 'lainnya';
+
+                          return (
+                            <td
+                              key={day}
+                              className={isCrosshair ? 'ruler-crosshair-active' : ''}
+                              onMouseEnter={() => setHoveredCoordinate({ day, jpNo })}
+                              onMouseLeave={() => setHoveredCoordinate(null)}
+                            >
+                              <div
+                                className={`master-non-kbm-slot ${actClass} ${isOutOfKbm ? 'out-of-kbm' : ''}`}
+                                title={
+                                  isOutOfKbm
+                                    ? `Di Luar Jam KBM (${day}, JP ${jpNo})`
+                                    : `${slotDef?.activityName || slotDef?.activityType} (${day}, ${slotDef?.start}-${slotDef?.end} WIB)`
+                                }
+                              >
+                                {isOutOfKbm ? 'Selesai' : (slotDef?.activityName || slotDef?.activityType || 'NON-KBM')}
+                              </div>
+                            </td>
+                          );
+                        }
+
+                        const entry = getEntry(state, clsId, day, jpNo);
+
+                        if (!entry) {
+                          const assignReady = interactiveMode === 'single' && Boolean(selectedUnplaced);
+                          return (
+                            <td
+                              key={day}
+                              className={isCrosshair ? 'ruler-crosshair-active' : ''}
+                              style={{ position: 'relative' }}
+                              onMouseEnter={() => setHoveredCoordinate({ day, jpNo })}
+                              onMouseLeave={() => setHoveredCoordinate(null)}
+                              onDragOver={(e) => {
+                                if (draggedSlot?.classId === clsId || draggedUnplaced) {
+                                  e.preventDefault();
+                                  setDragOverTarget({ classId: clsId, day, jpNo });
+                                }
+                              }}
+                              onDragLeave={() => {
+                                if (
+                                  dragOverTarget?.classId === clsId &&
+                                  dragOverTarget?.day === day &&
+                                  dragOverTarget?.jpNo === jpNo
+                                ) {
+                                  setDragOverTarget(null);
+                                }
+                              }}
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                setDragOverTarget(null);
+                                if (draggedSlot && draggedSlot.classId === clsId) {
+                                  onDropSlot(draggedSlot, { day, jpNo });
+                                  setDraggedSlot(null);
+                                } else if (draggedUnplaced && onAssignSlot) {
+                                  onAssignSlot(clsId, day, jpNo, draggedUnplaced.subjectId, draggedUnplaced.teacherId);
+                                  setDraggedUnplaced(null);
+                                }
+                              }}
+                            >
+                              {isOver && preview && (
+                                <div className={`drag-hud-overlay drag-hud-${preview.status}`}>
+                                  <span className="drag-hud-badge">{preview.message}</span>
+                                </div>
+                              )}
                               <button
                                 type="button"
-                                className="editor-shortcut-btn"
+                                data-slot-key={`${clsId}|${day}|${jpNo}`}
+                                className={`master-empty-slot ${assignReady ? 'is-assign-ready' : ''} ${
+                                  isTargetHighlighted ? 'schedule-cell-target-highlight' : ''
+                                }`}
                                 onClick={() => {
-                                  onSelectClass(cls.id);
-                                  setViewMode('single');
+                                  if (interactiveMode === 'single' && selectedUnplaced && onAssignSlot) {
+                                    onAssignSlot(
+                                      clsId,
+                                      day,
+                                      jpNo,
+                                      selectedUnplaced.subjectId,
+                                      selectedUnplaced.teacherId,
+                                    );
+                                    setSelectedUnplaced(null);
+                                    return;
+                                  }
+                                  onEditSlot(clsId, day, jpNo);
                                 }}
-                                title={`Buka Kelas ${cls.name} di Editor Per-Kelas`}
-                              >
-                                <Edit2 size={11} /> Editor
-                              </button>
-                            </div>
-                          </div>
-
-                          <table className="master-class-weekly-table">
-                            <thead>
-                              <tr>
-                                <th className="col-time-th">JP / WAKTU</th>
-                                {activeDays.map((day) => (
-                                  <th
-                                    key={day}
-                                    className={hoveredCoordinate?.day === day ? 'ruler-col-active' : ''}
-                                  >
-                                    {day}
-                                  </th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {timelineRows.map((tRow) => {
-                                const timeStr = `${tRow.start}-${tRow.end}`;
-                                if (!tRow.isKbm) {
-                                  return (
-                                    <tr key={`agenda-${tRow.order}`}>
-                                      <th className="jp-row-header non-kbm">
-                                        <strong>{tRow.defaultLabel}</strong>
-                                        <small>{timeStr}</small>
-                                      </th>
-                                      {activeDays.map((day) => {
-                                        const slotDef = state.slots.find(
-                                          (s) => s.day === day && s.order === tRow.order,
-                                        );
-                                        const actType = (slotDef?.activityType || tRow.activityType || '').toLowerCase();
-                                        const actClass = actType.includes('upacara')
-                                          ? 'upacara'
-                                          : actType.includes('religi') || actType.includes('sholat')
-                                          ? 'religi'
-                                          : actType.includes('istirahat')
-                                          ? 'istirahat'
-                                          : 'lainnya';
-                                        const label = slotDef?.activityName || slotDef?.label || tRow.defaultLabel;
-                                        return (
-                                          <td key={day}>
-                                            <div
-                                              className={`master-non-kbm-slot ${actClass}`}
-                                              title={`${label} (${day}, ${timeStr} WIB): Non-KBM / Terkunci`}
-                                            >
-                                              <LockKeyhole size={10} style={{ display: 'inline', marginRight: 3, verticalAlign: -1 }} />
-                                              {label}
-                                            </div>
-                                          </td>
-                                        );
-                                      })}
-                                    </tr>
-                                  );
+                                title={
+                                  assignReady && selectedUnplaced
+                                    ? `Klik untuk memasang ${selectedUnplaced.subjectName} pada ${day}, JP ${jpNo}`
+                                    : `Klik untuk mengisi jadwal Kelas ${clsName} pada ${day}, JP ${jpNo}`
                                 }
+                              >
+                                <span>{assignReady && selectedUnplaced ? `+ Pasang` : '+ Isi'}</span>
+                              </button>
+                            </td>
+                          );
+                        }
 
-                                const jpNo = tRow.jpNo!;
-                                return (
-                                  <tr key={jpNo}>
-                                    <th
-                                      className={`jp-row-header ${hoveredCoordinate?.jpNo === jpNo ? 'ruler-row-active' : ''}`}
-                                    >
-                                      <strong>JP {String(jpNo).padStart(2, '0')}</strong>
-                                      <small>{timeStr}</small>
-                                    </th>
+                        const subject = getSubject(state, entry.subjectId);
+                        const teacher = getTeacher(state, entry.teacherId);
 
-                                    {activeDays.map((day) => {
-                                      const slotDef = state.slots.find(
-                                        (s) => s.day === day && s.kind === 'TEACHING' && s.jpNo === jpNo,
-                                      );
-                                      const blocked = isSlotBlocked(slotDef);
-                                      const isCrosshair =
-                                        hoveredCoordinate?.day === day &&
-                                        hoveredCoordinate?.jpNo === jpNo;
-                                      const isOver =
-                                        dragOverTarget?.classId === cls.id &&
-                                        dragOverTarget?.day === day &&
-                                        dragOverTarget?.jpNo === jpNo;
-                                      const preview = isOver ? getDropPreviewStatus(cls.id, day, jpNo) : null;
+                        const isHighlighted =
+                          (filterTeacherId && entry.teacherId === filterTeacherId) ||
+                          (filterSubjectId && entry.subjectId === filterSubjectId);
 
-                                      if (blocked) {
-                                        const isOutOfKbm = !slotDef;
-                                        const actType = (slotDef?.activityType || '').toLowerCase();
-                                        const actClass = actType.includes('upacara')
-                                          ? 'upacara'
-                                          : actType.includes('religi') || actType.includes('sholat')
-                                          ? 'religi'
-                                          : actType.includes('istirahat')
-                                          ? 'istirahat'
-                                          : 'lainnya';
+                        let cellBg = '#f5f9f6';
+                        let cellBorder = '#d7e2da';
+                        let cellText = '#173637';
 
-                                        return (
-                                          <td
-                                            key={day}
-                                            className={isCrosshair ? 'ruler-crosshair-active' : ''}
-                                            onMouseEnter={() => setHoveredCoordinate({ day, jpNo })}
-                                            onMouseLeave={() => setHoveredCoordinate(null)}
-                                          >
-                                            <div
-                                              className={`master-non-kbm-slot ${actClass} ${isOutOfKbm ? 'out-of-kbm' : ''}`}
-                                              title={isOutOfKbm ? `Di Luar Jam KBM (${day}, JP ${jpNo})` : `${slotDef?.activityName || slotDef?.activityType} (${day}, ${slotDef?.start}-${slotDef?.end} WIB)`}
-                                            >
-                                              {isOutOfKbm ? 'Selesai' : (slotDef?.activityName || slotDef?.activityType || 'NON-KBM')}
-                                            </div>
-                                          </td>
-                                        );
-                                      }
+                        if (colorizeCells && subject?.color) {
+                          const { bg, text } = getPrintableCellColor(subject.color);
+                          cellBg = `rgb(${bg.join(',')})`;
+                          cellBorder = `rgb(${text.map((v) => Math.min(220, v + 80)).join(',')})`;
+                          cellText = `rgb(${text.join(',')})`;
+                        }
 
-                                      const entry = getEntry(state, cls.id, day, jpNo);
+                        const subjLabel = compactLabels
+                          ? compactSubjectName(subject?.name || '', subject?.code)
+                          : subject?.name || 'Mapel';
 
-                                      if (!entry) {
-                                        return (
-                                          <td
-                                            key={day}
-                                            className={isCrosshair ? 'ruler-crosshair-active' : ''}
-                                            style={{ position: 'relative' }}
-                                            onMouseEnter={() => setHoveredCoordinate({ day, jpNo })}
-                                            onMouseLeave={() => setHoveredCoordinate(null)}
-                                            onDragOver={(e) => {
-                                              if (draggedSlot?.classId === cls.id || draggedUnplaced) {
-                                                e.preventDefault();
-                                                setDragOverTarget({ classId: cls.id, day, jpNo });
-                                              }
-                                            }}
-                                            onDragLeave={() => {
-                                              if (dragOverTarget?.classId === cls.id && dragOverTarget?.day === day && dragOverTarget?.jpNo === jpNo) {
-                                                setDragOverTarget(null);
-                                              }
-                                            }}
-                                            onDrop={(e) => {
-                                              e.preventDefault();
-                                              setDragOverTarget(null);
-                                              if (draggedSlot && draggedSlot.classId === cls.id) {
-                                                onDropSlot(draggedSlot, { day, jpNo });
-                                                setDraggedSlot(null);
-                                              } else if (draggedUnplaced && onAssignSlot) {
-                                                onAssignSlot(cls.id, day, jpNo, draggedUnplaced.subjectId, draggedUnplaced.teacherId);
-                                                setDraggedUnplaced(null);
-                                              }
-                                            }}
-                                          >
-                                            {isOver && preview && (
-                                              <div className={`drag-hud-overlay drag-hud-${preview.status}`}>
-                                                <span className="drag-hud-badge">{preview.message}</span>
-                                              </div>
-                                            )}
-                                            <button
-                                              type="button"
-                                              className="master-empty-slot"
-                                              onClick={() => onEditSlot(cls.id, day, jpNo)}
-                                              title={`Klik untuk mengisi jadwal Kelas ${cls.name} pada ${day}, JP ${jpNo}`}
-                                            >
-                                              <span>+ Isi</span>
-                                            </button>
-                                          </td>
-                                        );
-                                      }
+                        const teacherLabel = compactLabels
+                          ? compactTeacherName(teacher?.name || '', teacher?.code)
+                          : teacher?.name || '—';
 
-                                      const subject = getSubject(state, entry.subjectId);
-                                      const teacher = getTeacher(state, entry.teacherId);
+                        return (
+                          <td
+                            key={day}
+                            className={isCrosshair ? 'ruler-crosshair-active' : ''}
+                            style={{ position: 'relative' }}
+                            onMouseEnter={() => setHoveredCoordinate({ day, jpNo })}
+                            onMouseLeave={() => setHoveredCoordinate(null)}
+                            onDragOver={(e) => {
+                              if (draggedSlot?.classId === clsId || draggedUnplaced) {
+                                e.preventDefault();
+                                setDragOverTarget({ classId: clsId, day, jpNo });
+                              }
+                            }}
+                            onDragLeave={() => {
+                              if (
+                                dragOverTarget?.classId === clsId &&
+                                dragOverTarget?.day === day &&
+                                dragOverTarget?.jpNo === jpNo
+                              ) {
+                                setDragOverTarget(null);
+                              }
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              setDragOverTarget(null);
+                              if (draggedSlot && draggedSlot.classId === clsId) {
+                                onDropSlot(draggedSlot, { day, jpNo });
+                                setDraggedSlot(null);
+                              } else if (draggedUnplaced && onAssignSlot) {
+                                onAssignSlot(clsId, day, jpNo, draggedUnplaced.subjectId, draggedUnplaced.teacherId);
+                                setDraggedUnplaced(null);
+                              }
+                            }}
+                          >
+                            {isOver && preview && (
+                              <div className={`drag-hud-overlay drag-hud-${preview.status}`}>
+                                <span className="drag-hud-badge">{preview.message}</span>
+                              </div>
+                            )}
+                            <div
+                              data-slot-key={`${clsId}|${day}|${jpNo}`}
+                              role="button"
+                              tabIndex={0}
+                              draggable={true}
+                              onDragStart={() => {
+                                setDraggedSlot({ classId: clsId, day, jpNo });
+                              }}
+                              onDragEnd={() => {
+                                setDraggedSlot(null);
+                                setDragOverTarget(null);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  onEditSlot(clsId, day, jpNo);
+                                }
+                              }}
+                              className={`master-slot-btn ${isHighlighted ? 'is-highlighted' : ''} ${
+                                isTargetHighlighted ? 'schedule-cell-target-highlight' : ''
+                              }`}
+                              onClick={() => onEditSlot(clsId, day, jpNo)}
+                              style={{
+                                background: cellBg,
+                                borderColor: isHighlighted ? '#bc945e' : cellBorder,
+                                color: cellText,
+                                position: 'relative',
+                              }}
+                              title={`${subject?.name || 'Mapel'} (${teacher?.name || 'Guru'})\nKelas ${clsName} · ${day}, JP ${jpNo} (${timeStr})\nKlik untuk mengedit atau drag untuk memindahkan alokasi`}
+                            >
+                              <button
+                                type="button"
+                                className="quick-cell-trigger"
+                                title="Menu Cepat Slot"
+                                aria-label={`Menu cepat slot ${day} JP ${jpNo}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  setCellMenu({
+                                    classId: clsId,
+                                    day,
+                                    jpNo,
+                                    x: Math.min(window.innerWidth - 220, rect.left),
+                                    y: Math.min(window.innerHeight - 200, rect.bottom + 4),
+                                  });
+                                }}
+                              >
+                                <MoreHorizontal size={11} />
+                              </button>
+                              <div className="master-slot-subject">{subjLabel}</div>
+                              <div className="master-slot-teacher">
+                                {teacher?.code && <span className="teacher-code-badge">{teacher.code}</span>}
+                                <span className="teacher-name-text">{teacherLabel}</span>
+                              </div>
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          );
 
-                                      const isHighlighted =
-                                        (filterTeacherId && entry.teacherId === filterTeacherId) ||
-                                        (filterSubjectId && entry.subjectId === filterSubjectId);
-
-                                      let cellBg = '#f5f9f6';
-                                      let cellBorder = '#d7e2da';
-                                      let cellText = '#173637';
-
-                                      if (colorizeCells && subject?.color) {
-                                        const { bg, text } = getPrintableCellColor(subject.color);
-                                        cellBg = `rgb(${bg.join(',')})`;
-                                        cellBorder = `rgb(${text.map((v) => Math.min(220, v + 80)).join(',')})`;
-                                        cellText = `rgb(${text.join(',')})`;
-                                      }
-
-                                      const subjLabel = compactLabels
-                                        ? compactSubjectName(subject?.name || '', subject?.code)
-                                        : subject?.name || 'Mapel';
-
-                                      const teacherLabel = compactLabels
-                                        ? compactTeacherName(teacher?.name || '', teacher?.code)
-                                        : teacher?.name || '—';
-
-                                      return (
-                                        <td
-                                          key={day}
-                                          className={isCrosshair ? 'ruler-crosshair-active' : ''}
-                                          style={{ position: 'relative' }}
-                                          onMouseEnter={() => setHoveredCoordinate({ day, jpNo })}
-                                          onMouseLeave={() => setHoveredCoordinate(null)}
-                                          onDragOver={(e) => {
-                                            if (draggedSlot?.classId === cls.id || draggedUnplaced) {
-                                              e.preventDefault();
-                                              setDragOverTarget({ classId: cls.id, day, jpNo });
-                                            }
-                                          }}
-                                          onDragLeave={() => {
-                                            if (dragOverTarget?.classId === cls.id && dragOverTarget?.day === day && dragOverTarget?.jpNo === jpNo) {
-                                              setDragOverTarget(null);
-                                            }
-                                          }}
-                                          onDrop={(e) => {
-                                            e.preventDefault();
-                                            setDragOverTarget(null);
-                                            if (draggedSlot && draggedSlot.classId === cls.id) {
-                                              onDropSlot(draggedSlot, { day, jpNo });
-                                              setDraggedSlot(null);
-                                            } else if (draggedUnplaced && onAssignSlot) {
-                                              onAssignSlot(cls.id, day, jpNo, draggedUnplaced.subjectId, draggedUnplaced.teacherId);
-                                              setDraggedUnplaced(null);
-                                            }
-                                          }}
-                                        >
-                                          {isOver && preview && (
-                                            <div className={`drag-hud-overlay drag-hud-${preview.status}`}>
-                                              <span className="drag-hud-badge">{preview.message}</span>
-                                            </div>
-                                          )}
-                                          <div
-                                            role="button"
-                                            tabIndex={0}
-                                            draggable={true}
-                                            onDragStart={() => {
-                                              setDraggedSlot({ classId: cls.id, day, jpNo });
-                                            }}
-                                            onKeyDown={(e) => {
-                                              if (e.key === 'Enter' || e.key === ' ') {
-                                                e.preventDefault();
-                                                onEditSlot(cls.id, day, jpNo);
-                                              }
-                                            }}
-                                            className={`master-slot-btn ${isHighlighted ? 'is-highlighted' : ''}`}
-                                            onClick={() => onEditSlot(cls.id, day, jpNo)}
-                                            style={{
-                                              background: cellBg,
-                                              borderColor: isHighlighted ? '#bc945e' : cellBorder,
-                                              color: cellText,
-                                              position: 'relative',
-                                            }}
-                                            title={`${subject?.name || 'Mapel'} (${teacher?.name || 'Guru'})\nKelas ${cls.name} · ${day}, JP ${jpNo} (${timeStr})\nKlik untuk mengedit atau drag untuk memindahkan alokasi`}
-                                          >
-                                            <button
-                                              type="button"
-                                              className="quick-cell-trigger"
-                                              title="Menu Cepat Slot"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                const rect = e.currentTarget.getBoundingClientRect();
-                                                setCellMenu({
-                                                  classId: cls.id,
-                                                  day,
-                                                  jpNo,
-                                                  x: Math.min(window.innerWidth - 220, rect.left),
-                                                  y: Math.min(window.innerHeight - 200, rect.bottom + 4),
-                                                });
-                                              }}
-                                            >
-                                              <MoreHorizontal size={11} />
-                                            </button>
-                                            <div className="master-slot-subject">{subjLabel}</div>
-                                            <div className="master-slot-teacher">
-                                              {teacher?.code && <span className="teacher-code-badge">{teacher.code}</span>}
-                                              <span className="teacher-name-text">{teacherLabel}</span>
-                                            </div>
-                                          </div>
-                                        </td>
-                                      );
-                                    })}
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
+          if (viewMode === 'all') {
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div className="master-matrix-workspace">
+                  {visibleRombelRows.length === 0 ? (
+                    <div className="surface-card" style={{ padding: '36px', textAlign: 'center', color: '#687a75' }}>
+                      <p style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>
+                        Tidak ada kelas yang sesuai dengan filter yang dipilih.
+                      </p>
+                      <button
+                        type="button"
+                        className="button button-quiet"
+                        style={{ marginTop: '12px' }}
+                        onClick={() => {
+                          setFilterLevel('all');
+                          setFilterRombelRow('all');
+                        }}
+                      >
+                        Tampilkan Semua Kelas
+                      </button>
+                    </div>
+                  ) : (
+                    visibleRombelRows.map((row) => (
+                      <div key={row.rowId} className="master-matrix-row-container">
+                        <div className="master-matrix-row-header">
+                          <div className="row-title-area">
+                            <span className="row-badge">PARALEL</span>
+                            <h3 className="row-title">{row.label}</h3>
+                            <span className="row-count">
+                              ({row.classes.length} Kelas Berdampingan:{' '}
+                              {row.classes.map((c) => c.name).join(' | ')})
+                            </span>
+                          </div>
+                          <div className="row-legend-hint">
+                            Senin &ndash; {activeDays[activeDays.length - 1]} &bull; Gunakan slider -/+ di tiap kelas untuk zoom penuh
+                          </div>
                         </div>
-                      );
-                    })}
-                  </div>
+
+                        <div className="master-matrix-horizontal-track">
+                          {row.classes.map((cls) => {
+                            const classEntries = scheduleEntries.filter((e) => e.classId === cls.id);
+                            const classReqJp = state.requirements
+                              .filter((r) => r.classId === cls.id)
+                              .reduce((sum, r) => sum + r.requiredJP, 0);
+
+                            return (
+                              <ScheduleClassViewport
+                                key={cls.id}
+                                classNameValue={cls.name}
+                                levelLabel={`Tingkat ${cls.level}`}
+                                filledCount={classEntries.length}
+                                requiredCount={classReqJp}
+                                variant="matrix"
+                                headerExtra={
+                                  <button
+                                    type="button"
+                                    className="editor-shortcut-btn"
+                                    onClick={() => {
+                                      onSelectClass(cls.id);
+                                      setViewMode('single');
+                                    }}
+                                    title={`Buka Kelas ${cls.name} di Editor Per-Kelas`}
+                                  >
+                                    <Edit2 size={11} /> Editor
+                                  </button>
+                                }
+                              >
+                                {renderWeeklyMatrixTable(cls.id, cls.name, 'matrix')}
+                              </ScheduleClassViewport>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
-              ))
-            )}
-          </div>
 
-          <div className="schedule-legend-row" style={{ marginTop: '6px' }}>
-            <span>
-              <i className="legend-dot dot-teal" /> KBM Terisi
-            </span>
-            <span>
-              <i className="legend-dot dot-ivory" /> Slot Kosong
-            </span>
-            <span>
-              <span
-                style={{
-                  display: 'inline-block',
-                  width: '10px',
-                  height: '10px',
-                  background: '#fef8e7',
-                  border: '1px dashed #e6c884',
-                  borderRadius: '2px',
-                  verticalAlign: 'middle',
-                  marginRight: '5px',
-                }}
+                <div className="schedule-legend-row" style={{ marginTop: '6px' }}>
+                  <span>
+                    <i className="legend-dot dot-teal" /> KBM Terisi
+                  </span>
+                  <span>
+                    <i className="legend-dot dot-ivory" /> Slot Kosong
+                  </span>
+                  <span>
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        width: '10px',
+                        height: '10px',
+                        background: '#fef8e7',
+                        border: '1px dashed #e6c884',
+                        borderRadius: '2px',
+                        verticalAlign: 'middle',
+                        marginRight: '5px',
+                      }}
+                    />
+                    Non-KBM
+                  </span>
+                  <span className="legend-spacer" />
+                  <button className="text-link" onClick={onOpenValidationModal}>
+                    Laporan Validasi <ArrowRight size={13} />
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
+          if (!selectedClass) {
+            return (
+              <EmptyState
+                icon={GraduationCap}
+                title="Pilih kelas untuk melihat jadwal"
+                description="Pilih kelas melalui dropdown di atas atau tambahkan kelas baru pada Data Master."
+                action={<Button onClick={() => onNavigate('master')}>Buka Data Master</Button>}
               />
-              Non-KBM
-            </span>
-            <span className="legend-spacer" />
-            <button className="text-link" onClick={onOpenValidationModal}>
-              Laporan Validasi <ArrowRight size={13} />
-            </button>
-          </div>
-        </div>
-      )}
+            );
+          }
 
-      {viewMode === 'single' && (
-        <>
-          {!selectedClass ? (
-            <EmptyState
-              icon={GraduationCap}
-              title="Pilih kelas untuk melihat jadwal"
-              description="Pilih kelas melalui dropdown di atas atau tambahkan kelas baru pada Data Master."
-              action={<Button onClick={() => onNavigate('master')}>Buka Data Master</Button>}
-            />
-          ) : (
+          const selectedClsObj = getClass(state, selectedClass);
+          const singleFilledCount = (state.draft ?? state.activeSchedule ?? []).filter(
+            (e) => e.classId === selectedClass,
+          ).length;
+          const singleTargetCount = state.requirements
+            .filter((item) => item.classId === selectedClass)
+            .reduce((sum, item) => sum + item.requiredJP, 0);
+          const singleDiff = singleFilledCount - singleTargetCount;
+
+          return (
             <>
               <div className="schedule-summary-row">
                 <div className="schedule-selected-class">
-                  <div className="class-monogram">{getClass(state, selectedClass)?.name.slice(0, 2)}</div>
+                  <div className="class-monogram">{selectedClsObj?.name.slice(0, 2)}</div>
                   <div>
-                    <strong>Kelas {getClass(state, selectedClass)?.name}</strong>
+                    <strong>Kelas {selectedClsObj?.name}</strong>
                     <span>{state.settings.schoolName} · T.A. {state.settings.academicYear} ({state.settings.semester})</span>
                   </div>
                 </div>
                 <div className="schedule-summary-metric">
                   <span>Alokasi terisi</span>
                   <strong>
-                    {(state.draft ?? state.activeSchedule ?? []).filter((e) => e.classId === selectedClass).length} <small>JP</small>
+                    {singleFilledCount} <small>JP</small>
                   </strong>
                 </div>
                 <div className="schedule-summary-metric">
                   <span>Target Kebutuhan</span>
                   <strong>
-                    {state.requirements.filter((item) => item.classId === selectedClass).reduce((sum, item) => sum + item.requiredJP, 0)} <small>JP</small>
+                    {singleTargetCount} <small>JP</small>
                   </strong>
                 </div>
                 <div className="schedule-summary-metric">
                   <span>Kepatuhan JP</span>
-                  {(() => {
-                    const filled = (state.draft ?? state.activeSchedule ?? []).filter((e) => e.classId === selectedClass).length;
-                    const target = state.requirements.filter((item) => item.classId === selectedClass).reduce((sum, item) => sum + item.requiredJP, 0);
-                    const diff = filled - target;
-                    return (
-                      <strong style={{ color: diff === 0 ? '#1f6952' : '#b24c3d' }}>
-                        {diff === 0 ? '100% Pas' : diff > 0 ? `+${diff} JP` : `${diff} JP`}
-                      </strong>
-                    );
-                  })()}
+                  <strong style={{ color: singleDiff === 0 ? '#1f6952' : '#b24c3d' }}>
+                    {singleDiff === 0 ? '100% Pas' : singleDiff > 0 ? `+${singleDiff} JP` : `${singleDiff} JP`}
+                  </strong>
                 </div>
                 <div className="schedule-summary-metric">
                   <span>Hari Aktif</span>
@@ -1192,7 +1142,7 @@ export function ScheduleScreen({
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <AlertTriangle size={15} color="#B45309" />
                     <span>
-                      Menyorot slot sasaran hasil validasi: <strong>Kelas {getClass(state, selectedClass)?.name}</strong> ·{' '}
+                      Menyorot slot sasaran hasil validasi: <strong>Kelas {selectedClsObj?.name}</strong> ·{' '}
                       <strong>{highlightedSlot.day}</strong> · <strong>JP {String(highlightedSlot.jpNo).padStart(2, '0')}</strong>. Klik sel tersorot untuk mengedit atau menukar posisi.
                     </span>
                   </div>
@@ -1208,219 +1158,18 @@ export function ScheduleScreen({
                 </div>
               )}
 
-              <div className="schedule-table-wrap">
-                <table className="schedule-table">
-                  <thead>
-                    <tr>
-                      <th className="schedule-time-column">
-                        <span>WAKTU</span>
-                        <small>JP KBM</small>
-                      </th>
-                      {activeDays.map((day) => (
-                        <th
-                          key={day}
-                          className={hoveredCoordinate?.day === day ? 'ruler-col-active' : ''}
-                        >
-                          <span>{day}</span>
-                          <small>{day.slice(0, 3).toUpperCase()}</small>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {timelineRows.map((tRow) => {
-                      if (!tRow.isKbm) {
-                        return (
-                          <tr key={`agenda-${tRow.order}`}>
-                            <th
-                              className="period-heading non-kbm-heading"
-                              title={`Non-KBM: ${tRow.defaultLabel} (${tRow.start} – ${tRow.end} WIB)`}
-                            >
-                              <span style={{ fontSize: '11px', padding: '1px 6px', background: '#dcece3', color: '#114438', borderRadius: '4px', fontWeight: 700 }}>NON-KBM</span>
-                              <small style={{ fontWeight: 600, color: '#1b564b', marginTop: '2px' }}>
-                                {tRow.start} – {tRow.end}
-                              </small>
-                            </th>
-                            {activeDays.map((day) => {
-                              const slotDef = state.slots.find((s) => s.day === day && s.order === tRow.order);
-                              const actType = (slotDef?.activityType || tRow.activityType || '').toUpperCase();
-                              const label = slotDef?.activityName || slotDef?.label || tRow.defaultLabel;
-                              const isUpacara = actType === 'UPACARA';
-                              const isReligi = actType === 'RELIGI';
+              <ScheduleClassViewport
+                classNameValue={selectedClsObj?.name ?? selectedClass}
+                levelLabel={`Tingkat ${selectedClsObj?.level ?? '-'}`}
+                filledCount={singleFilledCount}
+                requiredCount={singleTargetCount}
+                variant="single"
+              >
+                {renderWeeklyMatrixTable(selectedClass, selectedClsObj?.name ?? '', 'single')}
+              </ScheduleClassViewport>
 
-                              return (
-                                <td key={`${day}-${tRow.order}`} className="non-kbm-cell-wrap">
-                                  <div
-                                    className={`non-kbm-card ${isUpacara ? 'is-upacara' : isReligi ? 'is-religi' : 'is-istirahat'}`}
-                                    title={`${label} (${day}, ${slotDef?.start || tRow.start}–${slotDef?.end || tRow.end} WIB): Terkunci Permanen (Non-KBM)`}
-                                  >
-                                    <LockKeyhole size={11} style={{ opacity: 0.75, flexShrink: 0 }} />
-                                    <span>{label}</span>
-                                    <span style={{ opacity: 0.75, fontSize: '11px' }}>
-                                      ({slotDef?.start || tRow.start}–{slotDef?.end || tRow.end})
-                                    </span>
-                                  </div>
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        );
-                      }
-
-                      const jpNo = tRow.jpNo!;
-                      const refSlot = state.slots.find((slot) => slot.kind === 'TEACHING' && slot.active && slot.jpNo === jpNo);
-                      return (
-                      <tr key={jpNo}>
-                        <th
-                          className={`period-heading ${hoveredCoordinate?.jpNo === jpNo ? 'ruler-row-active' : ''}`}
-                          title={`Jam KBM JP ${jpNo}: ${refSlot ? `${refSlot.start} – ${refSlot.end} WIB` : '—'}`}
-                        >
-                          <span>JP {String(jpNo).padStart(2, '0')}</span>
-                          <small style={{ fontWeight: 700, color: '#16483f' }}>
-                            {refSlot ? `${refSlot.start} – ${refSlot.end}` : '—'}
-                          </small>
-                        </th>
-                        {activeDays.map((day) => {
-                          const entry = getEntry(state, selectedClass, day, jpNo);
-                          const subject = entry ? getSubject(state, entry.subjectId) : undefined;
-                          const teacher = entry ? getTeacher(state, entry.teacherId) : undefined;
-
-                          const slotDef = state.slots.find((s) => s.day === day && s.kind === 'TEACHING' && s.jpNo === jpNo);
-                          const blocked = isSlotBlocked(slotDef);
-                          const isCrosshair = hoveredCoordinate?.day === day && hoveredCoordinate?.jpNo === jpNo;
-                          const isOver = dragOverTarget?.day === day && dragOverTarget?.jpNo === jpNo;
-                          const preview = isOver ? getDropPreviewStatus(selectedClass, day, jpNo) : null;
-
-                          const isOutOfKbm = !slotDef;
-                          return (
-                            <td
-                              key={`${day}-${jpNo}`}
-                              className={isCrosshair ? 'ruler-crosshair-active' : ''}
-                              style={{ position: 'relative' }}
-                              onMouseEnter={() => setHoveredCoordinate({ day, jpNo })}
-                              onMouseLeave={() => setHoveredCoordinate(null)}
-                              onDragOver={(e) => {
-                                if (blocked) return;
-                                e.preventDefault();
-                                setDragOverTarget({ day, jpNo });
-                              }}
-                              onDragLeave={() => {
-                                if (dragOverTarget?.day === day && dragOverTarget?.jpNo === jpNo) {
-                                  setDragOverTarget(null);
-                                }
-                              }}
-                              onDrop={(e) => {
-                                e.preventDefault();
-                                setDragOverTarget(null);
-                                if (blocked) return;
-                                if (draggedSlot) {
-                                  onDropSlot(draggedSlot, { day, jpNo });
-                                  setDraggedSlot(null);
-                                } else if (draggedUnplaced && onAssignSlot) {
-                                  onAssignSlot(selectedClass, day, jpNo, draggedUnplaced.subjectId, draggedUnplaced.teacherId);
-                                  setDraggedUnplaced(null);
-                                }
-                              }}
-                            >
-                              {isOver && preview && !blocked && (
-                                <div className={`drag-hud-overlay drag-hud-${preview.status}`}>
-                                  <span className="drag-hud-badge">{preview.message}</span>
-                                </div>
-                              )}
-                              <div
-                                data-slot-key={`${selectedClass}|${day}|${jpNo}`}
-                                role="button"
-                                tabIndex={blocked ? -1 : 0}
-                                draggable={!blocked && !!entry}
-                                onDragStart={() => {
-                                  if (entry && !blocked) {
-                                    setDraggedSlot({ classId: selectedClass, day, jpNo });
-                                  }
-                                }}
-                                onKeyDown={(e) => {
-                                  if (!blocked && (e.key === 'Enter' || e.key === ' ')) {
-                                    e.preventDefault();
-                                    onEditSlot(selectedClass, day, jpNo);
-                                  }
-                                }}
-                                className={`schedule-cell ${entry ? 'has-entry' : 'is-empty'} ${blocked ? 'is-blocked' : ''} ${
-                                  highlightedSlot?.classId === selectedClass &&
-                                  highlightedSlot?.day === day &&
-                                  highlightedSlot?.jpNo === jpNo
-                                    ? 'schedule-cell-target-highlight'
-                                    : ''
-                                }`}
-                                style={{
-                                  ...(entry && subject ? ({ '--subject-color': subject.color } as CSSProperties) : {}),
-                                  cursor: blocked ? 'not-allowed' : undefined,
-                                  position: 'relative',
-                                }}
-                                onClick={() => {
-                                  if (!blocked) {
-                                    onEditSlot(selectedClass, day, jpNo);
-                                  }
-                                }}
-                                title={
-                                  blocked
-                                    ? (isOutOfKbm ? `Di luar jam KBM ${day}` : `${slotDef?.activityName || slotDef?.activityType || 'Non-KBM'} (${slotDef?.start}–${slotDef?.end} WIB): Terkunci`)
-                                    : entry
-                                    ? `Tarik untuk memindahkan: ${subject?.name} (${teacher?.name}) · Jam KBM ${slotDef?.start}–${slotDef?.end}`
-                                    : `Klik untuk menambah pelajaran pada ${day}, JP ${jpNo} (${slotDef?.start}–${slotDef?.end} WIB)`
-                                }
-                              >
-                                {entry ? (
-                                  <>
-                                    <button
-                                      type="button"
-                                      className="quick-cell-trigger"
-                                      title="Menu Cepat Slot"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        const rect = e.currentTarget.getBoundingClientRect();
-                                        setCellMenu({
-                                          classId: selectedClass,
-                                          day,
-                                          jpNo,
-                                          x: Math.min(window.innerWidth - 220, rect.left),
-                                          y: Math.min(window.innerHeight - 200, rect.bottom + 4),
-                                        });
-                                      }}
-                                    >
-                                      <MoreHorizontal size={11} />
-                                    </button>
-                                    <div className="cell-top-meta">
-                                      <span className="cell-subject-code">{subject?.code ?? 'MAPEL'}</span>
-                                    </div>
-                                    <strong className="cell-subject-title">{subject?.name ?? 'Mapel'}</strong>
-                                    <div className="cell-teacher-row">
-                                      {teacher?.code && <span className="teacher-code-badge">{teacher.code}</span>}
-                                      <span className="teacher-name-text">{teacher?.name ?? 'Guru belum tersedia'}</span>
-                                    </div>
-                                  </>
-                                ) : (
-                                  <span className="empty-cell-hint">
-                                    {blocked ? (
-                                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                        <LockKeyhole size={11} /> {isOutOfKbm ? 'Selesai KBM' : (slotDef?.activityName || slotDef?.activityType)}
-                                      </span>
-                                    ) : (
-                                      <span>+ Isi Mapel</span>
-                                    )}
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                          );
-                        })}
-                      </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="schedule-legend-row">
-                <span><i className="legend-dot dot-teal" /> Mapel Terisi</span>
+              <div className="schedule-legend-row" style={{ marginTop: '10px' }}>
+                <span><i className="legend-dot dot-teal" /> KBM Terisi</span>
                 <span><i className="legend-dot dot-ivory" /> Slot Kosong</span>
                 <span><LockKeyhole size={12} style={{ verticalAlign: -2, color: '#16483f' }} /> Non-KBM Terkunci</span>
                 <span className="legend-spacer" />
@@ -1430,12 +1179,30 @@ export function ScheduleScreen({
               </div>
 
               <div className="unplaced-bank-dock">
-                <div className="unplaced-dock-header">
+                <div className="unplaced-dock-header" style={{ flexWrap: 'wrap', gap: '8px' }}>
                   <div className="unplaced-dock-title">
                     <BookOpen size={16} color="#154236" />
                     <strong>Bank Kebutuhan Jam Kurikulum</strong>
                     <span>{unplacedList.length} Mapel Belum Lengkap</span>
                   </div>
+                  {selectedUnplaced ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span className="s5-inline-badge tone-ok">
+                        Mode Pasang Cepat: Klik slot kosong untuk {selectedUnplaced.subjectName}
+                      </span>
+                      <button
+                        type="button"
+                        className="button button-sm button-secondary"
+                        onClick={() => setSelectedUnplaced(null)}
+                      >
+                        Batal Pilih
+                      </button>
+                    </div>
+                  ) : unplacedList.length > 0 ? (
+                    <span className="unplaced-dock-hint">
+                      Tarik kartu ke slot kosong atau klik kartu untuk mode pasang cepat
+                    </span>
+                  ) : null}
                 </div>
 
                 {unplacedList.length === 0 ? (
@@ -1445,37 +1212,53 @@ export function ScheduleScreen({
                   </div>
                 ) : (
                   <div className="unplaced-cards-grid">
-                    {unplacedList.map((item) => (
-                      <div
-                        key={item.requirementId}
-                        className="unplaced-card"
-                        style={{ '--subject-color': item.subjectColor } as CSSProperties}
-                        draggable={true}
-                        onDragStart={() => {
-                          setDraggedUnplaced({ subjectId: item.subjectId, teacherId: item.teacherId });
-                        }}
-                        onDragEnd={() => {
-                          setDraggedUnplaced(null);
-                        }}
-                        title={`Tarik untuk mengalokasikan ${item.subjectName} (${item.teacherName}) ke slot kosong`}
-                      >
-                        <div className="unplaced-card-meta">
-                          <span className="unplaced-card-sub">{item.subjectName}</span>
-                          <span className="unplaced-card-tch">
-                            <span className="teacher-code-badge">{item.teacherCode}</span>
-                            {item.teacherName}
-                          </span>
-                        </div>
-                        <span className="unplaced-card-badge">Sisa {item.remaining} JP</span>
-                      </div>
-                    ))}
+                    {unplacedList.map((item) => {
+                      const isSelected = selectedUnplaced?.requirementId === item.requirementId;
+                      return (
+                        <button
+                          key={item.requirementId}
+                          type="button"
+                          className={`unplaced-card ${isSelected ? 'is-selected' : ''}`}
+                          style={{ '--subject-color': item.subjectColor, textAlign: 'left' } as CSSProperties}
+                          draggable={true}
+                          aria-pressed={isSelected}
+                          onClick={() =>
+                            setSelectedUnplaced(
+                              isSelected
+                                ? null
+                                : {
+                                    requirementId: item.requirementId,
+                                    subjectId: item.subjectId,
+                                    teacherId: item.teacherId,
+                                    subjectName: item.subjectName,
+                                  },
+                            )
+                          }
+                          onDragStart={() => {
+                            setDraggedUnplaced({ subjectId: item.subjectId, teacherId: item.teacherId });
+                          }}
+                          onDragEnd={() => {
+                            setDraggedUnplaced(null);
+                          }}
+                          title={`Tarik atau klik untuk mengalokasikan ${item.subjectName} (${item.teacherName}) ke slot kosong`}
+                        >
+                          <div className="unplaced-card-meta">
+                            <span className="unplaced-card-sub">{item.subjectName}</span>
+                            <span className="unplaced-card-tch">
+                              <span className="teacher-code-badge">{item.teacherCode}</span>
+                              {item.teacherName}
+                            </span>
+                          </div>
+                          <span className="unplaced-card-badge">Sisa {item.remaining} JP</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
             </>
-          )}
-        </>
-      )}
+          );
+        })()}
 
       {cellMenu && (
         <div

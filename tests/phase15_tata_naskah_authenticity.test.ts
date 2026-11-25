@@ -412,4 +412,116 @@ describe('Phase 15: Tahap 1 + Tahap 2 — Zero-Bug Logic & Tata Naskah Dinas Kem
     expect(archiveHtml).toContain('data-table-layout="letter_header"');
     expect(archiveHtml).toContain('data-table-layout="signature"');
   });
+
+  it('10. Forensic Anti-AI-Slop sweep across ALL 30 templates, MADRASAH clones, and SYS-TPL-10 signatory parity', () => {
+    const demo = createDemoState();
+    const slopPatterns: RegExp[] = [
+      /\[Belum diisi\]/,
+      /\( Nama Notulis \)/,
+      /\( Nama Pengawas/i,
+      /\( Nama Penyusun \)/,
+      /\( Nama Ketua Panitia \)/,
+      /\( Nama Pejabat \/ Pihak Terkait \)/,
+      /Penanggung jawab terkait/,
+      /Sesuai kesepakatan/,
+      /Sesuai laporan pelaksanaan/,
+      /Tercatat dalam laporan/,
+      /Sesuai daftar peserta/,
+      /Sesuai berita acara ruang/,
+      /1 unit\/berkas/,
+      /dedikasi, integritas, serta rekam jejak kinerja yang baik/,
+      /berlangsung tertib, aman, dan lancar/,
+      / · /,
+    ];
+
+    for (const tpl of SYSTEM_DOCUMENT_TEMPLATES) {
+      const { nextState, draft, documentRecord } = makeDraftForTemplate(demo, tpl.id);
+      const studio = buildInitialStudioContentFromDraft(draft, {
+        activeTemplates: SYSTEM_DOCUMENT_TEMPLATES,
+      });
+      const validation = validateTipTapContent(studio.content);
+      expect(validation.valid, `${tpl.id} TipTap validation failed`).toBe(true);
+
+      const { plainText } = extractPlainTextAndTokens(studio.content);
+      for (const rx of slopPatterns) {
+        expect(rx.test(plainText), `${tpl.id} matched forbidden slop ${rx}`).toBe(false);
+      }
+
+      const checklist = evaluateFinalizationChecklist({
+        state: nextState,
+        draft,
+        content: studio.content,
+        documentRecord,
+      });
+      const blockers = checklist.items.filter((i) => !i.passed && i.severity === 'blocker');
+      expect(blockers, `${tpl.id} has finalization blockers`).toHaveLength(0);
+      expect(checklist.canFinalize, `${tpl.id} cannot finalize`).toBe(true);
+
+      // Also verify cloned template preserves authentic output cleanly
+      const clonedTpl = {
+        ...tpl,
+        id: `USR-${tpl.id}-CLONE`,
+        source: 'MADRASAH' as const,
+        isReadOnly: false,
+        sourceTemplateId: tpl.id,
+        sourceTemplateVersion: tpl.version,
+      };
+      const clonedSaved = saveIntakeDraftToState(demo, clonedTpl, draft.fieldValues, {
+        timestamp: '2026-11-24T08:45:00Z',
+      });
+      const clonedStudio = buildInitialStudioContentFromDraft(clonedSaved.draft, {
+        activeTemplates: [...SYSTEM_DOCUMENT_TEMPLATES, clonedTpl],
+      });
+      const { plainText: clonedText } = extractPlainTextAndTokens(clonedStudio.content);
+      expect(clonedText).not.toContain('[Belum diisi]');
+      expect(clonedText).not.toMatch(/ · /);
+    }
+
+    // Verify city fallback without Depok/Daruttafsir leak when city is blank on another madrasah
+    const noCityDemo: AppState = {
+      ...demo,
+      settings: {
+        ...demo.settings,
+        city: '',
+        schoolName: 'MTs Harapan Bangsa',
+        ministry: 'Yayasan Pendidikan Harapan Bangsa',
+        regionalOffice: 'Kantor Kementerian Agama Kabupaten Bandung',
+        legalDecree: '',
+        address: 'Jl. Pendidikan No. 10',
+      },
+    };
+    const noCityDraft = makeDraftForTemplate(noCityDemo, 'SYS-TPL-07');
+    const noCityStudio = buildInitialStudioContentFromDraft(noCityDraft.draft, {
+      activeTemplates: SYSTEM_DOCUMENT_TEMPLATES,
+    });
+    const { plainText: noCityText } = extractPlainTextAndTokens(noCityStudio.content);
+    expect(noCityText).toContain('[Kota Madrasah]');
+    expect(noCityText).not.toContain('Depok');
+    expect(noCityText).not.toMatch(/Daruttafsir/i);
+
+    // Verify SYS-TPL-10 Nota Dinas with custom internal sender does not stamp Headmaster's name/NIP
+    const notaCustom = makeDraftForTemplate(demo, 'SYS-TPL-10', {
+      dari_internal: 'Waka Bidang Kesiswaan',
+    });
+    const notaCustomStudio = buildInitialStudioContentFromDraft(notaCustom.draft, {
+      activeTemplates: SYSTEM_DOCUMENT_TEMPLATES,
+    });
+    const { plainText: notaCustomText } = extractPlainTextAndTokens(notaCustomStudio.content);
+    expect(notaCustomText).toContain('Waka Bidang Kesiswaan');
+    if (demo.settings.headmasterName) {
+      expect(notaCustomText).not.toContain(demo.settings.headmasterName);
+    }
+
+    // Verify pipe-delimited table row parsing for SYS-TPL-13 Surat Pengantar
+    const pengantar = makeDraftForTemplate(demo, 'SYS-TPL-13', {
+      daftar_berkas: 'Laporan Bulanan | 2 bundel | Arsip & Tembusan',
+    });
+    const pengantarStudio = buildInitialStudioContentFromDraft(pengantar.draft, {
+      activeTemplates: SYSTEM_DOCUMENT_TEMPLATES,
+    });
+    const { plainText: pengantarText } = extractPlainTextAndTokens(pengantarStudio.content);
+    expect(pengantarText).toContain('Laporan Bulanan');
+    expect(pengantarText).toContain('2 bundel');
+    expect(pengantarText).toContain('Arsip & Tembusan');
+  });
 });

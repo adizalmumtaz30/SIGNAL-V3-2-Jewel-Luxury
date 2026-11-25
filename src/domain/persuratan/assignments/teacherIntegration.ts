@@ -65,7 +65,7 @@ export function getOfficialScheduleBasisStatus(
         validVersionsCount: validVersions.length,
         hasUnpublishedDraft,
         hasLooseActiveSchedule,
-        blockedReason: `ScheduleVersion "${requestedVersionId}" tidak ditemukan dalam riwayat jadwal terbit resmi.`,
+        blockedReason: `Jadwal terbit resmi "${requestedVersionId}" tidak ditemukan dalam riwayat jadwal madrasah.`,
       };
     }
     const reVerified = verifyScheduleVersion(requested.version);
@@ -77,7 +77,7 @@ export function getOfficialScheduleBasisStatus(
         validVersionsCount: validVersions.length,
         hasUnpublishedDraft,
         hasLooseActiveSchedule,
-        blockedReason: `ScheduleVersion v${reVerified.version.version} gagal verifikasi integritas: ${reVerified.integrityIssues.join(' ')}`,
+        blockedReason: `Jadwal terbit v${reVerified.version.version} gagal verifikasi integritas: ${reVerified.integrityIssues.join(' ')}`,
       };
     }
     return {
@@ -94,10 +94,10 @@ export function getOfficialScheduleBasisStatus(
   const latestValid = validVersions[0] ?? null;
   if (!latestValid) {
     const blockedReason = hasUnpublishedDraft
-      ? 'Jadwal masih berupa Draft kerja yang belum diterbitkan. Terbitkan Jadwal terlebih dahulu menjadi ScheduleVersion resmi sebelum membuat SK Mengajar.'
+      ? 'Jadwal masih berupa Draft kerja yang belum diterbitkan. Terbitkan Jadwal terlebih dahulu menjadi Jadwal Resmi Terbit sebelum membuat SK Mengajar.'
       : hasLooseActiveSchedule
-      ? 'Jadwal aktif lokal tidak memiliki snapshot ScheduleVersion terbit resmi. Terbitkan Jadwal agar memiliki fingerprint terverifikasi.'
-      : 'Belum ada ScheduleVersion jadwal terbit yang valid. Publikasikan jadwal terlebih dahulu sebelum menerbitkan SK Pembagian Tugas Mengajar.';
+      ? 'Jadwal aktif lokal belum memiliki salinan arsip Jadwal Resmi Terbit. Terbitkan Jadwal agar memiliki kode verifikasi keabsahan jadwal.'
+      : 'Belum ada Jadwal Resmi Terbit yang valid. Publikasikan jadwal terlebih dahulu sebelum menerbitkan SK Pembagian Tugas Mengajar.';
 
     return {
       allowed: false,
@@ -137,7 +137,7 @@ export function buildSkTeachingLaunchPayload(
   if (!status.allowed || !status.selectedVersion) {
     throw new Error(
       status.blockedReason ??
-        'Tidak dapat membuat SK Pembagian Tugas Mengajar tanpa ScheduleVersion terbit yang terverifikasi.'
+        'Tidak dapat membuat SK Pembagian Tugas Mengajar tanpa Jadwal Resmi Terbit yang terverifikasi.'
     );
   }
 
@@ -520,7 +520,7 @@ export function syncTeacherAssignmentsOnFinalize(
               teacherId: stat.teacher.id,
               assignmentType: 'TEACHING',
               title,
-              description: `Ditugaskan melalui ${documentVersion.documentNumber} berdasarkan ScheduleVersion v${verified.version.version}.`,
+              description: `Ditugaskan melalui ${documentVersion.documentNumber} berdasarkan Jadwal Resmi Terbit v${verified.version.version}.`,
               startDate: documentVersion.documentDate,
               endDate: null,
               isDateUnknown: false,

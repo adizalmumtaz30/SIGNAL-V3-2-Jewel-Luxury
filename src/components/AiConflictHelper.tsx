@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Sparkles,
   RefreshCw,
   AlertTriangle,
   Send,
   CheckCircle2,
+  Clock,
+  WifiOff,
 } from 'lucide-react';
 import type { ValidationIssue } from '../domain/types';
 import { formatValidationCategoryLabel } from '../domain/validationLabels';
@@ -12,6 +14,7 @@ import { formatValidationCategoryLabel } from '../domain/validationLabels';
 interface AiConflictHelperProps {
   issues: ValidationIssue[];
   geminiEnabledInSettings?: boolean;
+  initialHealthAvailable?: boolean;
   onNavigateToScreen?: (screen: 'schedule' | 'master' | 'requirements' | 'settings') => void;
   compact?: boolean;
 }
@@ -19,6 +22,7 @@ interface AiConflictHelperProps {
 export function AiConflictHelper({
   issues,
   geminiEnabledInSettings = true,
+  initialHealthAvailable,
   onNavigateToScreen,
   compact = false,
 }: AiConflictHelperProps) {
@@ -27,9 +31,40 @@ export function AiConflictHelper({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [customQuestion, setCustomQuestion] = useState('');
   const [lastAskedQuestion, setLastAskedQuestion] = useState<string | null>(null);
+  const [healthAvailable, setHealthAvailable] = useState<boolean | null>(
+    initialHealthAvailable !== undefined ? initialHealthAvailable : null
+  );
+
+  useEffect(() => {
+    if (initialHealthAvailable !== undefined) {
+      setHealthAvailable(initialHealthAvailable);
+      return;
+    }
+    if (!geminiEnabledInSettings) {
+      setHealthAvailable(false);
+      return;
+    }
+    let cancelled = false;
+    fetch('/api/health')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { aiAvailable?: boolean } | null) => {
+        if (!cancelled) {
+          setHealthAvailable(Boolean(data?.aiAvailable));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setHealthAvailable(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [geminiEnabledInSettings, initialHealthAvailable]);
 
   const hardErrors = issues.filter((i) => i.severity === 'error');
   const warnings = issues.filter((i) => i.severity === 'warning');
+  const aiReady = geminiEnabledInSettings && healthAvailable === true;
 
   const handleAskAI = async (overrideQuestion?: string) => {
     setLoading(true);
@@ -138,24 +173,7 @@ export function AiConflictHelper({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          {geminiEnabledInSettings ? (
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '3px 8px',
-                borderRadius: '6px',
-                fontSize: '11px',
-                fontWeight: 600,
-                background: '#e9f5ee',
-                color: '#1f6952',
-                border: '1px solid #b8e3cd',
-              }}
-            >
-              <CheckCircle2 size={12} /> AI Tersedia
-            </span>
-          ) : (
+          {!geminiEnabledInSettings ? (
             <span
               style={{
                 display: 'inline-flex',
@@ -172,17 +190,74 @@ export function AiConflictHelper({
             >
               AI Standby (OFF)
             </span>
+          ) : healthAvailable === null ? (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '3px 8px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontWeight: 600,
+                background: '#f4f5f1',
+                color: '#526861',
+                border: '1px solid #dcded5',
+              }}
+            >
+              <Clock size={12} /> Memeriksa Server AI
+            </span>
+          ) : healthAvailable ? (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '3px 8px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontWeight: 600,
+                background: '#e9f5ee',
+                color: '#1f6952',
+                border: '1px solid #b8e3cd',
+              }}
+            >
+              <CheckCircle2 size={12} /> AI Aktif
+            </span>
+          ) : (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '3px 8px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontWeight: 600,
+                background: '#fdf5e9',
+                color: '#8a5314',
+                border: '1px solid #ebd1a7',
+              }}
+            >
+              <WifiOff size={12} /> Server AI Belum Terhubung
+            </span>
           )}
         </div>
       </div>
 
       {/* Description / Info */}
       <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: '#556d65', lineHeight: 1.5 }}>
-        AI membantu menerjemahkan bentrok yang rumit menjadi langkah aksi konkret.
-        <strong style={{ color: '#173637' }}>
-          {' '}
-          Keputusan akhir tetap diverifikasi oleh validator deterministik SAKALA.
-        </strong>
+        {geminiEnabledInSettings && healthAvailable === false
+          ? 'Layanan AI pada server belum terhubung atau kunci API server belum diaktifkan. Seluruh fungsi inti penjadwalan dan validasi SAKALA tetap berjalan normal.'
+          : (
+            <>
+              AI membantu menerjemahkan bentrok yang rumit menjadi langkah aksi konkret.
+              <strong style={{ color: '#173637' }}>
+                {' '}
+                Keputusan akhir tetap diverifikasi oleh validator aturan SAKALA.
+              </strong>
+            </>
+          )}
       </p>
 
       {/* Trigger Buttons */}
@@ -191,7 +266,7 @@ export function AiConflictHelper({
           type="button"
           className="button button-primary"
           onClick={() => handleAskAI()}
-          disabled={loading}
+          disabled={loading || !aiReady}
         >
           {loading ? (
             <>
@@ -213,7 +288,7 @@ export function AiConflictHelper({
                 'Fokus pada bentrok guru dan bentrok jam KBM: guru mana yang paling mendesak dipindahkan jamnya?'
               )
             }
-            disabled={loading}
+            disabled={loading || !aiReady}
           >
             Prioritaskan Bentrok Guru
           </button>

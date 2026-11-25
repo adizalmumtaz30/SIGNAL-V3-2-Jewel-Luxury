@@ -158,8 +158,10 @@ function renderPaperNodes(nodes: TipTapJSONNode[]) {
           key={idx}
           style={{
             textAlign: align,
-            margin: '8px 0 5px',
+            margin: Tag === 'h3' ? '6px 0 4px' : '8px 0 5px',
             color: '#000000',
+            fontWeight: 700,
+            lineHeight: Tag === 'h1' ? 1.3 : Tag === 'h2' ? 1.35 : 1.4,
             fontSize: Tag === 'h1' ? '13.5pt' : Tag === 'h2' ? '12pt' : '11.5pt',
           }}
         >
@@ -270,11 +272,13 @@ function renderPaperNodes(nodes: TipTapJSONNode[]) {
                               | 'justify'
                               | undefined) ?? cellAlign;
                           const isEmpty = !p.content || p.content.length === 0;
+                          const isLast = pIdx === (cell.content?.length ?? 1) - 1;
                           return (
                             <div
                               key={pIdx}
                               style={{
                                 textAlign: pAlign,
+                                marginBottom: isLast ? 0 : '3px',
                                 minHeight: isEmpty ? '1.2em' : undefined,
                               }}
                             >

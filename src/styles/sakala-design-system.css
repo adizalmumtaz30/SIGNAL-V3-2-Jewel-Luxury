@@ -159,6 +159,8 @@
      2. SCHEDULE — 2-ROW UNIFIED TOOLBAR & FILTER POPOVER
      ------------------------------------------------------------------------ */
   .s5-schedule-unified-toolbar {
+    position: relative;
+    z-index: 25;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -552,6 +554,7 @@
     border-bottom: 1px solid rgba(18, 64, 55, 0.1);
     flex-wrap: wrap;
     position: relative;
+    z-index: 35;
   }
 
   .s5-editorial-header.is-featured {
@@ -775,22 +778,30 @@
     position: absolute;
     right: 0;
     top: calc(100% + 8px);
-    min-width: 248px;
+    width: max-content;
+    min-width: 268px;
+    max-width: min(380px, calc(100vw - 32px));
     padding: 6px;
     border-radius: 12px;
     background: #ffffff;
     border: 1px solid #d0dcd5;
     box-shadow: 0 14px 34px rgba(11, 41, 35, 0.16);
-    z-index: 140;
+    z-index: 420;
     display: flex;
     flex-direction: column;
     gap: 2px;
     animation: s5MenuFadeIn 140ms ease;
   }
 
+  .s5-header-overflow-menu .s5-menu-item {
+    align-items: flex-start;
+    white-space: normal;
+  }
+
   .s5-menu-item-icon {
     display: inline-flex;
     align-items: center;
+    margin-top: 2px;
     color: #124037;
     flex-shrink: 0;
   }
@@ -798,20 +809,27 @@
   .s5-menu-item-copy {
     display: flex;
     flex-direction: column;
-    gap: 1px;
+    gap: 2px;
     min-width: 0;
+    flex: 1;
   }
 
   .s5-menu-item-copy strong {
     font-size: 12.5px;
     font-weight: 600;
     color: #0b2923;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.38;
   }
 
   .s5-menu-item-copy small {
     font-size: 11px;
     color: #526861;
     font-weight: 400;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.38;
   }
 
   /* ------------------------------------------------------------------------

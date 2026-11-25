@@ -508,7 +508,10 @@ describe('Tahap 5 — S04 Document Studio / Editor Dokumen Bergaya Word', () => 
 
     expect(studioHtml).toContain('data-doc-editor="true"');
     expect(studioHtml).toContain('Editor Naskah');
-    expect(studioHtml).toContain('Pas');
+    expect(studioHtml).toContain('Kontrol zoom kanvas naskah');
+    expect(studioHtml).not.toContain('>Pas<');
+    expect(studioHtml).not.toContain('>85%<');
+    expect(studioHtml).not.toContain('>115%<');
     expect(studioHtml).toContain('Simpan Draft');
     expect(studioHtml).toContain('Ubah Data Surat');
     expect(studioHtml).toContain('Mode Fokus');
