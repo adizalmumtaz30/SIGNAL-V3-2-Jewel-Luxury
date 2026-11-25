@@ -168,6 +168,7 @@
 .s04-focus-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
   height: 32px;
   padding: 0 0.83em;
@@ -179,11 +180,24 @@
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.s04-focus-btn.is-icon-only {
+  width: 32px;
+  min-width: 32px;
+  padding: 0;
 }
 
 .s04-focus-btn:hover {
   background: #edf4f0;
   color: var(--s5-emerald-obsidian, #0b2923);
+  border-color: #b7cbc2;
+}
+
+.s04-focus-btn:focus-visible {
+  outline: 2px solid var(--s5-gold-metallic, #c5a059);
+  outline-offset: 2px;
 }
 
 .s04-focus-btn.is-active {
@@ -258,7 +272,58 @@
   display: inline-flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 5px;
+}
+
+.s04-panel-toggle-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 7px;
+  border: 1px solid #d1ddd7;
+  background: #ffffff;
+  color: var(--s5-ink-secondary, #2f443e);
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.s04-panel-toggle-btn:hover {
+  background: var(--s5-emerald-subtle, #e8f2ee);
+  border-color: #b7cbc2;
+  color: var(--s5-emerald-obsidian, #0b2923);
+}
+
+.s04-panel-toggle-btn.is-active {
+  background: #eef5f1;
+  border-color: #9ec0b2;
+  color: var(--s5-emerald-obsidian, #0b2923);
+}
+
+.s04-panel-toggle-btn:focus-visible {
+  outline: 2px solid var(--s5-gold-metallic, #c5a059);
+  outline-offset: 2px;
+}
+
+.s04-panel-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--s5-emerald-obsidian, #0b2923);
+  color: #f8faf7;
+  border: 1px solid #ffffff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 13px;
+  text-align: center;
+  pointer-events: none;
 }
 
 .s04-banner {
@@ -324,8 +389,8 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  padding: 6px 11px;
+  gap: 4px;
+  padding: 5px 10px;
   border-radius: 10px;
   background: #f2f8f5;
   border: 1px solid #bdd6cb;
@@ -340,10 +405,19 @@
   letter-spacing: 0.04em;
   color: #124037;
   padding-right: 6px;
+  margin-right: 2px;
   border-right: 1px solid #cde0d7;
   display: inline-flex;
   align-items: center;
   gap: 5px;
+}
+
+.s04-table-sep {
+  width: 1px;
+  height: 18px;
+  background: #cde0d7;
+  margin: 0 3px;
+  flex-shrink: 0;
 }
 
 .s04-toolbar-groups {
@@ -403,6 +477,19 @@
 .s04-tool-btn:disabled {
   opacity: 0.42;
   cursor: not-allowed;
+}
+
+.s04-tool-btn.is-icon-only {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0;
+  gap: 1px;
+}
+
+.s04-tool-btn:focus-visible {
+  outline: 2px solid var(--s5-gold-metallic, #c5a059);
+  outline-offset: 2px;
 }
 
 .s04-tool-btn.is-danger:hover:not(:disabled) {

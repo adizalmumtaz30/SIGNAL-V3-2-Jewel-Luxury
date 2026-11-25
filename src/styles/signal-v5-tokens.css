@@ -7162,22 +7162,32 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  width: 30px;
   height: 30px;
-  padding: 0 0.96em;
-  border-radius: 8px;
-  border: 1px solid #124037;
+  padding: 0;
+  border-radius: 7px;
+  border: 1px solid #C4D4CC;
   background: #FFFFFF;
   color: #0B2923;
-  font-size: 0.71875rem;
-  font-weight: 700;
-  white-space: nowrap;
   cursor: pointer;
+  flex-shrink: 0;
   transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.lpv-max-btn.scv-max-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
 }
 
 .lpv-max-btn:hover {
   background: #E8F4EE;
+  border-color: #124037;
+}
+
+.lpv-max-btn:focus-visible {
+  outline: 2px solid var(--s5-gold-metallic, #c5a059);
+  outline-offset: 2px;
 }
 
 .lpv-max-btn.is-active {

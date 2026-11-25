@@ -172,29 +172,23 @@ export function LivePreviewViewport({
           {headerActions}
           <button
             type="button"
-            className={`lpv-max-btn ${isMaximized ? 'is-active' : ''}`}
+            className={`lpv-max-btn s5-tooltip-end s5-tooltip-bottom ${isMaximized ? 'is-active' : ''}`}
             onClick={handleToggleMaximize}
             aria-label={
               isMaximized
                 ? 'Perkecil kembali ke pratinjau mini'
                 : 'Maksimalkan ke ukuran cetak asli (100%)'
             }
-            title={
+            data-s5-tooltip={
               isMaximized
                 ? 'Perkecil pratinjau (Esc)'
-                : 'Maksimalkan ke ukuran real siap cetak (100%)'
+                : 'Maksimalkan (100%)'
             }
           >
             {isMaximized ? (
-              <>
-                <Minimize2 size={13} aria-hidden="true" />
-                <span>Perkecil</span>
-              </>
+              <Minimize2 size={14} strokeWidth={1.75} aria-hidden="true" />
             ) : (
-              <>
-                <Maximize2 size={13} aria-hidden="true" />
-                <span>Maksimalkan (100%)</span>
-              </>
+              <Maximize2 size={14} strokeWidth={1.75} aria-hidden="true" />
             )}
           </button>
         </div>

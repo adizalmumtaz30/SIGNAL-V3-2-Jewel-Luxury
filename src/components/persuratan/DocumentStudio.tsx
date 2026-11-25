@@ -11,7 +11,10 @@ import {
   AlignVerticalJustifyCenter,
   ArrowDownToLine,
   ArrowLeft,
+  ArrowUpDown,
   ArrowUpToLine,
+  BetweenHorizontalStart,
+  BetweenVerticalStart,
   Bold,
   CheckCircle2,
   ChevronDown,
@@ -1544,21 +1547,23 @@ export function DocumentStudio({
 
           <button
             type="button"
-            className={`s04-focus-btn ${isFocusMode ? 'is-active' : ''}`}
+            className={`s04-focus-btn is-icon-only ${isFocusMode ? 'is-active' : ''}`}
             aria-pressed={isFocusMode}
-            onClick={() => toggleFocusMode()}
-            title={
+            aria-label={isFocusMode ? 'Keluar Fokus' : 'Mode Fokus'}
+            data-tooltip={
               isFocusMode
-                ? 'Keluar dari Mode Fokus (Escape)'
-                : 'Mode Fokus: perluas area kertas dokumen dan sembunyikan panel samping'
+                ? 'Keluar Mode Fokus (Esc)'
+                : 'Mode Fokus (perluas kertas)'
             }
+            data-tooltip-pos="bottom"
+            onClick={() => toggleFocusMode()}
           >
             {isFocusMode ? (
-              <Minimize2 size={13} aria-hidden="true" />
+              <Minimize2 size={14} strokeWidth={1.75} aria-hidden="true" />
             ) : (
-              <Maximize2 size={13} aria-hidden="true" />
+              <Maximize2 size={14} strokeWidth={1.75} aria-hidden="true" />
             )}
-            <span>{isFocusMode ? 'Keluar Fokus' : 'Mode Fokus'}</span>
+            <span className="sr-only">{isFocusMode ? 'Keluar Fokus' : 'Mode Fokus'}</span>
           </button>
 
           {(onPersistState && onFinalizedToArchive) || onOpenPreview ? (
@@ -2113,34 +2118,47 @@ export function DocumentStudio({
           <div className="s04-panel-toggles">
             <button
               type="button"
-              className="s02-btn-secondary"
+              className={`s04-panel-toggle-btn ${outlineOpen ? 'is-active' : ''}`}
               aria-expanded={outlineOpen}
+              aria-label={
+                outlineOpen
+                  ? `Sembunyikan Struktur Naskah (${docOutline.headings.length} bagian)`
+                  : `Tampilkan Struktur Naskah (${docOutline.headings.length} bagian)`
+              }
+              data-tooltip={
+                outlineOpen
+                  ? `Sembunyikan struktur (${docOutline.headings.length})`
+                  : `Tampilkan struktur (${docOutline.headings.length})`
+              }
+              data-tooltip-pos="left"
               onClick={() => setOutlineOpen((prev) => !prev)}
-              style={{ height: '30px', padding: '0 10px', fontSize: '12px' }}
-              title="Tampilkan / sembunyikan panel navigasi struktur dokumen"
             >
               {outlineOpen ? (
-                <PanelLeftClose size={14} aria-hidden="true" />
+                <PanelLeftClose size={15} strokeWidth={1.75} aria-hidden="true" />
               ) : (
-                <PanelLeftOpen size={14} aria-hidden="true" />
+                <PanelLeftOpen size={15} strokeWidth={1.75} aria-hidden="true" />
               )}
-              <span>Struktur ({docOutline.headings.length})</span>
+              {docOutline.headings.length > 0 && (
+                <span className="s04-panel-badge s5-tnum" aria-hidden="true">
+                  {docOutline.headings.length}
+                </span>
+              )}
             </button>
 
             <button
               type="button"
-              className="s02-btn-secondary"
+              className={`s04-panel-toggle-btn ${drawerOpen ? 'is-active' : ''}`}
               aria-expanded={drawerOpen}
+              aria-label={drawerOpen ? 'Tutup Properti & Kertas' : 'Buka Properti & Kertas'}
+              data-tooltip={drawerOpen ? 'Tutup properti & kertas' : 'Properti & kertas'}
+              data-tooltip-pos="left"
               onClick={() => setDrawerOpen((prev) => !prev)}
-              style={{ height: '30px', padding: '0 10px', fontSize: '12px' }}
-              title="Tampilkan / sembunyikan panel properti & detail dokumen"
             >
               {drawerOpen ? (
-                <PanelRightClose size={14} aria-hidden="true" />
+                <PanelRightClose size={15} strokeWidth={1.75} aria-hidden="true" />
               ) : (
-                <PanelRightOpen size={14} aria-hidden="true" />
+                <PanelRightOpen size={15} strokeWidth={1.75} aria-hidden="true" />
               )}
-              <span>{drawerOpen ? 'Tutup Properti' : 'Properti & Kertas'}</span>
             </button>
           </div>
         </div>
@@ -2154,100 +2172,106 @@ export function DocumentStudio({
           >
             <span className="s04-contextual-label">
               <Table2 size={13} aria-hidden="true" />
-              <span>Tabel Aktif</span>
+              <span>Tabel</span>
             </span>
             <button
               type="button"
-              className="s04-tool-btn"
+              className="s04-tool-btn is-icon-only"
               aria-label="Tambah Baris Tabel"
-              title="Tambah Baris di Bawah"
+              data-tooltip="Tambah baris di bawah"
+              data-tooltip-pos="bottom"
               onMouseDown={preserveFocusMouseDown}
               onClick={() => editor?.chain().focus().addRowAfter().run()}
             >
-              <Rows size={13} aria-hidden="true" />
-              <span>+Baris</span>
+              <BetweenHorizontalStart size={14} strokeWidth={1.75} aria-hidden="true" />
             </button>
             <button
               type="button"
-              className="s04-tool-btn"
+              className="s04-tool-btn is-icon-only"
               aria-label="Tambah Kolom Tabel"
-              title="Tambah Kolom di Kanan"
+              data-tooltip="Tambah kolom di kanan"
+              data-tooltip-pos="bottom"
               onMouseDown={preserveFocusMouseDown}
               onClick={() => editor?.chain().focus().addColumnAfter().run()}
             >
-              <Columns size={13} aria-hidden="true" />
-              <span>+Kolom</span>
+              <BetweenVerticalStart size={14} strokeWidth={1.75} aria-hidden="true" />
             </button>
+            <span className="s04-table-sep" aria-hidden="true" />
             <button
               type="button"
-              className="s04-tool-btn"
+              className="s04-tool-btn is-icon-only"
               aria-label="Gabung Sel Tabel"
-              title="Gabung Sel Terpilih (Merge Cells)"
+              data-tooltip="Gabung sel terpilih"
+              data-tooltip-pos="bottom"
               disabled={!editor?.can().mergeCells()}
               onMouseDown={preserveFocusMouseDown}
               onClick={() => editor?.chain().focus().mergeCells().run()}
             >
-              <Combine size={13} aria-hidden="true" />
-              <span>Gabung</span>
+              <Combine size={14} strokeWidth={1.75} aria-hidden="true" />
             </button>
             <button
               type="button"
-              className="s04-tool-btn"
+              className="s04-tool-btn is-icon-only"
               aria-label="Pisah Sel Tabel"
-              title="Pisahkan Sel Gabungan (Split Cell)"
+              data-tooltip="Pisahkan sel gabungan"
+              data-tooltip-pos="bottom"
               disabled={!editor?.can().splitCell()}
               onMouseDown={preserveFocusMouseDown}
               onClick={() => editor?.chain().focus().splitCell().run()}
             >
-              <Split size={13} aria-hidden="true" />
-              <span>Pisah</span>
+              <Split size={14} strokeWidth={1.75} aria-hidden="true" />
             </button>
             <button
               type="button"
-              className="s04-tool-btn"
+              className="s04-tool-btn is-icon-only"
               aria-label="Toggle Baris Header Tabel"
-              title="Aktifkan/Matikan Header Baris Tabel"
+              data-tooltip="Baris header tabel"
+              data-tooltip-pos="bottom"
               onMouseDown={preserveFocusMouseDown}
               onClick={() => editor?.chain().focus().toggleHeaderRow().run()}
             >
-              <TableProperties size={13} aria-hidden="true" />
-              <span>Header</span>
+              <TableProperties size={14} strokeWidth={1.75} aria-hidden="true" />
             </button>
+            <span className="s04-table-sep" aria-hidden="true" />
             <button
               type="button"
-              className="s04-tool-btn"
+              className="s04-tool-btn is-icon-only"
               aria-label="Sel Rata Atas"
-              title="Perataan Vertikal Atas"
+              data-tooltip="Rata vertikal atas"
+              data-tooltip-pos="bottom"
               onMouseDown={preserveFocusMouseDown}
               onClick={() => editor?.chain().focus().setCellAttribute('verticalAlign', 'top').run()}
             >
-              <ArrowUpToLine size={13} aria-hidden="true" />
+              <ArrowUpToLine size={14} strokeWidth={1.75} aria-hidden="true" />
             </button>
             <button
               type="button"
-              className="s04-tool-btn"
+              className="s04-tool-btn is-icon-only"
               aria-label="Sel Rata Tengah Vertikal"
-              title="Perataan Vertikal Tengah"
+              data-tooltip="Rata vertikal tengah"
+              data-tooltip-pos="bottom"
               onMouseDown={preserveFocusMouseDown}
               onClick={() => editor?.chain().focus().setCellAttribute('verticalAlign', 'middle').run()}
             >
-              <AlignVerticalJustifyCenter size={13} aria-hidden="true" />
+              <AlignVerticalJustifyCenter size={14} strokeWidth={1.75} aria-hidden="true" />
             </button>
             <button
               type="button"
-              className="s04-tool-btn"
+              className="s04-tool-btn is-icon-only"
               aria-label="Sel Rata Bawah"
-              title="Perataan Vertikal Bawah"
+              data-tooltip="Rata vertikal bawah"
+              data-tooltip-pos="bottom"
               onMouseDown={preserveFocusMouseDown}
               onClick={() => editor?.chain().focus().setCellAttribute('verticalAlign', 'bottom').run()}
             >
-              <ArrowDownToLine size={13} aria-hidden="true" />
+              <ArrowDownToLine size={14} strokeWidth={1.75} aria-hidden="true" />
             </button>
             <button
               type="button"
-              className="s04-tool-btn"
+              className="s04-tool-btn is-icon-only"
               aria-label="Atur Tinggi Baris 14mm"
-              title="Setel Tinggi Baris Tabel (14 mm / Auto)"
+              data-tooltip="Tinggi baris (14 mm / Auto)"
+              data-tooltip-pos="bottom"
               onMouseDown={preserveFocusMouseDown}
               onClick={() => {
                 const currentH = editor?.getAttributes('tableRow')?.rowHeightMm;
@@ -2258,37 +2282,43 @@ export function DocumentStudio({
                   .run();
               }}
             >
-              <span>Tinggi</span>
+              <ArrowUpDown size={14} strokeWidth={1.75} aria-hidden="true" />
             </button>
+            <span className="s04-table-sep" aria-hidden="true" />
             <button
               type="button"
-              className="s04-tool-btn is-danger"
+              className="s04-tool-btn is-icon-only is-danger"
               aria-label="Hapus Baris Tabel"
-              title="Hapus Baris Aktif"
+              data-tooltip="Hapus baris aktif"
+              data-tooltip-pos="bottom"
               onMouseDown={preserveFocusMouseDown}
               onClick={() => editor?.chain().focus().deleteRow().run()}
             >
-              <span>−Baris</span>
+              <Minus size={9} strokeWidth={2.5} aria-hidden="true" />
+              <Rows size={12} strokeWidth={1.75} aria-hidden="true" />
             </button>
             <button
               type="button"
-              className="s04-tool-btn is-danger"
+              className="s04-tool-btn is-icon-only is-danger"
               aria-label="Hapus Kolom Tabel"
-              title="Hapus Kolom Aktif"
+              data-tooltip="Hapus kolom aktif"
+              data-tooltip-pos="bottom"
               onMouseDown={preserveFocusMouseDown}
               onClick={() => editor?.chain().focus().deleteColumn().run()}
             >
-              <span>−Kolom</span>
+              <Minus size={9} strokeWidth={2.5} aria-hidden="true" />
+              <Columns size={12} strokeWidth={1.75} aria-hidden="true" />
             </button>
             <button
               type="button"
-              className="s04-tool-btn is-danger"
+              className="s04-tool-btn is-icon-only is-danger"
               aria-label="Hapus Tabel"
-              title="Hapus Seluruh Tabel"
+              data-tooltip="Hapus seluruh tabel"
+              data-tooltip-pos="bottom"
               onMouseDown={preserveFocusMouseDown}
               onClick={() => editor?.chain().focus().deleteTable().run()}
             >
-              <Trash2 size={13} aria-hidden="true" />
+              <Trash2 size={14} strokeWidth={1.75} aria-hidden="true" />
             </button>
           </div>
         )}
@@ -2385,22 +2415,17 @@ export function DocumentStudio({
                     ? 'Perkecil kembali ke pratinjau editor normal'
                     : 'Maksimalkan kanvas ke ukuran cetak asli'
                 }
-                title={
+                data-tooltip={
                   isCanvasMaximized
                     ? 'Perkecil kanvas (Esc)'
-                    : 'Maksimalkan ke ukuran real siap cetak'
+                    : 'Maksimalkan (100%)'
                 }
+                data-tooltip-pos="left"
               >
                 {isCanvasMaximized ? (
-                  <>
-                    <Minimize2 size={13} aria-hidden="true" />
-                    <span>Perkecil</span>
-                  </>
+                  <Minimize2 size={14} strokeWidth={1.75} aria-hidden="true" />
                 ) : (
-                  <>
-                    <Maximize2 size={13} aria-hidden="true" />
-                    <span>Maksimalkan</span>
-                  </>
+                  <Maximize2 size={14} strokeWidth={1.75} aria-hidden="true" />
                 )}
               </button>
             </div>

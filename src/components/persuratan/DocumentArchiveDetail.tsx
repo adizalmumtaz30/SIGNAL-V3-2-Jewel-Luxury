@@ -1266,13 +1266,16 @@ export function DocumentArchiveDetail({
                     </strong>
                     <button
                       type="button"
-                      className="s02-icon-btn"
+                      className="s02-icon-btn is-icon-only is-compact"
+                      aria-label="Tutup pratinjau gambar lampiran"
+                      data-tooltip="Tutup pratinjau"
+                      data-tooltip-pos="left"
                       onClick={() => {
                         URL.revokeObjectURL(rasterPreview.url);
                         setRasterPreview(null);
                       }}
                     >
-                      <X size={13} /> Tutup
+                      <X size={14} strokeWidth={1.75} aria-hidden="true" />
                     </button>
                   </div>
                   <img src={rasterPreview.url} alt={`Lampiran ${rasterPreview.fileName}`} />
@@ -1294,35 +1297,41 @@ export function DocumentArchiveDetail({
                           {att.isLocked ? ' · Terkunci (Resmi)' : ' · Draft'}
                         </small>
                       </div>
-                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
                         {isSafeRasterPreviewMime(att.mimeType) && (
                           <button
                             type="button"
-                            className="s02-icon-btn"
+                            className="s02-icon-btn is-icon-only is-compact"
+                            aria-label={`Pratinjau lampiran ${att.fileName}`}
+                            data-tooltip="Pratinjau lampiran"
+                            data-tooltip-pos="left"
                             onClick={() => void handlePreviewAttachmentSafe(att)}
                           >
-                            <Eye size={13} aria-hidden="true" />
-                            <span>Pratinjau</span>
+                            <Eye size={14} strokeWidth={1.75} aria-hidden="true" />
                           </button>
                         )}
                         <button
                           type="button"
-                          className="s02-icon-btn"
+                          className="s02-icon-btn is-icon-only is-compact"
+                          aria-label={`Unduh lampiran ${att.fileName}`}
+                          data-tooltip="Unduh lampiran"
+                          data-tooltip-pos="left"
                           onClick={() => void handleDownloadAttachment(att)}
                         >
-                          <Download size={13} aria-hidden="true" />
-                          <span>Unduh</span>
+                          <Download size={14} strokeWidth={1.75} aria-hidden="true" />
                         </button>
                         {!att.isLocked && doc.status === 'DRAFT' && (
                           <button
                             type="button"
-                            className="s02-icon-btn"
+                            className="s02-icon-btn is-icon-only is-compact is-danger"
                             style={{ color: '#8f2d24', borderColor: '#e2b5af' }}
                             disabled={isBusy}
+                            aria-label={`Hapus lampiran ${att.fileName}`}
+                            data-tooltip="Hapus lampiran"
+                            data-tooltip-pos="left"
                             onClick={() => void handleRemoveAttachment(att)}
                           >
-                            <Trash2 size={13} aria-hidden="true" />
-                            <span>Hapus</span>
+                            <Trash2 size={14} strokeWidth={1.75} aria-hidden="true" />
                           </button>
                         )}
                       </div>

@@ -516,31 +516,37 @@ export function TemplateManager({
                     <div className="s07-row-actions">
                       <button
                         type="button"
-                        className="s02-icon-btn"
+                        className="s02-icon-btn is-icon-only is-compact"
                         disabled={isSaving}
+                        aria-label={`Kloning template ${tpl.name} ke Madrasah`}
+                        data-tooltip="Kloning ke Madrasah"
+                        data-tooltip-pos="left"
                         onClick={() => void handleCloneTemplate(tpl)}
                       >
-                        <Copy size={13} aria-hidden="true" />
-                        <span>Kloning</span>
+                        <Copy size={13} strokeWidth={1.75} aria-hidden="true" />
                       </button>
                       {!isSystem && (
                         <>
                           <button
                             type="button"
-                            className="s02-icon-btn"
+                            className="s02-icon-btn is-icon-only is-compact"
+                            aria-label={`Edit template ${tpl.name}`}
+                            data-tooltip="Edit template"
+                            data-tooltip-pos="left"
                             onClick={() => openEditForm(tpl)}
                           >
-                            <Edit3 size={13} aria-hidden="true" />
-                            <span>Edit</span>
+                            <Edit3 size={13} strokeWidth={1.75} aria-hidden="true" />
                           </button>
                           <button
                             type="button"
-                            className="s02-icon-btn"
+                            className="s02-icon-btn is-icon-only is-compact"
                             disabled={isSaving}
+                            aria-label={`${tpl.status === 'ACTIVE' ? 'Nonaktifkan' : 'Aktifkan'} template ${tpl.name}`}
+                            data-tooltip={tpl.status === 'ACTIVE' ? 'Nonaktifkan template' : 'Aktifkan template'}
+                            data-tooltip-pos="left"
                             onClick={() => void handleToggleStatus(tpl)}
                           >
-                            <Power size={13} aria-hidden="true" />
-                            <span>{tpl.status === 'ACTIVE' ? 'Nonaktifkan' : 'Aktifkan'}</span>
+                            <Power size={13} strokeWidth={1.75} aria-hidden="true" />
                           </button>
                         </>
                       )}
@@ -847,11 +853,13 @@ export function TemplateManager({
                       </label>
                       <button
                         type="button"
-                        className="s02-icon-btn"
+                        className="s02-icon-btn is-icon-only is-compact is-danger"
                         aria-label={`Hapus field ${f.label}`}
+                        data-tooltip="Hapus field"
+                        data-tooltip-pos="left"
                         onClick={() => setFormFields((prev) => prev.filter((_, i) => i !== idx))}
                       >
-                        <Trash2 size={12} />
+                        <Trash2 size={13} strokeWidth={1.75} aria-hidden="true" />
                       </button>
                     </div>
                   ))}

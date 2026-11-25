@@ -156,29 +156,23 @@ export function ScheduleClassViewport({
           {headerExtra}
           <button
             type="button"
-            className={`lpv-max-btn scv-max-btn ${isMaximized ? 'is-active' : ''}`}
+            className={`lpv-max-btn scv-max-btn s5-tooltip-end s5-tooltip-bottom ${isMaximized ? 'is-active' : ''}`}
             onClick={handleToggleMaximize}
             aria-label={
               isMaximized
                 ? `Perkecil tampilan jadwal Kelas ${classNameValue}`
                 : `Maksimalkan tampilan jadwal Kelas ${classNameValue}`
             }
-            title={
+            data-s5-tooltip={
               isMaximized
-                ? 'Perkecil kembali ke tampilan semula (Esc)'
-                : `Maksimalkan jadwal Kelas ${classNameValue}`
+                ? 'Perkecil (Esc)'
+                : `Maksimalkan Kelas ${classNameValue}`
             }
           >
             {isMaximized ? (
-              <>
-                <Minimize2 size={12} aria-hidden="true" />
-                <span>Perkecil</span>
-              </>
+              <Minimize2 size={13} strokeWidth={1.75} aria-hidden="true" />
             ) : (
-              <>
-                <Maximize2 size={12} aria-hidden="true" />
-                <span>Maksimalkan</span>
-              </>
+              <Maximize2 size={13} strokeWidth={1.75} aria-hidden="true" />
             )}
           </button>
         </div>

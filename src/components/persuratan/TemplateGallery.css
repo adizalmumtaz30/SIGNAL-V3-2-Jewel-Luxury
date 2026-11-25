@@ -817,6 +817,38 @@
 
 .s02-icon-btn:hover {
   background: var(--s5-canvas-subtle, #f0f4f1);
+  border-color: #b7cbc2;
+  color: var(--s5-emerald-obsidian, #0b2923);
+}
+
+.s02-icon-btn:focus-visible {
+  outline: 2px solid var(--s5-gold-metallic, #c5a059);
+  outline-offset: 2px;
+}
+
+.s02-icon-btn.is-icon-only {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0;
+  gap: 0;
+  border-radius: 7px;
+  flex-shrink: 0;
+}
+
+.s02-icon-btn.is-icon-only.is-compact {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  border-radius: 6px;
+}
+
+.s02-icon-btn.is-danger:hover:not(:disabled) {
+  background: var(--s5-status-danger-bg, #fcece9);
+  border-color: #efb8b8;
+  color: var(--s5-status-danger, #8f2d24);
 }
 
 .s02-icon-btn.is-fav {

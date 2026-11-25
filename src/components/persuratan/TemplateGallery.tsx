@@ -514,11 +514,13 @@ export function TemplateGallery({
           </div>
           <button
             type="button"
-            className="s02-icon-btn"
+            className="s02-icon-btn is-icon-only is-compact"
             onClick={() => setSelectedNotice(null)}
             aria-label="Tutup informasi pemilihan template"
+            data-tooltip="Tutup pemberitahuan"
+            data-tooltip-pos="left"
           >
-            <X size={14} />
+            <X size={14} strokeWidth={1.75} aria-hidden="true" />
           </button>
         </div>
       )}
@@ -718,9 +720,10 @@ export function TemplateGallery({
 
                       <button
                         type="button"
-                        className={`s02-icon-btn ${isFavorite ? 'is-fav' : ''}`}
+                        className={`s02-icon-btn is-icon-only is-compact ${isFavorite ? 'is-fav' : ''}`}
                         aria-pressed={isFavorite}
                         data-tooltip={isFavorite ? 'Hapus dari favorit' : 'Tandai favorit'}
+                        data-tooltip-pos="left"
                         aria-label={
                           isFavorite
                             ? `Hapus ${tpl.name} dari favorit`
@@ -731,8 +734,12 @@ export function TemplateGallery({
                           handleToggleFavorite(tpl.id);
                         }}
                       >
-                        <Star size={14} fill={isFavorite ? '#C5A059' : 'none'} aria-hidden="true" />
-                        <span>{isFavorite ? 'Favorit' : 'Tandai'}</span>
+                        <Star
+                          size={14}
+                          strokeWidth={1.75}
+                          fill={isFavorite ? '#C5A059' : 'none'}
+                          aria-hidden="true"
+                        />
                       </button>
                     </div>
 
