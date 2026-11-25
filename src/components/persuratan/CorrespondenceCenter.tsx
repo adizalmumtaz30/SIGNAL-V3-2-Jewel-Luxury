@@ -54,6 +54,7 @@ import {
   sortCorrespondenceDocuments,
 } from '../../domain/persuratan/selectors';
 import { UnifiedPagination } from '../UnifiedPagination';
+import { EditorialPageHeader } from '../EditorialPageHeader';
 import {
   attachFileToDocumentInState,
   bulkArchiveDocumentsInState,
@@ -780,106 +781,106 @@ export function CorrespondenceCenter({
 
   return (
     <section className="s01-page" aria-label="Pusat Persuratan & Arsip">
-      {/* Page Header — Figma Pro Quiet Authority */}
-      <header className="s5-page-header s01-header">
-        <div>
-          <h1 className="s5-page-title">Pusat Persuratan &amp; Arsip</h1>
-          <p className="s5-page-subtitle">
-            Kelola surat masuk, surat keluar, dan arsip resmi madrasah.
-          </p>
-        </div>
-        <div className="s01-header-actions">
-          <div className="s01-utility-dock" role="group" aria-label="Utilitas penomoran dan buku agenda">
+      {/* Page Header — Unified Sovereign Porcelain Header */}
+      <EditorialPageHeader
+        kicker="TATA NASKAH & ARSIP"
+        title="Pusat Persuratan & Arsip"
+        subtitle="Kelola surat masuk, surat keluar, dan arsip resmi madrasah."
+        className="s01-header"
+        rightSlot={
+          <div className="s01-header-actions">
+            <div className="s01-utility-dock" role="group" aria-label="Utilitas penomoran dan buku agenda">
+              {onPersistState && (
+                <button
+                  type="button"
+                  className="s01-utility-btn"
+                  onClick={() => setIsNumberingModalOpen(true)}
+                  data-tooltip="Atur pola nomor surat resmi"
+                  data-tooltip-pos="bottom"
+                >
+                  <Hash size={14} aria-hidden="true" />
+                  <span>Format Nomor</span>
+                </button>
+              )}
+
+              {onPersistState && <span className="s01-utility-sep" aria-hidden="true" />}
+
+              <div className="s01-agenda-wrap" data-s01-agenda-root="true">
+                <button
+                  type="button"
+                  className="s01-utility-btn"
+                  disabled={sortedDocuments.length === 0 || isExportingAgenda}
+                  aria-haspopup="menu"
+                  aria-expanded={isAgendaMenuOpen}
+                  onClick={() => setIsAgendaMenuOpen((prev) => !prev)}
+                  data-tooltip={
+                    sortedDocuments.length === 0
+                      ? 'Ekspor aktif setelah ada dokumen'
+                      : 'Unduh PDF / CSV Buku Agenda'
+                  }
+                  data-tooltip-pos="bottom"
+                >
+                  <Download size={14} aria-hidden="true" />
+                  <span>{isExportingAgenda ? 'Mengekspor…' : 'Buku Agenda'}</span>
+                  <ChevronDown size={13} aria-hidden="true" />
+                </button>
+
+                {isAgendaMenuOpen && (
+                  <div className="s01-agenda-menu" role="menu" aria-label="Ekspor Buku Agenda Surat">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="s5-menu-item"
+                      onClick={() => void handleExportAgendaPdf()}
+                    >
+                      <FileText size={14} aria-hidden="true" />
+                      <span>Cetak / Unduh PDF Buku Agenda</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="s5-menu-item"
+                      onClick={handleExportAgendaCsv}
+                    >
+                      <FileSpreadsheet size={14} aria-hidden="true" />
+                      <span>Unduh Tabel CSV / Excel</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {onPersistState && (
               <button
                 type="button"
-                className="s01-utility-btn"
-                onClick={() => setIsNumberingModalOpen(true)}
-                data-tooltip="Atur pola nomor surat resmi"
+                className="s01-btn-secondary"
+                onClick={openIncomingModal}
+                data-tooltip="Catat agenda & berkas surat masuk"
                 data-tooltip-pos="bottom"
               >
-                <Hash size={14} aria-hidden="true" />
-                <span>Format Nomor</span>
+                <Inbox size={14} aria-hidden="true" />
+                <span>Catat Surat Masuk</span>
               </button>
             )}
 
-            {onPersistState && <span className="s01-utility-sep" aria-hidden="true" />}
-
-            <div className="s01-agenda-wrap" data-s01-agenda-root="true">
-              <button
-                type="button"
-                className="s01-utility-btn"
-                disabled={sortedDocuments.length === 0 || isExportingAgenda}
-                aria-haspopup="menu"
-                aria-expanded={isAgendaMenuOpen}
-                onClick={() => setIsAgendaMenuOpen((prev) => !prev)}
-                data-tooltip={
-                  sortedDocuments.length === 0
-                    ? 'Ekspor aktif setelah ada dokumen'
-                    : 'Unduh PDF / CSV Buku Agenda'
-                }
-                data-tooltip-pos="bottom"
-              >
-                <Download size={14} aria-hidden="true" />
-                <span>{isExportingAgenda ? 'Mengekspor…' : 'Buku Agenda'}</span>
-                <ChevronDown size={13} aria-hidden="true" />
-              </button>
-
-              {isAgendaMenuOpen && (
-                <div className="s01-agenda-menu" role="menu" aria-label="Ekspor Buku Agenda Surat">
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="s5-menu-item"
-                    onClick={() => void handleExportAgendaPdf()}
-                  >
-                    <FileText size={14} aria-hidden="true" />
-                    <span>Cetak / Unduh PDF Buku Agenda</span>
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="s5-menu-item"
-                    onClick={handleExportAgendaCsv}
-                  >
-                    <FileSpreadsheet size={14} aria-hidden="true" />
-                    <span>Unduh Tabel CSV / Excel</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {onPersistState && (
             <button
+              ref={createBtnRef}
               type="button"
-              className="s01-btn-secondary"
-              onClick={openIncomingModal}
-              data-tooltip="Catat agenda & berkas surat masuk"
-              data-tooltip-pos="bottom"
+              className="s01-cta-btn"
+              onClick={() => {
+                if (onOpenTemplateGallery) {
+                  onOpenTemplateGallery();
+                } else {
+                  setIsCreateModalOpen(true);
+                }
+              }}
             >
-              <Inbox size={14} aria-hidden="true" />
-              <span>Catat Surat Masuk</span>
+              <FilePlus2 size={16} aria-hidden="true" />
+              <span>Buat Dokumen</span>
             </button>
-          )}
-
-          <button
-            ref={createBtnRef}
-            type="button"
-            className="s01-cta-btn"
-            onClick={() => {
-              if (onOpenTemplateGallery) {
-                onOpenTemplateGallery();
-              } else {
-                setIsCreateModalOpen(true);
-              }
-            }}
-          >
-            <FilePlus2 size={16} aria-hidden="true" />
-            <span>Buat Dokumen</span>
-          </button>
-        </div>
-      </header>
+          </div>
+        }
+      />
 
       {/* Auto-Resume Quiet Strip for latest Draft */}
       {latestActiveDraft && onOpenStudio && (

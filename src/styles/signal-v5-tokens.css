@@ -912,43 +912,8 @@
   background: linear-gradient(90deg, rgba(18, 64, 55, 0.45), rgba(197, 160, 89, 0.65), transparent) !important;
 }
 
-.s5-page-kicker {
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  color: var(--s5-gold-muted) !important;
-  letter-spacing: 0.06em !important;
-  text-transform: uppercase !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-}
+/* .s5-page-kicker, .s5-page-title, and .s5-page-subtitle live cleanly in sakala-design-system.css (@layer figma-components) */
 
-.s5-page-kicker::before {
-  content: "" !important;
-  display: inline-block !important;
-  width: 14px !important;
-  height: 1.5px !important;
-  background: var(--s5-gold-metallic) !important;
-  border-radius: 1px !important;
-}
-
-.s5-page-title {
-  font-family: var(--font-serif) !important;
-  font-size: 26px !important;
-  font-weight: 700 !important;
-  color: var(--s5-emerald-obsidian) !important;
-  letter-spacing: -0.02em !important;
-  margin: 3px 0 0 !important;
-  line-height: 1.2 !important;
-}
-
-.s5-page-subtitle {
-  font-size: 13px !important;
-  color: var(--s5-ink-secondary) !important;
-  margin: 4px 0 0 !important;
-  max-width: 620px !important;
-  line-height: 1.45 !important;
-}
 
 /* Subtle Shimmer for High-Priority Interactive Elements */
 @keyframes s5GoldShimmer {
@@ -1416,13 +1381,13 @@ table.s5-figma-table tbody tr.s5-row-selected:hover td {
 }
 
 .sakala-header-greeting h1 {
-  font-family: var(--font-serif) !important;
-  font-size: 19px !important;
-  font-weight: 700 !important;
-  letter-spacing: -0.02em !important;
-  color: var(--s5-emerald-obsidian) !important;
+  font-family: var(--font-sans) !important;
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em !important;
+  color: var(--s5-emerald-primary) !important;
   margin: 0 !important;
-  line-height: 1.15 !important;
+  line-height: 1.25 !important;
   white-space: nowrap !important;
   flex-shrink: 0 !important;
 }
@@ -2829,14 +2794,12 @@ body {
 }
 
 /* 19.2 Reserve Fraunces Display Serif STRICTLY for Editorial Display Titles (600–700) */
-.sakala-header-greeting h1,
 .page-heading h1,
 .page-heading-title,
 .s5-page-title,
 .hero h3,
 .overview-focal-title,
-.workload-hero-copy h2,
-.validation-banner h2 {
+.workload-hero-copy h2 {
   font-family: var(--font-serif) !important;
   font-weight: 700 !important;
   letter-spacing: -0.02em !important;
@@ -2847,10 +2810,8 @@ body {
 .stats .stat .value,
 .stat .value,
 .overview-kpi-copy strong,
-.stat-grid .stat-card .stat-value-row strong,
 .generator-metrics > div strong,
 .requirements-metric-grid .req-metric strong,
-.schedule-summary-metric strong,
 .master-summary-item strong,
 .validation-summary-grid strong,
 .validation-banner-count strong {
@@ -5079,9 +5040,10 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 
 .s5-backup-bento-grid .backup-action-card {
   height: 100% !important;
-  border: 0.75px solid #D5E0DA !important;
+  background: linear-gradient(165deg, #FFFFFF 0%, #F9FBFA 64%, #FBF7EE 100%) !important;
+  border: 1px solid rgba(197, 160, 89, 0.3) !important;
   border-radius: 16px !important;
-  box-shadow: var(--s5-shadow-resting) !important;
+  box-shadow: var(--s5-shadow-resting), inset 0 1px 0 rgba(255, 255, 255, 0.96) !important;
   transition: transform 0.16s var(--s5-spring-fast), border-color 0.16s ease, box-shadow 0.16s ease !important;
 }
 

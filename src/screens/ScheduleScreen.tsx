@@ -1112,7 +1112,7 @@ export function ScheduleScreen({
                 </div>
                 <div className="schedule-summary-metric">
                   <span>Kepatuhan JP</span>
-                  <strong style={{ color: singleDiff === 0 ? '#1f6952' : '#b24c3d' }}>
+                  <strong className={singleDiff === 0 ? 'is-ok' : 'is-danger'}>
                     {singleDiff === 0 ? '100% Pas' : singleDiff > 0 ? `+${singleDiff} JP` : `${singleDiff} JP`}
                   </strong>
                 </div>

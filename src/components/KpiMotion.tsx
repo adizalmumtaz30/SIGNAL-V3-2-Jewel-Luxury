@@ -106,9 +106,8 @@ export function KpiMotionCard({
       ease: EASE_OUT_EXPO,
     },
     whileHover: {
-      y: -4,
-      boxShadow:
-        '0 14px 30px -10px rgba(11, 41, 35, 0.18), 0 4px 12px -4px rgba(197, 160, 89, 0.22)',
+      y: -2,
+      boxShadow: '0 12px 24px rgba(17, 24, 39, 0.14)',
       transition: HOVER_SPRING,
     },
     whileTap: {

@@ -793,13 +793,13 @@
 .schedule-summary-row {
   display: flex;
   align-items: center;
-  gap: 16px;
-  background: #ffffff;
-  border: 1px solid #dee7e1;
-  border-radius: 12px;
-  padding: 12px 18px;
+  gap: 14px;
+  background: linear-gradient(135deg, #ffffff 0%, #f9fbfa 64%, #fbf7ee 100%);
+  border: 1px solid rgba(197, 160, 89, 0.32);
+  border-radius: 14px;
+  padding: 13px 18px;
   margin-bottom: 14px;
-  box-shadow: 0 2px 8px rgba(22, 53, 44, 0.03);
+  box-shadow: 0 2px 8px rgba(11, 41, 35, 0.035), inset 0 1px 0 rgba(255, 255, 255, 0.96);
   flex-wrap: wrap;
 }
 
@@ -813,60 +813,70 @@
 .class-monogram {
   width: 40px;
   height: 40px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #184c3f 0%, #0d342a 100%);
-  color: #ffffff;
+  border-radius: 11px;
+  background: linear-gradient(148deg, #10352c 0%, #1c5546 100%);
+  border: 1px solid rgba(229, 201, 122, 0.45);
+  color: #f3d98b;
   display: grid;
   place-items: center;
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  box-shadow: 0 2px 6px rgba(18, 50, 42, 0.15);
+  box-shadow: 0 3px 10px rgba(11, 41, 35, 0.16);
 }
 
 .schedule-selected-class strong {
   display: block;
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 700;
-  color: #143d32;
+  color: #0b2923;
   line-height: 1.2;
 }
 
 .schedule-selected-class span {
   display: block;
-  font-size: 11px;
-  color: #5c776e;
-  margin-top: 1px;
+  font-size: 0.71875rem;
+  color: #526861;
+  margin-top: 2px;
 }
 
 .schedule-summary-metric {
   display: flex;
   flex-direction: column;
-  padding: 0 14px;
-  border-left: 1px solid #e7efe9;
+  padding: 2px 14px;
+  border-left: 1px solid rgba(197, 160, 89, 0.28);
 }
 
 .schedule-summary-metric span {
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 0.6875rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #617b72;
+  letter-spacing: 0.05em;
+  color: #526861;
 }
 
 .schedule-summary-metric strong {
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-  font-size: 16px;
+  font-family: var(--font-sans, 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif);
+  font-size: 1.125rem;
   font-weight: 700;
-  color: #143d32;
+  color: #0b2923;
   font-variant-numeric: tabular-nums;
   margin-top: 2px;
+  line-height: 1.15;
+}
+
+.schedule-summary-metric strong.is-ok {
+  color: #166534;
+}
+
+.schedule-summary-metric strong.is-danger {
+  color: #9e2a21;
 }
 
 .schedule-summary-metric strong small {
-  font-size: 11px;
+  font-size: 0.71875rem;
   font-weight: 600;
-  color: #5d756d;
+  color: #526861;
 }
 
 /* Schedule Table Container & Wrapper */
