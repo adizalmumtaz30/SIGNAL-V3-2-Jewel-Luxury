@@ -238,11 +238,11 @@ export const TimeMachineDrawer: React.FC<TimeMachineDrawerProps> = ({
                 width: '32px',
                 height: '32px',
                 borderRadius: '8px',
-                background: 'rgba(197, 160, 89, 0.15)',
-                border: '1px solid #C5A059',
+                background: 'rgba(77, 115, 104, 0.12)',
+                border: '1px solid #CBD8D1',
                 display: 'grid',
                 placeItems: 'center',
-                color: '#8E7035',
+                color: '#124037',
               }}
             >
               <Clock size={16} />
@@ -343,8 +343,8 @@ export const TimeMachineDrawer: React.FC<TimeMachineDrawerProps> = ({
                 padding: '8px 12px',
                 borderRadius: '8px',
                 background: '#FFFFFF',
-                border: '0.75px solid #C5A059',
-                color: '#8E7035',
+                border: '0.75px solid #CBD8D1',
+                color: '#124037',
                 fontWeight: 600,
                 fontSize: '11.5px',
                 cursor: 'pointer',
@@ -462,7 +462,7 @@ export const TimeMachineDrawer: React.FC<TimeMachineDrawerProps> = ({
                   fontSize: '11px',
                   fontWeight: 600,
                   letterSpacing: '0.07em',
-                  color: '#8E7035',
+                  color: '#855318',
                   textTransform: 'uppercase',
                   marginBottom: '8px',
                   display: 'flex',
@@ -470,7 +470,7 @@ export const TimeMachineDrawer: React.FC<TimeMachineDrawerProps> = ({
                   gap: '6px',
                 }}
               >
-                <Star size={12} fill="#C5A059" color="#C5A059" />
+                <Star size={12} fill="#C68B2C" color="#C68B2C" />
                 <span>Titik Tonggak Permanen ({starredSnapshots.length})</span>
               </div>
               {starredSnapshots.map((snap) => renderSnapshotCard(snap))}
@@ -766,11 +766,11 @@ export const TimeMachineDrawer: React.FC<TimeMachineDrawerProps> = ({
                 background: 'transparent',
                 border: 'none',
                 cursor: 'pointer',
-                color: snap.isStarred ? '#C5A059' : '#A1B2AC',
+                color: snap.isStarred ? '#C68B2C' : '#A1B2AC',
                 padding: '4px',
               }}
             >
-              <Star size={15} fill={snap.isStarred ? '#C5A059' : 'none'} />
+              <Star size={15} fill={snap.isStarred ? '#C68B2C' : 'none'} />
             </button>
             <button
               onClick={(e) => handleDelete(snap.id, e)}

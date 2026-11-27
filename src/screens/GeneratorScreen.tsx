@@ -7,6 +7,8 @@ import {
   ChevronDown,
   Clock,
   Eye,
+  HelpCircle,
+  Info,
   LoaderCircle,
   ShieldCheck,
   Sparkles,
@@ -395,13 +397,19 @@ export function GeneratorScreen({
               <strong style={{ fontSize: '13.5px', color: '#0B2923' }}>
                 Mesin Penyusun Jadwal Sedang Bekerja
               </strong>
+              <span
+                className="s5-info-icon-trigger s5-tooltip-bottom"
+                tabIndex={0}
+                role="img"
+                aria-label="Proses penyusunan otomatis"
+                data-s5-tooltip="Memeriksa kombinasi ruang jadwal, ketersediaan hari mengajar guru, batas beban harian, serta slot khusus madrasah bebas bentrok di latar belakang."
+              >
+                <Info size={12} aria-hidden="true" />
+              </span>
               <span className="s5-tnum" style={{ fontSize: '11.5px', background: '#E1E8E4', padding: '2px 9px', borderRadius: '6px', fontWeight: 600, color: '#124037' }}>
                 {nodesProgress.toLocaleString('id-ID')} kombinasi diperiksa
               </span>
             </div>
-            <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#556663' }}>
-              Memeriksa kombinasi ruang jadwal, ketersediaan hari mengajar guru, batas beban harian, serta slot khusus madrasah bebas bentrok di latar belakang.
-            </p>
           </div>
           <Button variant="secondary" size="sm" icon={X} onClick={onCancel}>
             Batalkan
@@ -472,9 +480,22 @@ export function GeneratorScreen({
             </div>
           )}
 
-          <div className="result-disclaimer">
-            <ShieldCheck size={16} />
-            <span>Hasil berstatus <strong>BERHASIL</strong> telah lolos seluruh aturan wajib bebas bentrok sebelum disimpan ke draf.</span>
+          <div className="result-disclaimer" style={{ justifyContent: 'space-between' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <ShieldCheck size={15} aria-hidden="true" />
+              <span>
+                <strong>BERHASIL</strong> = 100% lolos aturan wajib
+              </span>
+            </span>
+            <span
+              className="s5-info-icon-trigger"
+              tabIndex={0}
+              role="img"
+              aria-label="Informasi verifikasi hasil penyusunan"
+              data-s5-tooltip="Hasil berstatus BERHASIL telah lolos seluruh aturan wajib bebas bentrok sebelum disimpan ke draf."
+            >
+              <HelpCircle size={12} aria-hidden="true" />
+            </span>
           </div>
         </Card>
 
@@ -483,8 +504,15 @@ export function GeneratorScreen({
           title="Kandidat Tersimpan"
           action={
             state.candidates.length > 0 ? (
-              <span style={{ fontSize: '11.5px', color: '#526861', fontWeight: 500 }}>
-                Skor dihitung dari bonus blok 2 JP dikurangi penalti tumpuk &amp; jam kosong
+              <span
+                className="s5-header-help-chip s5-tooltip-end"
+                tabIndex={0}
+                role="img"
+                aria-label="Penjelasan rumus skor kandidat"
+                data-s5-tooltip="Skor dihitung dari bonus blok 2 JP dikurangi penalti tumpuk & jam kosong"
+              >
+                <HelpCircle size={13} aria-hidden="true" />
+                <span>Rumus Skor</span>
               </span>
             ) : undefined
           }
@@ -545,30 +573,30 @@ export function GeneratorScreen({
                           <div className="s5-action-dock" style={{ display: 'inline-flex', justifyContent: 'flex-end' }}>
                             <button
                               type="button"
-                              className="s5-dock-btn"
+                              className="s5-dock-btn is-icon-only"
                               onClick={() => setPreviewCandidate(cand)}
-                              title="Lihat rincian skor & ringkasan kandidat sebelum menerapkan"
+                              aria-label="Pratinjau rincian kandidat jadwal"
+                              data-s5-tooltip="Pratinjau kandidat"
                             >
-                              <Eye size={13} />
-                              <span>Pratinjau</span>
+                              <Eye size={14} strokeWidth={1.75} aria-hidden="true" />
                             </button>
                             <button
                               type="button"
                               className="s5-dock-btn primary"
                               onClick={() => onChoose(cand.id)}
                               disabled={isActiveDraft}
-                              title={isActiveDraft ? 'Kandidat ini sudah aktif di draf' : 'Terapkan kandidat ke draf jadwal'}
+                              data-s5-tooltip={isActiveDraft ? 'Kandidat ini sudah aktif di draf' : 'Terapkan kandidat ke draf jadwal'}
                             >
                               {isActiveDraft ? 'Aktif' : 'Terapkan'}
                             </button>
                             <button
                               type="button"
-                              className="s5-dock-btn"
+                              className="s5-dock-btn is-icon-only is-danger s5-tooltip-end"
                               onClick={() => onDeleteCandidate(cand.id)}
-                              title="Hapus kandidat dari riwayat"
-                              style={{ color: '#8F2D24' }}
+                              aria-label="Hapus kandidat dari riwayat"
+                              data-s5-tooltip="Hapus kandidat"
                             >
-                              <Trash2 size={13} />
+                              <Trash2 size={14} strokeWidth={1.75} aria-hidden="true" />
                             </button>
                           </div>
                         </td>

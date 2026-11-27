@@ -31,8 +31,9 @@ import type { validateSchedule } from '../domain/validator';
 import { getOfficialScheduleBasisStatus } from '../domain/persuratan/assignments/teacherIntegration';
 import { compactSubjectName, compactTeacherName, getPrintableCellColor } from '../utils/pdfExport';
 import { groupClassesForMasterMatrix } from '../utils/matrixGrouping';
+import { motion, useReducedMotion } from 'framer-motion';
 import { EditorialPageHeader } from '../components/EditorialPageHeader';
-import { MotionPopover } from '../components/KpiMotion';
+import { MICRO_EASE, MotionPopover } from '../components/KpiMotion';
 import { ScheduleClassViewport } from '../components/ScheduleClassViewport';
 import {
   Button,
@@ -99,6 +100,7 @@ export function ScheduleScreen({
   const [hoveredCoordinate, setHoveredCoordinate] = useState<{ day: Day; jpNo: number } | null>(null);
   const [cellMenu, setCellMenu] = useState<{ classId: string; day: Day; jpNo: number; x: number; y: number } | null>(null);
 
+  const shouldReduceMotion = useReducedMotion();
   const [viewMode, setViewMode] = useState<'all' | 'single'>('all');
 
   useEffect(() => {
@@ -389,6 +391,14 @@ export function ScheduleScreen({
               onClick={() => setViewMode('all')}
               title="Tampilan matriks terpadu semua kelas dalam satu layar"
             >
+              {viewMode === 'all' && (
+                <motion.span
+                  layoutId="scheduleViewPill"
+                  className="s5-sliding-tab-pill"
+                  transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.22, ease: MICRO_EASE }}
+                  aria-hidden="true"
+                />
+              )}
               <LayoutGrid size={15} />
               <span>Matriks Seluruh Kelas</span>
             </button>
@@ -398,6 +408,14 @@ export function ScheduleScreen({
               onClick={() => setViewMode('single')}
               title="Tampilan detail per kelas dengan drag-and-drop"
             >
+              {viewMode === 'single' && (
+                <motion.span
+                  layoutId="scheduleViewPill"
+                  className="s5-sliding-tab-pill"
+                  transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.22, ease: MICRO_EASE }}
+                  aria-hidden="true"
+                />
+              )}
               <GraduationCap size={15} />
               <span>Editor Per-Kelas</span>
             </button>
@@ -449,17 +467,17 @@ export function ScheduleScreen({
               {activeMatrixFilterCount > 0 && (
                 <button
                   type="button"
-                  className="button button-sm matrix-reset-filter-btn"
+                  className="button button-sm matrix-reset-filter-btn is-icon-only"
                   onClick={() => {
                     setFilterLevel('all');
                     setFilterRombelRow('all');
                     setFilterTeacherId('');
                     setFilterSubjectId('');
                   }}
-                  title="Hapus seluruh filter aktif"
+                  aria-label="Reset seluruh filter aktif"
+                  data-s5-tooltip={`Reset filter (${activeMatrixFilterCount})`}
                 >
-                  <RotateCcw size={13} />
-                  <span>Reset</span>
+                  <RotateCcw size={14} strokeWidth={1.75} aria-hidden="true" />
                 </button>
               )}
 

@@ -27,7 +27,7 @@ export function ScheduleClassViewport({
   filledCount,
   requiredCount,
   variant,
-  minZoomPct = 35,
+  minZoomPct = 45,
   maxZoomPct = 135,
   headerExtra,
   children,
@@ -35,6 +35,7 @@ export function ScheduleClassViewport({
   const [isMaximized, setIsMaximized] = useState(false);
   const [zoomMode, setZoomMode] = useState<'fit' | 'manual'>('fit');
   const [manualZoomPct, setManualZoomPct] = useState<number>(100);
+  const [isZoomActive, setIsZoomActive] = useState(false);
   const [containerWidth, setContainerWidth] = useState<number>(variant === 'single' ? 920 : 500);
   const [contentSize, setContentSize] = useState<{ width: number; height: number } | null>(null);
 
@@ -212,21 +213,45 @@ export function ScheduleClassViewport({
             onClick={() => handleStepZoom(-5)}
             disabled={activeZoomPct <= minZoomPct}
             aria-label={`Perkecil jadwal Kelas ${classNameValue}`}
-            title="Perkecil tampilan (-5%)"
+            data-s5-tooltip="Perkecil tampilan (-5%)"
           >
             <Minus size={12} aria-hidden="true" />
           </button>
 
-          <input
-            type="range"
-            className="lpv-zoom-slider"
-            min={minZoomPct}
-            max={maxZoomPct}
-            step={5}
-            value={activeZoomPct}
-            aria-label={`Geser skala zoom jadwal Kelas ${classNameValue}`}
-            onChange={(e) => handleSliderChange(Number(e.target.value))}
-          />
+          {(() => {
+            const clampedZoom = Math.min(maxZoomPct, Math.max(minZoomPct, activeZoomPct));
+            const ratio = maxZoomPct > minZoomPct ? (clampedZoom - minZoomPct) / (maxZoomPct - minZoomPct) : 0;
+            return (
+              <div className="lpv-zoom-slider-wrap">
+                <span
+                  className={`lpv-zoom-bubble ${isZoomActive ? 'is-visible' : ''}`}
+                  style={{ left: `calc(${ratio * 100}% + ${8 - ratio * 16}px)` }}
+                  aria-hidden="true"
+                >
+                  {activeZoomPct}%
+                </span>
+                <input
+                  type="range"
+                  className="lpv-zoom-slider"
+                  min={minZoomPct}
+                  max={maxZoomPct}
+                  step={5}
+                  value={clampedZoom}
+                  aria-label={`Geser skala zoom jadwal Kelas ${classNameValue}`}
+                  onPointerDown={() => setIsZoomActive(true)}
+                  onPointerUp={() => setIsZoomActive(false)}
+                  onMouseEnter={() => setIsZoomActive(true)}
+                  onMouseLeave={() => setIsZoomActive(false)}
+                  onFocus={() => setIsZoomActive(true)}
+                  onBlur={() => setIsZoomActive(false)}
+                  onChange={(e) => {
+                    setIsZoomActive(true);
+                    handleSliderChange(Number(e.target.value));
+                  }}
+                />
+              </div>
+            );
+          })()}
 
           <button
             type="button"
@@ -234,7 +259,7 @@ export function ScheduleClassViewport({
             onClick={() => handleStepZoom(5)}
             disabled={activeZoomPct >= maxZoomPct}
             aria-label={`Perbesar jadwal Kelas ${classNameValue}`}
-            title="Perbesar tampilan (+5%)"
+            data-s5-tooltip="Perbesar tampilan (+5%)"
           >
             <Plus size={12} aria-hidden="true" />
           </button>

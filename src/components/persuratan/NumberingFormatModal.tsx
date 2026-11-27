@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, ChevronDown, Hash, RotateCcw, X } from 'lucide-react';
+import { Check, ChevronDown, Copy, Hash, RotateCcw, X } from 'lucide-react';
 import type { AppState } from '../../domain/types';
 import type {
   DocumentKind,
@@ -13,6 +13,7 @@ import {
   computeNextSequentialNumber,
   normalizeDocumentNumberingConfig,
 } from '../../domain/persuratan/finalization/numberingEngine';
+import { copyTextSafe, useTransientConfirm } from '../KpiMotion';
 import { AtelierPlaqueFiligree } from './PersuratanLuxuryPrimitives';
 import './NumberingFormatModal.css';
 
@@ -58,6 +59,35 @@ const EDITABLE_KINDS: DocumentKind[] = [
   'NOTULA',
   'LAPORAN',
 ];
+
+function CopyNumberConfirmButton({ text }: { text: string }) {
+  const { confirmed, trigger } = useTransientConfirm(1500);
+  return (
+    <button
+      type="button"
+      className={`s5-copy-confirm-btn is-dark-plaque ${confirmed ? 'is-copied' : ''}`}
+      onClick={() => {
+        void copyTextSafe(text).then((ok) => {
+          if (ok) trigger();
+        });
+      }}
+      aria-label={confirmed ? 'Nomor surat tersalin' : 'Salin contoh nomor surat'}
+      title="Salin contoh nomor surat ke papan klip"
+    >
+      {confirmed ? (
+        <>
+          <Check size={12} aria-hidden="true" />
+          <span>Tersalin</span>
+        </>
+      ) : (
+        <>
+          <Copy size={12} aria-hidden="true" />
+          <span>Salin</span>
+        </>
+      )}
+    </button>
+  );
+}
 
 export function NumberingFormatModal({
   open,
@@ -221,7 +251,10 @@ export function NumberingFormatModal({
                 <Hash size={12} aria-hidden="true" />
                 Pratinjau Nomor Berikutnya · {DOCUMENT_KIND_LABELS[previewKind]}
               </span>
-              <span className="nfm-preview-pill">Otomatis</span>
+              <div className="nfm-preview-actions">
+                <CopyNumberConfirmButton text={livePreview.suggestedNumber} />
+                <span className="nfm-preview-pill">Otomatis</span>
+              </div>
             </div>
             <strong className="nfm-preview-value s5-tnum">{livePreview.suggestedNumber}</strong>
           </div>

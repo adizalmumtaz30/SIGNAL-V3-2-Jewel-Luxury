@@ -6,6 +6,7 @@ import {
   Download,
   FileCheck2,
   FileText,
+  HelpCircle,
   History,
   LockKeyhole,
   Printer,
@@ -917,13 +918,15 @@ export function DocumentPreviewFinalize({
                 </button>
                 <button
                   type="button"
-                  className="s05-btn-outline-emerald"
+                  className="s05-btn-outline-emerald is-icon-only"
                   disabled={isSubmitting}
                   onClick={() => void handlePrintFinalPdf()}
                   aria-label="Cetak langsung PDF resmi"
+                  data-tooltip="Cetak langsung PDF resmi"
+                  data-tooltip-pos="bottom"
                 >
-                  <Printer size={14} aria-hidden="true" />
-                  <span>Cetak</span>
+                  <Printer size={16} strokeWidth={1.75} aria-hidden="true" />
+                  <span className="sr-only">Cetak</span>
                 </button>
               </div>
             </>
@@ -1023,9 +1026,19 @@ export function DocumentPreviewFinalize({
                     <span>{pageSettings.footerText ?? ''}</span>
                     {pageSettings.showPageNumbers && (
                       <span>
-                        {resolvedVersion
-                          ? `${resolvedVersion.pdfPageCount} halaman PDF terverifikasi`
-                          : 'Nomor halaman eksak dicetak saat PDF final diterbitkan'}
+                        {resolvedVersion ? (
+                          `${resolvedVersion.pdfPageCount} halaman PDF terverifikasi`
+                        ) : (
+                          <span
+                            tabIndex={0}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                            data-tooltip="Nomor halaman eksak dicetak saat PDF final diterbitkan"
+                            data-tooltip-pos="left"
+                          >
+                            <FileText size={12} aria-hidden="true" />
+                            <span>Otomatis di PDF</span>
+                          </span>
+                        )}
                       </span>
                     )}
                   </div>
@@ -1082,10 +1095,36 @@ export function DocumentPreviewFinalize({
                 placeholder="Contoh: 001/SK/MTs.DAH/XI/2026"
               />
               {!isLockedFinal && (
-                <small style={{ fontSize: '11.5px', color: numberValidation.valid ? '#1d5d44' : '#8f2d24' }}>
-                  {numberValidation.valid
-                    ? `Nomor urut #${suggestedAutoNumber.nextSequence} (periode ${suggestedAutoNumber.periodKey}) siap diterbitkan dan belum dipakai dokumen lain.`
-                    : numberValidation.error}
+                <small
+                  style={{
+                    fontSize: '12px',
+                    color: numberValidation.valid ? '#1d5d44' : '#8f2d24',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  {numberValidation.valid ? (
+                    <>
+                      <CheckCircle2 size={12} aria-hidden="true" />
+                      <span>
+                        #{suggestedAutoNumber.nextSequence} ({suggestedAutoNumber.periodKey}) · Siap terbit
+                      </span>
+                      <span
+                        className="p5-info-icon-trigger"
+                        tabIndex={0}
+                        role="img"
+                        aria-label="Info nomor surat tersedia"
+                        data-tooltip="Nomor urut belum dipakai dokumen lain dan siap diterbitkan."
+                        data-tooltip-pos="left"
+                      >
+                        <HelpCircle size={11} aria-hidden="true" />
+                      </span>
+                    </>
+                  ) : (
+                    numberValidation.error
+                  )}
                 </small>
               )}
             </div>
@@ -1190,7 +1229,7 @@ export function DocumentPreviewFinalize({
                     value={quickSchoolName}
                     onChange={(e) => setQuickSchoolName(e.target.value)}
                     className="s05-number-input"
-                    style={{ height: '34px', fontSize: '12.5px', fontFamily: 'inherit', fontWeight: 500 }}
+                    style={{ height: '36px', fontSize: '13.5px', fontFamily: 'inherit', fontWeight: 500 }}
                   />
                   <input
                     type="text"
@@ -1199,7 +1238,7 @@ export function DocumentPreviewFinalize({
                     value={quickAddress}
                     onChange={(e) => setQuickAddress(e.target.value)}
                     className="s05-number-input"
-                    style={{ height: '34px', fontSize: '12.5px', fontFamily: 'inherit', fontWeight: 500 }}
+                    style={{ height: '36px', fontSize: '13.5px', fontFamily: 'inherit', fontWeight: 500 }}
                   />
                   <input
                     type="text"
@@ -1208,7 +1247,7 @@ export function DocumentPreviewFinalize({
                     value={quickCity}
                     onChange={(e) => setQuickCity(e.target.value)}
                     className="s05-number-input"
-                    style={{ height: '34px', fontSize: '12.5px', fontFamily: 'inherit', fontWeight: 500 }}
+                    style={{ height: '36px', fontSize: '13.5px', fontFamily: 'inherit', fontWeight: 500 }}
                   />
                   <input
                     type="text"
@@ -1217,7 +1256,7 @@ export function DocumentPreviewFinalize({
                     value={quickHeadmasterName}
                     onChange={(e) => setQuickHeadmasterName(e.target.value)}
                     className="s05-number-input"
-                    style={{ height: '34px', fontSize: '12.5px', fontFamily: 'inherit', fontWeight: 500 }}
+                    style={{ height: '36px', fontSize: '13.5px', fontFamily: 'inherit', fontWeight: 500 }}
                   />
                   <input
                     type="text"
@@ -1226,13 +1265,13 @@ export function DocumentPreviewFinalize({
                     value={quickHeadmasterNip}
                     onChange={(e) => setQuickHeadmasterNip(e.target.value)}
                     className="s05-number-input"
-                    style={{ height: '34px', fontSize: '12.5px', fontFamily: 'inherit', fontWeight: 500 }}
+                    style={{ height: '36px', fontSize: '13.5px', fontFamily: 'inherit', fontWeight: 500 }}
                   />
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
                     <button
                       type="button"
                       className="s02-btn-secondary"
-                      style={{ height: '32px', fontSize: '12px' }}
+                      style={{ height: '34px', fontSize: '12.5px' }}
                       disabled={isSubmitting}
                       onClick={() => setShowQuickIdentityFix(false)}
                     >
@@ -1241,7 +1280,7 @@ export function DocumentPreviewFinalize({
                     <button
                       type="button"
                       className="s02-btn-primary"
-                      style={{ height: '32px', fontSize: '12px' }}
+                      style={{ height: '34px', fontSize: '12.5px' }}
                       disabled={isSubmitting}
                       onClick={() => void handleQuickSaveIdentity()}
                     >
@@ -1313,7 +1352,7 @@ export function DocumentPreviewFinalize({
                   <ShieldCheck size={16} aria-hidden="true" />
                   <span>Sumber Data &amp; Snapshot</span>
                 </h2>
-                <span className="s5-tnum" style={{ fontSize: '11.5px', fontWeight: 700, color: '#4c655d' }}>
+                <span className="s5-tnum" style={{ fontSize: '12px', fontWeight: 700, color: '#4c655d' }}>
                   {(resolvedVersion?.sourceSnapshots ?? effectiveDraft?.sourceSnapshots ?? []).length} sumber
                 </span>
               </summary>
@@ -1327,7 +1366,7 @@ export function DocumentPreviewFinalize({
                         borderRadius: '8px',
                         background: '#f7faf8',
                         border: '1px solid #d9e5df',
-                        fontSize: '11.5px',
+                        fontSize: '12px',
                         display: 'grid',
                         gap: '2px',
                       }}
@@ -1337,7 +1376,7 @@ export function DocumentPreviewFinalize({
                         {snap.provenance === 'AUTO_SYSTEM' ? 'Otomatis Sistem' : 'Isian Operator'} ·{' '}
                         {snap.status === 'VERIFIED' ? 'Terverifikasi' : snap.status}
                       </span>
-                      <span className="s5-tnum" style={{ color: '#5c756d', fontSize: '11px' }}>
+                      <span className="s5-tnum" style={{ color: '#5c756d', fontSize: '11.5px' }}>
                         Diambil: {snap.capturedAt ? snap.capturedAt.replace('T', ' ').slice(0, 19) : '—'}
                       </span>
                     </div>

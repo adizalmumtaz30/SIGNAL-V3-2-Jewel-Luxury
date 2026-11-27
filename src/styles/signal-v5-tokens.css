@@ -21,12 +21,12 @@
   --s5-emerald-subtle: #E8F2EE;      /* Soft Mint Tint */
   --s5-emerald-glow: rgba(18, 64, 55, 0.18);
 
-  /* Burnished Heritage Gold (Prestige Accent) */
-  --s5-gold-metallic: #C5A059;       /* Rich Antique Gold */
-  --s5-gold-bright: #E5C378;         /* Sunlit Gold Highlight */
-  --s5-gold-muted: #8E7035;          /* Deep Ochre for high-contrast borders */
-  --s5-gold-halo: rgba(197, 160, 89, 0.22);
-  --s5-gold-subtle: rgba(197, 160, 89, 0.08);
+  /* Brushed Platinum & Smoked Jade (2026 Quiet Luxury Accent) */
+  --s5-gold-metallic: #4D7368;       /* Smoked Jade (high-contrast accent) */
+  --s5-gold-bright: #A8C8BA;         /* Platinum Sage highlight on dark surfaces */
+  --s5-gold-muted: #45685E;          /* Deep Smoked Jade eyebrow/border accent */
+  --s5-gold-halo: rgba(77, 115, 104, 0.16);
+  --s5-gold-subtle: rgba(215, 226, 220, 0.42);
 
   /* Semantic Feedback Tokens */
   --s5-status-success: #1B5E43;      /* Optimal 24 JP / Present / 0 Clashes */
@@ -47,7 +47,7 @@
   /* Hairlines, Bevels, & Borders */
   --s5-border-hairline: 0.75px solid #E1E8E4;
   --s5-border-medium: 1px solid #D2DDD7;
-  --s5-border-gold: 0.75px solid rgba(197, 160, 89, 0.45);
+  --s5-border-gold: 0.75px solid #CBD8D1;
   --s5-bevel-top: inset 0 0.75px 0 rgba(255, 255, 255, 0.85);
   --s5-bevel-bottom: inset 0 -0.75px 0 rgba(11, 41, 35, 0.08);
 
@@ -73,14 +73,14 @@
   --s5-h-sm: 32px;
   --s5-h-md: 38px;
   --s5-h-lg: 42px;
-  --s5-fs-2xs: 0.6875rem;
-  --s5-fs-xs: 0.75rem;
-  --s5-fs-sm: 0.8125rem;
-  --s5-fs-base: 0.875rem;
+  --s5-fs-2xs: 0.75rem;
+  --s5-fs-xs: 0.8125rem;
+  --s5-fs-sm: 0.875rem;
+  --s5-fs-base: 0.90625rem;
   --s5-fs-md: 1rem;
   --s5-fs-lg: 1.125rem;
   --s5-fs-xl: 1.375rem;
-  --s5-fs-2xl: 1.625rem;
+  --s5-fs-2xl: 1.6875rem;
 }
 
 /* Tabular Numbers (Anti-layout jitter for time & hours) */
@@ -97,7 +97,7 @@
   background: var(--s5-surface-glass) !important;
   backdrop-filter: blur(24px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-  border-bottom: 0.75px solid rgba(197, 160, 89, 0.35) !important;
+  border-bottom: 0.75px solid #D3DFD9 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
@@ -138,7 +138,7 @@
 
 .s5-brand-badge {
   font-family: var(--font-mono) !important;
-  font-size: 0.6875rem !important;
+  font-size: 0.75rem !important;
   font-weight: 600 !important;
   letter-spacing: 0.08em !important;
   color: var(--s5-gold-muted) !important;
@@ -155,7 +155,7 @@
   background: #FFFFFF !important;
   border: 0.75px solid #CCD8D2 !important;
   color: var(--s5-ink-tertiary) !important;
-  font-size: 0.75rem !important;
+  font-size: 0.8125rem !important;
   cursor: pointer !important;
   transition: all 0.16s var(--s5-spring-fast) !important;
   box-shadow: 0 1px 3px rgba(11, 41, 35, 0.03) !important;
@@ -171,7 +171,7 @@
 .s5-kbd-shortcut {
   margin-left: auto !important;
   font-family: var(--font-mono) !important;
-  font-size: 0.6875rem !important;
+  font-size: 0.75rem !important;
   font-weight: 600 !important;
   padding: 0.18em 0.55em !important;
   border-radius: 6px !important;
@@ -187,7 +187,7 @@
   gap: 7px !important;
   padding: 0.36em 0.9em !important;
   border-radius: 20px !important;
-  font-size: 0.6875rem !important;
+  font-size: 0.75rem !important;
   font-weight: 600 !important;
   letter-spacing: 0.01em !important;
   cursor: pointer !important;
@@ -231,19 +231,33 @@
   gap: 6px !important;
   padding: 0.45em 1em !important;
   border-radius: 8px !important;
-  background: rgba(197, 160, 89, 0.12) !important;
-  border: 0.75px solid rgba(197, 160, 89, 0.4) !important;
+  background: rgba(77, 115, 104, 0.09) !important;
+  border: 0.75px solid #C6D6CE !important;
   color: var(--s5-gold-muted) !important;
-  font-size: 0.6875rem !important;
+  font-size: 0.75rem !important;
   font-weight: 700 !important;
   cursor: pointer !important;
   transition: all 0.16s var(--s5-spring-fast) !important;
 }
 
+.s5-time-machine-btn.is-icon-only {
+  width: 34px !important;
+  min-width: 34px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  justify-content: center !important;
+  gap: 0 !important;
+}
+
 .s5-time-machine-btn:hover {
-  background: rgba(197, 160, 89, 0.2) !important;
-  color: #5C471E !important;
+  background: rgba(77, 115, 104, 0.16) !important;
+  color: #124037 !important;
   transform: translateY(-1px) !important;
+}
+
+.s5-time-machine-btn:focus-visible {
+  outline: 2px solid var(--s5-gold-metallic, #4D7368);
+  outline-offset: 2px;
 }
 
 /* Admin Profile Avatar Ring */
@@ -255,7 +269,7 @@
   border: 1.5px solid var(--s5-gold-bright) !important;
   color: #FFFFFF !important;
   font-family: var(--font-sans) !important;
-  font-size: 0.71875rem !important;
+  font-size: 0.75rem !important;
   font-weight: 600 !important;
   display: grid !important;
   place-items: center !important;
@@ -293,7 +307,7 @@
   background: transparent !important;
   border: none !important;
   color: var(--s5-ink-secondary) !important;
-  font-size: 12px !important;
+  font-size: 12.5px !important;
   font-weight: 600 !important;
   cursor: pointer !important;
   transition: all 0.14s var(--s5-spring-fast) !important;
@@ -312,6 +326,23 @@
 .s5-dock-btn.kebab {
   padding: 5px 6px !important;
   color: var(--s5-ink-tertiary) !important;
+}
+
+.s5-dock-btn.is-icon-only {
+  width: 32px !important;
+  min-width: 32px !important;
+  padding: 0 !important;
+  gap: 0 !important;
+}
+
+.s5-dock-btn.is-danger:hover {
+  color: #8F2D24 !important;
+  background: #FCECE9 !important;
+}
+
+.s5-dock-btn:focus-visible {
+  outline: 2px solid var(--s5-gold-metallic, #4D7368);
+  outline-offset: 2px;
 }
 
 /* Kebab Popover Floating Menu */
@@ -347,7 +378,7 @@
   background: transparent !important;
   border: none !important;
   color: var(--s5-ink-primary) !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
   font-weight: 500 !important;
   text-align: left !important;
   width: 100% !important;
@@ -477,7 +508,7 @@
   flex: 1 !important;
   border: none !important;
   outline: none !important;
-  font-size: 15px !important;
+  font-size: 15.5px;
   font-family: var(--font-sans) !important;
   background: transparent !important;
   color: var(--s5-ink-primary) !important;
@@ -490,7 +521,7 @@
 }
 
 .s5-palette-group-title {
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 600 !important;
   letter-spacing: 0.06em !important;
   color: var(--s5-ink-tertiary) !important;
@@ -546,7 +577,7 @@
   gap: 16px !important;
   padding: 14px 20px !important;
   background: rgba(11, 41, 35, 0.45) !important;
-  border: 1px solid rgba(197, 160, 89, 0.3) !important;
+  border: 1px solid rgba(203, 216, 209, 0.26) !important;
   border-radius: 14px !important;
   backdrop-filter: blur(12px) !important;
 }
@@ -759,9 +790,9 @@
   gap: 14px !important;
   padding: 12px 20px !important;
   background: rgba(11, 41, 35, 0.94) !important;
-  border: 1px solid rgba(197, 160, 89, 0.45) !important;
+  border: 1px solid rgba(203, 216, 209, 0.32) !important;
   border-radius: 16px !important;
-  box-shadow: 0 16px 44px -6px rgba(11, 41, 35, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.06), 0 0 24px rgba(197, 160, 89, 0.15) !important;
+  box-shadow: 0 16px 44px -6px rgba(11, 41, 35, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.08), 0 0 24px rgba(168, 200, 186, 0.14) !important;
   backdrop-filter: blur(20px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
   color: #FFFFFF !important;
@@ -808,9 +839,9 @@
 }
 
 .s5-luxury-toast.warning .s5-luxury-toast-icon {
-  background: rgba(197, 160, 89, 0.3) !important;
-  color: #E5C378 !important;
-  border: 1px solid rgba(229, 195, 120, 0.4) !important;
+  background: rgba(198, 139, 44, 0.28) !important;
+  color: #F2C97D !important;
+  border: 1px solid rgba(242, 201, 125, 0.45) !important;
 }
 
 .s5-luxury-toast.info .s5-luxury-toast-icon {
@@ -844,7 +875,7 @@
   bottom: 0 !important;
   height: 2px !important;
   border-radius: 999px !important;
-  background: linear-gradient(90deg, rgba(197, 160, 89, 0.25), #E5C378, #52C498) !important;
+  background: linear-gradient(90deg, rgba(168, 200, 186, 0.25), #A8C8BA, #52C498) !important;
   transform-origin: left center !important;
   animation: s5ToastDrain 3.8s linear forwards !important;
 }
@@ -867,11 +898,11 @@
 }
 
 .s5-card-luxury:hover {
-  border-color: rgba(197, 160, 89, 0.6) !important;
-  box-shadow: 0 8px 32px -4px rgba(11, 41, 35, 0.08), 0 0 0 1px rgba(197, 160, 89, 0.2) !important;
+  border-color: rgba(77, 115, 104, 0.55) !important;
+  box-shadow: 0 8px 32px -4px rgba(11, 41, 35, 0.08), 0 0 0 1px rgba(168, 200, 186, 0.35) !important;
 }
 
-/* Subtle Gold Luxury Corner Bracket */
+/* Subtle Platinum Corner Sheen */
 .s5-card-luxury::before {
   content: "" !important;
   position: absolute !important;
@@ -879,7 +910,7 @@
   right: 0 !important;
   width: 48px !important;
   height: 48px !important;
-  background: radial-gradient(circle at top right, rgba(197, 160, 89, 0.14) 0%, transparent 70%) !important;
+  background: radial-gradient(circle at top right, rgba(168, 200, 186, 0.16) 0%, transparent 70%) !important;
   border-top-right-radius: 14px !important;
   pointer-events: none !important;
 }
@@ -897,8 +928,8 @@
   flex-wrap: wrap !important;
   padding: 20px 24px !important;
   border-radius: 16px !important;
-  background: linear-gradient(135deg, #FFFFFF 0%, #F7FAF8 60%, #FBF7EE 100%) !important;
-  border: 0.75px solid rgba(197, 160, 89, 0.36) !important;
+  background: linear-gradient(135deg, #FFFFFF 0%, #F7FAF8 62%, #EEF4F1 100%) !important;
+  border: 0.75px solid #D3DFD9 !important;
   box-shadow: var(--s5-shadow-resting), inset 0 1px 0 rgba(255, 255, 255, 0.96) !important;
 }
 
@@ -909,7 +940,7 @@
   left: 24px !important;
   right: 24px !important;
   height: 1.5px !important;
-  background: linear-gradient(90deg, rgba(18, 64, 55, 0.45), rgba(197, 160, 89, 0.65), transparent) !important;
+  background: linear-gradient(90deg, rgba(18, 64, 55, 0.55), rgba(168, 200, 186, 0.7), transparent) !important;
 }
 
 /* .s5-page-kicker, .s5-page-title, and .s5-page-subtitle live cleanly in sakala-design-system.css (@layer figma-components) */
@@ -922,7 +953,7 @@
 }
 
 .s5-shimmer-btn {
-  background: linear-gradient(90deg, #124037 0%, #1a564a 30%, #C5A059 50%, #1a564a 70%, #124037 100%) !important;
+  background: linear-gradient(90deg, #124037 0%, #1a564a 30%, #4D7368 50%, #1a564a 70%, #124037 100%) !important;
   background-size: 200% 100% !important;
   animation: s5GoldShimmer 4s infinite linear !important;
   color: #FFFFFF !important;
@@ -1041,11 +1072,11 @@ table.s5-figma-table tbody tr.s5-row-selected:hover td {
 .s5-checkbox-box.indeterminate {
   background: linear-gradient(135deg, var(--s5-emerald-primary) 0%, var(--s5-emerald-obsidian) 100%) !important;
   border-color: var(--s5-emerald-obsidian) !important;
-  box-shadow: 0 2px 6px rgba(18, 64, 55, 0.28), inset 0 0.75px 0 rgba(197, 160, 89, 0.45) !important;
+  box-shadow: 0 2px 6px rgba(18, 64, 55, 0.28), inset 0 0.75px 0 rgba(203, 216, 209, 0.45) !important;
   transform: scale(1.04) !important;
 }
 
-/* Floating Bulk Action Toolbar (Haute Joaillerie Dark Glass Pill) */
+/* Floating Bulk Action Toolbar (Quiet Luxury Obsidian Glass Pill) */
 .s5-bulk-floating-bar {
   position: fixed !important;
   bottom: 26px !important;
@@ -1057,9 +1088,9 @@ table.s5-figma-table tbody tr.s5-row-selected:hover td {
   gap: 12px !important;
   padding: 9px 12px 9px 14px !important;
   background: rgba(11, 41, 35, 0.96) !important;
-  border: 1px solid rgba(197, 160, 89, 0.48) !important;
+  border: 1px solid rgba(203, 216, 209, 0.34) !important;
   border-radius: 14px !important;
-  box-shadow: 0 20px 50px -8px rgba(11, 41, 35, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.08), 0 0 28px rgba(197, 160, 89, 0.16) !important;
+  box-shadow: 0 20px 50px -8px rgba(11, 41, 35, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.08), 0 0 28px rgba(168, 200, 186, 0.14) !important;
   backdrop-filter: blur(22px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(22px) saturate(180%) !important;
   color: #FFFFFF !important;
@@ -1091,7 +1122,7 @@ table.s5-figma-table tbody tr.s5-row-selected:hover td {
   color: #0B2923 !important;
   font-size: 12.5px !important;
   font-weight: 700 !important;
-  box-shadow: 0 2px 6px rgba(197, 160, 89, 0.3) !important;
+  box-shadow: 0 2px 6px rgba(168, 200, 186, 0.25) !important;
 }
 
 .s5-bulk-label {
@@ -1103,7 +1134,7 @@ table.s5-figma-table tbody tr.s5-row-selected:hover td {
 
 .s5-bulk-select-all-link {
   background: rgba(255, 255, 255, 0.08) !important;
-  border: 0.75px solid rgba(197, 160, 89, 0.35) !important;
+  border: 0.75px solid rgba(203, 216, 209, 0.32) !important;
   color: var(--s5-gold-bright) !important;
   font-size: 11px !important;
   font-weight: 700 !important;
@@ -1115,7 +1146,7 @@ table.s5-figma-table tbody tr.s5-row-selected:hover td {
 }
 
 .s5-bulk-select-all-link:hover {
-  background: rgba(197, 160, 89, 0.18) !important;
+  background: rgba(168, 200, 186, 0.18) !important;
   color: #FFFFFF !important;
 }
 
@@ -1148,14 +1179,14 @@ table.s5-figma-table tbody tr.s5-row-selected:hover td {
 }
 
 .s5-bulk-btn.status {
-  background: rgba(197, 160, 89, 0.16) !important;
-  border-color: rgba(197, 160, 89, 0.45) !important;
+  background: rgba(168, 200, 186, 0.16) !important;
+  border-color: rgba(203, 216, 209, 0.36) !important;
   color: var(--s5-gold-bright) !important;
 }
 
 .s5-bulk-btn.status:hover {
-  background: rgba(197, 160, 89, 0.28) !important;
-  border-color: rgba(229, 195, 120, 0.78) !important;
+  background: rgba(168, 200, 186, 0.26) !important;
+  border-color: rgba(203, 216, 209, 0.65) !important;
   color: #FFFFFF !important;
   transform: translateY(-1px) !important;
 }
@@ -1173,7 +1204,7 @@ table.s5-figma-table tbody tr.s5-row-selected:hover td {
 
 .s5-bulk-btn.deactivate {
   background: rgba(255, 255, 255, 0.12) !important;
-  border-color: rgba(229, 195, 120, 0.4) !important;
+  border-color: rgba(217, 176, 97, 0.48) !important;
   color: #FDE68A !important;
 }
 
@@ -1246,8 +1277,8 @@ table.s5-figma-table tbody tr.s5-row-selected:hover td {
 }
 
 .s5-bulk-btn.export:hover {
-  background: rgba(197, 160, 89, 0.22) !important;
-  border-color: rgba(197, 160, 89, 0.6) !important;
+  background: rgba(168, 200, 186, 0.2) !important;
+  border-color: rgba(203, 216, 209, 0.52) !important;
   color: var(--s5-gold-bright) !important;
   transform: translateY(-1px) !important;
 }
@@ -1329,7 +1360,7 @@ table.s5-figma-table tbody tr.s5-row-selected:hover td {
   background: rgba(255, 255, 254, 0.9) !important;
   backdrop-filter: blur(20px) saturate(165%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(165%) !important;
-  border-bottom: 0.75px solid rgba(197, 160, 89, 0.28) !important;
+  border-bottom: 0.75px solid #D3DFD9 !important;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.92), 0 4px 18px -6px rgba(11, 41, 35, 0.05) !important;
   display: flex !important;
   align-items: center !important;
@@ -1359,7 +1390,7 @@ table.s5-figma-table tbody tr.s5-row-selected:hover td {
 .s5-topbar-sep {
   width: 1px !important;
   height: 16px !important;
-  background: rgba(197, 160, 89, 0.45) !important;
+  background: #CBD8D1 !important;
   flex-shrink: 0 !important;
 }
 
@@ -1368,7 +1399,7 @@ table.s5-figma-table tbody tr.s5-row-selected:hover td {
   align-items: center !important;
   gap: 6px !important;
   color: var(--s5-ink-secondary) !important;
-  font-size: 12px !important;
+  font-size: 12.5px !important;
   font-weight: 500 !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
@@ -1382,7 +1413,7 @@ table.s5-figma-table tbody tr.s5-row-selected:hover td {
 
 .sakala-header-greeting h1 {
   font-family: var(--font-sans) !important;
-  font-size: 0.875rem !important;
+  font-size: 0.9375rem !important;
   font-weight: 600 !important;
   letter-spacing: -0.01em !important;
   color: var(--s5-emerald-primary) !important;
@@ -1423,7 +1454,7 @@ table.s5-figma-table tbody tr.s5-row-selected:hover td {
     background: #0B2923;
     color: #FFFFFF;
     font-family: var(--font-sans);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     line-height: 1.38;
     width: max-content;
@@ -1432,7 +1463,7 @@ table.s5-figma-table tbody tr.s5-row-selected:hover td {
     text-align: center;
     overflow-wrap: anywhere;
     box-shadow: 0 8px 20px rgba(11, 41, 35, 0.25);
-    border: 0.75px solid rgba(197, 160, 89, 0.45);
+    border: 0.75px solid rgba(203, 216, 209, 0.34);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.16s ease, transform 0.16s var(--s5-spring-fast);
@@ -1528,7 +1559,7 @@ table.s5-daily-table {
   width: 100% !important;
   border-collapse: separate !important;
   border-spacing: 0 !important;
-  font-size: 13px !important;
+  font-size: 14px;
 }
 
 table.data-table thead th,
@@ -1536,7 +1567,7 @@ table.s5-figma-table thead th,
 table.s5-daily-table thead th {
   background: linear-gradient(180deg, #F9FBFA 0%, #F1F6F3 100%) !important;
   color: #3E554E !important;
-  font-size: 11.5px !important;
+  font-size: 12.5px !important;
   font-weight: 600 !important;
   letter-spacing: 0.04em !important;
   text-transform: uppercase !important;
@@ -1551,7 +1582,7 @@ table.s5-daily-table thead th {
   position: sticky !important;
   top: 0 !important;
   z-index: 6 !important;
-  border-bottom: 1px solid rgba(197, 160, 89, 0.42) !important;
+  border-bottom: 1px solid #C6D5CD !important;
   box-shadow: 0 1px 0 rgba(18, 64, 55, 0.04) !important;
 }
 
@@ -1587,7 +1618,7 @@ table.s5-daily-table tbody tr.s5-daily-row:not(.s5-row-selected):hover td {
 }
 
 table.s5-daily-table tbody tr.s5-daily-row:not(.s5-row-selected):hover td:first-child {
-  box-shadow: inset 1.5px 0 0 rgba(197, 160, 89, 0.65) !important;
+  box-shadow: inset 1.5px 0 0 rgba(77, 115, 104, 0.65) !important;
 }
 
 table.s5-daily-table tbody tr.s5-daily-row.is-non-present:not(.s5-row-selected) td {
@@ -1600,9 +1631,9 @@ table.s5-daily-table tbody tr.s5-daily-row.is-alpa:not(.s5-row-selected) td {
 
 .s5-daily-note-input {
   width: 100% !important;
-  height: 34px !important;
+  height: 36px !important;
   padding: 0 10px !important;
-  font-size: 12px !important;
+  font-size: 13px;
   border-radius: 8px !important;
   border: 0.75px solid transparent !important;
   background: rgba(244, 247, 245, 0.72) !important;
@@ -1666,7 +1697,7 @@ table.s5-figma-table tbody td.s5-checkbox-col {
   gap: 18px !important;
   padding: 20px 24px !important;
   border-radius: 16px !important;
-  background: linear-gradient(135deg, #FFFFFF 0%, #F7FAF8 65%, #FBF7EE 100%) !important;
+  background: linear-gradient(135deg, #FFFFFF 0%, #F7FAF8 65%, #EEF4F1 100%) !important;
   border: 0.75px solid #D2DFD8 !important;
   box-shadow: var(--s5-shadow-resting), inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
 }
@@ -1698,7 +1729,7 @@ table.s5-figma-table tbody td.s5-checkbox-col {
   gap: 14px !important;
   min-height: 105px !important;
   padding: 16px !important;
-  border: 1px solid rgba(179, 154, 104, 0.4) !important;
+  border: 1px solid rgba(203, 216, 209, 0.24) !important;
   border-radius: 13px !important;
   box-shadow:
     0 7px 16px rgba(27, 42, 34, 0.08),
@@ -1740,8 +1771,8 @@ table.s5-figma-table tbody td.s5-checkbox-col {
 
 .s5-att-kpi-card:nth-child(3),
 .s5-att-kpi-card.tone-gold {
-  background: linear-gradient(145deg, #EAD8AC, #C4A66C) !important;
-  border-color: rgba(128, 98, 45, 0.35) !important;
+  background: linear-gradient(145deg, #F1F6F3, #DCE6E1) !important;
+  border-color: rgba(77, 115, 104, 0.32) !important;
 }
 
 .s5-att-kpi-card:nth-child(4),
@@ -1756,7 +1787,7 @@ table.s5-figma-table tbody td.s5-checkbox-col {
 }
 
 .s5-att-kpi-card:hover {
-  border-color: rgba(229, 201, 122, 0.78) !important;
+  border-color: rgba(203, 216, 209, 0.56) !important;
   box-shadow:
     0 11px 22px rgba(27, 42, 34, 0.14),
     inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
@@ -1764,7 +1795,7 @@ table.s5-figma-table tbody td.s5-checkbox-col {
 
 .s5-att-kpi-card.tone-gold:hover,
 .s5-att-kpi-card:nth-child(3):hover {
-  border-color: rgba(116, 85, 29, 0.55) !important;
+  border-color: rgba(77, 115, 104, 0.55) !important;
 }
 
 .s5-att-kpi-jewel-icon {
@@ -1774,9 +1805,9 @@ table.s5-figma-table tbody td.s5-checkbox-col {
   display: grid !important;
   place-items: center !important;
   flex-shrink: 0 !important;
-  border: 1px solid rgba(229, 201, 122, 0.5) !important;
+  border: 1px solid rgba(203, 216, 209, 0.42) !important;
   background: rgba(255, 255, 255, 0.12) !important;
-  color: #F0D99A !important;
+  color: #E4EFEA !important;
   transition: transform 160ms var(--s5-spring-fast) !important;
 }
 
@@ -1786,9 +1817,9 @@ table.s5-figma-table tbody td.s5-checkbox-col {
 
 .s5-att-kpi-card:nth-child(3) .s5-att-kpi-jewel-icon,
 .s5-att-kpi-card.tone-gold .s5-att-kpi-jewel-icon {
-  border-color: rgba(128, 98, 45, 0.32) !important;
-  background: rgba(255, 255, 255, 0.38) !important;
-  color: #74551D !important;
+  border-color: rgba(77, 115, 104, 0.28) !important;
+  background: rgba(255, 255, 255, 0.62) !important;
+  color: #173D32 !important;
 }
 
 .s5-att-kpi-jewel-ring {
@@ -1847,7 +1878,7 @@ table.s5-figma-table tbody td.s5-checkbox-col {
 .s5-att-kpi-icon.gold {
   background: #FBF4E4 !important;
   color: #9A6B21 !important;
-  border: 0.75px solid rgba(197, 160, 89, 0.28) !important;
+  border: 0.75px solid rgba(154, 107, 33, 0.28) !important;
 }
 
 .s5-att-kpi-icon.rose {
@@ -1864,11 +1895,11 @@ table.s5-figma-table tbody td.s5-checkbox-col {
 
 .s5-att-kpi-label {
   display: block !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 700 !important;
-  letter-spacing: 0.05em !important;
+  letter-spacing: 0.04em !important;
   text-transform: uppercase !important;
-  color: #FFF9EA !important;
+  color: #F4F8F6 !important;
   opacity: 0.92 !important;
   margin-bottom: 0 !important;
 }
@@ -1882,21 +1913,21 @@ table.s5-figma-table tbody td.s5-checkbox-col {
   font-weight: 700 !important;
   line-height: 1.2 !important;
   letter-spacing: -0.025em !important;
-  color: #FFF9EA !important;
+  color: #FFFFFF !important;
 }
 
 .s5-att-kpi-denom {
-  font-size: 13px !important;
+  font-size: 14px !important;
   font-weight: 600 !important;
-  color: rgba(255, 249, 234, 0.74) !important;
+  color: rgba(244, 248, 246, 0.78) !important;
 }
 
 .s5-att-kpi-sub {
   display: block !important;
-  font-size: 11px !important;
-  line-height: 1.3 !important;
-  color: #FFF9EA !important;
-  opacity: 0.82 !important;
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+  color: #E7F0EC !important;
+  opacity: 0.88 !important;
   margin-top: 0 !important;
 }
 
@@ -1966,7 +1997,7 @@ table.s5-figma-table tbody td.s5-checkbox-col {
 }
 
 .s5-field-chip label {
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 600 !important;
   letter-spacing: 0.04em !important;
   text-transform: uppercase !important;
@@ -1977,13 +2008,13 @@ table.s5-figma-table tbody td.s5-checkbox-col {
   display: inline-flex !important;
   align-items: center !important;
   gap: 8px !important;
-  height: 36px !important;
+  height: 38px !important;
   padding: 0 11px !important;
   border-radius: 9px !important;
   background: #FFFFFF !important;
   border: 0.75px solid #CBD8D1 !important;
   color: var(--s5-ink-primary) !important;
-  font-size: 12.5px !important;
+  font-size: 13.5px;
   font-weight: 600 !important;
   transition: border-color 0.14s ease, box-shadow 0.14s ease !important;
 }
@@ -1998,14 +2029,14 @@ table.s5-figma-table tbody td.s5-checkbox-col {
   border: none !important;
   background: transparent !important;
   outline: none !important;
-  font-size: 12.5px !important;
+  font-size: 13.5px;
   font-weight: 600 !important;
   color: var(--s5-ink-primary) !important;
 }
 
 .s5-date-stepper-btn {
   width: 34px !important;
-  height: 36px !important;
+  height: 38px !important;
   border-radius: 9px !important;
   border: 0.75px solid #CBD8D1 !important;
   background: #FFFFFF !important;
@@ -2043,7 +2074,7 @@ table.s5-figma-table tbody td.s5-checkbox-col {
   border-radius: 6.5px !important;
   border: none !important;
   background: transparent !important;
-  font-size: 0.6875rem !important;
+  font-size: 0.75rem !important;
   font-weight: 600 !important;
   color: #526861 !important;
   cursor: pointer !important;
@@ -2054,7 +2085,7 @@ table.s5-figma-table tbody td.s5-checkbox-col {
   min-width: 28px !important;
   height: 26px !important;
   padding: 0 0.55em !important;
-  font-size: 0.6875rem !important;
+  font-size: 0.71875rem !important;
 }
 
 .s5-status-chip:hover {
@@ -2111,14 +2142,14 @@ table.s5-figma-table tbody td.s5-checkbox-col {
 }
 
 .s5-footbar-seg.hadir { background: #1B5E43 !important; }
-.s5-footbar-seg.permit { background: #C5A059 !important; }
+.s5-footbar-seg.permit { background: #C68B2C !important; }
 .s5-footbar-seg.alpa { background: #A63A2E !important; }
 
 .s5-footbar-meta {
   display: flex !important;
   align-items: center !important;
   gap: 10px !important;
-  font-size: 12px !important;
+  font-size: 12.5px !important;
   color: var(--s5-ink-secondary) !important;
   flex-wrap: wrap !important;
 }
@@ -2129,7 +2160,7 @@ table.s5-figma-table tbody td.s5-checkbox-col {
   border-radius: 8px !important;
   border: 0.75px solid #CBD8D1 !important;
   background: #FFFFFF !important;
-  font-size: 12px !important;
+  font-size: 13px;
   font-weight: 600 !important;
   color: var(--s5-ink-primary) !important;
   cursor: pointer !important;
@@ -2153,7 +2184,7 @@ table.s5-figma-table tbody td.s5-checkbox-col {
   border: none !important;
   background: transparent !important;
   color: var(--s5-ink-secondary) !important;
-  font-size: 0.75rem !important;
+  font-size: 0.8125rem !important;
   font-weight: 600 !important;
   display: inline-flex !important;
   align-items: center !important;
@@ -2200,7 +2231,7 @@ table.s5-figma-table tbody td.s5-checkbox-col {
 }
 
 .s5-holiday-alert-banner.kemenag {
-  border-color: rgba(197, 160, 89, 0.45) !important;
+  border-color: rgba(180, 121, 34, 0.45) !important;
   background: linear-gradient(135deg, #FCF8EE 0%, #FFFFFF 100%) !important;
 }
 
@@ -2216,9 +2247,9 @@ table.s5-figma-table tbody td.s5-checkbox-col {
   padding: 0.35em 0.87em !important;
   border-radius: 8px !important;
   background: #FFFFFF !important;
-  border: 0.75px solid rgba(197, 160, 89, 0.5) !important;
-  color: #5C4312 !important;
-  font-size: 0.71875rem !important;
+  border: 0.75px solid #C6D6CE !important;
+  color: #163830 !important;
+  font-size: 0.78125rem !important;
   font-weight: 600 !important;
   cursor: pointer !important;
   transition: all 0.15s var(--s5-spring-fast) !important;
@@ -2259,13 +2290,13 @@ table.s5-figma-table tbody td.s5-checkbox-col {
   display: inline-flex !important;
   align-items: center !important;
   gap: 4px !important;
-  height: 28px !important;
+  height: 30px !important;
   padding: 0 0.87em !important;
   border-radius: 7px !important;
   border: none !important;
   background: transparent !important;
   color: var(--s5-ink-secondary) !important;
-  font-size: 0.71875rem !important;
+  font-size: 0.78125rem !important;
   font-weight: 600 !important;
   cursor: pointer !important;
   white-space: nowrap !important;
@@ -2284,7 +2315,7 @@ table.s5-figma-table tbody td.s5-checkbox-col {
 }
 
 .s5-month-pill-count {
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 600 !important;
   opacity: 0.78 !important;
 }
@@ -2325,7 +2356,7 @@ table.s5-figma-table tbody td.s5-checkbox-col {
 }
 
 .s5-kaldik-month-label {
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 600 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.05em !important;
@@ -2348,7 +2379,7 @@ table.s5-figma-table tbody td.s5-checkbox-col {
 
 .s5-kaldik-row:hover {
   transform: translateX(2px) !important;
-  border-color: rgba(197, 160, 89, 0.6) !important;
+  border-color: #9BB8AC !important;
 }
 
 .s5-kaldik-row.is-registered {
@@ -2357,8 +2388,8 @@ table.s5-figma-table tbody td.s5-checkbox-col {
 }
 
 .s5-kaldik-datebox {
-  width: 38px !important;
-  height: 38px !important;
+  width: 40px !important;
+  height: 40px !important;
   border-radius: 9px !important;
   display: flex !important;
   flex-direction: column !important;
@@ -2372,7 +2403,7 @@ table.s5-figma-table tbody td.s5-checkbox-col {
 
 .s5-kaldik-datebox.kemenag {
   background: #FBF4E4 !important;
-  border-color: rgba(197, 160, 89, 0.45) !important;
+  border-color: rgba(180, 121, 34, 0.45) !important;
   color: #825916 !important;
 }
 
@@ -2383,13 +2414,13 @@ table.s5-figma-table tbody td.s5-checkbox-col {
 }
 
 .s5-kaldik-day {
-  font-size: 13.5px !important;
+  font-size: 14px !important;
   font-weight: 700 !important;
   line-height: 1 !important;
 }
 
 .s5-kaldik-mon {
-  font-size: 11px !important;
+  font-size: 11.5px !important;
   font-weight: 600 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.04em !important;
@@ -2423,7 +2454,7 @@ table.s5-figma-table tbody td.s5-checkbox-col {
   width: 24px !important;
   height: 24px !important;
   border-radius: 6px !important;
-  font-size: 0.6875rem !important;
+  font-size: 0.75rem !important;
   font-weight: 600 !important;
   display: inline-grid !important;
   place-items: center !important;
@@ -2452,7 +2483,7 @@ table.s5-figma-table tbody td.s5-checkbox-col {
 .s5-mosaic-cell.kemenag {
   background: #FBF4E4 !important;
   color: #825916 !important;
-  border-color: rgba(197, 160, 89, 0.45) !important;
+  border-color: rgba(180, 121, 34, 0.45) !important;
 }
 
 .s5-excluded-date-list {
@@ -2465,7 +2496,7 @@ table.s5-figma-table tbody td.s5-checkbox-col {
 .s5-excluded-date-item {
   display: inline-flex;
   align-items: center;
-  font-size: 0.6875rem !important;
+  font-size: 0.75rem !important;
   font-weight: 600 !important;
   color: #8F2D24 !important;
   background: #FCECE9 !important;
@@ -2488,10 +2519,10 @@ table.s5-figma-table tbody td.s5-checkbox-col {
 }
 
 .s5-teacher-mosaic-dot {
-  width: 22px !important;
-  height: 22px !important;
+  width: 24px !important;
+  height: 24px !important;
   border-radius: 6px !important;
-  font-size: 0.6875rem !important;
+  font-size: 0.75rem !important;
   font-weight: 600 !important;
   display: inline-grid !important;
   place-items: center !important;
@@ -2535,7 +2566,7 @@ table.s5-figma-table tbody td.s5-checkbox-col {
   flex-direction: column !important;
   border-radius: 18px !important;
   border: 1px solid rgba(18, 64, 55, 0.16) !important;
-  box-shadow: 0 28px 64px -12px rgba(11, 41, 35, 0.34), 0 0 0 1px rgba(197, 160, 89, 0.22) !important;
+  box-shadow: 0 28px 64px -12px rgba(11, 41, 35, 0.34), 0 0 0 1px rgba(203, 216, 209, 0.36) !important;
   overflow: hidden !important;
   background: #FCFDFB !important;
 }
@@ -2590,7 +2621,7 @@ table.s5-figma-table tbody td.s5-checkbox-col {
   border: none !important;
   background: transparent !important;
   color: #3E544D !important;
-  font-size: 0.78125rem !important;
+  font-size: 0.84375rem !important;
   font-weight: 600 !important;
   cursor: pointer !important;
   transition: all 0.16s var(--s5-spring-fast) !important;
@@ -2623,10 +2654,10 @@ table.s5-figma-table tbody td.s5-checkbox-col {
 }
 
 .s5-studio-kicker {
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 700 !important;
   color: #3B524B !important;
-  letter-spacing: 0.06em !important;
+  letter-spacing: 0.05em !important;
   text-transform: uppercase !important;
 }
 
@@ -2686,13 +2717,13 @@ table.s5-figma-table tbody td.s5-checkbox-col {
 .s5-studio-preset-btn {
   display: inline-flex;
   align-items: center;
-  height: 26px !important;
-  padding: 0 0.82em !important;
+  height: 28px !important;
+  padding: 0 0.85em !important;
   border-radius: 7px !important;
   border: 0.75px solid #D0DDD6 !important;
   background: #FFFFFF !important;
   color: #2F443E !important;
-  font-size: 0.6875rem !important;
+  font-size: 0.75rem !important;
   font-weight: 600 !important;
   cursor: pointer !important;
   transition: all 0.14s ease !important;
@@ -2735,7 +2766,7 @@ table.s5-figma-table tbody td.s5-checkbox-col {
 .s5-pdf-kop-line {
   height: 2px !important;
   border-top: 1.5px solid #124037 !important;
-  border-bottom: 0.75px solid #C5A059 !important;
+  border-bottom: 0.75px solid #6E8C81 !important;
   margin: 6px 0 8px !important;
 }
 
@@ -2788,7 +2819,7 @@ textarea,
 }
 
 body {
-  font-size: 14px !important;
+  font-size: 14.5px;
   line-height: 1.55 !important;
   color: var(--s5-ink-primary) !important;
 }
@@ -2834,13 +2865,13 @@ body {
 /* 19.4 De-Bloat Heavy 800 Weights -> Clean 500/600 Weight Hierarchy */
 .sakala-nav-section-title,
 .sakala-nav-group-label {
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 600 !important;
-  letter-spacing: 0.06em !important;
+  letter-spacing: 0.05em !important;
 }
 
 .sakala-nav-item {
-  font-size: 13px !important;
+  font-size: 14px !important;
   font-weight: 500 !important;
 }
 
@@ -2849,7 +2880,7 @@ body {
 }
 
 .sakala-nav-badge {
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 600 !important;
 }
 
@@ -2858,9 +2889,9 @@ body {
 .page-heading-kicker,
 .hero .kicker,
 .overview-focal-kicker {
-  font-size: 0.6875rem !important;
+  font-size: 0.75rem !important;
   font-weight: 600 !important;
-  letter-spacing: 0.06em !important;
+  letter-spacing: 0.05em !important;
 }
 
 .btn,
@@ -2868,13 +2899,13 @@ body {
 .tab,
 .subnav-tab {
   font-weight: 600 !important;
-  font-size: 0.8125rem !important;
+  font-size: 0.84375rem !important;
 }
 
 .view-switch-btn,
 .s5-segmented-btn {
   font-weight: 600 !important;
-  font-size: 0.78125rem !important;
+  font-size: 0.8125rem !important;
 }
 
 .btn.gold {
@@ -2892,33 +2923,33 @@ body {
 .data-table th,
 .schedule-table th,
 .master-class-weekly-table th {
-  font-size: 0.71875rem !important;
+  font-size: 0.78125rem !important;
   font-weight: 600 !important;
   letter-spacing: 0.04em !important;
 }
 
 .tbl td,
 .data-table td {
-  font-size: 0.84375rem !important;
-  line-height: 1.48 !important;
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
 }
 
 .field-group label,
 .form-field label,
 label {
-  font-size: 0.75rem !important;
+  font-size: 0.8125rem !important;
   font-weight: 600 !important;
 }
 
 /* Schedule Matrix Timetable Cards: Crisp Scannability without Heavy 800 Bloat */
 .master-slot-subject {
-  font-size: 0.75rem !important;
+  font-size: 0.8125rem !important;
   font-weight: 600 !important;
-  line-height: 1.3 !important;
+  line-height: 1.32 !important;
 }
 
 .master-slot-teacher {
-  font-size: 0.6875rem !important;
+  font-size: 0.75rem !important;
   font-weight: 500 !important;
   color: #465B54 !important;
 }
@@ -2931,10 +2962,10 @@ label {
   font-variant-numeric: tabular-nums !important;
 }
 
-/* 19.5 Enforce Minimum >=11px Readability Floor & Accessible Contrast */
+/* 19.5 Enforce Minimum Readability Floor & Accessible Contrast */
 .sakala-brand-subtitle {
   display: block !important;
-  font-size: 11px !important;
+  font-size: 11.5px !important;
   font-weight: 600 !important;
   letter-spacing: 0.08em !important;
 }
@@ -2943,9 +2974,9 @@ label {
 .overview-kpi-copy small,
 .master-summary-item span,
 .requirements-metric-grid .req-metric-copy > span {
-  font-size: 0.6875rem !important;
+  font-size: 0.75rem !important;
   font-weight: 600 !important;
-  letter-spacing: 0.045em !important;
+  letter-spacing: 0.04em !important;
 }
 
 .stat .foot,
@@ -2953,9 +2984,9 @@ label {
 .master-summary-item small,
 .requirements-metric-grid .req-metric-copy > small,
 .page-heading-desc {
-  font-size: 0.75rem !important;
+  font-size: 0.84375rem;
   font-weight: 400 !important;
-  line-height: 1.45 !important;
+  line-height: 1.5 !important;
 }
 
 .stat .foot,
@@ -2967,7 +2998,7 @@ label {
 
 .sidebar-status-meta {
   color: rgba(226, 238, 232, 0.8) !important;
-  font-size: 0.6875rem !important;
+  font-size: 0.75rem !important;
 }
 
 .tag,
@@ -2976,7 +3007,7 @@ label {
 .issue-code {
   display: inline-flex;
   align-items: center;
-  font-size: 0.71875rem !important;
+  font-size: 0.75rem !important;
   font-weight: 600 !important;
 }
 
@@ -3013,8 +3044,8 @@ kbd {
   gap: 16px !important;
   padding: 20px 24px !important;
   border-radius: 16px !important;
-  background: linear-gradient(135deg, #FFFFFF 0%, #F7FAF8 60%, #FBF7EE 100%) !important;
-  border: 0.75px solid rgba(197, 160, 89, 0.36) !important;
+  background: linear-gradient(135deg, #FFFFFF 0%, #F7FAF8 62%, #EEF4F1 100%) !important;
+  border: 0.75px solid #D3DFD9 !important;
   box-shadow: var(--s5-shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.96) !important;
 }
 
@@ -3025,7 +3056,7 @@ kbd {
   left: 24px !important;
   right: 24px !important;
   height: 1.5px !important;
-  background: linear-gradient(90deg, rgba(18, 64, 55, 0.45), rgba(197, 160, 89, 0.65), transparent) !important;
+  background: linear-gradient(90deg, rgba(18, 64, 55, 0.55), rgba(168, 200, 186, 0.7), transparent) !important;
 }
 
 .s5-settings-lux-ornament {
@@ -3177,9 +3208,9 @@ kbd {
 }
 
 .s5-panel-crest.gold {
-  background: #FBF5E8 !important;
-  border-color: rgba(197, 160, 89, 0.38) !important;
-  color: #9A6B21 !important;
+  background: #EFF5F2 !important;
+  border-color: #CBD8D1 !important;
+  color: #45685E !important;
 }
 
 .s5-calm-panel-title {
@@ -3279,7 +3310,7 @@ kbd {
 
 .s5-day-tile:hover {
   transform: translateY(-1px) !important;
-  border-color: rgba(197, 160, 89, 0.55) !important;
+  border-color: #9BB8AC !important;
   box-shadow: 0 3px 10px rgba(11, 41, 35, 0.05) !important;
 }
 
@@ -3322,7 +3353,7 @@ kbd {
   padding: 6px !important;
   border-radius: 12px !important;
   background: #FFFFFF !important;
-  border: 0.75px solid rgba(197, 160, 89, 0.4) !important;
+  border: 0.75px solid #CBD8D1 !important;
   box-shadow: var(--s5-shadow-floating) !important;
   z-index: 30 !important;
   display: flex !important;
@@ -3369,8 +3400,8 @@ kbd {
   gap: 12px !important;
   padding: 11px 14px !important;
   border-radius: 12px !important;
-  background: linear-gradient(135deg, #F8FAF8 0%, #FBF8F0 100%) !important;
-  border: 0.75px solid rgba(197, 160, 89, 0.3) !important;
+  background: linear-gradient(135deg, #F8FAF8 0%, #EFF5F2 100%) !important;
+  border: 0.75px solid #D3DFD9 !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85) !important;
   margin-bottom: 14px !important;
 }
@@ -3831,8 +3862,8 @@ table.s5-calm-table tbody tr:hover .s5-slot-delete-btn:not(:disabled) {
   margin-top: 10px !important;
   padding: 11px 14px !important;
   border-radius: 10px !important;
-  background: linear-gradient(135deg, #F2F8F5 0%, #FBF7EC 100%) !important;
-  border: 0.75px solid rgba(197, 160, 89, 0.35) !important;
+  background: linear-gradient(135deg, #F2F8F5 0%, #E9F1ED 100%) !important;
+  border: 0.75px solid #CBD8D1 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
@@ -3985,8 +4016,8 @@ table.s5-calm-table tbody tr:hover .s5-slot-delete-btn:not(:disabled) {
   gap: 14px !important;
   padding: 12px !important;
   border-radius: 12px !important;
-  background: linear-gradient(135deg, #F8FAF8 0%, #FBF8F1 100%) !important;
-  border: 0.75px solid rgba(197, 160, 89, 0.3) !important;
+  background: linear-gradient(135deg, #F8FAF8 0%, #EFF5F2 100%) !important;
+  border: 0.75px solid #D3DFD9 !important;
   margin-bottom: 14px !important;
 }
 
@@ -3997,7 +4028,7 @@ table.s5-calm-table tbody tr:hover .s5-slot-delete-btn:not(:disabled) {
   padding: 5px !important;
   border: 1.5px solid var(--s5-gold-metallic) !important;
   background: #FFFFFF !important;
-  box-shadow: 0 0 0 4px rgba(197, 160, 89, 0.12), 0 4px 12px rgba(11, 41, 35, 0.08) !important;
+  box-shadow: 0 0 0 4px rgba(168, 200, 186, 0.22), 0 4px 12px rgba(11, 41, 35, 0.08) !important;
   display: grid !important;
   place-items: center !important;
   overflow: hidden !important;
@@ -4083,19 +4114,19 @@ table.s5-calm-table tbody tr:hover .s5-slot-delete-btn:not(:disabled) {
   height: 30px !important;
   padding: 0 0.96em !important;
   border-radius: 8px !important;
-  border: 0.75px solid rgba(197, 160, 89, 0.55) !important;
-  background: linear-gradient(180deg, #FDF8EB 0%, #F7ECCD 100%) !important;
+  border: 0.75px solid #B7CBC2 !important;
+  background: linear-gradient(180deg, #FFFFFF 0%, #EAF2EE 100%) !important;
   font-size: 0.71875rem !important;
   font-weight: 700 !important;
-  color: #6B4A12 !important;
+  color: #124037 !important;
   cursor: pointer !important;
-  box-shadow: 0 1px 4px rgba(154, 107, 33, 0.12) !important;
+  box-shadow: 0 1px 4px rgba(18, 64, 55, 0.1) !important;
   transition: transform 0.14s ease, box-shadow 0.14s ease !important;
 }
 
 .s5-apply-kbm-btn:hover {
   transform: translateY(-0.5px) !important;
-  box-shadow: 0 3px 8px rgba(154, 107, 33, 0.18) !important;
+  box-shadow: 0 3px 8px rgba(18, 64, 55, 0.16) !important;
 }
 
 /* Table Order Column: Drag Grip + Micro JP / Non-KBM Tag */
@@ -4130,7 +4161,7 @@ table.s5-calm-table tbody tr:hover .s5-drag-grip {
 .s5-slot-role-tag {
   display: inline-flex;
   align-items: center;
-  font-size: 0.6875rem !important;
+  font-size: 0.75rem !important;
   font-weight: 700 !important;
   letter-spacing: 0.02em !important;
   line-height: 1.2 !important;
@@ -4169,9 +4200,9 @@ table.s5-calm-table tbody tr.is-gap-row {
   align-items: center !important;
   flex-wrap: wrap !important;
   gap: 4px !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 600 !important;
-  line-height: 1.25 !important;
+  line-height: 1.3 !important;
 }
 
 .s5-row-diag.is-overlap,
@@ -4187,7 +4218,7 @@ table.s5-calm-table tbody tr.is-gap-row {
   border: none !important;
   background: transparent !important;
   padding: 0 2px !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 700 !important;
   text-decoration: underline !important;
   color: var(--s5-emerald-primary) !important;
@@ -4241,7 +4272,7 @@ table.s5-calm-table tbody tr:hover .s5-slot-insert-btn,
   padding: 6px !important;
   border-radius: 12px !important;
   background: #FFFFFF !important;
-  border: 0.75px solid rgba(197, 160, 89, 0.42) !important;
+  border: 0.75px solid #CBD8D1 !important;
   box-shadow: var(--s5-shadow-floating) !important;
   z-index: 220 !important;
   display: flex !important;
@@ -4257,7 +4288,7 @@ table.s5-calm-table tbody tr:hover .s5-slot-insert-btn,
 
 .s5-row-insert-title {
   padding: 4px 10px 6px !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.04em !important;
@@ -4280,14 +4311,14 @@ table.s5-calm-table tbody tr:hover .s5-slot-insert-btn,
   display: flex !important;
   align-items: center !important;
   gap: 7px !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
   font-weight: 700 !important;
   color: var(--s5-emerald-obsidian) !important;
 }
 
 .s5-impact-copy {
   margin: 0 !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
   line-height: 1.5 !important;
   color: var(--s5-ink-secondary) !important;
 }
@@ -4303,8 +4334,8 @@ table.s5-calm-table tbody tr:hover .s5-slot-insert-btn,
   gap: 7px !important;
   padding: 8px 10px !important;
   border-radius: 9px !important;
-  font-size: 11.5px !important;
-  line-height: 1.4 !important;
+  font-size: 12.5px !important;
+  line-height: 1.45 !important;
 }
 
 .s5-impact-alert svg {
@@ -4337,10 +4368,10 @@ table.s5-calm-table tbody tr:hover .s5-slot-insert-btn,
   gap: 12px !important;
   margin-top: 10px !important;
   color: var(--s5-ink-tertiary) !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
-  letter-spacing: 0.06em !important;
+  letter-spacing: 0.05em !important;
 }
 
 .s5-system-divider::before,
@@ -4356,7 +4387,7 @@ table.s5-calm-table tbody tr:hover .s5-slot-insert-btn,
   border-radius: 11px !important;
   background: #FDF5F4 !important;
   border: 0.75px solid rgba(166, 58, 46, 0.24) !important;
-  font-size: 12.5px !important;
+  font-size: 13px !important;
   color: #6B2A23 !important;
   line-height: 1.5 !important;
 }
@@ -4388,7 +4419,7 @@ table.s5-calm-table tbody tr:hover .s5-slot-insert-btn,
 
 .main-shell {
   background:
-    radial-gradient(ellipse 80% 45% at 50% -10%, rgba(197, 160, 89, 0.055), transparent 65%),
+    radial-gradient(ellipse 80% 45% at 50% -10%, rgba(168, 200, 186, 0.1), transparent 65%),
     var(--s5-canvas-base) !important;
   min-width: 0 !important;
 }
@@ -4463,7 +4494,7 @@ table.s5-calm-table tbody tr:hover .s5-slot-insert-btn,
 
 /* 21.3 Clean Sidebar Footer (Zero Decorative Pulsing Dots) */
 .sidebar-status-footer {
-  border-top: 1px solid rgba(197, 160, 89, 0.22) !important;
+  border-top: 1px solid rgba(203, 216, 209, 0.18) !important;
   background: rgba(8, 28, 22, 0.45) !important;
   border-radius: 11px !important;
   padding: 10px 12px !important;
@@ -4506,7 +4537,7 @@ table.s5-calm-table tbody tr:hover .s5-slot-insert-btn,
 }
 
 .s5-footer-sep {
-  color: rgba(197, 160, 89, 0.75) !important;
+  color: rgba(77, 115, 104, 0.65) !important;
   font-weight: 700 !important;
 }
 
@@ -4523,10 +4554,10 @@ table.s5-calm-table tbody tr:hover .s5-slot-insert-btn,
 
 .panel.dark {
   background:
-    radial-gradient(circle at 92% 6%, rgba(197, 160, 89, 0.2), transparent 44%),
+    radial-gradient(circle at 92% 6%, rgba(168, 200, 186, 0.16), transparent 44%),
     radial-gradient(circle at 10% 96%, rgba(45, 128, 102, 0.24), transparent 48%),
     linear-gradient(152deg, #0B2923 0%, #143D33 56%, #1C5143 100%) !important;
-  border: 1px solid rgba(197, 160, 89, 0.42) !important;
+  border: 1px solid rgba(203, 216, 209, 0.28) !important;
   box-shadow: 0 14px 32px -8px rgba(11, 41, 35, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
   color: #FFFFFF !important;
 }
@@ -4534,7 +4565,7 @@ table.s5-calm-table tbody tr:hover .s5-slot-insert-btn,
 .panel.dark .panel-title,
 .panel.dark h3,
 .panel.dark h4 {
-  color: #FFFDF7 !important;
+  color: #F4F8F6 !important;
 }
 
 .panel.dark .panel-sub,
@@ -4544,13 +4575,13 @@ table.s5-calm-table tbody tr:hover .s5-slot-insert-btn,
 
 .panel.plum {
   background: linear-gradient(148deg, #4C3455 0%, #312038 100%) !important;
-  border: 1px solid rgba(197, 160, 89, 0.36) !important;
+  border: 1px solid rgba(203, 216, 209, 0.26) !important;
   color: #FFFFFF !important;
 }
 
 .panel.blue {
   background: linear-gradient(148deg, #334F70 0%, #223750 100%) !important;
-  border: 1px solid rgba(197, 160, 89, 0.36) !important;
+  border: 1px solid rgba(203, 216, 209, 0.26) !important;
   color: #FFFFFF !important;
 }
 
@@ -4715,7 +4746,7 @@ table.s5-rombel-table tbody tr:last-child td {
 }
 
 .s5-jp-meter-fill.is-partial {
-  background: linear-gradient(90deg, #C5A059, #D8B467) !important;
+  background: linear-gradient(90deg, #C68B2C, #D9A148) !important;
 }
 
 .s5-status-inline {
@@ -4746,7 +4777,7 @@ table.s5-rombel-table tbody tr:last-child td {
 }
 
 .s5-status-inline.is-warn .s5-status-dot-static {
-  background: #C5A059 !important;
+  background: #C68B2C !important;
 }
 
 .s5-row-launch-link {
@@ -4797,7 +4828,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 
 .s5-pulse-item:hover {
   background: #F0F6F3 !important;
-  border-color: rgba(197, 160, 89, 0.55) !important;
+  border-color: #9BB8AC !important;
   transform: translateY(-1px) !important;
 }
 
@@ -4833,9 +4864,9 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   justify-content: center !important;
   padding: 0.36em 0.9em !important;
   border-radius: 8px !important;
-  background: rgba(197, 160, 89, 0.18) !important;
-  border: 0.75px solid rgba(229, 195, 120, 0.45) !important;
-  color: #F3D98B !important;
+  background: rgba(168, 200, 186, 0.16) !important;
+  border: 0.75px solid rgba(203, 216, 209, 0.42) !important;
+  color: #DCECE4 !important;
   font-family: var(--font-mono) !important;
   font-size: 0.6875rem !important;
   font-weight: 600 !important;
@@ -4864,7 +4895,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 
 .s5-priority-step:hover {
   background: rgba(255, 255, 255, 0.115) !important;
-  border-color: rgba(229, 195, 120, 0.5) !important;
+  border-color: rgba(203, 216, 209, 0.45) !important;
   transform: translateY(-1px) !important;
 }
 
@@ -4887,9 +4918,9 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 }
 
 .s5-priority-num.is-pending {
-  background: rgba(197, 160, 89, 0.2) !important;
-  border: 0.75px solid rgba(229, 195, 120, 0.5) !important;
-  color: #F3D98B !important;
+  background: rgba(168, 200, 186, 0.16) !important;
+  border: 0.75px solid rgba(203, 216, 209, 0.42) !important;
+  color: #DCECE4 !important;
 }
 
 .s5-priority-copy {
@@ -4901,7 +4932,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   display: block !important;
   font-size: 13px !important;
   font-weight: 600 !important;
-  color: #FFFDF7 !important;
+  color: #F4F8F6 !important;
   line-height: 1.3 !important;
 }
 
@@ -4923,11 +4954,11 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   width: 100% !important;
   height: 40px !important;
   border-radius: 10px !important;
-  background: linear-gradient(135deg, #E5C378 0%, #C5A059 100%) !important;
+  background: linear-gradient(135deg, #F4F7F5 0%, #D9E5DF 100%) !important;
   color: #0B2923 !important;
   font-size: 13px !important;
   font-weight: 700 !important;
-  border: 1px solid rgba(255, 243, 208, 0.55) !important;
+  border: 1px solid rgba(255, 255, 255, 0.75) !important;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.24) !important;
   display: inline-flex !important;
   align-items: center !important;
@@ -4939,7 +4970,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 
 .s5-btn-obsidian-gold:hover {
   transform: translateY(-1px) !important;
-  filter: brightness(1.06) !important;
+  filter: brightness(1.04) !important;
 }
 
 .s5-btn-obsidian-ghost {
@@ -4961,7 +4992,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 
 .s5-btn-obsidian-ghost:hover {
   background: rgba(255, 255, 255, 0.14) !important;
-  border-color: rgba(229, 195, 120, 0.45) !important;
+  border-color: rgba(203, 216, 209, 0.45) !important;
   color: #FFFFFF !important;
 }
 
@@ -5011,7 +5042,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 /* ValidationScreen: Crisp Non-Pill Indonesian Category Label */
 .s5-issue-code-label {
   font-family: var(--font-sans) !important;
-  font-size: 11.5px !important;
+  font-size: 12px !important;
   font-weight: 600 !important;
   color: var(--s5-ink-secondary, #526861) !important;
   letter-spacing: 0.01em !important;
@@ -5040,8 +5071,8 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 
 .s5-backup-bento-grid .backup-action-card {
   height: 100% !important;
-  background: linear-gradient(165deg, #FFFFFF 0%, #F9FBFA 64%, #FBF7EE 100%) !important;
-  border: 1px solid rgba(197, 160, 89, 0.3) !important;
+  background: linear-gradient(165deg, #FFFFFF 0%, #F9FBFA 64%, #EFF4F1 100%) !important;
+  border: 1px solid #D3DFD9 !important;
   border-radius: 16px !important;
   box-shadow: var(--s5-shadow-resting), inset 0 1px 0 rgba(255, 255, 255, 0.96) !important;
   transition: transform 0.16s var(--s5-spring-fast), border-color 0.16s ease, box-shadow 0.16s ease !important;
@@ -5049,7 +5080,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 
 .s5-backup-bento-grid .backup-action-card:hover {
   transform: translateY(-2px) !important;
-  border-color: rgba(197, 160, 89, 0.55) !important;
+  border-color: #9BB8AC !important;
   box-shadow: var(--s5-shadow-card) !important;
 }
 
@@ -5062,7 +5093,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 }
 
 .version-row:hover {
-  border-color: rgba(197, 160, 89, 0.5) !important;
+  border-color: #9BB8AC !important;
   box-shadow: var(--s5-shadow-card) !important;
 }
 
@@ -5081,7 +5112,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 /* 21.8 WorkloadDashboard Architectural Meta Readouts (Tier 2 Porcelain High-Contrast) */
 .s5-workload-hero-desc {
   margin: 5px 0 0 !important;
-  font-size: 13px !important;
+  font-size: 14px;
   line-height: 1.5 !important;
   color: var(--s5-ink-tertiary) !important;
 }
@@ -5096,7 +5127,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   border: 1px solid #C9D7D0 !important;
   box-shadow: 0 1px 2px rgba(15, 42, 35, 0.04) !important;
   color: #163830 !important;
-  font-size: 12px !important;
+  font-size: 12.5px !important;
   font-weight: 600 !important;
   position: relative;
   z-index: 2;
@@ -5111,7 +5142,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 }
 
 .s5-hero-meta-item svg {
-  color: #8E7035 !important;
+  color: #4D7368 !important;
   flex-shrink: 0;
 }
 
@@ -5122,7 +5153,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 }
 
 .s5-table-count-label {
-  font-size: 12px !important;
+  font-size: 12.5px !important;
   font-weight: 600 !important;
   color: var(--s5-ink-tertiary) !important;
 }
@@ -5172,19 +5203,19 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 }
 
 .s5-admin-metric-card:hover {
-  border-color: rgba(197, 160, 89, 0.7);
+  border-color: #9BB8AC;
   background: #F1F6F3;
   transform: translateY(-1px);
 }
 
 .s5-admin-metric-card:focus-visible,
 .s5-admin-recent-row:focus-visible {
-  outline: 2px solid #C5A059;
+  outline: 2px solid #124037;
   outline-offset: 2px;
 }
 
 .s5-admin-metric-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -5199,7 +5230,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 }
 
 .s5-admin-metric-sub {
-  font-size: 11.5px;
+  font-size: 12px;
   color: #526861;
 }
 
@@ -5344,7 +5375,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   padding: 0 1.23em !important;
   border-radius: 10px !important;
   font-family: var(--font-sans) !important;
-  font-size: 0.8125rem !important;
+  font-size: 0.84375rem !important;
   font-weight: 600 !important;
   letter-spacing: -0.005em !important;
   line-height: 1 !important;
@@ -5399,13 +5430,13 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 
 /* 23.3 Hierarchical Surface Variants */
 
-/* Primary — Sovereign Emerald with Burnished Gold Hairline & Specular Bevel */
+/* Primary — Sovereign Emerald with Brushed Platinum Hairline & Specular Bevel */
 .btn.primary,
 .button-primary,
 .primary-btn {
   background: linear-gradient(135deg, #164D42 0%, #0E362D 100%) !important;
   color: #FFFFFF !important;
-  border: 1px solid rgba(197, 160, 89, 0.48) !important;
+  border: 1px solid rgba(203, 216, 209, 0.36) !important;
   box-shadow:
     0 2px 6px rgba(11, 41, 35, 0.16),
     inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
@@ -5415,7 +5446,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 .button-primary:hover:not(:disabled),
 .primary-btn:hover:not(:disabled) {
   background: linear-gradient(135deg, #1B5D4F 0%, #124237 100%) !important;
-  border-color: rgba(214, 179, 106, 0.72) !important;
+  border-color: rgba(203, 216, 209, 0.62) !important;
   box-shadow:
     0 6px 16px rgba(11, 41, 35, 0.22),
     inset 0 1px 0 rgba(255, 255, 255, 0.24) !important;
@@ -5440,7 +5471,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 .outline-btn:hover:not(:disabled) {
   background: #F5F9F7 !important;
   color: #0D3028 !important;
-  border-color: rgba(197, 160, 89, 0.75) !important;
+  border-color: #7FA396 !important;
   box-shadow:
     0 4px 12px rgba(15, 42, 35, 0.08),
     inset 0 1px 0 #FFFFFF !important;
@@ -5490,27 +5521,27 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   transform: translateY(-1px) !important;
 }
 
-/* Gold Hero / Sovereign Accent CTA */
+/* Frosted Platinum Hero Accent CTA (Keeping .gold selector compatibility) */
 .btn.gold {
   height: 42px !important;
   min-height: 42px !important;
   padding: 0 1.54em !important;
-  background: linear-gradient(135deg, #EED28E 0%, #C5A059 100%) !important;
-  color: #0D2D26 !important;
+  background: linear-gradient(135deg, #F4F7F5 0%, #D9E5DF 100%) !important;
+  color: #0B2923 !important;
   font-weight: 700 !important;
-  border: 1px solid rgba(255, 245, 214, 0.65) !important;
+  border: 1px solid rgba(255, 255, 255, 0.78) !important;
   box-shadow:
     0 6px 18px rgba(0, 0, 0, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.85) !important;
 }
 
 .btn.gold:hover:not(:disabled) {
-  background: linear-gradient(135deg, #F4DA9B 0%, #CFA960 100%) !important;
+  background: linear-gradient(135deg, #FFFFFF 0%, #E3EDE8 100%) !important;
   color: #08231D !important;
-  border-color: rgba(255, 249, 232, 0.85) !important;
+  border-color: rgba(255, 255, 255, 0.95) !important;
   box-shadow:
     0 10px 24px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.92) !important;
   transform: translateY(-1px) !important;
   filter: none !important;
 }
@@ -5523,8 +5554,8 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   min-height: 42px !important;
   padding: 0 1.38em !important;
   background: rgba(255, 255, 255, 0.1) !important;
-  color: #FFFDF7 !important;
-  border: 1px solid rgba(229, 195, 120, 0.36) !important;
+  color: #F4F8F6 !important;
+  border: 1px solid rgba(203, 216, 209, 0.3) !important;
   backdrop-filter: blur(8px) !important;
   -webkit-backdrop-filter: blur(8px) !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
@@ -5534,7 +5565,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 .button-hero-ghost:hover:not(:disabled),
 .hero .actions .btn:not(.gold):hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.18) !important;
-  border-color: rgba(229, 195, 120, 0.68) !important;
+  border-color: rgba(203, 216, 209, 0.56) !important;
   color: #FFFFFF !important;
   box-shadow:
     0 6px 16px rgba(0, 0, 0, 0.2),
@@ -5552,7 +5583,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   color: #FFFFFF !important;
   font-size: 0.8125rem !important;
   font-weight: 600 !important;
-  border: 1px solid rgba(197, 160, 89, 0.48) !important;
+  border: 1px solid rgba(203, 216, 209, 0.36) !important;
   box-shadow:
     0 2px 6px rgba(11, 41, 35, 0.16),
     inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
@@ -5561,13 +5592,13 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 
 .master-hero-primary-btn .hero-kbd-badge {
   background: rgba(255, 255, 255, 0.16) !important;
-  color: #FFF9EA !important;
+  color: #F4F8F6 !important;
   border-color: rgba(255, 255, 255, 0.28) !important;
 }
 
 .master-hero-primary-btn:hover:not(:disabled) {
   background: linear-gradient(135deg, #1B5D4F 0%, #124237 100%) !important;
-  border-color: rgba(214, 179, 106, 0.72) !important;
+  border-color: rgba(203, 216, 209, 0.62) !important;
   box-shadow:
     0 6px 16px rgba(11, 41, 35, 0.22),
     inset 0 1px 0 rgba(255, 255, 255, 0.24) !important;
@@ -5593,7 +5624,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 .master-hero-secondary-btn:hover:not(:disabled) {
   background: #F5F9F7 !important;
   color: #0D3028 !important;
-  border-color: rgba(197, 160, 89, 0.75) !important;
+  border-color: #7FA396 !important;
   box-shadow:
     0 4px 12px rgba(15, 42, 35, 0.08),
     inset 0 1px 0 #FFFFFF !important;
@@ -5673,7 +5704,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 .s5-btn-obsidian-ghost:focus-visible,
 .icon-button:focus-visible,
 .table-row-action:focus-visible {
-  outline: 2px solid #C5A059 !important;
+  outline: 2px solid #4D7368 !important;
   outline-offset: 2px !important;
 }
 
@@ -5690,7 +5721,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 
 .icon-button:hover:not(:disabled),
 .table-row-action:hover:not(:disabled) {
-  border-color: rgba(197, 160, 89, 0.65) !important;
+  border-color: #7FA396 !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -5712,7 +5743,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 /* ==========================================================================
    24. UNIFIED FILTER DROPDOWNS, SEARCH BOXES, MICRO-CONTROLS & SPRING MODALS
    Aligns Jadwal, Data Master, Workload, Attendance, & Persuratan filters
-   to 38px height, 10px squircle radius, #C9D7D0 border, and #C5A059 focus ring.
+   to 38px height, 10px squircle radius, #C9D7D0 border, and #4D7368 focus ring.
    ========================================================================== */
 
 /* 24.1 Unified Select & Filter Bar Controls (38px height, 10px radius) */
@@ -5728,7 +5759,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   background-color: #FFFFFF !important;
   color: #163830 !important;
   font-family: var(--font-sans) !important;
-  font-size: 12.5px !important;
+  font-size: 13.5px;
   font-weight: 600 !important;
   box-shadow: 0 1px 2px rgba(15, 42, 35, 0.04) !important;
   transition:
@@ -5768,8 +5799,8 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 .toolbar-card select:focus,
 .toolbar-card select:focus-visible {
   outline: none !important;
-  border-color: #C5A059 !important;
-  box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.2) !important;
+  border-color: #4D7368 !important;
+  box-shadow: 0 0 0 3px rgba(77, 115, 104, 0.16) !important;
   background-color: #FFFFFF !important;
 }
 
@@ -5797,7 +5828,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   border: none !important;
   box-shadow: none !important;
   background: transparent !important;
-  font-size: 12.5px !important;
+  font-size: 13.5px;
 }
 
 .master-toolbar-search-wrap .table-search:focus-within,
@@ -5807,8 +5838,8 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 .s02-search-input:focus,
 .s02-search-input:focus-visible {
   outline: none !important;
-  border-color: #C5A059 !important;
-  box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.2) !important;
+  border-color: #4D7368 !important;
+  box-shadow: 0 0 0 3px rgba(77, 115, 104, 0.16) !important;
   background-color: #FFFFFF !important;
 }
 
@@ -5821,9 +5852,16 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   background: #FFF7F5 !important;
   color: #9A2B20 !important;
   border: 1px solid #EDC4BF !important;
-  font-size: 12px !important;
+  font-size: 12.5px !important;
   font-weight: 600 !important;
   box-shadow: 0 1px 2px rgba(154, 43, 32, 0.05) !important;
+}
+
+.matrix-reset-filter-btn.is-icon-only {
+  width: 38px !important;
+  min-width: 38px !important;
+  padding: 0 !important;
+  justify-content: center !important;
 }
 
 .matrix-reset-filter-btn:hover:not(:disabled) {
@@ -5831,6 +5869,11 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   color: #7D1E15 !important;
   border-color: #DC9890 !important;
   transform: translateY(-1px) !important;
+}
+
+.matrix-reset-filter-btn:focus-visible {
+  outline: 2px solid var(--s5-gold-metallic, #4D7368);
+  outline-offset: 2px;
 }
 
 .class-stats .jp-counter {
@@ -5842,7 +5885,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   border: 1px solid #C9D7D0 !important;
   background: #FFFFFF !important;
   color: #163830 !important;
-  font-size: 11.5px !important;
+  font-size: 12px !important;
   font-weight: 700 !important;
   font-variant-numeric: tabular-nums !important;
   white-space: nowrap !important;
@@ -5860,7 +5903,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   border: 1px solid #C9D7D0 !important;
   background: #FFFFFF !important;
   color: #163830 !important;
-  font-size: 11.5px !important;
+  font-size: 12.5px !important;
   font-weight: 600 !important;
   white-space: nowrap !important;
   box-shadow: 0 1px 2px rgba(15, 42, 35, 0.04) !important;
@@ -5875,13 +5918,13 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 .editor-shortcut-btn:hover:not(:disabled) {
   background: #14453B !important;
   color: #FFFFFF !important;
-  border-color: rgba(197, 160, 89, 0.65) !important;
+  border-color: rgba(203, 216, 209, 0.45) !important;
   box-shadow: 0 3px 8px rgba(11, 41, 35, 0.16) !important;
   transform: translateY(-1px) !important;
 }
 
 .editor-shortcut-btn:focus-visible {
-  outline: 2px solid #C5A059 !important;
+  outline: 2px solid #4D7368 !important;
   outline-offset: 2px !important;
 }
 
@@ -5949,7 +5992,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   border-top: none !important;
   border-bottom: none !important;
   border-left: none !important;
-  border-right: 1px solid rgba(229, 201, 122, 0.34) !important;
+  border-right: 1px solid rgba(203, 216, 209, 0.2) !important;
   background: linear-gradient(172deg, #0D2921 0%, #102D25 48%, #071913 100%) !important;
   backdrop-filter: none !important;
   box-shadow:
@@ -5985,7 +6028,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   width: calc(100% - 76px);
 }
 
-/* 25.0 Ambient Warm-Gold Spotlight & Khatam Octagram Ornaments */
+/* 25.0 Ambient Platinum-Sage Spotlight & Khatam Octagram Ornaments */
 .sakala-sidebar-ambient {
   position: absolute !important;
   top: -42px !important;
@@ -5994,8 +6037,8 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   height: 240px !important;
   background: radial-gradient(
     circle,
-    rgba(229, 201, 122, 0.16) 0%,
-    rgba(197, 160, 89, 0.05) 45%,
+    rgba(168, 200, 186, 0.14) 0%,
+    rgba(77, 115, 104, 0.06) 45%,
     transparent 72%
   ) !important;
   pointer-events: none !important;
@@ -6051,7 +6094,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   flex-shrink: 0 !important;
   margin-bottom: 0 !important;
   padding: 2px 4px 14px !important;
-  border-bottom: 1px solid rgba(229, 201, 122, 0.22) !important;
+  border-bottom: 1px solid rgba(203, 216, 209, 0.16) !important;
   cursor: default !important;
 }
 
@@ -6076,7 +6119,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 }
 
 .sakala-brand-btn:focus-visible {
-  outline: 2px solid #E5C97A !important;
+  outline: 2px solid #A8C8BA !important;
   outline-offset: 2px !important;
 }
 
@@ -6085,12 +6128,12 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   width: 40px !important;
   height: 40px !important;
   flex: 0 0 40px !important;
-  border: 1px solid rgba(229, 201, 122, 0.68) !important;
+  border: 1px solid rgba(203, 216, 209, 0.42) !important;
   border-radius: 12px !important;
   background: #0D2720 !important;
   box-shadow:
     0 6px 18px rgba(0, 0, 0, 0.28),
-    0 0 0 3px rgba(229, 201, 122, 0.08),
+    0 0 0 3px rgba(168, 200, 186, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.16) !important;
   overflow: hidden !important;
 }
@@ -6111,7 +6154,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   background: linear-gradient(
     115deg,
     transparent 35%,
-    rgba(255, 249, 234, 0.34) 50%,
+    rgba(244, 248, 246, 0.34) 50%,
     transparent 65%
   ) !important;
   transform: translateX(-125%) rotate(12deg) !important;
@@ -6135,7 +6178,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   font-size: 19px !important;
   font-weight: 700 !important;
   letter-spacing: 0.1em !important;
-  color: #FFF9EA !important;
+  color: #F4F8F6 !important;
   line-height: 1.1 !important;
   margin: 0 !important;
   white-space: nowrap !important;
@@ -6144,11 +6187,11 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 .sakala-brand-subtitle {
   display: block !important;
   margin-top: 3px !important;
-  font-size: 11px !important;
+  font-size: 11.5px !important;
   font-weight: 600 !important;
   letter-spacing: 0.09em !important;
   text-transform: uppercase !important;
-  color: #E5C97A !important;
+  color: #9EC0B2 !important;
   line-height: 1.2 !important;
   white-space: nowrap !important;
 }
@@ -6159,7 +6202,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   flex: 0 0 26px !important;
   border-radius: 7px !important;
   background: rgba(255, 255, 255, 0.08) !important;
-  border: 1px solid rgba(229, 201, 122, 0.26) !important;
+  border: 1px solid rgba(203, 216, 209, 0.24) !important;
   color: #D7E5DD !important;
   display: grid !important;
   place-items: center !important;
@@ -6168,13 +6211,13 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 }
 
 .sidebar-collapse-toggle:hover {
-  background: rgba(229, 201, 122, 0.2) !important;
-  border-color: rgba(229, 201, 122, 0.56) !important;
-  color: #FFF9EA !important;
+  background: rgba(168, 200, 186, 0.18) !important;
+  border-color: rgba(203, 216, 209, 0.5) !important;
+  color: #F4F8F6 !important;
 }
 
 .sidebar-collapse-toggle:focus-visible {
-  outline: 2px solid #E5C97A !important;
+  outline: 2px solid #A8C8BA !important;
   outline-offset: 2px !important;
 }
 
@@ -6193,7 +6236,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   gap: 6px !important;
   width: 100% !important;
   padding: 9px 6px 2px !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   line-height: 1.3 !important;
   color: #B9D2C6 !important;
   overflow: hidden !important;
@@ -6212,13 +6255,13 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 
 .sakala-brand-context-sep {
   flex-shrink: 0 !important;
-  color: rgba(229, 201, 122, 0.65) !important;
+  color: rgba(168, 200, 186, 0.55) !important;
 }
 
 .sakala-brand-context-term {
   flex-shrink: 0 !important;
   font-weight: 600 !important;
-  color: #E5C97A !important;
+  color: #C7DCD2 !important;
   white-space: nowrap !important;
 }
 
@@ -6230,15 +6273,15 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   align-items: center !important;
   gap: 8px !important;
   width: 100% !important;
-  height: 34px !important;
+  height: 36px !important;
   margin-top: 10px !important;
   padding: 0 10px !important;
   border-radius: 9px !important;
-  border: 1px solid rgba(229, 201, 122, 0.22) !important;
+  border: 1px solid rgba(203, 216, 209, 0.18) !important;
   background: rgba(6, 22, 17, 0.45) !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
   color: #BDD5C9 !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
   font-weight: 500 !important;
   text-align: left !important;
   cursor: pointer !important;
@@ -6251,18 +6294,18 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 
 .sakala-sidebar-search:hover {
   background: rgba(12, 39, 31, 0.72) !important;
-  border-color: rgba(229, 201, 122, 0.48) !important;
-  color: #FFF9EA !important;
+  border-color: rgba(203, 216, 209, 0.4) !important;
+  color: #F4F8F6 !important;
 }
 
 .sakala-sidebar-search:focus-visible {
-  outline: 2px solid #E5C97A !important;
+  outline: 2px solid #A8C8BA !important;
   outline-offset: 2px !important;
 }
 
 .sakala-sidebar-search-icon {
   flex-shrink: 0 !important;
-  color: #E5C97A !important;
+  color: #A8C8BA !important;
   opacity: 0.9 !important;
 }
 
@@ -6278,11 +6321,11 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   flex-shrink: 0 !important;
   padding: 2px 6px !important;
   border-radius: 6px !important;
-  border: 1px solid rgba(229, 201, 122, 0.28) !important;
+  border: 1px solid rgba(203, 216, 209, 0.24) !important;
   background: rgba(255, 255, 255, 0.06) !important;
-  color: #E5C97A !important;
+  color: #C7DCD2 !important;
   font-family: inherit !important;
-  font-size: 11px !important;
+  font-size: 11.5px !important;
   font-weight: 600 !important;
   line-height: 1.1 !important;
 }
@@ -6338,7 +6381,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   overflow-y: auto !important;
   overflow-x: hidden !important;
   scrollbar-width: thin;
-  scrollbar-color: rgba(229, 201, 122, 0.28) transparent;
+  scrollbar-color: rgba(203, 216, 209, 0.24) transparent;
 }
 
 .sakala-nav::-webkit-scrollbar {
@@ -6350,12 +6393,12 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 }
 
 .sakala-nav::-webkit-scrollbar-thumb {
-  background: rgba(229, 201, 122, 0.28);
+  background: rgba(203, 216, 209, 0.24);
   border-radius: 999px;
 }
 
 .sakala-nav::-webkit-scrollbar-thumb:hover {
-  background: rgba(229, 201, 122, 0.5);
+  background: rgba(203, 216, 209, 0.42);
 }
 
 .sakala-nav-group {
@@ -6366,9 +6409,9 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 }
 
 .sakala-nav-section-title {
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 700 !important;
-  letter-spacing: 0.08em !important;
+  letter-spacing: 0.07em !important;
   color: #A8C8BA !important;
   text-transform: uppercase !important;
   padding: 4px 10px 3px !important;
@@ -6379,7 +6422,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   width: 24px !important;
   height: 1px !important;
   margin: 4px auto 6px !important;
-  background: rgba(229, 201, 122, 0.2) !important;
+  background: rgba(203, 216, 209, 0.18) !important;
 }
 
 .sakala-nav-item {
@@ -6388,14 +6431,14 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   align-items: center !important;
   gap: 10px !important;
   width: 100% !important;
-  height: 37px !important;
+  height: 39px !important;
   padding: 0 10px 0 12px !important;
   margin: 0 !important;
   border-radius: 9px !important;
   border: 1px solid transparent !important;
   background: transparent !important;
   color: #D8E6DF !important;
-  font-size: 13px !important;
+  font-size: 14px !important;
   font-weight: 500 !important;
   text-align: left !important;
   cursor: pointer !important;
@@ -6406,11 +6449,11 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   position: absolute !important;
   inset: 0 !important;
   border-radius: 9px !important;
-  background: linear-gradient(90deg, rgba(197, 160, 89, 0.25) 0%, rgba(197, 160, 89, 0.11) 100%) !important;
-  border: 1px solid rgba(229, 201, 122, 0.48) !important;
+  background: linear-gradient(90deg, rgba(168, 200, 186, 0.16) 0%, rgba(168, 200, 186, 0.05) 100%) !important;
+  border: 1px solid rgba(203, 216, 209, 0.28) !important;
   box-shadow:
-    0 3px 12px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 249, 234, 0.14) !important;
+    0 3px 12px rgba(0, 0, 0, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
   z-index: 0 !important;
   pointer-events: none !important;
 }
@@ -6422,8 +6465,8 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   bottom: 7px !important;
   width: 3px !important;
   border-radius: 0 3px 3px 0 !important;
-  background: linear-gradient(180deg, #F3DC96 0%, #C5A059 100%) !important;
-  box-shadow: 0 0 10px rgba(229, 201, 122, 0.65) !important;
+  background: linear-gradient(180deg, #EDF3F0 0%, #9BBFB0 100%) !important;
+  box-shadow: 0 0 6px rgba(215, 226, 220, 0.24) !important;
   z-index: 2 !important;
   pointer-events: none !important;
 }
@@ -6461,11 +6504,11 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 }
 
 .sakala-nav-item:hover .icon {
-  color: #FFF9EA !important;
+  color: #F4F8F6 !important;
 }
 
 .sakala-nav-item:focus-visible {
-  outline: 2px solid #E5C97A !important;
+  outline: 2px solid #A8C8BA !important;
   outline-offset: -2px !important;
 }
 
@@ -6478,7 +6521,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 }
 
 .sakala-nav-item.active .icon {
-  color: #F3DC96 !important;
+  color: #E4EFEA !important;
 }
 
 .sakala-nav-badge {
@@ -6486,7 +6529,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   z-index: 1 !important;
   margin-left: auto !important;
   flex-shrink: 0 !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 700 !important;
   font-variant-numeric: tabular-nums !important;
   background: #DC2626 !important;
@@ -6543,7 +6586,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   width: 100% !important;
   margin-top: 10px !important;
   padding: 10px 11px !important;
-  border: 1px solid rgba(229, 201, 122, 0.24) !important;
+  border: 1px solid rgba(203, 216, 209, 0.18) !important;
   border-radius: 11px !important;
   background: rgba(6, 22, 17, 0.56) !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
@@ -6561,11 +6604,11 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 
 .sidebar-status-footer:hover {
   background: rgba(12, 38, 30, 0.8) !important;
-  border-color: rgba(229, 201, 122, 0.52) !important;
+  border-color: rgba(203, 216, 209, 0.4) !important;
 }
 
 .sidebar-status-footer:focus-visible {
-  outline: 2px solid #E5C97A !important;
+  outline: 2px solid #A8C8BA !important;
   outline-offset: 2px !important;
 }
 
@@ -6583,9 +6626,9 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   border-radius: 8px !important;
   display: grid !important;
   place-items: center !important;
-  background: rgba(229, 201, 122, 0.12) !important;
-  border: 1px solid rgba(229, 201, 122, 0.34) !important;
-  color: #E5C97A !important;
+  background: rgba(168, 200, 186, 0.12) !important;
+  border: 1px solid rgba(203, 216, 209, 0.28) !important;
+  color: #C7DCD2 !important;
 }
 
 .sidebar-status-text {
@@ -6595,15 +6638,15 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 }
 
 .sidebar-status-label {
-  font-size: 11.5px !important;
+  font-size: 12.5px !important;
   font-weight: 600 !important;
-  color: #F4EFE1 !important;
+  color: #F4F8F6 !important;
   line-height: 1.2 !important;
   white-space: nowrap !important;
 }
 
 .sidebar-status-meta {
-  font-size: 11px !important;
+  font-size: 12px !important;
   color: #A8C8BA !important;
   line-height: 1.25 !important;
   white-space: nowrap !important;
@@ -6616,7 +6659,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 }
 
 .sidebar-status-footer:hover .sidebar-vault-arrow {
-  color: #E5C97A !important;
+  color: #E4EFEA !important;
   transform: translateX(2px) !important;
 }
 
@@ -6641,11 +6684,11 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   border-radius: 10px !important;
   background: rgba(8, 28, 22, 0.96) !important;
   backdrop-filter: blur(14px) !important;
-  border: 0.75px solid rgba(229, 201, 122, 0.48) !important;
+  border: 0.75px solid rgba(203, 216, 209, 0.36) !important;
   box-shadow:
     0 12px 28px rgba(5, 18, 14, 0.38),
     inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
-  color: #FFF9EA !important;
+  color: #F4F8F6 !important;
   max-width: min(360px, calc(100vw - 88px)) !important;
 }
 
@@ -6656,8 +6699,8 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   width: 8px !important;
   height: 8px !important;
   background: rgba(8, 28, 22, 0.96) !important;
-  border-left: 0.75px solid rgba(229, 201, 122, 0.48) !important;
-  border-bottom: 0.75px solid rgba(229, 201, 122, 0.48) !important;
+  border-left: 0.75px solid rgba(203, 216, 209, 0.36) !important;
+  border-bottom: 0.75px solid rgba(203, 216, 209, 0.36) !important;
   transform: translateY(-50%) rotate(45deg) !important;
 }
 
@@ -6669,15 +6712,15 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 }
 
 .sakala-portal-tooltip-label {
-  font-size: 12.5px !important;
+  font-size: 13px !important;
   font-weight: 600 !important;
-  color: #FFF9EA !important;
+  color: #F4F8F6 !important;
   line-height: 1.3 !important;
   white-space: normal !important;
 }
 
 .sakala-portal-tooltip-hint {
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 500 !important;
   color: #B5CEC2 !important;
   line-height: 1.35 !important;
@@ -6689,11 +6732,11 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   flex-shrink: 0 !important;
   padding: 2px 6px !important;
   border-radius: 6px !important;
-  border: 1px solid rgba(229, 201, 122, 0.36) !important;
+  border: 1px solid rgba(203, 216, 209, 0.28) !important;
   background: rgba(255, 255, 255, 0.07) !important;
-  color: #E5C97A !important;
+  color: #C7DCD2 !important;
   font-family: inherit !important;
-  font-size: 11px !important;
+  font-size: 11.5px !important;
   font-weight: 600 !important;
 }
 
@@ -6790,7 +6833,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   -webkit-appearance: none !important;
   color: #163830 !important;
   font-family: var(--font-sans) !important;
-  font-size: 12.5px !important;
+  font-size: 13.5px;
   font-weight: 600 !important;
   cursor: pointer !important;
   box-shadow: 0 1px 2px rgba(15, 42, 35, 0.04) !important;
@@ -6804,8 +6847,8 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 
 .s5-toolbar-select:focus-visible {
   outline: none !important;
-  border-color: #C5A059 !important;
-  box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.2) !important;
+  border-color: #4D7368 !important;
+  box-shadow: 0 0 0 3px rgba(77, 115, 104, 0.16) !important;
   background-color: #FFFFFF !important;
 }
 
@@ -6826,8 +6869,8 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 }
 
 .s5-toolbar-search:focus-within {
-  border-color: #C5A059 !important;
-  box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.2) !important;
+  border-color: #4D7368 !important;
+  box-shadow: 0 0 0 3px rgba(77, 115, 104, 0.16) !important;
 }
 
 .s5-toolbar-search input {
@@ -6839,7 +6882,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   box-shadow: none !important;
   padding: 0 !important;
   font-family: var(--font-sans) !important;
-  font-size: 12.5px !important;
+  font-size: 13.5px;
   color: #0F201C !important;
 }
 
@@ -6863,7 +6906,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   background: #FFFFFF !important;
   color: #355048 !important;
   font-family: var(--font-sans) !important;
-  font-size: 0.78125rem !important;
+  font-size: 0.8125rem !important;
   font-weight: 600 !important;
   white-space: nowrap !important;
   cursor: pointer !important;
@@ -6877,7 +6920,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 }
 
 .s5-workload-source-tab:focus-visible {
-  outline: 2px solid #C5A059 !important;
+  outline: 2px solid #4D7368 !important;
   outline-offset: 2px !important;
 }
 
@@ -6910,7 +6953,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 }
 
 .s5-workload-version-label {
-  font-size: 0.75rem !important;
+  font-size: 0.8125rem !important;
   font-weight: 600 !important;
   color: var(--s5-ink-tertiary) !important;
   margin: 0 !important;
@@ -6956,7 +6999,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   align-items: center !important;
   flex-wrap: wrap !important;
   gap: 10px !important;
-  font-size: 12px !important;
+  font-size: 12.5px !important;
   color: var(--s5-ink-secondary) !important;
 }
 
@@ -6964,7 +7007,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   display: inline-flex !important;
   align-items: center !important;
   gap: 8px !important;
-  font-size: 12px !important;
+  font-size: 12.5px !important;
   color: var(--s5-ink-secondary) !important;
 }
 
@@ -6982,7 +7025,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   appearance: none !important;
   -webkit-appearance: none !important;
   font-family: var(--font-sans) !important;
-  font-size: 12px !important;
+  font-size: 13px;
   font-weight: 600 !important;
   color: var(--s5-ink-primary) !important;
   cursor: pointer !important;
@@ -6990,12 +7033,12 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 
 .s5-unified-pag-select:focus-visible {
   outline: none !important;
-  border-color: #C5A059 !important;
-  box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.2) !important;
+  border-color: #4D7368 !important;
+  box-shadow: 0 0 0 3px rgba(77, 115, 104, 0.16) !important;
 }
 
 .s5-unified-pag-summary {
-  font-size: 12px !important;
+  font-size: 12.5px !important;
   color: var(--s5-ink-secondary) !important;
 }
 
@@ -7033,7 +7076,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   background: transparent !important;
   color: var(--s5-ink-secondary) !important;
   font-family: var(--font-sans) !important;
-  font-size: 0.75rem !important;
+  font-size: 0.8125rem !important;
   font-weight: 600 !important;
   display: inline-flex !important;
   align-items: center !important;
@@ -7060,7 +7103,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 }
 
 .s5-unified-pag-btn:focus-visible {
-  outline: 2px solid #C5A059 !important;
+  outline: 2px solid #4D7368 !important;
   outline-offset: 2px !important;
 }
 
@@ -7070,13 +7113,13 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   justify-content: center !important;
   min-width: 24px !important;
   height: 32px !important;
-  font-size: 12px !important;
+  font-size: 12.5px !important;
   font-weight: 600 !important;
   color: var(--s5-ink-tertiary) !important;
 }
 
 .s5-unified-pag-indicator {
-  font-size: 12px !important;
+  font-size: 12.5px !important;
   font-weight: 600 !important;
   color: var(--s5-ink-secondary) !important;
   padding: 0 4px !important;
@@ -7122,7 +7165,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   max-width: 100%;
   max-height: 100%;
   border-radius: 16px;
-  border-color: rgba(197, 160, 89, 0.45);
+  border-color: rgba(203, 216, 209, 0.36);
   box-shadow: 0 28px 64px -10px rgba(4, 18, 15, 0.55);
 }
 
@@ -7186,7 +7229,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 }
 
 .lpv-max-btn:focus-visible {
-  outline: 2px solid var(--s5-gold-metallic, #c5a059);
+  outline: 2px solid var(--s5-gold-metallic, #4D7368);
   outline-offset: 2px;
 }
 
@@ -7313,7 +7356,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 .lpv-zoom-readout {
   min-width: 44px;
   text-align: center;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 700;
   color: #0B2923;
 }
@@ -7322,13 +7365,13 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 26px;
-  padding: 0 0.82em;
+  height: 28px;
+  padding: 0 0.85em;
   border-radius: 7px;
   border: 1px solid #C8D6CE;
   background: #FFFFFF;
   color: #2E4841;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
@@ -7354,8 +7397,8 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   background: #FDF5E6;
   border: 1px solid #D9B061;
   color: #6B440E;
-  font-size: 0.71875rem;
-  line-height: 1.42;
+  font-size: 0.78125rem;
+  line-height: 1.45;
 }
 
 /* ==========================================================================
@@ -7384,7 +7427,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   align-items: center;
   gap: 14px;
   flex-wrap: wrap;
-  font-size: 11.5px;
+  font-size: 12px;
   color: #465D56;
   font-weight: 600;
 }
@@ -7450,7 +7493,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 }
 
 .s5-row-day-val {
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 700;
   line-height: 1;
   color: #2B453E;
@@ -7474,7 +7517,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 }
 
 .s5-row-day-lbl {
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
   line-height: 1;
   color: #526861;
@@ -7531,7 +7574,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   background: #FFFFFF !important;
   color: #355048 !important;
   font-family: var(--font-sans) !important;
-  font-size: 0.78125rem !important;
+  font-size: 0.8125rem !important;
   font-weight: 600 !important;
   line-height: 1 !important;
   white-space: nowrap !important;
@@ -7549,12 +7592,12 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
 .filter-tab-btn.active {
   background: #124037 !important;
   color: #FFFFFF !important;
-  border-color: rgba(197, 160, 89, 0.58) !important;
+  border-color: rgba(203, 216, 209, 0.45) !important;
   box-shadow: 0 2px 6px rgba(18, 64, 55, 0.2) !important;
 }
 
 .filter-tab-btn:focus-visible {
-  outline: 2px solid #C5A059 !important;
+  outline: 2px solid #4D7368 !important;
   outline-offset: 2px !important;
 }
 
@@ -7563,7 +7606,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   min-height: 32px !important;
   padding: 0 0.92em !important;
   border-radius: 8px !important;
-  font-size: 0.75rem !important;
+  font-size: 0.78125rem !important;
 }
 
 /* Unified 6px Inline Status Badges for Requirements & Pre-Flight Tables */
@@ -7573,7 +7616,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   gap: 4px !important;
   padding: 0.18em 0.72em !important;
   border-radius: 6px !important;
-  font-size: 0.6875rem !important;
+  font-size: 0.75rem !important;
   font-weight: 600 !important;
   line-height: 1.35 !important;
   font-variant-numeric: tabular-nums !important;
@@ -7613,7 +7656,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   background: #FFFFFF !important;
   text-align: center !important;
   font-family: var(--font-sans) !important;
-  font-size: 13px !important;
+  font-size: 13.5px !important;
   font-weight: 700 !important;
   color: #0B2923 !important;
   font-variant-numeric: tabular-nums !important;
@@ -7650,7 +7693,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   flex-wrap: wrap;
   padding: 9px 12px;
   border-radius: 9px;
-  font-size: 12px;
+  font-size: 12.5px;
   border: 1px solid #DCE6E0;
   background: #F9FBFA;
 }
@@ -7674,7 +7717,7 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
   justify-content: space-between;
   gap: 8px;
   padding: 4px 2px 2px;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -7693,3 +7736,412 @@ table.s5-rombel-table tbody tr:hover .s5-row-launch-link {
     transition: none !important;
   }
 }
+
+/* Compact Icon-Only Info Trigger & Header Help Chip (Zero !important) */
+.s5-info-icon-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid rgba(18, 64, 55, 0.14);
+  border-radius: 6px;
+  background: rgba(18, 64, 55, 0.04);
+  color: #3c5951;
+  cursor: help;
+  flex-shrink: 0;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.s5-info-icon-trigger:hover,
+.s5-info-icon-trigger:focus-visible {
+  background: #eaf2ee;
+  border-color: rgba(18, 64, 55, 0.32);
+  color: #0b2923;
+}
+
+.s5-info-icon-trigger:focus-visible {
+  outline: 2px solid var(--s5-gold-metallic, #4D7368);
+  outline-offset: 2px;
+}
+
+.s5-header-help-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 7px;
+  border: 1px solid #d5e1dc;
+  background: #f6faf8;
+  color: #2f443e;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: help;
+}
+
+.s5-header-help-chip:focus-visible {
+  outline: 2px solid var(--s5-gold-metallic, #4D7368);
+  outline-offset: 2px;
+}
+
+.demo-banner-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.demo-banner-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.demo-banner .demo-banner-close {
+  margin-left: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  background: rgba(133, 77, 14, 0.12);
+  color: #854d0e;
+}
+
+.demo-banner .demo-banner-close:hover {
+  background: rgba(133, 77, 14, 0.22);
+}
+
+.s5-heartbeat-pill.is-icon-compact {
+  padding: 0.36em 0.65em;
+  gap: 4px;
+}
+
+/* ==========================================================================
+   SAKALA 2026 QUIET LUXURY SPLASH SCREEN (Zero !important, Compositor-Only)
+   ========================================================================== */
+@keyframes sakalaSplashCrestIn {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.94);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes sakalaSplashTextIn {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sakalaSplashApertureIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes sakalaSplashSheen {
+  0% {
+    opacity: 0;
+    transform: translateX(-130%) skewX(-18deg);
+  }
+  35% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(140%) skewX(-18deg);
+  }
+}
+
+@keyframes sakalaSplashRailDeterminate {
+  0% {
+    transform: scaleX(0.08);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+@keyframes sakalaSplashRailIndeterminate {
+  0% {
+    transform: translateX(-100%) scaleX(0.45);
+  }
+  50% {
+    transform: translateX(65%) scaleX(0.65);
+  }
+  100% {
+    transform: translateX(220%) scaleX(0.45);
+  }
+}
+
+.sakala-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background-color: #F8FAF8;
+  color: #0B2923;
+  overflow: hidden;
+  transition:
+    opacity 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sakala-splash.is-intro-overlay {
+  cursor: pointer;
+}
+
+.sakala-splash.is-exiting {
+  opacity: 0;
+  transform: scale(1.015);
+  pointer-events: none;
+}
+
+.sakala-splash-atmosphere {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(62% 52% at 50% 42%, rgba(18, 64, 55, 0.055) 0%, transparent 70%),
+    radial-gradient(40% 35% at 50% 56%, rgba(168, 200, 186, 0.14) 0%, transparent 72%);
+}
+
+.sakala-splash-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(18, 64, 55, 0.028) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(18, 64, 55, 0.028) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(circle at 50% 48%, #000 10%, transparent 68%);
+  -webkit-mask-image: radial-gradient(circle at 50% 48%, #000 10%, transparent 68%);
+}
+
+.sakala-splash-stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  text-align: center;
+}
+
+.sakala-splash-crest-wrap {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  display: grid;
+  place-items: center;
+}
+
+.sakala-splash-aperture {
+  position: absolute;
+  inset: 0;
+  border-radius: 26px;
+  border: 0.75px solid rgba(18, 64, 55, 0.11);
+  background: rgba(255, 255, 255, 0.45);
+  animation: sakalaSplashApertureIn 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.sakala-splash-tile {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #0F352E;
+  border: 1px solid rgba(18, 64, 55, 0.18);
+  box-shadow:
+    0 20px 44px -14px rgba(11, 41, 35, 0.25),
+    0 4px 12px rgba(11, 41, 35, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  animation: sakalaSplashCrestIn 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.sakala-splash-tile img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sakala-splash-sheen {
+  position: absolute;
+  inset: 0;
+  width: 55%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(237, 243, 240, 0.28) 50%,
+    transparent 100%
+  );
+  pointer-events: none;
+  animation: sakalaSplashSheen 950ms cubic-bezier(0.16, 1, 0.3, 1) 180ms 1 both;
+}
+
+.sakala-splash-wordmark-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  animation: sakalaSplashTextIn 480ms cubic-bezier(0.16, 1, 0.3, 1) 90ms both;
+}
+
+.sakala-splash-title {
+  margin: 0;
+  font-family: var(--font-serif, 'Fraunces', Georgia, serif);
+  font-size: clamp(1.5rem, 2.5vw, 1.875rem);
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-indent: 0.18em;
+  line-height: 1.1;
+  color: #0B2923;
+}
+
+.sakala-splash-rule {
+  width: 28px;
+  height: 1.5px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, #CBD8D1, transparent);
+}
+
+.sakala-splash-subtitle {
+  margin: 0;
+  font-family: var(--font-sans, 'Plus Jakarta Sans', sans-serif);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: #4E645D;
+}
+
+.sakala-splash-rail {
+  width: 148px;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(11, 41, 35, 0.09);
+  overflow: hidden;
+  animation: sakalaSplashTextIn 460ms cubic-bezier(0.16, 1, 0.3, 1) 140ms both;
+}
+
+.sakala-splash-rail-fill {
+  width: 100%;
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #124037 0%, #245B4E 78%, #88AB9D 100%);
+  transform-origin: left center;
+}
+
+.sakala-splash-rail-fill.is-determinate {
+  animation: sakalaSplashRailDeterminate 820ms cubic-bezier(0.16, 1, 0.3, 1) 100ms both;
+}
+
+.sakala-splash-rail-fill.is-indeterminate {
+  width: 45%;
+  animation: sakalaSplashRailIndeterminate 1150ms cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sakala-splash,
+  .sakala-splash-aperture,
+  .sakala-splash-tile,
+  .sakala-splash-sheen,
+  .sakala-splash-wordmark-group,
+  .sakala-splash-rail,
+  .sakala-splash-rail-fill {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* ==========================================================================
+   35. RESPONSIVE TYPOGRAPHY CALIBRATION (DESKTOP >=1280px & MOBILE <=768px)
+   Zero !important declarations; calibrated for desktop legibility & iOS anti-zoom.
+   ========================================================================== */
+@media (min-width: 1280px) {
+  body {
+    font-size: 15px;
+  }
+
+  .s5-editorial-subtitle,
+  .page-heading-desc,
+  .s5-workload-hero-desc,
+  .master-hero-desc {
+    font-size: 14.5px;
+  }
+
+  table.data-table,
+  table.s5-figma-table,
+  table.s5-daily-table {
+    font-size: 14.25px;
+  }
+}
+
+@media (max-width: 768px) {
+  .sakala-main input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(.s5-req-stepper-input),
+  .sakala-main select,
+  .sakala-main textarea,
+  .modal-panel input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(.s5-req-stepper-input),
+  .modal-panel select,
+  .modal-panel textarea,
+  .s5-palette-input,
+  .master-toolbar-search-wrap .table-search input,
+  .table-search input,
+  .master-filter-select,
+  .select-with-icon select,
+  .toolbar-card select,
+  .s5-toolbar-select,
+  .s5-toolbar-search input,
+  .s5-input-shell input,
+  .s5-input-shell select,
+  .s5-daily-note-input,
+  .s5-unified-pag-select,
+  .s5-footbar-select,
+  .s5-pdf-field-grid .field-group input,
+  .s5-pdf-field-grid .field-group select,
+  .s5-pdf-signer-box .field-group input,
+  .s01-input,
+  .s01-select,
+  .s02-search-input,
+  .s02-select,
+  .s03-input,
+  .s03-select,
+  .s03-textarea,
+  .s04-field input,
+  .s04-field select,
+  .s07-input,
+  .s07-select,
+  .s07-textarea,
+  .nfm-input,
+  .nfm-select,
+  .bim-input,
+  .bim-textarea {
+    font-size: 16px;
+  }
+}
+
+
+

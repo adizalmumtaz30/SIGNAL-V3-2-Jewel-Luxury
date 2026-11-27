@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import type { AppState, Day } from '../domain/types';
 import { MotionModalDialog } from './KpiMotion';
+import { SakalaSplashScreen } from './SakalaSplashScreen';
 
 export type ScreenId =
   | 'overview'
@@ -97,16 +98,7 @@ export function getClass(state: AppState, id: string) {
 }
 
 export function LoadingScreen() {
-  return (
-    <div className="loading-screen">
-      <div className="loading-emblem">
-        <img src="/sakala-mark.png" alt="Logo SAKALA" />
-      </div>
-      <div className="loading-line" />
-      <h1>SAKALA</h1>
-      <p>Menyiapkan ruang kerja madrasah Anda…</p>
-    </div>
-  );
+  return <SakalaSplashScreen mode="loading" />;
 }
 
 export function Button({

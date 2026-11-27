@@ -158,7 +158,7 @@ function renderStaticNodes(nodes: TipTapJSONNode[] | undefined) {
           style={{
             borderTop: '1px dashed #8da89e',
             textAlign: 'center',
-            fontSize: '10px',
+            fontSize: '11.5px',
             color: '#526861',
             margin: '10px 0',
             paddingTop: '4px',
@@ -701,13 +701,15 @@ export function DocumentArchiveDetail({
             <>
               <button
                 type="button"
-                className="s02-btn-secondary"
+                className="s06-btn-icon-only"
                 disabled={isBusy}
                 onClick={() => void handlePrintFinalPdf()}
                 aria-label="Cetak langsung PDF resmi"
+                data-tooltip="Cetak langsung PDF resmi"
+                data-tooltip-pos="bottom"
               >
-                <Printer size={14} aria-hidden="true" />
-                <span>Cetak</span>
+                <Printer size={16} strokeWidth={1.75} aria-hidden="true" />
+                <span className="sr-only">Cetak</span>
               </button>
               <button
                 type="button"
@@ -952,6 +954,7 @@ export function DocumentArchiveDetail({
                     paperWidthMm={paperDims.widthMm}
                     paperHeightMm={paperDims.heightMm}
                     compactMaxHeight={520}
+                    refreshKey={`${activeVersion?.id ?? 'draft'}-${activeTab}-${isBusy ? 'busy' : 'idle'}`}
                     paperStyle={{
                       padding: `${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm`,
                       fontFamily: "'Times New Roman', Georgia, serif",
@@ -1253,6 +1256,11 @@ export function DocumentArchiveDetail({
 
               {rasterPreview && (
                 <div className="s06-preview-raster-box" aria-label="Pratinjau aman gambar lampiran">
+                  {isBusy && (
+                    <div className="lpv-skeleton-overlay" aria-hidden="true">
+                      <div className="lpv-skeleton-bar" />
+                    </div>
+                  )}
                   <div
                     style={{
                       width: '100%',

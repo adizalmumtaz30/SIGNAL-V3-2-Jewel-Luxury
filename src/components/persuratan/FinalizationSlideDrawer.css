@@ -11,7 +11,6 @@
   backdrop-filter: blur(4px);
   display: flex;
   justify-content: flex-end;
-  animation: fsdFadeIn 150ms ease;
 }
 
 .fsd-panel {
@@ -23,7 +22,6 @@
   display: flex;
   flex-direction: column;
   color: var(--s5-ink-primary, #0f201c);
-  animation: fsdSlideIn 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .fsd-head {
@@ -37,11 +35,11 @@
 }
 
 .fsd-head-kicker {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--s5-gold-muted, #8e7035);
+  color: var(--s5-gold-muted, #45685E);
   margin-bottom: 3px;
 }
 
@@ -56,7 +54,7 @@
 
 .fsd-head-sub {
   margin: 4px 0 0;
-  font-size: 12.25px;
+  font-size: 13px;
   color: var(--s5-ink-tertiary, #526861);
   line-height: 1.4;
 }
@@ -108,7 +106,7 @@
 
 .fsd-section-title {
   margin: 0;
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 700;
   color: var(--s5-emerald-obsidian, #0b2923);
   display: inline-flex;
@@ -121,7 +119,7 @@
   background: transparent;
   padding: 0;
   color: var(--s5-emerald-primary, #124037);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 600;
   text-decoration: underline;
   cursor: pointer;
@@ -141,7 +139,7 @@
   background: #f6faf8;
   color: var(--s5-emerald-obsidian, #0b2923);
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 700;
 }
 
@@ -151,7 +149,7 @@
 }
 
 .fsd-number-hint {
-  font-size: 11.75px;
+  font-size: 12.25px;
   line-height: 1.45;
   color: #1b5e43;
 }
@@ -172,7 +170,7 @@
   background: #e9f5ef;
   border: 1px solid #b5d8c7;
   color: #124d36;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
 }
 
@@ -193,7 +191,7 @@
   border-radius: 10px;
   border: 1px solid #dce6e1;
   background: #fafcfb;
-  font-size: 12px;
+  font-size: 12.5px;
   line-height: 1.45;
 }
 
@@ -224,7 +222,7 @@
 }
 
 .fsd-check-body strong {
-  font-size: 12.25px;
+  font-size: 13px;
 }
 
 .fsd-inline-fix-card {
@@ -239,7 +237,7 @@
 }
 
 .fsd-inline-fix-title {
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 700;
   color: #0b2923;
 }
@@ -257,19 +255,19 @@
 }
 
 .fsd-inline-field label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #2f443e;
 }
 
 .fsd-inline-field input {
-  height: 34px;
+  height: 36px;
   padding: 0 10px;
   border-radius: 8px;
   border: 1px solid #c3d3cc;
   background: #ffffff;
   color: #0f201c;
-  font-size: 12.5px;
+  font-size: 13px;
 }
 
 .fsd-demo-ack {
@@ -280,7 +278,7 @@
   border-radius: 10px;
   background: #fdf6e8;
   border: 1px solid #dfc080;
-  font-size: 12px;
+  font-size: 12.5px;
   line-height: 1.45;
   color: #6b4413;
   cursor: pointer;
@@ -299,7 +297,7 @@
   border-radius: 10px;
   background: #f2f7f4;
   border: 1px solid #d1dfd8;
-  font-size: 11.75px;
+  font-size: 12.25px;
   line-height: 1.45;
   color: #365049;
 }
@@ -314,7 +312,7 @@
 }
 
 .fsd-foot-caption {
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -326,10 +324,10 @@
   height: 42px;
   padding: 0 0.94em;
   border-radius: 10px;
-  border: 1px solid rgba(197, 160, 89, 0.72);
+  border: 1px solid #4D7368;
   background: #124037;
   color: #ffffff;
-  font-size: 0.796875rem;
+  font-size: 0.84375rem;
   font-weight: 700;
   white-space: nowrap;
   display: inline-flex;
@@ -357,7 +355,7 @@
   border: 1px solid #124037;
   background: #ffffff;
   color: #0b2923;
-  font-size: 0.796875rem;
+  font-size: 0.84375rem;
   font-weight: 700;
   white-space: nowrap;
   display: inline-flex;
@@ -385,7 +383,7 @@
   border-radius: 10px;
   background: #fdf8ec;
   border: 1px solid #e4cc9a;
-  font-size: 11.75px;
+  font-size: 12.25px;
   line-height: 1.45;
   color: #6d4716;
 }
@@ -413,7 +411,7 @@
   border: 1px solid #cddbd4;
   background: #f3f7f5;
   color: var(--s5-emerald-primary, #124037);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
@@ -444,33 +442,14 @@
 
 .fsd-panel button:focus-visible,
 .fsd-panel input:focus-visible {
-  outline: 2px solid #c5a059;
+  outline: 2px solid var(--s5-gold-metallic, #4D7368);
   outline-offset: 2px;
 }
 
-@keyframes fsdFadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes fsdSlideIn {
-  from {
-    transform: translateX(28px);
-    opacity: 0.85;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .fsd-scrim,
-  .fsd-panel {
-    animation: none !important;
+  .fsd-primary-btn,
+  .fsd-primary-outline-btn,
+  .fsd-archive-only-btn {
+    transition: none;
   }
 }

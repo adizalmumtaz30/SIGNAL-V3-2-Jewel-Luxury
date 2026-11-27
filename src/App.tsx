@@ -11,7 +11,7 @@ import {
   Database,
   History,
   Home,
-  Menu,
+  Info,
   Save,
   Settings2,
   ShieldCheck,
@@ -63,8 +63,10 @@ import { CommandPaletteModal } from './components/CommandPaletteModal';
 import { TimeMachineDrawer } from './components/TimeMachineDrawer';
 import { InspectorSlideDrawer, type InspectorTarget } from './components/InspectorSlideDrawer';
 import { TeacherAssignmentDrawer } from './components/TeacherAssignmentDrawer';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { SovereignSidebar, type SovereignSidebarGroup } from './components/SovereignSidebar';
-import { MotionPageTransition } from './components/KpiMotion';
+import { MICRO_EASE, MotionPageTransition } from './components/KpiMotion';
+import { SakalaSplashScreen } from './components/SakalaSplashScreen';
 import {
   LoadingScreen,
   Modal,
@@ -153,6 +155,15 @@ function csvCell(value: string) { return `"${value.replaceAll('"', '""')}"`; }
 export default function App() {
   const [workspace, setWorkspace] = useState<AppState | null>(null);
   const [ready, setReady] = useState(false);
+  const [showIntroSplash, setShowIntroSplash] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return false;
+      return window.sessionStorage.getItem('sakala_intro_seen') !== '1';
+    } catch {
+      return false;
+    }
+  });
   const [screen, setScreen] = useState<ScreenId>('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -284,9 +295,26 @@ export default function App() {
       });
   }, [workspace, ready]);
 
+  const shouldReduceMotion = useReducedMotion();
+  const toastTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current !== null) {
+        window.clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
+
   const notify = useCallback((message: string, kind: ToastData['kind'] = 'success') => {
+    if (toastTimerRef.current !== null) {
+      window.clearTimeout(toastTimerRef.current);
+    }
     setToast({ message, kind });
-    window.setTimeout(() => setToast(null), 4500);
+    toastTimerRef.current = window.setTimeout(() => {
+      toastTimerRef.current = null;
+      setToast(null);
+    }, 4500);
   }, []);
 
   const retrySaveWorkspace = useCallback(() => {
@@ -1289,11 +1317,17 @@ export default function App() {
         <header className="sakala-topbar">
           <div className="sakala-header-greeting s5-topbar-left">
             <button
-              className="icon-button mobile-menu-trigger"
-              aria-label="Buka menu"
-              onClick={() => setSidebarOpen(true)}
+              type="button"
+              className={`icon-button mobile-menu-trigger ${sidebarOpen ? 'is-open' : ''}`}
+              aria-label={sidebarOpen ? 'Tutup menu' : 'Buka menu'}
+              aria-expanded={sidebarOpen}
+              onClick={() => setSidebarOpen((prev) => !prev)}
             >
-              <Menu size={20} />
+              <span className="s5-morph-burger" aria-hidden="true">
+                <span className="s5-morph-line top" />
+                <span className="s5-morph-line mid" />
+                <span className="s5-morph-line bot" />
+              </span>
             </button>
             <div className="s5-topbar-inline-brand">
               <h1>{screen === 'overview' ? 'Ringkasan Operasional' : currentTitle}</h1>
@@ -1307,13 +1341,14 @@ export default function App() {
           <div className="sakala-header-controls">
             {/* Riwayat Versi & Cadangan Trigger */}
             <button
-              className="s5-time-machine-btn s5-tooltip-bottom"
+              className="s5-time-machine-btn is-icon-only s5-tooltip-bottom"
               onClick={() => setIsTimeMachineOpen(true)}
               type="button"
+              aria-label="Riwayat versi & pemulihan jadwal"
               data-s5-tooltip="Riwayat versi & pemulihan jadwal"
             >
-              <Clock size={13} />
-              <span>Riwayat Versi</span>
+              <Clock size={15} strokeWidth={1.75} aria-hidden="true" />
+              <span className="sr-only">Riwayat Versi</span>
             </button>
 
             <span className="s5-topbar-divider" aria-hidden="true" />
@@ -1321,12 +1356,25 @@ export default function App() {
             {/* Real-time Validation Indicator (Semantic Icon, Zero Decorative Dot) */}
             <button
               type="button"
-              className={`s5-heartbeat-pill s5-tooltip-bottom ${report && report.hardErrorCount > 0 ? 'clash' : 'clean'}`}
+              className={`s5-heartbeat-pill s5-tooltip-bottom s5-tooltip-end is-icon-compact ${report && report.hardErrorCount > 0 ? 'clash' : 'clean'}`}
               onClick={() => setQuickValidationOpen(true)}
+              aria-label={report && report.hardErrorCount > 0 ? `${report.hardErrorCount} Bentrok` : 'Bebas Bentrok'}
               data-s5-tooltip={report?.hardErrorCount ? `Periksa ${report.hardErrorCount} bentrok jadwal KBM` : 'Jadwal terverifikasi bebas bentrok'}
             >
-              {report && report.hardErrorCount > 0 ? <AlertTriangle size={13} /> : <ShieldCheck size={13} />}
-              <span className="s5-tnum">{report && report.hardErrorCount > 0 ? `${report.hardErrorCount} Bentrok` : 'Bebas Bentrok'}</span>
+              {report && report.hardErrorCount > 0 ? (
+                <>
+                  <AlertTriangle size={13} aria-hidden="true" />
+                  <span className="s5-tnum">
+                    {report.hardErrorCount}
+                    <span className="sr-only"> Bentrok</span>
+                  </span>
+                </>
+              ) : (
+                <>
+                  <ShieldCheck size={14} aria-hidden="true" />
+                  <span className="sr-only">Bebas Bentrok</span>
+                </>
+              )}
             </button>
 
             {/* Admin Avatar Ring */}
@@ -1346,13 +1394,31 @@ export default function App() {
           <div className="page-frame">
             {workspace.dataMode === 'demo' && (
               <div className="demo-banner">
-                <div className="demo-banner-icon"><Sparkles size={15} /></div>
-                <div>
-                  <strong>Anda sedang melihat dataset demonstrasi aktif.</strong>
-                  <span>Jadwal dan presensi sudah terverifikasi. Sesuaikan data madrasah Anda sebelum mencetak.</span>
+                <div className="demo-banner-main">
+                  <div className="demo-banner-icon" aria-hidden="true"><Sparkles size={15} /></div>
+                  <strong>Mode Demo</strong>
+                  <span
+                    className="s5-info-icon-trigger s5-tooltip-bottom"
+                    tabIndex={0}
+                    role="img"
+                    aria-label="Informasi dataset demonstrasi"
+                    data-s5-tooltip="Jadwal dan presensi sudah terverifikasi. Sesuaikan data madrasah Anda sebelum mencetak."
+                  >
+                    <Info size={12} aria-hidden="true" />
+                  </span>
                 </div>
-                <button onClick={() => navigate('master')}>Sesuaikan Data <ArrowRight size={14} /></button>
-                <button className="banner-close" onClick={() => updateWorkspace((current) => ({ ...current, dataMode: 'custom' }))} aria-label="Sembunyikan banner"><X size={14} /></button>
+                <div className="demo-banner-actions">
+                  <button type="button" onClick={() => navigate('master')}>Sesuaikan Data <ArrowRight size={14} /></button>
+                  <button
+                    type="button"
+                    className="demo-banner-close"
+                    onClick={() => updateWorkspace((current) => ({ ...current, dataMode: 'custom' }))}
+                    aria-label="Sembunyikan banner"
+                    data-s5-tooltip="Tutup mode demo"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
               </div>
             )}
 
@@ -1619,14 +1685,14 @@ export default function App() {
                   <strong style={{ color: '#103f3e', fontSize: '13px', display: 'block' }}>
                     Alokasi Jam KBM: {slotKbmDef ? `${slotKbmDef.start} – ${slotKbmDef.end} WIB` : `JP ${editingSlot.jpNo}`}
                   </strong>
-                  <span style={{ color: '#4a6b62', fontSize: '11px' }}>
+                  <span style={{ color: '#4a6b62', fontSize: '12px' }}>
                     Hari {editingSlot.day} · JP ke-{editingSlot.jpNo} (Durasi {workspace.settings.periodMinutes || 40} menit/JP)
                   </span>
                 </div>
               </div>
               <span
                 style={{
-                  fontSize: '11px',
+                  fontSize: '12px',
                   fontWeight: 600,
                   color: '#1f6952',
                   background: '#d4eedf',
@@ -1650,7 +1716,7 @@ export default function App() {
                   border: '1px solid #f9ccc6',
                   borderRadius: '8px',
                   color: '#a03c30',
-                  fontSize: '11.5px',
+                  fontSize: '12px',
                   marginTop: '10px',
                 }}
               >
@@ -2012,32 +2078,54 @@ export default function App() {
       )}
 
       {/* Sovereign Haute Joaillerie Luxury Toast */}
-      {toast && (
-        <div className="s5-luxury-toast-container" role="status">
-          <div key={`${toast.kind}-${toast.message}`} className={`s5-luxury-toast ${toast.kind}`}>
-            <div className="s5-luxury-toast-icon">
-              {toast.kind === 'success' ? (
-                <CheckCircle2 size={16} />
-              ) : toast.kind === 'error' ? (
-                <XCircle size={16} />
-              ) : toast.kind === 'warning' ? (
-                <AlertTriangle size={16} />
-              ) : (
-                <Activity size={16} />
-              )}
-            </div>
-            <span>{toast.message}</span>
-            <button
-              type="button"
-              className="s5-luxury-toast-dismiss"
-              onClick={() => setToast(null)}
-              aria-label="Tutup notifikasi"
+      <div className="s5-luxury-toast-container" role="status" aria-live="polite">
+        <AnimatePresence>
+          {toast && (
+            <motion.div
+              key={`${toast.kind}-${toast.message}`}
+              className={`s5-luxury-toast ${toast.kind}`}
+              initial={shouldReduceMotion ? false : { opacity: 0, y: -12, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -10, scale: 0.96 }}
+              transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.21, ease: MICRO_EASE }}
             >
-              <X size={13} />
-            </button>
-            <div className="s5-luxury-toast-drain" aria-hidden="true" />
-          </div>
-        </div>
+              <div className="s5-luxury-toast-icon">
+                {toast.kind === 'success' ? (
+                  <CheckCircle2 size={16} />
+                ) : toast.kind === 'error' ? (
+                  <XCircle size={16} />
+                ) : toast.kind === 'warning' ? (
+                  <AlertTriangle size={16} />
+                ) : (
+                  <Activity size={16} />
+                )}
+              </div>
+              <span>{toast.message}</span>
+              <button
+                type="button"
+                className="s5-luxury-toast-dismiss"
+                onClick={() => setToast(null)}
+                aria-label="Tutup notifikasi"
+              >
+                <X size={13} />
+              </button>
+              <div className="s5-luxury-toast-drain" aria-hidden="true" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+      {showIntroSplash && (
+        <SakalaSplashScreen
+          mode="intro"
+          onDone={() => {
+            try {
+              window.sessionStorage.setItem('sakala_intro_seen', '1');
+            } catch {
+              // ignore storage restriction
+            }
+            setShowIntroSplash(false);
+          }}
+        />
       )}
     </div>
   );

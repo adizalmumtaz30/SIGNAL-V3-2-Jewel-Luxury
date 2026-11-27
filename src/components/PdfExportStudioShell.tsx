@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Download, RotateCcw, X } from 'lucide-react';
+import { Check, Download, RotateCcw, X } from 'lucide-react';
 import type { KopRenderMode } from '../domain/kopIdentity';
 import { MotionModalDialog } from './KpiMotion';
 
@@ -24,6 +24,7 @@ export interface PdfExportStudioShellProps<T extends string> {
   onClose: () => void;
   onExport: () => void;
   isExporting: boolean;
+  exportDone?: boolean;
   exportDisabled?: boolean;
   exportLabel: string;
 }
@@ -46,6 +47,7 @@ export function PdfExportStudioShell<T extends string>({
   onClose,
   onExport,
   isExporting,
+  exportDone = false,
   exportDisabled = false,
   exportLabel,
 }: PdfExportStudioShellProps<T>) {
@@ -106,12 +108,21 @@ export function PdfExportStudioShell<T extends string>({
           </button>
           <button
             type="button"
-            className="button button-primary s5-pdf-footer-btn-primary"
+            className={`button button-primary s5-pdf-footer-btn-primary ${exportDone ? 'is-export-done' : ''}`}
             onClick={onExport}
-            disabled={isExporting || exportDisabled}
+            disabled={isExporting || exportDisabled || exportDone}
           >
-            <Download size={15} />
-            <span>{isExporting ? 'Memproses PDF…' : exportLabel}</span>
+            {exportDone ? (
+              <>
+                <Check size={15} aria-hidden="true" />
+                <span>Selesai</span>
+              </>
+            ) : (
+              <>
+                <Download size={15} aria-hidden="true" />
+                <span>{isExporting ? 'Memproses PDF…' : exportLabel}</span>
+              </>
+            )}
           </button>
         </div>
       </div>

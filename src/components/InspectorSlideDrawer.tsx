@@ -9,6 +9,7 @@ import {
 import type { AppState, Teacher, SchoolClass, Subject, Day } from '../domain/types';
 import { MadrasahTeacherAvatar, detectTeacherGender } from './MadrasahTeacherAvatar';
 import { TeacherGenderToggle } from './TeacherGenderToggle';
+import { MotionSlideDrawer } from './KpiMotion';
 
 export type InspectorTarget =
   | { type: 'teacher'; data: Teacher }
@@ -97,11 +98,17 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen || !target) return null;
+  const lastTargetRef = useRef<InspectorTarget | null>(null);
+  if (isOpen && target) {
+    lastTargetRef.current = target;
+  }
+  const activeTarget = target ?? lastTargetRef.current;
+
+  if (!activeTarget) return null;
 
   const handleSaveTeacher = (e: React.FormEvent) => {
     e.preventDefault();
-    if (target.type !== 'teacher' || !onSaveTeacher) return;
+    if (activeTarget.type !== 'teacher' || !onSaveTeacher) return;
 
     const parsedMaxJp = Number(teacherMaxJp);
     if (!Number.isInteger(parsedMaxJp) || parsedMaxJp < 1 || parsedMaxJp > 80) {
@@ -110,7 +117,7 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
     }
 
     const updated: Teacher = {
-      ...target.data,
+      ...activeTarget.data,
       name: teacherName.trim(),
       code: teacherCode.trim().toUpperCase(),
       nip: teacherNip.trim() || undefined,
@@ -149,8 +156,8 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
 
   // Compute teaching load stats for teacher
   const teacherLoadStats = () => {
-    if (target.type !== 'teacher') return null;
-    const reqs = state.requirements.filter((r) => r.teacherId === target.data.id);
+    if (activeTarget.type !== 'teacher') return null;
+    const reqs = state.requirements.filter((r) => r.teacherId === activeTarget.data.id);
     const assignedJP = reqs.reduce((sum, r) => sum + r.requiredJP, 0);
     const parsedPreview = Number(teacherMaxJp);
     const maxJP = parsedPreview > 0 ? parsedPreview : defaultMaxWeeklyJP;
@@ -162,16 +169,14 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
   const stats = teacherLoadStats();
 
   return (
-    <div className="s5-drawer-overlay" role="presentation" onClick={onClose}>
-      <div
-        ref={panelRef}
-        tabIndex={-1}
-        className="s5-drawer-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="s5-inspector-drawer-title"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <MotionSlideDrawer
+      isOpen={isOpen}
+      scrimClassName="s5-drawer-overlay"
+      panelClassName="s5-drawer-panel"
+      panelRef={panelRef}
+      ariaLabelledBy="s5-inspector-drawer-title"
+      onBackdropClick={onClose}
+    >
         {/* Drawer Header */}
         <div className="s5-drawer-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -187,15 +192,15 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
                 color: '#124037',
               }}
             >
-              {target.type === 'teacher' && <User size={16} />}
-              {target.type === 'class' && <GraduationCap size={16} />}
-              {target.type === 'subject' && <BookOpen size={16} />}
+              {activeTarget.type === 'teacher' && <User size={16} />}
+              {activeTarget.type === 'class' && <GraduationCap size={16} />}
+              {activeTarget.type === 'subject' && <BookOpen size={16} />}
             </div>
             <div>
               <strong id="s5-inspector-drawer-title" style={{ fontSize: '14px', color: '#0B2923', display: 'block' }}>
-                {target.type === 'teacher' && 'Inspektur Pendidik'}
-                {target.type === 'class' && 'Inspektur Rombel'}
-                {target.type === 'subject' && 'Inspektur Mapel'}
+                {activeTarget.type === 'teacher' && 'Inspektur Pendidik'}
+                {activeTarget.type === 'class' && 'Inspektur Rombel'}
+                {activeTarget.type === 'subject' && 'Inspektur Mapel'}
               </strong>
               <small style={{ fontSize: '11px', color: '#687E77' }}>
                 Panel Cepat · Tanpa Alih Konteks
@@ -219,7 +224,7 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
 
         {/* Drawer Body */}
         <div className="s5-drawer-body">
-          {target.type === 'teacher' && (
+          {activeTarget.type === 'teacher' && (
             <form id="inspector-teacher-form" onSubmit={handleSaveTeacher}>
               {/* Profile Card Header with Live Avatar */}
               <div
@@ -237,8 +242,8 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
                 <div style={{ flexShrink: 0 }}>
                   <MadrasahTeacherAvatar
                     teacher={{
-                      ...target.data,
-                      name: teacherName || target.data.name,
+                      ...activeTarget.data,
+                      name: teacherName || activeTarget.data.name,
                       gender: teacherGender,
                       isActive: teacherIsActive,
                     }}
@@ -323,7 +328,7 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
                             ? '#8F2D24'
                             : stats.pct >= 80
                             ? '#1B5E43'
-                            : '#C5A059',
+                            : '#4D7368',
                         transition: 'width 0.2s ease',
                       }}
                     />
@@ -586,7 +591,7 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
             </form>
           )}
 
-          {target.type === 'class' && (
+          {activeTarget.type === 'class' && (
             <div>
               <div
                 style={{
@@ -598,10 +603,10 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
                 }}
               >
                 <strong style={{ fontSize: '15px', color: '#0B2923', display: 'block' }}>
-                  Kelas {target.data.name} (Tingkat {target.data.level})
+                  Kelas {activeTarget.data.name} (Tingkat {activeTarget.data.level})
                 </strong>
                 <span style={{ fontSize: '11.5px', color: '#687E77' }}>
-                  Rombel ID: {target.data.id}
+                  Rombel ID: {activeTarget.data.id}
                 </span>
               </div>
               <p style={{ fontSize: '12px', color: '#3B504A', lineHeight: 1.5 }}>
@@ -610,7 +615,7 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
             </div>
           )}
 
-          {target.type === 'subject' && (
+          {activeTarget.type === 'subject' && (
             <div>
               <div
                 style={{
@@ -629,12 +634,12 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
                     width: '16px',
                     height: '16px',
                     borderRadius: '50%',
-                    background: target.data.color,
+                    background: activeTarget.data.color,
                   }}
                 />
                 <div>
                   <strong style={{ fontSize: '15px', color: '#0B2923', display: 'block' }}>
-                    {target.data.name} ({target.data.code})
+                    {activeTarget.data.name} ({activeTarget.data.code})
                   </strong>
                   <span style={{ fontSize: '11.5px', color: '#687E77' }}>
                     Mata Pelajaran KBM Aktif
@@ -663,7 +668,7 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
           >
             Batal
           </button>
-          {target.type === 'teacher' && (
+          {activeTarget.type === 'teacher' && (
             <button
               type="submit"
               form="inspector-teacher-form"
@@ -686,7 +691,6 @@ export const InspectorSlideDrawer: React.FC<InspectorSlideDrawerProps> = ({
             </button>
           )}
         </div>
-      </div>
-    </div>
+    </MotionSlideDrawer>
   );
 };

@@ -43,7 +43,7 @@
   height: 38px;
   border-radius: 11px;
   background: #edf4f0;
-  border: 1px solid rgba(197, 160, 89, 0.4);
+  border: 1px solid #CBD8D1;
   color: #124037;
   display: inline-flex;
   align-items: center;
@@ -61,7 +61,7 @@
 
 .bim-subtitle {
   margin: 3px 0 0;
-  font-size: 12.75px;
+  font-size: 13.5px;
   color: #5a6e67;
 }
 
@@ -103,7 +103,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 12.25px;
+  font-size: 13px;
   font-weight: 700;
   color: #113b33;
 }
@@ -113,8 +113,8 @@
   height: 20px;
   border-radius: 6px;
   background: #0b2923;
-  color: #e5c378;
-  font-size: 11px;
+  color: #E4EFEA;
+  font-size: 11.5px;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
@@ -142,7 +142,7 @@
   border: none;
   background: transparent;
   color: #4f645d;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
@@ -189,7 +189,7 @@
   border-radius: 10px;
   border: 1px solid rgba(11, 41, 35, 0.14);
   background: #fcfdfc;
-  font-size: 13px;
+  font-size: 13.5px;
   color: #0f201c;
 }
 
@@ -204,7 +204,7 @@
   border: 1px solid rgba(11, 41, 35, 0.14);
   background: #ffffff;
   color: #113b33;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
@@ -240,19 +240,19 @@
 
 .bim-teacher-item strong {
   display: block;
-  font-size: 12.5px;
+  font-size: 13px;
   color: #0b241f;
 }
 
 .bim-teacher-item small {
   display: block;
-  font-size: 11px;
+  font-size: 12px;
   color: #5a6e67;
   margin-top: 1px;
 }
 
 .bim-field-label {
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   color: #1c352f;
 }
@@ -264,7 +264,7 @@
   border: 1px solid rgba(11, 41, 35, 0.14);
   background: #fcfdfc;
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: 13.5px;
   line-height: 1.55;
   color: #0f201c;
   resize: vertical;
@@ -295,12 +295,12 @@
 }
 
 .bim-mode-card strong {
-  font-size: 13px;
+  font-size: 13.5px;
   color: #0b241f;
 }
 
 .bim-mode-card span {
-  font-size: 11.75px;
+  font-size: 12.25px;
   color: #5a6e67;
 }
 
@@ -311,7 +311,7 @@
   padding: 10px 12px;
   border-radius: 10px;
   background: #fdf6e9;
-  font-size: 12.25px;
+  font-size: 12.5px;
   color: #7d4e15;
 }
 
@@ -320,7 +320,7 @@
   border-radius: 10px;
   background: #fcece9;
   color: #8f2d24;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
 }
 
@@ -335,7 +335,7 @@
 }
 
 .bim-count {
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   color: #4f645d;
 }
@@ -353,7 +353,7 @@
   border: 1px solid rgba(11, 41, 35, 0.14);
   background: #ffffff;
   color: #1c352f;
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -365,10 +365,10 @@
   height: 38px;
   padding: 0 18px;
   border-radius: 10px;
-  border: 1px solid rgba(197, 160, 89, 0.55);
+  border: 1px solid #4D7368;
   background: #113b33;
   color: #ffffff;
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
   cursor: pointer;
 }

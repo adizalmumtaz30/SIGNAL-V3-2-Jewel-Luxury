@@ -7,17 +7,23 @@ import {
   Calendar,
   CheckCircle2,
   Copy,
+  Eye,
   FilePenLine,
   FilePlus2,
   FileText,
   Info,
+  LayoutGrid,
+  List,
   Lock,
   RotateCcw,
   Search,
   SlidersHorizontal,
   Star,
   X,
+  Zap,
 } from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
+import { MICRO_EASE } from '../KpiMotion';
 import type { AppState } from '../../domain/types';
 import { getOfficialScheduleBasisStatus } from '../../domain/persuratan/assignments/teacherIntegration';
 import { TEMPLATE_CATEGORIES, getCategoryLabel } from '../../domain/persuratan/templates/registry';
@@ -300,7 +306,9 @@ export function TemplateGallery({
     [state.templatePreferences, allTemplates]
   );
 
+  const shouldReduceMotion = useReducedMotion();
   const [filters, setFilters] = useState<TemplateFilterCriteria>(DEFAULT_TEMPLATE_FILTERS);
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [activePreviewId, setActivePreviewId] = useState<string>(
     () => prefs.selectedTemplateId ?? allTemplates[0]?.id ?? 'SYS-TPL-01'
   );
@@ -500,17 +508,22 @@ export function TemplateGallery({
 
       {/* Honest Selected Template Handoff Notice (No Fake Draft Created) */}
       {selectedNotice && (
-        <div className="s02-handoff-banner" role="status">
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-            <CheckCircle2 size={18} style={{ color: '#124037', flexShrink: 0, marginTop: '2px' }} />
-            <div>
-              <strong>
-                Template terpilih untuk persiapan dokumen: {selectedNotice.name} ({selectedNotice.code})
-              </strong>
-              <p style={{ margin: '2px 0 0', fontSize: '12.25px', color: '#33524a' }}>
-                Preferensi template telah disimpan. Lanjutkan pengisian data surat untuk mulai menyusun naskah resmi madrasah.
-              </p>
-            </div>
+        <div className="s02-handoff-banner" role="status" style={{ alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <CheckCircle2 size={17} style={{ color: '#124037', flexShrink: 0 }} aria-hidden="true" />
+            <strong>
+              Template terpilih: {selectedNotice.name} ({selectedNotice.code})
+            </strong>
+            <span
+              className="p5-info-icon-trigger"
+              tabIndex={0}
+              role="img"
+              aria-label="Informasi pemilihan template"
+              data-tooltip="Preferensi template telah disimpan. Lanjutkan pengisian data surat untuk mulai menyusun naskah resmi madrasah."
+              data-tooltip-pos="bottom"
+            >
+              <Info size={13} aria-hidden="true" />
+            </span>
           </div>
           <button
             type="button"
@@ -529,10 +542,17 @@ export function TemplateGallery({
       {popularTemplates.length > 0 && !hasActiveFilters && (
         <section className="s02-popular-strip" aria-label="Template paling sering dibutuhkan madrasah">
           <div className="s02-popular-head">
-            <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <h2 className="s02-popular-title">Paling Sering Dibutuhkan Madrasah</h2>
-              <span className="s02-popular-sub">
-                Klik langsung untuk mulai membuat surat dalam satu langkah
+              <span
+                className="s02-popular-sub"
+                tabIndex={0}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                data-tooltip="Klik langsung untuk mulai membuat surat dalam satu langkah"
+                data-tooltip-pos="bottom"
+              >
+                <Zap size={12} aria-hidden="true" />
+                <span>1-Klik Buat Surat</span>
               </span>
             </div>
           </div>
@@ -585,9 +605,15 @@ export function TemplateGallery({
             )}
           </div>
           {hasActiveFilters && (
-            <button type="button" className="s02-icon-btn" onClick={resetFilters}>
-              <RotateCcw size={13} aria-hidden="true" />
-              <span>Reset Filter</span>
+            <button
+              type="button"
+              className="s02-icon-btn is-icon-only"
+              aria-label="Reset seluruh filter template"
+              data-tooltip="Reset filter"
+              data-tooltip-pos="left"
+              onClick={resetFilters}
+            >
+              <RotateCcw size={14} strokeWidth={1.75} aria-hidden="true" />
             </button>
           )}
         </div>
@@ -611,8 +637,15 @@ export function TemplateGallery({
               );
             })}
           </div>
-          <span style={{ fontSize: '11.5px', color: '#5c726b' }}>
-            Template bawaan bersifat baca-saja · Salinan Madrasah dapat diubah bebas
+          <span
+            className="p5-info-icon-trigger"
+            tabIndex={0}
+            role="img"
+            aria-label="Informasi hak ubah template bawaan dan salinan madrasah"
+            data-tooltip="Template bawaan bersifat baca-saja · Salinan Madrasah dapat diubah bebas"
+            data-tooltip-pos="left"
+          >
+            <Info size={13} aria-hidden="true" />
           </span>
         </div>
       </div>
@@ -661,11 +694,51 @@ export function TemplateGallery({
               Menampilkan <strong className="s5-tnum">{filteredTemplates.length}</strong> template
               {filters.category !== 'ALL' ? ` · Kategori ${getCategoryLabel(filters.category)}` : ''}
             </span>
-            {prefs.selectedTemplateId && (
-              <span style={{ color: '#124037', fontWeight: 600 }}>
-                Terakhir dipilih: {allTemplates.find((t) => t.id === prefs.selectedTemplateId)?.code ?? prefs.selectedTemplateId}
-              </span>
-            )}
+            <div className="s02-list-meta-right">
+              {prefs.selectedTemplateId && (
+                <span style={{ color: '#124037', fontWeight: 600 }}>
+                  Terakhir dipilih: {allTemplates.find((t) => t.id === prefs.selectedTemplateId)?.code ?? prefs.selectedTemplateId}
+                </span>
+              )}
+              <div className="s02-view-toggle" role="group" aria-label="Mode tampilan daftar template">
+                <button
+                  type="button"
+                  className={`s02-view-btn ${viewMode === 'list' ? 'is-active' : ''}`}
+                  aria-pressed={viewMode === 'list'}
+                  aria-label="Tampilan Daftar"
+                  title="Tampilan Daftar"
+                  onClick={() => setViewMode('list')}
+                >
+                  {viewMode === 'list' && (
+                    <motion.span
+                      layoutId="s02ViewModePill"
+                      className="s5-sliding-tab-pill"
+                      transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.21, ease: MICRO_EASE }}
+                      aria-hidden="true"
+                    />
+                  )}
+                  <List size={13} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  className={`s02-view-btn ${viewMode === 'grid' ? 'is-active' : ''}`}
+                  aria-pressed={viewMode === 'grid'}
+                  aria-label="Tampilan Grid"
+                  title="Tampilan Grid"
+                  onClick={() => setViewMode('grid')}
+                >
+                  {viewMode === 'grid' && (
+                    <motion.span
+                      layoutId="s02ViewModePill"
+                      className="s5-sliding-tab-pill"
+                      transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.21, ease: MICRO_EASE }}
+                      aria-hidden="true"
+                    />
+                  )}
+                  <LayoutGrid size={13} aria-hidden="true" />
+                </button>
+              </div>
+            </div>
           </div>
 
           {filteredTemplates.length === 0 ? (
@@ -681,7 +754,7 @@ export function TemplateGallery({
               )}
             </div>
           ) : (
-            <div className="s02-card-list">
+            <div className={`s02-card-list ${viewMode === 'grid' ? 'is-grid' : ''}`}>
               {filteredTemplates.map((tpl) => {
                 const isSelected = previewTemplate?.id === tpl.id;
                 const isFavorite = favSet.has(tpl.id);
@@ -737,7 +810,7 @@ export function TemplateGallery({
                         <Star
                           size={14}
                           strokeWidth={1.75}
-                          fill={isFavorite ? '#C5A059' : 'none'}
+                          fill={isFavorite ? '#C68B2C' : 'none'}
                           aria-hidden="true"
                         />
                       </button>
@@ -759,7 +832,15 @@ export function TemplateGallery({
                           <ArrowRight size={13} aria-hidden="true" />
                         </button>
                         {isSelected && (
-                          <span className="s02-previewing-hint">Dipratinjau di kanan</span>
+                          <span
+                            className="s02-previewing-hint"
+                            tabIndex={0}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                            data-tooltip="Dipratinjau di kanan"
+                          >
+                            <Eye size={13} strokeWidth={1.75} aria-hidden="true" />
+                            <span className="sr-only">Dipratinjau di kanan</span>
+                          </span>
                         )}
                       </div>
                       <span className="s02-paper-spec-tag s5-tnum">
@@ -798,7 +879,7 @@ export function TemplateGallery({
                   {previewTemplate.purpose}
                 </p>
                 {previewTemplate.sourceTemplateId && (
-                  <div style={{ fontSize: '11px', color: '#145343', marginTop: '4px', fontWeight: 600 }}>
+                  <div style={{ fontSize: '12px', color: '#145343', marginTop: '4px', fontWeight: 600 }}>
                     Disalin dari{' '}
                     {allTemplates.find((t) => t.id === previewTemplate.sourceTemplateId)?.name ??
                       'Template Bawaan'}{' '}

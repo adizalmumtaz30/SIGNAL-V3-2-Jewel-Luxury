@@ -729,7 +729,7 @@ export function WorkloadDashboard({
                 Beban Reguler
               </span>
               <span>
-                <span className="s5-legend-dot" style={{ background: '#C5A059' }} />
+                <span className="s5-legend-dot" style={{ background: '#5D8779' }} />
                 Hari Puncak
               </span>
               <span>
@@ -773,8 +773,8 @@ export function WorkloadDashboard({
                         <stop offset="100%" stopColor="#0E332B" />
                       </linearGradient>
                       <linearGradient id="s5BarGold" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#D6B16A" />
-                        <stop offset="100%" stopColor="#9E762F" />
+                        <stop offset="0%" stopColor="#7FA396" />
+                        <stop offset="100%" stopColor="#4D7368" />
                       </linearGradient>
                     </defs>
 
@@ -1195,7 +1195,7 @@ export function WorkloadDashboard({
                                     : count > 6
                                     ? '#A63A2E'
                                     : count >= 5
-                                    ? '#C5A059'
+                                    ? '#5D8779'
                                     : '#124037';
                                 const shortDay =
                                   (

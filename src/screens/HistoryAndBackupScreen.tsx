@@ -8,6 +8,7 @@ import {
   Download,
   FileCheck2,
   FileSpreadsheet,
+  HelpCircle,
   History,
   RefreshCw,
   Upload,
@@ -166,8 +167,18 @@ export function HistoryAndBackupScreen({
             </div>
             <div className="backup-action-copy">
               <div className="backup-action-kicker">ARSIP PENUH RUANG KERJA</div>
-              <h3>Cadangan Penuh JSON</h3>
-              <p>Cadangkan seluruh data master, kebutuhan JP, presensi, arsip surat, dan jadwal ke satu berkas aman.</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <h3>Cadangan Penuh JSON</h3>
+                <span
+                  className="s5-info-icon-trigger"
+                  tabIndex={0}
+                  role="img"
+                  aria-label="Penjelasan Cadangan Penuh JSON"
+                  data-s5-tooltip="Cadangkan seluruh data master, kebutuhan JP, presensi, arsip surat, dan jadwal ke satu berkas aman."
+                >
+                  <HelpCircle size={12} aria-hidden="true" />
+                </span>
+              </div>
               <Button icon={Download} onClick={onBackup}>
                 Unduh Cadangan JSON
               </Button>
@@ -180,8 +191,18 @@ export function HistoryAndBackupScreen({
             </div>
             <div className="backup-action-copy">
               <div className="backup-action-kicker">EKSPOR LEMBAR KERJA</div>
-              <h3>Ekspor Jadwal CSV</h3>
-              <p>Ekspor susunan jadwal ke tabel CSV untuk dibuka di Microsoft Excel atau Google Sheets.</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <h3>Ekspor Jadwal CSV</h3>
+                <span
+                  className="s5-info-icon-trigger"
+                  tabIndex={0}
+                  role="img"
+                  aria-label="Penjelasan Ekspor Jadwal CSV"
+                  data-s5-tooltip="Ekspor susunan jadwal ke tabel CSV untuk dibuka di Microsoft Excel atau Google Sheets."
+                >
+                  <HelpCircle size={12} aria-hidden="true" />
+                </span>
+              </div>
               <Button variant="secondary" icon={FileSpreadsheet} onClick={onExportCSV}>
                 Ekspor CSV
               </Button>
@@ -194,8 +215,18 @@ export function HistoryAndBackupScreen({
             </div>
             <div className="backup-action-copy">
               <div className="backup-action-kicker">PULIHKAN CADANGAN</div>
-              <h3>Pulihkan Data Cadangan</h3>
-              <p>Pilih berkas JSON hasil cadangan sebelumnya untuk memulihkan seluruh data madrasah.</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <h3>Pulihkan Data Cadangan</h3>
+                <span
+                  className="s5-info-icon-trigger"
+                  tabIndex={0}
+                  role="img"
+                  aria-label="Penjelasan Pulihkan Data Cadangan"
+                  data-s5-tooltip="Pilih berkas JSON hasil cadangan sebelumnya untuk memulihkan seluruh data madrasah."
+                >
+                  <HelpCircle size={12} aria-hidden="true" />
+                </span>
+              </div>
               <label className="button button-secondary file-pick-button">
                 <Upload size={15} /> Pilih Berkas JSON
                 <input

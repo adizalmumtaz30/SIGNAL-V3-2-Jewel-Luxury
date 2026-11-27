@@ -16,11 +16,13 @@ import {
   BetweenHorizontalStart,
   BetweenVerticalStart,
   Bold,
+  Check,
   CheckCircle2,
   ChevronDown,
   Clock,
   Columns,
   Combine,
+  Copy,
   Database,
   FileCheck2,
   FileText,
@@ -28,9 +30,11 @@ import {
   Heading1,
   Heading2,
   Heading3,
+  HelpCircle,
   ImagePlus,
   Info,
   Italic,
+  Keyboard,
   List,
   ListOrdered,
   Maximize2,
@@ -122,6 +126,8 @@ import {
   type StudioTataNaskahSnippetId,
 } from '../../domain/persuratan/studio/tataNaskahHelpers';
 import { formatIndonesianDate } from '../../domain/persuratan/selectors';
+import { computeNextSequentialNumber } from '../../domain/persuratan/finalization/numberingEngine';
+import { copyTextSafe, useTransientConfirm } from '../KpiMotion';
 import { FinalizationSlideDrawer } from './FinalizationSlideDrawer';
 import './DocumentStudio.css';
 
@@ -555,10 +561,33 @@ export function DocumentStudio({
     activeIndex: number;
   } | null>(null);
   const [isStudioAttUploading, setIsStudioAttUploading] = useState<boolean>(false);
+  const [isZoomActive, setIsZoomActive] = useState<boolean>(false);
+  const { confirmed: numberCopied, trigger: triggerNumberCopied } = useTransientConfirm(1500);
   const studioAttachmentInputRef = useRef<HTMLInputElement | null>(null);
   const slashStateRef = useRef(slashState);
   slashStateRef.current = slashState;
   const executeSlashRef = useRef<(cmdId: StudioSlashCommandItem['id']) => void>(() => {});
+
+  const copyableDocumentNumber = useMemo(() => {
+    const existingDoc = (state.documents ?? []).find((d) => d.id === draft.documentId);
+    if (existingDoc?.documentNumber?.trim()) {
+      return { value: existingDoc.documentNumber.trim(), isOfficial: true };
+    }
+    const kind = existingDoc?.documentType ?? draft.templateSnapshot.documentKind ?? 'SURAT_KELUAR';
+    const preview = computeNextSequentialNumber({
+      state,
+      kind,
+      documentDate: draft.documentDate,
+      excludeDocumentId: draft.documentId,
+    });
+    return { value: preview.suggestedNumber, isOfficial: false };
+  }, [state, draft.documentId, draft.documentDate, draft.templateSnapshot.documentKind]);
+
+  const handleCopyDocNumber = () => {
+    void copyTextSafe(copyableDocumentNumber.value).then((ok) => {
+      if (ok) triggerNumberCopied();
+    });
+  };
 
   useEffect(() => {
     setTitleDraftInput(draft.title);
@@ -1445,7 +1474,8 @@ export function DocumentStudio({
             type="button"
             className="s04-back-pill"
             onClick={onBackToCenter}
-            title="Kembali ke Pusat Persuratan & Arsip"
+            data-tooltip="Kembali ke Pusat Persuratan & Arsip"
+            data-tooltip-pos="bottom"
           >
             <ArrowLeft size={14} aria-hidden="true" />
             <span>Arsip</span>
@@ -1487,7 +1517,30 @@ export function DocumentStudio({
               <span aria-hidden="true">·</span>
               <span>{draft.templateSnapshot.name}</span>
               <span aria-hidden="true">·</span>
-              <span>Draft Belum Bernomor</span>
+              <span>
+                {copyableDocumentNumber.isOfficial
+                  ? copyableDocumentNumber.value
+                  : 'Draft Belum Bernomor'}
+              </span>
+              <button
+                type="button"
+                className={`s5-copy-confirm-btn ${numberCopied ? 'is-copied' : ''}`}
+                onClick={handleCopyDocNumber}
+                title={`Salin ${copyableDocumentNumber.isOfficial ? 'nomor surat' : 'pratinjau nomor surat'}: ${copyableDocumentNumber.value}`}
+                aria-label={numberCopied ? 'Nomor surat tersalin' : 'Salin nomor surat'}
+              >
+                {numberCopied ? (
+                  <>
+                    <Check size={11} aria-hidden="true" />
+                    <span>Tersalin</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy size={11} aria-hidden="true" />
+                    <span>Salin Nomor</span>
+                  </>
+                )}
+              </button>
               {isDemoSnapshot && (
                 <>
                   <span aria-hidden="true">·</span>
@@ -1506,7 +1559,8 @@ export function DocumentStudio({
               type="button"
               className="s04-composer-pill"
               onClick={onBackToIntake}
-              title="Kembali ke mode Form Terstruktur untuk mengisi data utama"
+              data-tooltip="Kembali ke mode Form Terstruktur untuk mengisi data utama"
+              data-tooltip-pos="bottom"
             >
               <span>Form Terstruktur</span>
             </button>
@@ -1535,11 +1589,12 @@ export function DocumentStudio({
             className={`s04-autosave-toggle ${autosaveEnabled ? 'is-on' : ''}`}
             aria-pressed={autosaveEnabled}
             onClick={() => setAutosaveEnabled((prev) => !prev)}
-            title={
+            data-tooltip={
               autosaveEnabled
                 ? 'Simpan otomatis aktif (1,4 detik). Klik untuk jeda.'
                 : 'Simpan otomatis dijeda. Klik untuk mengaktifkan.'
             }
+            data-tooltip-pos="bottom"
           >
             <Clock size={12} aria-hidden="true" />
             <span>{autosaveEnabled ? 'Autosave' : 'Manual'}</span>
@@ -1665,7 +1720,7 @@ export function DocumentStudio({
                 type="button"
                 className="s04-tool-btn"
                 aria-label="Urungkan (Undo)"
-                title="Urungkan (Ctrl+Z)"
+                data-tooltip="Urungkan (Ctrl+Z)"
                 disabled={!editor?.can().undo()}
                 onMouseDown={preserveFocusMouseDown}
                 onClick={() => editor?.chain().focus().undo().run()}
@@ -1676,7 +1731,7 @@ export function DocumentStudio({
                 type="button"
                 className="s04-tool-btn"
                 aria-label="Ulangi (Redo)"
-                title="Ulangi (Ctrl+Y)"
+                data-tooltip="Ulangi (Ctrl+Y)"
                 disabled={!editor?.can().redo()}
                 onMouseDown={preserveFocusMouseDown}
                 onClick={() => editor?.chain().focus().redo().run()}
@@ -1787,7 +1842,7 @@ export function DocumentStudio({
                 className="s04-tool-btn"
                 aria-label="Tebal (Bold)"
                 aria-pressed={editor?.isActive('bold') ?? false}
-                title="Tebal (Ctrl+B)"
+                data-tooltip="Tebal (Ctrl+B)"
                 onMouseDown={preserveFocusMouseDown}
                 onClick={() => editor?.chain().focus().toggleBold().run()}
               >
@@ -1798,7 +1853,7 @@ export function DocumentStudio({
                 className="s04-tool-btn"
                 aria-label="Miring (Italic)"
                 aria-pressed={editor?.isActive('italic') ?? false}
-                title="Miring (Ctrl+I)"
+                data-tooltip="Miring (Ctrl+I)"
                 onMouseDown={preserveFocusMouseDown}
                 onClick={() => editor?.chain().focus().toggleItalic().run()}
               >
@@ -1809,7 +1864,7 @@ export function DocumentStudio({
                 className="s04-tool-btn"
                 aria-label="Garis Bawah (Underline)"
                 aria-pressed={editor?.isActive('underline') ?? false}
-                title="Garis Bawah (Ctrl+U)"
+                data-tooltip="Garis Bawah (Ctrl+U)"
                 onMouseDown={preserveFocusMouseDown}
                 onClick={() => editor?.chain().focus().toggleUnderline().run()}
               >
@@ -1825,7 +1880,7 @@ export function DocumentStudio({
                 aria-label="Perataan Paragraf"
                 aria-haspopup="menu"
                 aria-expanded={openToolMenu === 'align'}
-                title="Perataan Teks"
+                data-tooltip="Perataan teks"
                 onMouseDown={preserveFocusMouseDown}
                 onClick={() => setOpenToolMenu((prev) => (prev === 'align' ? null : 'align'))}
               >
@@ -1906,7 +1961,7 @@ export function DocumentStudio({
                 aria-label="Daftar Poin dan Bernomor"
                 aria-haspopup="menu"
                 aria-expanded={openToolMenu === 'list'}
-                title="Daftar Poin / Bernomor"
+                data-tooltip="Daftar poin / bernomor"
                 onMouseDown={preserveFocusMouseDown}
                 onClick={() => setOpenToolMenu((prev) => (prev === 'list' ? null : 'list'))}
               >
@@ -1952,7 +2007,7 @@ export function DocumentStudio({
                 className={`s04-tool-btn s04-insert-trigger ${openToolMenu === 'insert' ? 'is-active' : ''}`}
                 aria-haspopup="menu"
                 aria-expanded={openToolMenu === 'insert'}
-                title="Sisipkan Tabel, Logo/Gambar, Page Break, atau Garis (atau ketik /)"
+                data-tooltip="Sisipkan Tabel, Logo/Gambar, Page Break, atau Garis (ketik /)"
                 onMouseDown={preserveFocusMouseDown}
                 onClick={() => setOpenToolMenu((prev) => (prev === 'insert' ? null : 'insert'))}
               >
@@ -2109,9 +2164,16 @@ export function DocumentStudio({
               )}
             </div>
 
-            <span className="s04-slash-hint" title="Ketik garis miring / di baris editor untuk menyisipkan elemen cepat">
-              <Slash size={11} aria-hidden="true" />
-              <span>Ketik / untuk sisip cepat</span>
+            <span
+              className="s04-slash-hint"
+              tabIndex={0}
+              data-tooltip="Ketik / untuk sisip cepat elemen surat"
+              data-tooltip-pos="bottom"
+            >
+              <kbd className="p5-kbd-badge">
+                <Slash size={10} aria-hidden="true" />
+              </kbd>
+              <span className="sr-only">Ketik / untuk sisip cepat</span>
             </span>
           </div>
 
@@ -2341,10 +2403,19 @@ export function DocumentStudio({
             </div>
 
             {docOutline.headings.length === 0 ? (
-              <p className="s04-outline-empty">
-                Belum ada judul bagian (H1–H3). Gunakan tombol H1/H2/H3 di toolbar untuk menandai
-                bagian surat.
-              </p>
+              <div className="s04-outline-empty" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>Belum ada bagian</span>
+                <span
+                  className="p5-info-icon-trigger"
+                  tabIndex={0}
+                  role="img"
+                  aria-label="Cara menambah struktur naskah"
+                  data-tooltip="Gunakan tombol H1/H2/H3 di toolbar untuk menandai bagian surat."
+                  data-tooltip-pos="right"
+                >
+                  <HelpCircle size={12} aria-hidden="true" />
+                </span>
+              </div>
             ) : (
               <nav aria-label="Daftar judul bagian naskah">
                 <ul className="s04-outline-list">
@@ -2400,9 +2471,19 @@ export function DocumentStudio({
               {pageSettings.marginsMm.bottom}/{pageSettings.marginsMm.left} mm ·{' '}
               <strong>~{estimatedPages} hal</strong> ·{' '}
               <span>{wordCount} kata</span> · <span>{charCount} karakter</span> ·{' '}
-              {textStats.unresolvedTokens.length > 0
-                ? `${textStats.unresolvedTokens.length} placeholder tersisa`
-                : 'Semua token terisi'}
+              {textStats.unresolvedTokens.length > 0 ? (
+                `${textStats.unresolvedTokens.length} placeholder tersisa`
+              ) : (
+                <span
+                  tabIndex={0}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', color: '#1b5e43', verticalAlign: 'middle' }}
+                  data-tooltip="Semua token terisi"
+                  data-tooltip-pos="bottom"
+                >
+                  <CheckCircle2 size={12} aria-hidden="true" />
+                  <span className="sr-only">Semua token terisi</span>
+                </span>
+              )}
             </span>
 
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -2615,27 +2696,51 @@ export function DocumentStudio({
                 onClick={() => handleStepZoomPct(-5, zoomPercentLabel)}
                 disabled={zoomPercentLabel <= 35}
                 aria-label="Perkecil zoom naskah"
-                title="Perkecil (-5%)"
+                data-tooltip="Perkecil (-5%)"
               >
                 <Minus size={13} aria-hidden="true" />
               </button>
-              <input
-                type="range"
-                className="lpv-zoom-slider"
-                min={35}
-                max={160}
-                step={5}
-                value={Math.min(160, Math.max(35, zoomPercentLabel))}
-                aria-label="Geser skala zoom naskah"
-                onChange={(e) => setZoomMode(Number(e.target.value) / 100)}
-              />
+              {(() => {
+                const clampedZoom = Math.min(160, Math.max(35, zoomPercentLabel));
+                const ratio = (clampedZoom - 35) / (160 - 35);
+                return (
+                  <div className="lpv-zoom-slider-wrap">
+                    <span
+                      className={`lpv-zoom-bubble ${isZoomActive ? 'is-visible' : ''}`}
+                      style={{ left: `calc(${ratio * 100}% + ${8 - ratio * 16}px)` }}
+                      aria-hidden="true"
+                    >
+                      {clampedZoom}%
+                    </span>
+                    <input
+                      type="range"
+                      className="lpv-zoom-slider"
+                      min={35}
+                      max={160}
+                      step={5}
+                      value={clampedZoom}
+                      aria-label="Geser skala zoom naskah"
+                      onPointerDown={() => setIsZoomActive(true)}
+                      onPointerUp={() => setIsZoomActive(false)}
+                      onMouseEnter={() => setIsZoomActive(true)}
+                      onMouseLeave={() => setIsZoomActive(false)}
+                      onFocus={() => setIsZoomActive(true)}
+                      onBlur={() => setIsZoomActive(false)}
+                      onChange={(e) => {
+                        setIsZoomActive(true);
+                        setZoomMode(Number(e.target.value) / 100);
+                      }}
+                    />
+                  </div>
+                );
+              })()}
               <button
                 type="button"
                 className="lpv-zoom-step-btn"
                 onClick={() => handleStepZoomPct(5, zoomPercentLabel)}
                 disabled={zoomPercentLabel >= 160}
                 aria-label="Perbesar zoom naskah"
-                title="Perbesar (+5%)"
+                data-tooltip="Perbesar (+5%)"
               >
                 <Plus size={13} aria-hidden="true" />
               </button>
@@ -2716,9 +2821,19 @@ export function DocumentStudio({
                         </span>
                       </div>
                       {docOutline.headings.length === 0 ? (
-                        <p className="s04-outline-empty">
-                          Belum ada judul bagian (H1–H3). Gunakan tombol H1–H3 untuk menandai bagian surat.
-                        </p>
+                        <div className="s04-outline-empty" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>Belum ada bagian</span>
+                          <span
+                            className="p5-info-icon-trigger"
+                            tabIndex={0}
+                            role="img"
+                            aria-label="Cara menambah struktur naskah"
+                            data-tooltip="Gunakan tombol H1–H3 di toolbar untuk menandai bagian surat."
+                            data-tooltip-pos="left"
+                          >
+                            <HelpCircle size={12} aria-hidden="true" />
+                          </span>
+                        </div>
                       ) : (
                         <ul className="s04-outline-list">
                           {docOutline.headings.slice(0, 6).map((h) => (
@@ -2744,7 +2859,31 @@ export function DocumentStudio({
                   <dl className="s04-dl">
                     <div className="s04-dl-item">
                       <dt>Nomor Resmi</dt>
-                      <dd>Belum Bernomor (diterbitkan saat pengesahan)</dd>
+                      <dd style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                        <span className="s5-tnum">
+                          {copyableDocumentNumber.isOfficial
+                            ? copyableDocumentNumber.value
+                            : `${copyableDocumentNumber.value} (Pratinjau)`}
+                        </span>
+                        <button
+                          type="button"
+                          className={`s5-copy-confirm-btn ${numberCopied ? 'is-copied' : ''}`}
+                          onClick={handleCopyDocNumber}
+                          aria-label={numberCopied ? 'Nomor surat tersalin' : 'Salin nomor surat'}
+                        >
+                          {numberCopied ? (
+                            <>
+                              <Check size={11} aria-hidden="true" />
+                              <span>Tersalin</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy size={11} aria-hidden="true" />
+                              <span>Salin</span>
+                            </>
+                          )}
+                        </button>
+                      </dd>
                     </div>
                     <div className="s04-dl-item">
                       <dt>Template Sumber</dt>
@@ -3166,12 +3305,27 @@ export function DocumentStudio({
                     </label>
                   </div>
 
-                  <div className="s04-honest-note" role="note">
-                    <Info size={13} aria-hidden="true" style={{ flexShrink: 0, marginTop: '2px' }} />
-                    <span>
-                      Kanvas editor menampilkan estimasi jumlah halaman (<code>~{estimatedPages} hal</code>)
-                      berdasarkan tata letak serta pemisah halaman manual. Penomoran halaman eksak dan
-                      pengulangan header tabel disusun presisi saat berkas PDF resmi diterbitkan.
+                  <div
+                    className="s04-honest-note"
+                    role="note"
+                    style={{ alignItems: 'center', justifyContent: 'space-between' }}
+                  >
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <Info size={13} aria-hidden="true" style={{ flexShrink: 0 }} />
+                      <span>
+                        Estimasi <code>~{estimatedPages} hal</code> · eksak di PDF
+                      </span>
+                      <span className="sr-only">estimasi jumlah halaman</span>
+                    </span>
+                    <span
+                      className="p5-info-icon-trigger"
+                      tabIndex={0}
+                      role="img"
+                      aria-label="Penjelasan estimasi halaman"
+                      data-tooltip="Kanvas editor menampilkan estimasi jumlah halaman berdasarkan tata letak serta pemisah halaman manual. Penomoran halaman eksak dan pengulangan header tabel disusun presisi saat berkas PDF resmi diterbitkan."
+                      data-tooltip-pos="left"
+                    >
+                      <HelpCircle size={12} aria-hidden="true" />
                     </span>
                   </div>
 
@@ -3189,11 +3343,15 @@ export function DocumentStudio({
 
       {/* Footer Action Bar (Utility & Navigation Only — Primary CTA lives cleanly in Top Header) */}
       <footer className="s04-footer-bar">
-        <div className="s04-footer-note">
-          <Info size={14} aria-hidden="true" />
-          <span>
-            Tekan <code>Ctrl+S</code> untuk simpan segera · Perintah Cepat: <code>Ctrl+Shift+P</code>.
-          </span>
+        <div
+          className="s04-footer-note"
+          tabIndex={0}
+          data-tooltip="Simpan cepat dengan Ctrl+S atau buka Perintah Cepat dengan Ctrl+Shift+P"
+          data-tooltip-pos="right"
+        >
+          <Keyboard size={14} aria-hidden="true" />
+          <kbd className="p5-kbd-badge">Ctrl+S</kbd>
+          <kbd className="p5-kbd-badge">Ctrl+Shift+P</kbd>
         </div>
 
         <div className="s04-footer-actions">

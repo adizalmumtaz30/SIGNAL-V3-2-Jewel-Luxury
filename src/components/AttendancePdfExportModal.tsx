@@ -28,6 +28,7 @@ import {
 import { DEFAULT_MADRASAH_IDENTITY, type KopRenderMode } from '../domain/kopIdentity';
 import { OfficialKopSuratPreview } from './OfficialKopSuratPreview';
 import { LivePreviewViewport } from './LivePreviewViewport';
+import { useTransientConfirm } from './KpiMotion';
 
 interface AttendancePdfExportModalProps {
   state: AppState;
@@ -200,6 +201,12 @@ export function AttendancePdfExportModal({
   });
 
   const [isExporting, setIsExporting] = useState<boolean>(false);
+  const { confirmed: exportDone, trigger: triggerExportDone, reset: resetExportDone } = useTransientConfirm(1500);
+
+  const handleCloseStudio = () => {
+    resetExportDone();
+    onClose();
+  };
 
   const effectiveEndMonth = periodMode === 'range' ? endMonthYear : undefined;
   const activeMonths = useMemo(
@@ -382,7 +389,9 @@ export function AttendancePdfExportModal({
         `Laporan Presensi ${activePeriodLabel} (${paperSize.toUpperCase()}) berhasil diunduh.`,
         'success',
       );
-      onClose();
+      triggerExportDone(() => {
+        onClose();
+      });
     } catch (err) {
       console.error('Attendance PDF export failed:', err);
       onNotify('Gagal mengekspor PDF presensi. Periksa format data.', 'error');
@@ -463,9 +472,10 @@ export function AttendancePdfExportModal({
           Format: <strong>{paperLabel}</strong> ({paperDimensionText}) · {activePeriodLabel}
         </>
       }
-      onClose={onClose}
+      onClose={handleCloseStudio}
       onExport={handleDownload}
       isExporting={isExporting}
+      exportDone={exportDone}
       exportDisabled={selectedTeacherIds.length === 0}
       exportLabel={`Unduh Dokumen PDF Resmi (${paperSize.toUpperCase()})`}
       leftPaneContent={
@@ -989,6 +999,7 @@ export function AttendancePdfExportModal({
           compactMaxHeight={485}
           sheetMode="stack"
           ariaLabel="Pratinjau laporan presensi guru siap cetak"
+          refreshKey={`${periodMode}-${monthYear}-${endMonthYear}-${paperSize}-${orientation}-${layoutDensity}-${selectedTeacherIds.length}-${includeKop}`}
           topSlot={
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <PdfPreviewKpiStrip
@@ -1102,7 +1113,7 @@ export function AttendancePdfExportModal({
                           <div className="s5-tnum" style={{ fontSize: '10px', color: '#505F5A', marginTop: '2px' }}>
                             Periode: {activePeriodLabel} · Semester {semester} · Tahun Ajaran {academicYear}
                           </div>
-                          <div style={{ width: '56px', height: '2px', background: '#C5A059', margin: '5px auto 0' }} />
+                          <div style={{ width: '56px', height: '2px', background: '#4D7368', margin: '5px auto 0' }} />
                         </div>
 
                         {/* Executive 4-Card Summary Strip matching PDF export */}
@@ -1123,7 +1134,7 @@ export function AttendancePdfExportModal({
                               value: previewStats.hasData ? `${previewStats.avgRate}%` : '—',
                               accent: previewStats.avgRate >= 85 ? '#1B5E43' : '#A63A2E',
                             },
-                            { label: 'PREDIKAT MADRASAH', value: previewStats.overallPredikat, accent: '#C5A059' },
+                            { label: 'PREDIKAT MADRASAH', value: previewStats.overallPredikat, accent: '#4D7368' },
                           ].map((kpi) => (
                             <div
                               key={kpi.label}

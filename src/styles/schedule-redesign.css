@@ -794,8 +794,8 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  background: linear-gradient(135deg, #ffffff 0%, #f9fbfa 64%, #fbf7ee 100%);
-  border: 1px solid rgba(197, 160, 89, 0.32);
+  background: linear-gradient(135deg, #ffffff 0%, #f9fbfa 64%, #eef4f1 100%);
+  border: 1px solid #d3dfd9;
   border-radius: 14px;
   padding: 13px 18px;
   margin-bottom: 14px;
@@ -815,8 +815,8 @@
   height: 40px;
   border-radius: 11px;
   background: linear-gradient(148deg, #10352c 0%, #1c5546 100%);
-  border: 1px solid rgba(229, 201, 122, 0.45);
-  color: #f3d98b;
+  border: 1px solid rgba(203, 216, 209, 0.34);
+  color: #e4efea;
   display: grid;
   place-items: center;
   font-size: 0.9375rem;
@@ -844,7 +844,7 @@
   display: flex;
   flex-direction: column;
   padding: 2px 14px;
-  border-left: 1px solid rgba(197, 160, 89, 0.28);
+  border-left: 1px solid #d7e3dd;
 }
 
 .schedule-summary-metric span {
@@ -913,7 +913,7 @@
   min-width: 660px;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 11.5px;
+  font-size: 12px;
   background: #ffffff;
 }
 
@@ -924,7 +924,7 @@ table.schedule-table thead th,
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   padding: 8px 6px;
   text-align: center;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   border-bottom: 1px solid #dce6e0;
   border-right: 1px solid #e5ede7;
@@ -939,7 +939,7 @@ table.schedule-table thead th,
 
 .schedule-table thead th span {
   display: block;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 750;
   color: #153e33;
   line-height: 1.15;
@@ -947,7 +947,7 @@ table.schedule-table thead th,
 
 .schedule-table thead th small {
   display: block;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
   letter-spacing: 0.04em;
   color: #537367;
@@ -961,7 +961,7 @@ table.schedule-table thead th,
   text-align: center;
   background: #eef5f1;
   color: #154236;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 700;
   letter-spacing: 0.04em;
   position: sticky;
@@ -971,13 +971,13 @@ table.schedule-table thead th,
 }
 
 .schedule-table th.schedule-time-column span {
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 700;
   color: #123d32;
 }
 
 .schedule-table th.schedule-time-column small {
-  font-size: 11px;
+  font-size: 11.5px;
   color: #4f6e63;
   letter-spacing: 0.04em;
 }
@@ -1000,7 +1000,7 @@ table.schedule-table thead th,
 
 .schedule-table tbody th.period-heading span {
   display: block;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 700;
   color: #154236;
   font-variant-numeric: tabular-nums;
@@ -1009,7 +1009,7 @@ table.schedule-table thead th,
 
 .schedule-table tbody th.period-heading small {
   display: block;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
   color: #4a685e;
   font-variant-numeric: tabular-nums;
@@ -1055,7 +1055,7 @@ table.schedule-table tbody td,
   align-items: center;
   justify-content: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
   text-align: center;
   box-sizing: border-box;
@@ -1135,7 +1135,7 @@ table.schedule-table tbody td,
 }
 
 .schedule-cell .cell-time {
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
   letter-spacing: 0.02em;
   color: #557268;
@@ -1155,7 +1155,7 @@ table.schedule-table tbody td,
 .cell-subject-code {
   display: inline-flex;
   align-items: center;
-  font-size: 0.6875rem;
+  font-size: 0.71875rem;
   font-weight: 700;
   letter-spacing: 0.03em;
   color: #2b554a;
@@ -1168,7 +1168,7 @@ table.schedule-table tbody td,
 
 .cell-subject-title,
 .schedule-cell strong {
-  font-size: 0.71875rem;
+  font-size: 0.78125rem;
   font-weight: 700;
   color: #14352b;
   line-height: 1.25;
@@ -1191,12 +1191,12 @@ table.schedule-table tbody td,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.6875rem;
+  font-size: 0.71875rem;
   font-weight: 700;
   font-family: var(--font-mono);
   letter-spacing: 0.03em;
   padding: 0 0.38em;
-  height: 16px;
+  height: 17px;
   border-radius: 4px;
   background: rgba(23, 54, 55, 0.08);
   color: #173d32;
@@ -1206,7 +1206,7 @@ table.schedule-table tbody td,
 
 .teacher-name-text,
 .schedule-cell small {
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 500;
   color: #3f5d54;
   white-space: nowrap;
@@ -1220,7 +1220,7 @@ table.schedule-table tbody td,
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
+  font-size: 11.5px;
   color: #657e75;
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -1244,7 +1244,7 @@ table.schedule-table tbody td,
 }
 
 .schedule-cell.is-empty .empty-cell-hint {
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
   color: #668278;
   opacity: 0.65;
@@ -1290,19 +1290,19 @@ table.schedule-table tbody td,
   }
 
   .schedule-table th.schedule-time-column span {
-    font-size: 11px;
+    font-size: 11.5px;
   }
 
   .schedule-table th.schedule-time-column small {
-    font-size: 11px;
+    font-size: 11.5px;
   }
 
   .schedule-table tbody th.period-heading span {
-    font-size: 11px;
+    font-size: 11.5px;
   }
 
   .schedule-table tbody th.period-heading small {
-    font-size: 11px;
+    font-size: 11.5px;
   }
 
   .schedule-table thead th {
@@ -1310,11 +1310,11 @@ table.schedule-table tbody td,
   }
 
   .schedule-table thead th span {
-    font-size: 11px;
+    font-size: 11.5px;
   }
 
   .schedule-table thead th small {
-    font-size: 11px;
+    font-size: 11.5px;
   }
 
   .schedule-table tbody td {
@@ -1332,21 +1332,21 @@ table.schedule-table tbody td,
   }
 
   .schedule-cell .cell-time {
-    font-size: 11px;
+    font-size: 11.5px;
   }
 
   .schedule-cell strong {
-    font-size: 11px;
+    font-size: 11.5px;
     line-height: 1.15;
   }
 
   .schedule-cell small {
-    font-size: 11px;
+    font-size: 11.5px;
     line-height: 1.1;
   }
 
   .schedule-cell .cell-foot {
-    font-size: 11px;
+    font-size: 11.5px;
   }
 
   .schedule-cell .cell-foot-time {
@@ -1362,7 +1362,7 @@ table.schedule-table tbody td,
   .non-kbm-card {
     height: 21px;
     min-height: 21px;
-    font-size: 11px;
+    font-size: 11.5px;
     padding: 0 4px;
     gap: 3px;
   }
@@ -1385,11 +1385,11 @@ table.schedule-table tbody td,
   }
 
   .schedule-cell strong {
-    font-size: 11px;
+    font-size: 11.5px;
   }
 
   .schedule-cell small {
-    font-size: 11px;
+    font-size: 11.5px;
   }
 }
 
@@ -1402,7 +1402,7 @@ table.schedule-table tbody td,
   background: #ffffff;
   border: 1px solid #dee7e1;
   border-radius: 10px;
-  font-size: 11px;
+  font-size: 12px;
   color: #4d685f;
   flex-wrap: wrap;
 }
@@ -1434,7 +1434,7 @@ table.schedule-table tbody td,
 }
 
 .schedule-legend-row .text-link {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #1a5c4c;
   display: inline-flex;
@@ -1499,7 +1499,7 @@ table.schedule-table tbody td,
 }
 
 .density-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
   color: #4b665d;
@@ -1518,7 +1518,7 @@ table.schedule-table tbody td,
   border-radius: 6px;
   border: none;
   background: transparent;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: #4b665d;
   cursor: pointer;
@@ -1552,11 +1552,11 @@ table.schedule-table tbody td,
 }
 
 .density-compact .cell-subject-title {
-  font-size: 11px;
+  font-size: 11.5px;
 }
 
 .density-compact .teacher-name-text {
-  font-size: 11px;
+  font-size: 11.5px;
 }
 
 .density-compact .cell-foot {
@@ -1572,7 +1572,7 @@ table.schedule-table tbody td,
 .density-compact .non-kbm-card {
   height: 20px;
   min-height: 20px;
-  font-size: 11px;
+  font-size: 11.5px;
   padding: 0 4px;
 }
 
@@ -1582,17 +1582,17 @@ table.schedule-table tbody td,
 }
 
 .density-compact .master-slot-subject {
-  font-size: 11px;
+  font-size: 11.5px;
 }
 
 .density-compact .master-slot-teacher {
-  font-size: 11px;
+  font-size: 11.5px;
 }
 
 .density-compact .master-non-kbm-slot {
   height: 28px;
   min-height: 28px;
-  font-size: 11px;
+  font-size: 11.5px;
   padding: 1px 3px;
 }
 
@@ -1606,11 +1606,11 @@ table.schedule-table tbody td,
 }
 
 .density-compact .jp-row-header strong {
-  font-size: 11px;
+  font-size: 11.5px;
 }
 
 .density-compact .jp-row-header small {
-  font-size: 11px;
+  font-size: 11.5px;
 }
 
 /* --- DENSITY 2: STANDAR (Default) --- */
@@ -1638,11 +1638,11 @@ table.schedule-table tbody td,
 }
 
 .density-comfortable .cell-subject-title {
-  font-size: 12.5px;
+  font-size: 13px;
 }
 
 .density-comfortable .teacher-name-text {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .density-comfortable .non-kbm-cell-wrap {
@@ -1653,7 +1653,7 @@ table.schedule-table tbody td,
 .density-comfortable .non-kbm-card {
   height: 30px;
   min-height: 30px;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .density-comfortable .master-slot-btn {
@@ -1662,17 +1662,17 @@ table.schedule-table tbody td,
 }
 
 .density-comfortable .master-slot-subject {
-  font-size: 12px;
+  font-size: 12.5px;
 }
 
 .density-comfortable .master-slot-teacher {
-  font-size: 11px;
+  font-size: 11.5px;
 }
 
 .density-comfortable .master-non-kbm-slot {
   height: 44px;
   min-height: 44px;
-  font-size: 11px;
+  font-size: 11.5px;
 }
 
 .density-comfortable .master-empty-slot {
@@ -2055,8 +2055,8 @@ table.schedule-table tbody td,
   position: relative;
   overflow: hidden;
   border-radius: 16px;
-  background: linear-gradient(135deg, #FFFFFF 0%, #F7FAF8 60%, #FBF7EE 100%);
-  border: 0.75px solid rgba(197, 160, 89, 0.36);
+  background: linear-gradient(135deg, #FFFFFF 0%, #F7FAF8 62%, #EEF4F1 100%);
+  border: 0.75px solid #D3DFD9;
   color: #0B2923;
   padding: 20px 24px;
   margin-bottom: 18px;
@@ -2070,7 +2070,7 @@ table.schedule-table tbody td,
   left: 24px;
   right: 24px;
   height: 1.5px;
-  background: linear-gradient(90deg, rgba(18, 64, 55, 0.45), rgba(197, 160, 89, 0.65), transparent);
+  background: linear-gradient(90deg, rgba(18, 64, 55, 0.55), rgba(168, 200, 186, 0.7), transparent);
 }
 
 .madrasah-avatar-container {
@@ -2100,11 +2100,11 @@ table.schedule-table tbody td,
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #8E7035;
+  color: #45685E;
   background: transparent;
   border: none;
   border-radius: 0;
@@ -2113,7 +2113,7 @@ table.schedule-table tbody td,
 }
 
 .hero-kicker-icon {
-  color: #8E7035;
+  color: #45685E;
   flex-shrink: 0;
 }
 
@@ -2129,7 +2129,7 @@ table.schedule-table tbody td,
 }
 
 .master-hero-desc {
-  font-size: 13px;
+  font-size: 14px;
   color: #526861;
   margin: 0 0 12px 0;
   line-height: 1.5;
@@ -2139,7 +2139,7 @@ table.schedule-table tbody td,
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 12px;
+  font-size: 12.5px;
   color: #526861;
   flex-wrap: wrap;
 }
@@ -2173,11 +2173,11 @@ table.schedule-table tbody td,
   min-height: 38px;
   background: linear-gradient(135deg, #164D42 0%, #0E362D 100%);
   color: #ffffff;
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
   padding: 0 16px;
   border-radius: 10px;
-  border: 1px solid rgba(197, 160, 89, 0.48);
+  border: 1px solid rgba(203, 216, 209, 0.34);
   box-shadow: 0 2px 6px rgba(11, 41, 35, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.18);
   cursor: pointer;
   transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
@@ -2189,14 +2189,14 @@ table.schedule-table tbody td,
 }
 
 .hero-kbd-badge {
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
   font-family: var(--font-mono);
   background: rgba(255, 255, 255, 0.16);
-  color: #FFF9EA;
+  color: #F4F8F6;
   padding: 1px 6px;
   border-radius: 6px;
-  border: 1px solid rgba(229, 195, 120, 0.45);
+  border: 1px solid rgba(203, 216, 209, 0.36);
   margin-left: 2px;
 }
 
@@ -2208,7 +2208,7 @@ table.schedule-table tbody td,
   min-height: 38px;
   background: #ffffff;
   color: #163830;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   padding: 0 15px;
   border-radius: 10px;
@@ -2221,7 +2221,7 @@ table.schedule-table tbody td,
   background: #F5F9F7;
   color: #0D3028;
   transform: translateY(-1px);
-  border-color: rgba(197, 160, 89, 0.75);
+  border-color: #4D7368;
 }
 
 /* --- PRESTIGE METRIC GRID --- */
@@ -2293,7 +2293,7 @@ table.schedule-table tbody td,
 }
 
 .prestige-card-tag {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #496d60;
   background: #f1f6f3;
@@ -2319,14 +2319,14 @@ table.schedule-table tbody td,
 }
 
 .prestige-subval {
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
   color: #6d887f;
   font-variant-numeric: tabular-nums;
 }
 
 .prestige-card-lbl {
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 700;
   color: #1c453a;
   margin-top: -3px;
@@ -2336,7 +2336,7 @@ table.schedule-table tbody td,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: 12px;
   color: #5c7b70;
   padding-top: 8px;
   border-top: 1px solid #edf4ef;
@@ -2414,7 +2414,7 @@ table.schedule-table tbody td,
   right: 10px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
   font-family: var(--font-mono);
   color: #6a867c;
@@ -2448,7 +2448,7 @@ table.schedule-table tbody td,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: #47665b;
   background: #edf3ef;
@@ -2517,14 +2517,14 @@ table.schedule-table tbody td,
 }
 
 .teacher-name-text {
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 700;
   color: #0d2822;
   line-height: 1.25;
 }
 
 .teacher-nip-text {
-  font-size: 11px;
+  font-size: 11.5px;
   color: #617b73;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -2536,7 +2536,7 @@ table.schedule-table tbody td,
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 700;
   padding: 0.27em 0.72em;
   border-radius: 6px;
@@ -2587,19 +2587,19 @@ table.schedule-table tbody td,
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 700;
 }
 
 .workload-jp-val {
   font-variant-numeric: tabular-nums;
-  font-size: 0.71875rem;
+  font-size: 0.75rem;
 }
 
 .workload-pct-badge {
   display: inline-flex;
   align-items: center;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 700;
   padding: 0.12em 0.55em;
   border-radius: 6px;
@@ -2643,7 +2643,7 @@ table.schedule-table tbody td,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 700;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -2686,7 +2686,7 @@ table.schedule-table tbody td,
 }
 
 .subject-jewel-name {
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 700;
   color: #0e2b24;
 }
@@ -2701,7 +2701,7 @@ table.schedule-table tbody td,
 }
 
 .master-filter-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #627b72;
   text-transform: uppercase;
@@ -2716,7 +2716,7 @@ table.schedule-table tbody td,
   background: #f3f7f5;
   border: 1px solid #dce6e1;
   color: #415e54;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   padding: 0 1em;
   border-radius: 8px;
@@ -2733,7 +2733,7 @@ table.schedule-table tbody td,
 .master-filter-chip.active {
   background: #124037;
   color: #ffffff;
-  border-color: rgba(197, 160, 89, 0.55);
+  border-color: #124037;
   box-shadow: 0 2px 6px rgba(18, 64, 55, 0.22);
 }
 
@@ -2766,7 +2766,7 @@ table.schedule-table tbody td,
 }
 
 .master-empty-desc {
-  font-size: 0.78125rem;
+  font-size: 0.84375rem;
   color: #627c73;
   max-width: 420px;
   margin: 0 0 16px 0;
@@ -2782,11 +2782,11 @@ table.schedule-table tbody td,
   min-height: 38px;
   background: linear-gradient(135deg, #164D42 0%, #0E362D 100%);
   color: #ffffff;
-  font-size: 0.8125rem;
+  font-size: 0.84375rem;
   font-weight: 600;
   padding: 0 1.25em;
   border-radius: 10px;
-  border: 1px solid rgba(197, 160, 89, 0.48);
+  border: 1px solid rgba(203, 216, 209, 0.34);
   cursor: pointer;
   box-shadow: 0 2px 6px rgba(11, 41, 35, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.18);
   transition: all 0.15s ease;
@@ -2823,7 +2823,7 @@ table.schedule-table tbody td,
   max-width: 100%;
   max-height: 100%;
   border-radius: 16px;
-  border-color: rgba(197, 160, 89, 0.45);
+  border-color: #B4C8BE;
   box-shadow: 0 28px 64px -10px rgba(4, 18, 15, 0.55);
 }
 
@@ -2872,7 +2872,7 @@ table.schedule-table tbody td,
 
 .scv-popover-note {
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.45;
   color: #536e65;
 }
@@ -2883,7 +2883,7 @@ table.schedule-table tbody td,
 }
 
 .master-class-weekly-table.is-single-mode .master-slot-subject {
-  font-size: 12px;
+  font-size: 12.5px;
 }
 
 .master-class-weekly-table.is-single-mode .master-empty-slot {

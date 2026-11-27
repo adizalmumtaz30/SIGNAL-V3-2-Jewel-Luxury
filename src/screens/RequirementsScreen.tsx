@@ -476,7 +476,7 @@ export function RequirementsScreen({
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#78350F' }}>
             <AlertTriangle size={15} color="#B45309" />
             <span>
-              Terdeteksi <strong>{criticalIssues.length} isu kritis</strong> dan <strong>{warningIssues.length} peringatan</strong> pada alokasi &amp; kapasitas data master.
+              <strong>{criticalIssues.length} isu kritis</strong> · <strong>{warningIssues.length} peringatan alokasi</strong>
             </span>
           </div>
           {onNavigate && (
@@ -590,7 +590,9 @@ export function RequirementsScreen({
         {hasActiveReqFilters && (
           <button
             type="button"
-            className="button matrix-reset-filter-btn"
+            className="button matrix-reset-filter-btn is-icon-only"
+            aria-label="Reset seluruh filter alokasi JP"
+            data-s5-tooltip="Reset filter"
             onClick={() => {
               setSelectedClassFilter('ALL');
               setSelectedTeacherFilter('ALL');
@@ -599,8 +601,8 @@ export function RequirementsScreen({
               setSearchQuery('');
             }}
           >
-            <RotateCcw size={13} />
-            <span>Reset Filter</span>
+            <RotateCcw size={14} strokeWidth={1.75} aria-hidden="true" />
+            <span className="sr-only">Reset Filter</span>
           </button>
         )}
 
@@ -763,7 +765,8 @@ export function RequirementsScreen({
                             onEdit
                               ? {
                                   label: 'Edit',
-                                  icon: <Edit2 size={13} />,
+                                  icon: <Edit2 size={13} strokeWidth={1.75} />,
+                                  iconOnly: true,
                                   onClick: () => onEdit(r),
                                   title: 'Edit alokasi kebutuhan',
                                 }

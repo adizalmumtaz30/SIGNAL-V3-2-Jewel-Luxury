@@ -1,10 +1,12 @@
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
   type CSSProperties,
   type MouseEventHandler,
   type ReactNode,
+  type RefObject,
 } from 'react';
 import { AnimatePresence, animate, motion, useReducedMotion } from 'framer-motion';
 
@@ -35,13 +37,6 @@ const POPOVER_SPRING = {
   stiffness: 500,
   damping: 32,
   mass: 0.65,
-};
-
-const MODAL_SPRING = {
-  type: 'spring' as const,
-  stiffness: 440,
-  damping: 30,
-  mass: 0.75,
 };
 
 /**
@@ -322,27 +317,113 @@ export function MotionPopover({
   );
 }
 
+export const MICRO_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
+export const MICRO_DURATION_IN = 0.21;
+export const MICRO_DURATION_OUT = 0.18;
+
 /**
- * Spring-animated modal overlay + dialog surface.
+ * Transient 1.5s confirmation state helper (e.g. "✓ Tersalin" / "✓ Selesai")
+ * with strict unmount/retrigger timer cleanup.
+ */
+export function useTransientConfirm(durationMs = 1500) {
+  const [confirmed, setConfirmed] = useState(false);
+  const timerRef = useRef<number | null>(null);
+
+  const reset = useCallback(() => {
+    if (timerRef.current !== null && typeof window !== 'undefined') {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    setConfirmed(false);
+  }, []);
+
+  const trigger = useCallback(
+    (onExpire?: () => void) => {
+      if (timerRef.current !== null && typeof window !== 'undefined') {
+        window.clearTimeout(timerRef.current);
+      }
+      setConfirmed(true);
+      if (typeof window !== 'undefined') {
+        timerRef.current = window.setTimeout(() => {
+          timerRef.current = null;
+          setConfirmed(false);
+          onExpire?.();
+        }, durationMs);
+      }
+    },
+    [durationMs]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current !== null && typeof window !== 'undefined') {
+        window.clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
+
+  return { confirmed, trigger, reset };
+}
+
+/**
+ * Clipboard copy helper with silent textarea fallback for restricted contexts.
+ */
+export async function copyTextSafe(text: string): Promise<boolean> {
+  if (!text) return false;
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // fallback below
+  }
+  if (typeof document === 'undefined') return false;
+  try {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    textarea.style.pointerEvents = 'none';
+    document.body.appendChild(textarea);
+    textarea.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Crisp 210ms enter / 180ms exit modal overlay + dialog surface.
+ * Supports optional `isOpen` so callers can animate both mount & unmount via AnimatePresence.
  */
 export function MotionModalDialog({
+  isOpen,
   children,
   onBackdropMouseDown,
   panelClassName = 'modal-panel',
   panelStyle,
   scrimClassName = 'modal-scrim',
   ariaLabel,
+  ariaLabelledBy,
 }: {
+  isOpen?: boolean;
   children: ReactNode;
   onBackdropMouseDown?: MouseEventHandler<HTMLDivElement>;
   panelClassName?: string;
   panelStyle?: CSSProperties;
   scrimClassName?: string;
   ariaLabel?: string;
+  ariaLabelledBy?: string;
 }) {
   const shouldReduceMotion = useReducedMotion();
+  const visible = isOpen === undefined ? true : isOpen;
 
   if (shouldReduceMotion) {
+    if (!visible) return null;
     return (
       <div className={scrimClassName} role="presentation" onMouseDown={onBackdropMouseDown}>
         <div
@@ -351,6 +432,99 @@ export function MotionModalDialog({
           role="dialog"
           aria-modal="true"
           aria-label={ariaLabel}
+          aria-labelledby={ariaLabelledBy}
+        >
+          {children}
+        </div>
+      </div>
+    );
+  }
+
+  const contentNode = (
+    <motion.div
+      key="s5-motion-modal"
+      className={scrimClassName}
+      role="presentation"
+      onMouseDown={onBackdropMouseDown}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: MICRO_DURATION_OUT, ease: MICRO_EASE }}
+    >
+      <motion.div
+        className={panelClassName}
+        style={panelStyle}
+        role="dialog"
+        aria-modal="true"
+        aria-label={ariaLabel}
+        aria-labelledby={ariaLabelledBy}
+        initial={{ opacity: 0, y: 10, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 6, scale: 0.975 }}
+        transition={{ duration: MICRO_DURATION_IN, ease: MICRO_EASE }}
+      >
+        {children}
+      </motion.div>
+    </motion.div>
+  );
+
+  if (isOpen !== undefined) {
+    return <AnimatePresence>{visible ? contentNode : null}</AnimatePresence>;
+  }
+
+  return contentNode;
+}
+
+/**
+ * Crisp 220ms enter / 190ms exit slide-over drawer with GPU slide & scrim fade.
+ */
+export function MotionSlideDrawer({
+  isOpen,
+  children,
+  onBackdropMouseDown,
+  onBackdropClick,
+  onKeyDown,
+  scrimClassName = 's5-drawer-overlay',
+  panelClassName = 's5-drawer-panel',
+  panelStyle,
+  panelRef,
+  ariaLabel,
+  ariaLabelledBy,
+}: {
+  isOpen: boolean;
+  children: ReactNode;
+  onBackdropMouseDown?: MouseEventHandler<HTMLDivElement>;
+  onBackdropClick?: MouseEventHandler<HTMLDivElement>;
+  onKeyDown?: React.KeyboardEventHandler<HTMLDivElement>;
+  scrimClassName?: string;
+  panelClassName?: string;
+  panelStyle?: CSSProperties;
+  panelRef?: RefObject<HTMLDivElement | null>;
+  ariaLabel?: string;
+  ariaLabelledBy?: string;
+}) {
+  const shouldReduceMotion = useReducedMotion();
+
+  if (shouldReduceMotion) {
+    if (!isOpen) return null;
+    return (
+      <div
+        className={scrimClassName}
+        role="presentation"
+        onMouseDown={onBackdropMouseDown}
+        onClick={onBackdropClick}
+        onKeyDown={onKeyDown}
+      >
+        <div
+          ref={panelRef}
+          tabIndex={-1}
+          className={panelClassName}
+          style={panelStyle}
+          role="dialog"
+          aria-modal="true"
+          aria-label={ariaLabel}
+          aria-labelledby={ariaLabelledBy}
+          onClick={(e) => e.stopPropagation()}
         >
           {children}
         </div>
@@ -359,28 +533,39 @@ export function MotionModalDialog({
   }
 
   return (
-    <motion.div
-      className={scrimClassName}
-      role="presentation"
-      onMouseDown={onBackdropMouseDown}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.18, ease: 'easeOut' }}
-    >
-      <motion.div
-        className={panelClassName}
-        style={panelStyle}
-        role="dialog"
-        aria-modal="true"
-        aria-label={ariaLabel}
-        initial={{ opacity: 0, y: 12, scale: 0.965 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 8, scale: 0.975 }}
-        transition={MODAL_SPRING}
-      >
-        {children}
-      </motion.div>
-    </motion.div>
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          key="s5-motion-drawer"
+          className={scrimClassName}
+          role="presentation"
+          onMouseDown={onBackdropMouseDown}
+          onClick={onBackdropClick}
+          onKeyDown={onKeyDown}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.19, ease: MICRO_EASE }}
+        >
+          <motion.div
+            ref={panelRef}
+            tabIndex={-1}
+            className={panelClassName}
+            style={panelStyle}
+            role="dialog"
+            aria-modal="true"
+            aria-label={ariaLabel}
+            aria-labelledby={ariaLabelledBy}
+            onClick={(e) => e.stopPropagation()}
+            initial={{ x: '100%', opacity: 0.96 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: '100%', opacity: 0.96 }}
+            transition={{ duration: 0.22, ease: MICRO_EASE }}
+          >
+            {children}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

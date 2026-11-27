@@ -116,11 +116,11 @@ export function EditorialPageHeader({
             <div className="s5-rule-info-wrap" ref={ruleRef}>
               <button
                 type="button"
-                className={`s5-rule-info-btn ${ruleOpen ? 'is-active' : ''}`}
+                className={`s5-rule-info-btn s5-tooltip-bottom ${ruleOpen ? 'is-active' : ''}`}
                 aria-expanded={ruleOpen}
                 aria-controls={rulePopoverId}
                 aria-label={ruleInfo.ariaLabel ?? 'Lihat ringkasan aturan halaman'}
-                title="Ketentuan & panduan singkat"
+                data-s5-tooltip="Ketentuan & panduan singkat"
                 onClick={() => setRuleOpen((prev) => !prev)}
               >
                 <HelpCircle size={15} aria-hidden="true" />

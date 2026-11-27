@@ -27,6 +27,7 @@ export interface LivePreviewViewportProps {
   sheetMode?: 'paper' | 'stack';
   paperStyle?: CSSProperties;
   ariaLabel?: string;
+  refreshKey?: string | number;
 }
 
 export function LivePreviewViewport({
@@ -44,15 +45,38 @@ export function LivePreviewViewport({
   sheetMode = 'paper',
   paperStyle,
   ariaLabel,
+  refreshKey,
 }: LivePreviewViewportProps) {
   const [isMaximized, setIsMaximized] = useState(false);
   const [zoomMode, setZoomMode] = useState<'fit' | 'manual'>('fit');
   const [manualZoomPct, setManualZoomPct] = useState<number>(100);
   const [containerWidth, setContainerWidth] = useState<number>(480);
   const [contentSize, setContentSize] = useState<{ width: number; height: number } | null>(null);
+  const [isZoomActive, setIsZoomActive] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
+  const prevRefreshKeyRef = useRef<string | number | undefined>(refreshKey);
+  const refreshTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (refreshKey === undefined) return;
+    if (prevRefreshKeyRef.current === refreshKey) return;
+    prevRefreshKeyRef.current = refreshKey;
+    setIsRefreshing(true);
+    if (refreshTimerRef.current !== null) window.clearTimeout(refreshTimerRef.current);
+    refreshTimerRef.current = window.setTimeout(() => {
+      refreshTimerRef.current = null;
+      setIsRefreshing(false);
+    }, 240);
+  }, [refreshKey]);
+
+  useEffect(() => {
+    return () => {
+      if (refreshTimerRef.current !== null) window.clearTimeout(refreshTimerRef.current);
+    };
+  }, []);
 
   const paperWidthPx = Math.max(240, Math.round(paperWidthMm * PREVIEW_MM_TO_PX));
   const paperHeightPx = Math.max(240, Math.round(paperHeightMm * PREVIEW_MM_TO_PX));
@@ -233,6 +257,14 @@ export function LivePreviewViewport({
             {children}
           </div>
         </div>
+        {isRefreshing && (
+          <div className="lpv-skeleton-overlay" aria-hidden="true">
+            <div className="lpv-skeleton-bar is-header" />
+            <div className="lpv-skeleton-bar is-sub" />
+            <div className="lpv-skeleton-bar is-block" />
+            <div className="lpv-skeleton-bar is-line" />
+          </div>
+        )}
       </div>
 
       {/* Bottom Zoom Slider Bar Inside Preview */}
@@ -248,21 +280,45 @@ export function LivePreviewViewport({
             onClick={() => handleStepZoom(-10)}
             disabled={activeZoomPct <= minZoomPct}
             aria-label="Perkecil zoom pratinjau"
-            title="Perkecil (-10%)"
+            data-s5-tooltip="Perkecil (-10%)"
           >
             <Minus size={13} aria-hidden="true" />
           </button>
 
-          <input
-            type="range"
-            className="lpv-zoom-slider"
-            min={minZoomPct}
-            max={maxZoomPct}
-            step={5}
-            value={activeZoomPct}
-            aria-label="Geser skala zoom pratinjau"
-            onChange={(e) => handleSliderChange(Number(e.target.value))}
-          />
+          {(() => {
+            const clampedZoom = Math.min(maxZoomPct, Math.max(minZoomPct, activeZoomPct));
+            const ratio = maxZoomPct > minZoomPct ? (clampedZoom - minZoomPct) / (maxZoomPct - minZoomPct) : 0;
+            return (
+              <div className="lpv-zoom-slider-wrap">
+                <span
+                  className={`lpv-zoom-bubble ${isZoomActive ? 'is-visible' : ''}`}
+                  style={{ left: `calc(${ratio * 100}% + ${8 - ratio * 16}px)` }}
+                  aria-hidden="true"
+                >
+                  {activeZoomPct}%
+                </span>
+                <input
+                  type="range"
+                  className="lpv-zoom-slider"
+                  min={minZoomPct}
+                  max={maxZoomPct}
+                  step={5}
+                  value={clampedZoom}
+                  aria-label="Geser skala zoom pratinjau"
+                  onPointerDown={() => setIsZoomActive(true)}
+                  onPointerUp={() => setIsZoomActive(false)}
+                  onMouseEnter={() => setIsZoomActive(true)}
+                  onMouseLeave={() => setIsZoomActive(false)}
+                  onFocus={() => setIsZoomActive(true)}
+                  onBlur={() => setIsZoomActive(false)}
+                  onChange={(e) => {
+                    setIsZoomActive(true);
+                    handleSliderChange(Number(e.target.value));
+                  }}
+                />
+              </div>
+            );
+          })()}
 
           <button
             type="button"
@@ -270,7 +326,7 @@ export function LivePreviewViewport({
             onClick={() => handleStepZoom(10)}
             disabled={activeZoomPct >= maxZoomPct}
             aria-label="Perbesar zoom pratinjau"
-            title="Perbesar (+10%)"
+            data-s5-tooltip="Perbesar (+10%)"
           >
             <Plus size={13} aria-hidden="true" />
           </button>
@@ -285,19 +341,19 @@ export function LivePreviewViewport({
             type="button"
             className={`lpv-zoom-chip ${zoomMode === 'fit' ? 'is-active' : ''}`}
             onClick={() => setZoomMode('fit')}
-            title="Sesuaikan otomatis ke lebar pratinjau"
+            data-s5-tooltip="Sesuaikan otomatis ke lebar pratinjau"
           >
             Pas
           </button>
 
           <button
             type="button"
-            className={`lpv-zoom-chip ${zoomMode === 'manual' && activeZoomPct === 100 ? 'is-active' : ''}`}
+            className={`lpv-zoom-chip s5-tooltip-end ${zoomMode === 'manual' && activeZoomPct === 100 ? 'is-active' : ''}`}
             onClick={() => {
               setManualZoomPct(100);
               setZoomMode('manual');
             }}
-            title="Ukuran cetak asli 100%"
+            data-s5-tooltip="Ukuran cetak asli 100%"
           >
             100%
           </button>
@@ -305,9 +361,9 @@ export function LivePreviewViewport({
           {isMaximized && (
             <button
               type="button"
-              className="lpv-zoom-chip"
+              className="lpv-zoom-chip s5-tooltip-end"
               onClick={handleToggleMaximize}
-              title="Kembali ke pratinjau mini"
+              data-s5-tooltip="Kembali ke pratinjau mini"
             >
               <RotateCcw size={11} aria-hidden="true" />
               <span>Mini</span>

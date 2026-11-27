@@ -911,7 +911,7 @@ export function TemplateManager({
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
                 <span className="s02-code-tag">{selectedTemplate.code}</span>
-                <span style={{ fontSize: '11.5px', color: '#4b635d', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ fontSize: '12px', color: '#4b635d', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                   {selectedTemplate.source === 'SYSTEM' ? (
                     <>
                       <Lock size={12} /> Template Bawaan (Aman/Baca-Saja)
@@ -980,7 +980,7 @@ export function TemplateManager({
                       {check.valid ? 'Struktur Tervalidasi' : 'Perlu Perbaikan'} ·{' '}
                       {check.detectedPlaceholders.length} Placeholder
                     </strong>
-                    <div style={{ fontSize: '11.5px', color: '#445e56' }}>
+                    <div style={{ fontSize: '12px', color: '#445e56' }}>
                       {check.detectedPlaceholders
                         .slice(0, 8)
                         .map((tok) => formatTokenSlotLabel(tok))

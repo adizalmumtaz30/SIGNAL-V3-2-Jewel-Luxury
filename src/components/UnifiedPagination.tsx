@@ -106,7 +106,7 @@ export const UnifiedPagination: React.FC<UnifiedPaginationProps> = ({
                 disabled={safePage <= 1}
                 onClick={() => onPageChange(Math.max(1, safePage - 1))}
                 aria-label="Halaman sebelumnya"
-                title="Halaman sebelumnya"
+                data-s5-tooltip="Halaman sebelumnya"
               >
                 <ChevronLeft size={14} aria-hidden="true" />
               </button>
@@ -135,11 +135,11 @@ export const UnifiedPagination: React.FC<UnifiedPaginationProps> = ({
 
               <button
                 type="button"
-                className="s5-unified-pag-btn"
+                className="s5-unified-pag-btn s5-tooltip-end"
                 disabled={safePage >= totalPages}
                 onClick={() => onPageChange(Math.min(totalPages, safePage + 1))}
                 aria-label="Halaman berikutnya"
-                title="Halaman berikutnya"
+                data-s5-tooltip="Halaman berikutnya"
               >
                 <ChevronRight size={14} aria-hidden="true" />
               </button>

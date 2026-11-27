@@ -38,6 +38,7 @@ import { DEFAULT_MADRASAH_IDENTITY, type KopRenderMode } from '../domain/kopIden
 import { OfficialKopSuratPreview } from './OfficialKopSuratPreview';
 import { LivePreviewViewport } from './LivePreviewViewport';
 import { groupClassesForMasterMatrix } from '../utils/matrixGrouping';
+import { useTransientConfirm } from './KpiMotion';
 
 interface SchedulePdfExportModalProps {
   state: AppState;
@@ -172,6 +173,12 @@ export function SchedulePdfExportModal({
   );
 
   const [isExporting, setIsExporting] = useState<boolean>(false);
+  const { confirmed: exportDone, trigger: triggerExportDone, reset: resetExportDone } = useTransientConfirm(1500);
+
+  const handleCloseStudio = () => {
+    resetExportDone();
+    onClose();
+  };
 
   const activeClasses = useMemo(() => state.classes.filter((c) => c.isActive), [state.classes]);
   const activeTeachers = useMemo(() => state.teachers.filter((t) => t.isActive), [state.teachers]);
@@ -431,7 +438,9 @@ export function SchedulePdfExportModal({
           'success',
         );
       }
-      onClose();
+      triggerExportDone(() => {
+        onClose();
+      });
     } catch (err) {
       console.error('PDF export failed:', err);
       onNotify('Gagal membuat PDF. Periksa kelengkapan data jadwal.', 'error');
@@ -490,9 +499,10 @@ export function SchedulePdfExportModal({
           Format Cetak: <strong>{paperLabel}</strong> ({paperDimensionText})
         </>
       }
-      onClose={onClose}
+      onClose={handleCloseStudio}
       onExport={handleDownload}
       isExporting={isExporting}
+      exportDone={exportDone}
       exportLabel={`Unduh Dokumen PDF Resmi (${paperSize.toUpperCase()})`}
       leftPaneContent={
         studioTab === 'layout' ? (
@@ -850,6 +860,7 @@ export function SchedulePdfExportModal({
           compactMaxHeight={485}
           sheetMode="stack"
           ariaLabel="Pratinjau dokumen jadwal siap cetak"
+          refreshKey={`${exportType}-${paperSize}-${targetClassId}-${targetTeacherId}-${classLayoutMode}-${classOrientation}-${includeKop}-${includeRecapPage}-${compactNames}`}
           topSlot={
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {(hardErrorCount > 0 || warningCount > 0) && (
@@ -994,7 +1005,7 @@ export function SchedulePdfExportModal({
                               Tahun Ajaran {academicYear} · Semester {semester} · Rombel Aktif: {activeClasses.map((c) => c.name).join(', ') || '—'} · {schoolName}
                               {extraNotes.trim() ? ` · ${extraNotes.trim()}` : ''}
                             </div>
-                            <div style={{ width: '56px', height: '2px', background: '#C5A059', margin: '5px auto 0' }} />
+                            <div style={{ width: '56px', height: '2px', background: '#4D7368', margin: '5px auto 0' }} />
                           </div>
 
                           {/* Real Rombel Matrix Rows */}
@@ -1278,7 +1289,7 @@ export function SchedulePdfExportModal({
                               Tingkat {cls.level} · T.A. {academicYear} ({semester}) · Alokasi: {clsEntries.length} JP ({astroCls.hours} Jam Efektif) · {clsTeachers.length} Guru Pengajar
                               {extraNotes.trim() ? ` · ${extraNotes.trim()}` : ''}
                             </div>
-                            <div style={{ width: '50px', height: '2px', background: '#C5A059', margin: '5px auto 0' }} />
+                            <div style={{ width: '50px', height: '2px', background: '#4D7368', margin: '5px auto 0' }} />
                           </div>
 
                           {classLayoutMode === 'two_pages' && (

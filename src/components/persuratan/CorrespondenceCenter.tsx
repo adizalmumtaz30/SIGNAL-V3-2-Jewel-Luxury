@@ -29,6 +29,8 @@ import {
   X,
   XCircle,
 } from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
+import { MICRO_EASE } from '../KpiMotion';
 import type { AppState } from '../../domain/types';
 import type {
   CorrespondenceFilterState,
@@ -300,6 +302,7 @@ export function CorrespondenceCenter({
   onOpenSettings,
   onNotify,
 }: CorrespondenceCenterProps) {
+  const shouldReduceMotion = useReducedMotion();
   const documents = useMemo(() => state.documents ?? [], [state.documents]);
   const intakeDraftMap = useMemo(
     () => new Map((state.intakeDrafts ?? []).map((d) => [d.id, d])),
@@ -793,13 +796,13 @@ export function CorrespondenceCenter({
               {onPersistState && (
                 <button
                   type="button"
-                  className="s01-utility-btn"
+                  className="s01-utility-btn is-icon-only"
                   onClick={() => setIsNumberingModalOpen(true)}
-                  data-tooltip="Atur pola nomor surat resmi"
+                  aria-label="Atur Format Nomor Surat"
+                  data-tooltip="Atur format nomor surat"
                   data-tooltip-pos="bottom"
                 >
-                  <Hash size={14} aria-hidden="true" />
-                  <span>Format Nomor</span>
+                  <Hash size={15} strokeWidth={1.75} aria-hidden="true" />
                 </button>
               )}
 
@@ -940,13 +943,20 @@ export function CorrespondenceCenter({
 
       {(!state.settings.schoolName?.trim() || !state.settings.headmasterName?.trim()) && (
         <div className="s01-alert-banner is-warning" role="region" aria-label="Kesiapan Identitas Madrasah">
-          <div className="s01-alert-main">
+          <div className="s01-alert-main" style={{ alignItems: 'center' }}>
             <AlertTriangle size={18} aria-hidden="true" />
-            <div>
+            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <strong>Kop Surat &amp; Nama Kepala Madrasah belum lengkap</strong>
-              <p>
-                Lengkapi identitas madrasah dan penandatangan sebelum menerbitkan surat dinas resmi agar KOP dan pengesahan tampil sempurna.
-              </p>
+              <span
+                className="p5-info-icon-trigger"
+                tabIndex={0}
+                role="img"
+                aria-label="Informasi kelengkapan kop surat dan kepala madrasah"
+                data-tooltip="Lengkapi identitas madrasah dan penandatangan sebelum menerbitkan surat dinas resmi agar KOP dan pengesahan tampil sempurna."
+                data-tooltip-pos="bottom"
+              >
+                <Info size={13} aria-hidden="true" />
+              </span>
             </div>
           </div>
           {onOpenSettings && (
@@ -1071,6 +1081,14 @@ export function CorrespondenceCenter({
                 >
                   <span>{tab.label}</span>
                   <span className="s01-tab-count s5-tnum">({tabCounts[tab.id]})</span>
+                  {isSelected && (
+                    <motion.span
+                      layoutId="s01TabIndicator"
+                      className="s5-sliding-tab-underline"
+                      transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.22, ease: MICRO_EASE }}
+                      aria-hidden="true"
+                    />
+                  )}
                 </button>
               );
             })}
@@ -1159,9 +1177,15 @@ export function CorrespondenceCenter({
             </button>
 
             {hasActiveFilters && (
-              <button type="button" className="s01-btn-ghost" onClick={resetFilters}>
-                <RotateCcw size={14} aria-hidden="true" />
-                <span>Reset Filter</span>
+              <button
+                type="button"
+                className="s01-btn-ghost is-icon-only"
+                aria-label="Reset seluruh filter"
+                data-tooltip="Reset filter"
+                data-tooltip-pos="left"
+                onClick={resetFilters}
+              >
+                <RotateCcw size={15} strokeWidth={1.75} aria-hidden="true" />
               </button>
             )}
           </div>
@@ -1461,11 +1485,14 @@ export function CorrespondenceCenter({
                                 </button>
                                 <button
                                   type="button"
-                                  className="s5-dock-btn"
+                                  className="s5-dock-btn is-icon-only"
+                                  aria-label={`Lihat detail ${doc.title}`}
+                                  data-tooltip="Lihat ringkasan & metadata"
+                                  data-tooltip-pos="left"
                                   onClick={(e) => openDetailModal(doc, e.currentTarget)}
                                 >
-                                  <Eye size={13} aria-hidden="true" />
-                                  <span>Detail</span>
+                                  <Eye size={14} strokeWidth={1.75} aria-hidden="true" />
+                                  <span className="sr-only">Detail</span>
                                 </button>
                               </>
                             ) : (

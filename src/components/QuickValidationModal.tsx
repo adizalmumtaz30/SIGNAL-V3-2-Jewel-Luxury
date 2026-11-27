@@ -21,8 +21,9 @@ import {
   getTargetScreenForIssue,
   getValidationCategoryGroup,
 } from '../domain/validationLabels';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { AiConflictHelper } from './AiConflictHelper';
-import { MotionModalDialog } from './KpiMotion';
+import { MICRO_EASE, MotionModalDialog } from './KpiMotion';
 
 interface QuickValidationModalProps {
   state: AppState;
@@ -49,6 +50,7 @@ export function QuickValidationModal({
   onRevalidate,
   onOpenPdfModal,
 }: QuickValidationModalProps) {
+  const shouldReduceMotion = useReducedMotion();
   const [activeCategory, setActiveCategory] = useState<IssueCategory>('all');
   const [expandedIssueId, setExpandedIssueId] = useState<string | null>(null);
 
@@ -84,10 +86,9 @@ export function QuickValidationModal({
       ? 'ISSUES'
       : 'FAIL';
 
-  if (!isOpen) return null;
-
   return (
     <MotionModalDialog
+      isOpen={isOpen}
       ariaLabel="Laporan Pemeriksaan Cepat Jadwal"
       panelStyle={{ maxWidth: '820px', width: '92vw', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}
       onBackdropMouseDown={(e) => e.target === e.currentTarget && onClose()}
@@ -246,35 +247,45 @@ export function QuickValidationModal({
                       />
                     </div>
 
-                    {isExpanded && (
-                      <div className="issue-expanded" style={{ borderTop: '1px solid #f0eee6', padding: '12px 16px' }}>
-                        <div>
-                          <span style={{ fontSize: '11px', fontWeight: 600, color: '#526861' }}>
-                            REKOMENDASI PENYELESAIAN
-                          </span>
-                          <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#274744' }}>
-                            {issue.action || 'Periksa data terkait dan lakukan validasi ulang.'}
-                          </p>
-                        </div>
-                        <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                          <button
-                            type="button"
-                            className="button button-secondary"
-                            style={{ height: '32px', fontSize: '11.5px', padding: '0 12px' }}
-                            onClick={() => {
-                              onClose();
-                              if (issue.targetSlot && onNavigateToSlot) {
-                                onNavigateToSlot(issue.targetSlot.classId, issue.targetSlot.day, issue.targetSlot.jpNo);
-                              } else {
-                                onNavigateToScreen(getTargetScreenForIssue(issue));
-                              }
-                            }}
-                          >
-                            {getActionLabelForIssue(issue)} <ArrowRight size={13} />
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                    <AnimatePresence initial={false}>
+                      {isExpanded && (
+                        <motion.div
+                          key={`issue-exp-${issue.id}`}
+                          className="issue-expanded"
+                          style={{ borderTop: '1px solid #f0eee6', padding: '12px 16px', overflow: 'hidden' }}
+                          initial={shouldReduceMotion ? false : { opacity: 0, height: 0, paddingTop: 0, paddingBottom: 0 }}
+                          animate={{ opacity: 1, height: 'auto', paddingTop: 12, paddingBottom: 12 }}
+                          exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, height: 0, paddingTop: 0, paddingBottom: 0 }}
+                          transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.19, ease: MICRO_EASE }}
+                        >
+                          <div>
+                            <span style={{ fontSize: '11px', fontWeight: 600, color: '#526861' }}>
+                              REKOMENDASI PENYELESAIAN
+                            </span>
+                            <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#274744' }}>
+                              {issue.action || 'Periksa data terkait dan lakukan validasi ulang.'}
+                            </p>
+                          </div>
+                          <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            <button
+                              type="button"
+                              className="button button-secondary"
+                              style={{ height: '32px', fontSize: '11.5px', padding: '0 12px' }}
+                              onClick={() => {
+                                onClose();
+                                if (issue.targetSlot && onNavigateToSlot) {
+                                  onNavigateToSlot(issue.targetSlot.classId, issue.targetSlot.day, issue.targetSlot.jpNo);
+                                } else {
+                                  onNavigateToScreen(getTargetScreenForIssue(issue));
+                                }
+                              }}
+                            >
+                              {getActionLabelForIssue(issue)} <ArrowRight size={13} />
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 );
               })}

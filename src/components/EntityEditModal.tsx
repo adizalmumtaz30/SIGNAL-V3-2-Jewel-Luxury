@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useRef, type FormEvent } from 'react';
 import {
   X,
   Save,
@@ -127,13 +127,19 @@ export function EntityEditModal({
     }
   }, [target, state]);
 
-  if (!isOpen || !target) return null;
+  const lastTargetRef = useRef<EntityEditTarget | null>(null);
+  if (isOpen && target) {
+    lastTargetRef.current = target;
+  }
+  const activeTarget = target ?? lastTargetRef.current;
+
+  if (!activeTarget) return null;
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (target.kind === 'class') {
+    if (activeTarget.kind === 'class') {
       const trimmed = className.trim();
       if (!trimmed) {
         setError('Nama kelas wajib diisi.');
@@ -141,7 +147,7 @@ export function EntityEditModal({
       }
       // Check duplicate name
       const duplicate = state.classes.some(
-        (c) => c.name.toLowerCase() === trimmed.toLowerCase() && (!target.item || c.id !== target.item.id)
+        (c) => c.name.toLowerCase() === trimmed.toLowerCase() && (!activeTarget.item || c.id !== activeTarget.item.id)
       );
       if (duplicate) {
         setError(`Kelas dengan nama "${trimmed}" sudah ada.`);
@@ -149,14 +155,14 @@ export function EntityEditModal({
       }
 
       const item: SchoolClass = {
-        id: target.item?.id ?? `CLS-${Date.now().toString(36)}`,
+        id: activeTarget.item?.id ?? `CLS-${Date.now().toString(36)}`,
         name: trimmed,
         level: classLevel,
         isActive: classIsActive,
       };
-      onSaveClass(item, target.isNew);
+      onSaveClass(item, activeTarget.isNew);
       onClose();
-    } else if (target.kind === 'teacher') {
+    } else if (activeTarget.kind === 'teacher') {
       const trimmed = teacherName.trim();
       if (!trimmed) {
         setError('Nama guru wajib diisi.');
@@ -174,11 +180,11 @@ export function EntityEditModal({
       const maxJP = parsedMaxJP;
       const code =
         teacherCode.trim() ||
-        (target.item as Teacher)?.code ||
+        (activeTarget.item as Teacher)?.code ||
         `T-${state.teachers.length + 1}`;
 
       const item: Teacher = {
-        id: target.item?.id ?? `TCH-${Date.now().toString(36)}`,
+        id: activeTarget.item?.id ?? `TCH-${Date.now().toString(36)}`,
         name: trimmed,
         code,
         roleTitle: teacherRoleTitle.trim() || 'Guru Mapel',
@@ -188,16 +194,16 @@ export function EntityEditModal({
         maxWeeklyJP: maxJP,
         isActive: teacherIsActive,
       };
-      onSaveTeacher(item, target.isNew);
+      onSaveTeacher(item, activeTarget.isNew);
       onClose();
-    } else if (target.kind === 'subject') {
+    } else if (activeTarget.kind === 'subject') {
       const trimmed = subjectName.trim();
       if (!trimmed) {
         setError('Nama mata pelajaran wajib diisi.');
         return;
       }
       const duplicate = state.subjects.some(
-        (s) => s.name.toLowerCase() === trimmed.toLowerCase() && (!target.item || s.id !== target.item.id)
+        (s) => s.name.toLowerCase() === trimmed.toLowerCase() && (!activeTarget.item || s.id !== activeTarget.item.id)
       );
       if (duplicate) {
         setError(`Mata pelajaran "${trimmed}" sudah terdaftar.`);
@@ -205,19 +211,19 @@ export function EntityEditModal({
       }
       const code =
         subjectCode.trim() ||
-        (target.item as Subject)?.code ||
+        (activeTarget.item as Subject)?.code ||
         `MAP-${state.subjects.length + 1}`;
 
       const item: Subject = {
-        id: target.item?.id ?? `SUB-${Date.now().toString(36)}`,
+        id: activeTarget.item?.id ?? `SUB-${Date.now().toString(36)}`,
         name: trimmed,
         code,
         color: subjectColor,
         isActive: subjectIsActive,
       };
-      onSaveSubject(item, target.isNew);
+      onSaveSubject(item, activeTarget.isNew);
       onClose();
-    } else if (target.kind === 'requirement') {
+    } else if (activeTarget.kind === 'requirement') {
       if (!reqClassId || !reqSubjectId || !reqTeacherId) {
         setError('Kelas, mata pelajaran, dan guru pengampu wajib dipilih.');
         return;
@@ -242,20 +248,20 @@ export function EntityEditModal({
       }
 
       const item: Requirement = {
-        id: target.item?.id ?? `REQ-${Date.now().toString(36)}`,
+        id: activeTarget.item?.id ?? `REQ-${Date.now().toString(36)}`,
         classId: reqClassId,
         subjectId: reqSubjectId,
         teacherId: reqTeacherId,
         requiredJP: jp,
       };
-      onSaveRequirement(item, target.isNew);
+      onSaveRequirement(item, activeTarget.isNew);
       onClose();
     }
   };
 
   const getTitle = () => {
-    const action = target.isNew ? 'Tambah' : 'Edit';
-    switch (target.kind) {
+    const action = activeTarget.isNew ? 'Tambah' : 'Edit';
+    switch (activeTarget.kind) {
       case 'class':
         return `${action} Data Kelas`;
       case 'teacher':
@@ -268,7 +274,7 @@ export function EntityEditModal({
   };
 
   const getIcon = () => {
-    switch (target.kind) {
+    switch (activeTarget.kind) {
       case 'class':
         return <GraduationCap size={20} color="#24635e" />;
       case 'teacher':
@@ -282,6 +288,7 @@ export function EntityEditModal({
 
   return (
     <MotionModalDialog
+      isOpen={isOpen}
       ariaLabel={getTitle()}
       panelStyle={{ maxWidth: '560px', width: '92vw' }}
       onBackdropMouseDown={(e) => e.target === e.currentTarget && onClose()}
@@ -294,7 +301,7 @@ export function EntityEditModal({
           <div>
             <h2>{getTitle()}</h2>
             <p>
-              {target.isNew
+              {activeTarget.isNew
                 ? 'Item baru akan disimpan ke dalam basis data browser.'
                 : 'Perubahan akan otomatis disinkronkan ke jadwal dan validator.'}
             </p>
@@ -324,7 +331,7 @@ export function EntityEditModal({
           )}
 
           {/* 1. CLASS FORM */}
-          {target.kind === 'class' && (
+          {activeTarget.kind === 'class' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div className="field-group">
                 <label>Nama Kelas</label>
@@ -363,7 +370,7 @@ export function EntityEditModal({
           )}
 
           {/* 2. TEACHER FORM */}
-          {target.kind === 'teacher' && (
+          {activeTarget.kind === 'teacher' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {/* Avatar Preview & Gender Selection */}
               <div
@@ -379,7 +386,7 @@ export function EntityEditModal({
               >
                 <MadrasahTeacherAvatar
                   teacher={{
-                    id: target.item?.id || 'preview',
+                    id: activeTarget.item?.id || 'preview',
                     name: teacherName || 'Guru',
                     code: teacherCode || 'T',
                     roleTitle: teacherRoleTitle,
@@ -554,7 +561,7 @@ export function EntityEditModal({
           )}
 
           {/* 3. SUBJECT FORM */}
-          {target.kind === 'subject' && (
+          {activeTarget.kind === 'subject' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px' }}>
                 <div className="field-group">
@@ -595,7 +602,7 @@ export function EntityEditModal({
           )}
 
           {/* 4. REQUIREMENT FORM */}
-          {target.kind === 'requirement' && (
+          {activeTarget.kind === 'requirement' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div className="field-group">
                 <label>Kelas Target</label>
@@ -694,7 +701,7 @@ export function EntityEditModal({
                 const selectedSubject = state.subjects.find((s) => s.id === reqSubjectId);
                 const isQualified = selectedTeacher && reqSubjectId ? selectedTeacher.subjectIds.includes(reqSubjectId) : false;
 
-                const currentReqId = target.item ? (target.item as Requirement).id : null;
+                const currentReqId = activeTarget.item ? (activeTarget.item as Requirement).id : null;
                 const otherTeacherJP = state.requirements
                   .filter((r) => r.teacherId === reqTeacherId && r.id !== currentReqId)
                   .reduce((sum, r) => sum + r.requiredJP, 0);

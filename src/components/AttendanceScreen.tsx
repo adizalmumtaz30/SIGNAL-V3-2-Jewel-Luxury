@@ -13,6 +13,7 @@ import {
   Clock,
   Download,
   Edit2,
+  HelpCircle,
   Minus,
   Plus,
   Save,
@@ -1706,7 +1707,7 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
                       r={ringRadius}
                       fill="none"
                       stroke={
-                        overallAvgRate >= 90 ? '#F0D99A' : overallAvgRate >= 75 ? '#E5C97A' : '#FCA5A5'
+                        overallAvgRate >= 90 ? '#E4EFEA' : overallAvgRate >= 75 ? '#A8C8BA' : '#FCA5A5'
                       }
                       strokeWidth="4.5"
                       strokeDasharray={ringCircumference}
@@ -2034,14 +2035,20 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
                   <div className="s5-att-kpi-icon emerald" style={{ width: '36px', height: '36px' }}>
                     <Sparkles size={16} />
                   </div>
-                  <div>
-                    <strong style={{ fontSize: '13px', color: '#0B2923', display: 'block' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
+                    <strong style={{ fontSize: '13px', color: '#0B2923' }}>
                       {!isDateRecorded
                         ? 'Presensi tanggal ini belum tersimpan'
                         : `${unrecordedTeachersCount} pendidik baru belum tercatat pada tanggal ini`}
                     </strong>
-                    <span style={{ fontSize: '11.5px', color: '#2F443E' }}>
-                      Klik status cepat (H / DL / I / S / A) pada tabel atau simpan langsung seluruh guru hadir.
+                    <span
+                      className="s5-info-icon-trigger s5-tooltip-bottom"
+                      tabIndex={0}
+                      role="img"
+                      aria-label="Petunjuk pengisian cepat presensi"
+                      data-s5-tooltip="Klik status cepat (H / DL / I / S / A) pada tabel atau simpan langsung seluruh guru hadir."
+                    >
+                      <HelpCircle size={12} aria-hidden="true" />
                     </span>
                   </div>
                 </div>
@@ -3882,7 +3889,8 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
                                 ariaLabel={`Opsi ${hol.name}`}
                                 primary={{
                                   label: 'Edit',
-                                  icon: <Edit2 size={13} />,
+                                  icon: <Edit2 size={13} strokeWidth={1.75} />,
+                                  iconOnly: true,
                                   onClick: () => handleStartEditHoliday(hol),
                                   ariaLabel: `Edit ${hol.name}`,
                                 }}
@@ -4038,7 +4046,7 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
               ) : attBulkStatusMode ? (
                 showRecap ? (
                   <>
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#E5C378', marginRight: '2px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#C7DCD2', marginRight: '2px' }}>
                       Status {selectedCount} Pendidik:
                     </span>
                     <button
@@ -4067,7 +4075,7 @@ export function AttendanceScreen({ state, onUpdateState, onNotify }: AttendanceS
                   </>
                 ) : (
                   <>
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#E5C378', marginRight: '2px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#C7DCD2', marginRight: '2px' }}>
                       Set {selectedCount} {entityLabel}:
                     </span>
                     {QUICK_STATUS_ORDER.map((statusKey) => (

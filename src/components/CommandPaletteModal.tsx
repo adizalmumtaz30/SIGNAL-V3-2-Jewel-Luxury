@@ -22,6 +22,8 @@ import { collectAllTemplates } from '../domain/persuratan/templates/selectors';
 import { DOCUMENT_KIND_LABELS, DOCUMENT_STATUS_LABELS } from '../domain/persuratan/selectors';
 import { getOfficialScheduleBasisStatus } from '../domain/persuratan/assignments/teacherIntegration';
 import { MadrasahTeacherAvatar } from './MadrasahTeacherAvatar';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { MICRO_EASE } from './KpiMotion';
 
 export interface CommandPaletteModalProps {
   isOpen: boolean;
@@ -66,8 +68,10 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
   onOpenTimeMachine,
   onOpenExportPdf,
 }) => {
+  const shouldReduceMotion = useReducedMotion();
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
@@ -143,7 +147,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
           ? `Siap diterbitkan dari jadwal resmi ${skBasis.selectedVersion?.version.label ?? skBasis.selectedVersion?.version.id ?? ''}`
           : 'Memerlukan jadwal resmi yang telah diterbitkan & terverifikasi',
         searchTokens: 'sk mengajar pembagian tugas jadwal resmi penugasan guru sys-tpl-03',
-        icon: <Award size={16} color={skBasis.allowed ? '#124037' : '#8E7035'} aria-hidden="true" />,
+        icon: <Award size={16} color={skBasis.allowed ? '#124037' : '#855318'} aria-hidden="true" />,
         action: () => {
           onClose();
           if (onLaunchTeachingSk) {
@@ -213,7 +217,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
         category: 'Aksi Cepat',
         title: 'Buka Riwayat Versi & Snapshot',
         subtitle: 'Pulihkan data dari titik pemulihan atau berkas cadangan .sakala / .signal',
-        icon: <Clock size={16} color="#C5A059" aria-hidden="true" />,
+        icon: <Clock size={16} color="#4D7368" aria-hidden="true" />,
         action: () => {
           onClose();
           onOpenTimeMachine?.();
@@ -415,30 +419,40 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose, filteredItems, selectedIndex]);
 
-  if (!isOpen) return null;
-
   // Group filtered items by category
   const categories = Array.from(new Set(filteredItems.map((item) => item.category)));
   const activeOptionId = filteredItems[selectedIndex]
     ? `s5-palette-opt-${filteredItems[selectedIndex].id}`
     : undefined;
+  const isSearchExpanded = isSearchFocused || query.trim().length > 0;
 
-  return (
-    <div
+  if (shouldReduceMotion && !isOpen) return null;
+
+  const paletteNode = (
+    <motion.div
+      key="s5-command-palette"
       className="s5-palette-overlay"
       role="presentation"
       onClick={onClose}
+      initial={shouldReduceMotion ? false : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0 }}
+      transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.18, ease: MICRO_EASE }}
     >
-      <div
+      <motion.div
         className="s5-palette-modal"
         role="dialog"
         aria-modal="true"
         aria-label="Pusat Kendali Cepat (Command Palette)"
         onClick={(e) => e.stopPropagation()}
+        initial={shouldReduceMotion ? false : { opacity: 0, y: -10, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.975 }}
+        transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.21, ease: MICRO_EASE }}
       >
         {/* Search Input */}
-        <div className="s5-palette-search-wrap">
-          <Search size={18} color="#124037" aria-hidden="true" />
+        <div className={`s5-palette-search-wrap ${isSearchExpanded ? 'is-expanded' : ''}`}>
+          <Search size={18} color="#124037" className="s5-palette-search-icon" aria-hidden="true" />
           <input
             ref={inputRef}
             className="s5-palette-input"
@@ -449,6 +463,8 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
             aria-controls="s5-palette-listbox"
             aria-activedescendant={activeOptionId}
             value={query}
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => setIsSearchFocused(false)}
             onChange={(e) => {
               setQuery(e.target.value);
               setSelectedIndex(0);
@@ -567,7 +583,13 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
             {filteredItems.length} hasil · Pencarian Cepat SAKALA
           </span>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
+
+  if (shouldReduceMotion) {
+    return paletteNode;
+  }
+
+  return <AnimatePresence>{isOpen ? paletteNode : null}</AnimatePresence>;
 };

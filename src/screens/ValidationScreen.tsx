@@ -7,6 +7,7 @@ import {
   Download,
   FileSpreadsheet,
   FileText,
+  Info,
   RefreshCw,
   RotateCcw,
   Search,
@@ -138,13 +139,21 @@ export function ValidationScreen({
           <div className="validation-banner-mark">
             {hardErrors.length ? <AlertTriangle size={24} /> : <ShieldCheck size={24} />}
           </div>
-          <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <h2>{hardErrors.length ? 'Terdapat Pelanggaran Aturan Wajib' : 'Jadwal Lolos Aturan Wajib dengan Catatan'}</h2>
-            <p>
-              {hardErrors.length
-                ? 'Selesaikan bentrok aturan wajib sebelum menerbitkan versi resmi. Pencetakan & ekspor PDF/CSV draf tetap tersedia tanpa hambatan.'
-                : `Tidak ada bentrok wajib. Tersedia ${warningCount} saran optimalisasi opsional yang dapat Anda tinjau di bawah.`}
-            </p>
+            <span
+              className="s5-info-icon-trigger s5-tooltip-bottom"
+              tabIndex={0}
+              role="img"
+              aria-label="Penjelasan status validasi jadwal"
+              data-s5-tooltip={
+                hardErrors.length
+                  ? 'Selesaikan bentrok aturan wajib sebelum menerbitkan versi resmi. Pencetakan & ekspor PDF/CSV draf tetap tersedia tanpa hambatan.'
+                  : `Tidak ada bentrok wajib. Tersedia ${warningCount} saran optimalisasi opsional yang dapat Anda tinjau di bawah.`
+              }
+            >
+              <Info size={12} aria-hidden="true" />
+            </span>
           </div>
           <div className="validation-banner-count">
             <strong className="s5-tnum">{hardErrors.length}</strong>
@@ -289,15 +298,16 @@ export function ValidationScreen({
             {hasActiveValidationFilters && (
               <button
                 type="button"
-                className="button matrix-reset-filter-btn"
+                className="button matrix-reset-filter-btn is-icon-only s5-tooltip-end"
+                aria-label="Reset seluruh filter validasi"
+                data-s5-tooltip="Reset filter"
                 onClick={() => {
                   setCategoryFilter('all');
                   setSeverityFilter('all');
                   setSearchQuery('');
                 }}
               >
-                <RotateCcw size={13} />
-                <span>Reset Filter</span>
+                <RotateCcw size={14} strokeWidth={1.75} aria-hidden="true" />
               </button>
             )}
           </div>
@@ -313,7 +323,7 @@ export function ValidationScreen({
             Audit Kepatuhan: 100% Bebas Bentrok
           </h3>
           <p style={{ margin: '0 0 16px', color: '#16483f', fontSize: '13px', maxWidth: '520px', marginLeft: 'auto', marginRight: 'auto' }}>
-            Seluruh jadwal KBM, kuota mingguan rombel, ketersediaan hari mengajar, batas beban guru, dan slot non-KBM telah diverifikasi tanpa konflik.
+            Seluruh jadwal KBM, kuota rombel &amp; beban guru terverifikasi bebas konflik.
           </p>
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
             {onNavigate && (

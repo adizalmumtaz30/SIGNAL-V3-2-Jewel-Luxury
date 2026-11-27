@@ -14,6 +14,7 @@ export interface TableRowActionsProps {
   primary?: {
     label: string;
     icon?: ReactNode;
+    iconOnly?: boolean;
     onClick: () => void;
     disabled?: boolean;
     title?: string;
@@ -64,14 +65,18 @@ export function TableRowActions({ primary, items, ariaLabel = 'Opsi baris' }: Ta
       {primary && (
         <button
           type="button"
-          className="s5-row-action-primary"
+          className={`s5-row-action-primary ${primary.iconOnly && primary.icon ? 'is-icon-only' : ''} s5-tooltip-end`}
           disabled={primary.disabled}
-          title={primary.title ?? primary.label}
+          data-s5-tooltip={primary.title ?? primary.label}
           aria-label={primary.ariaLabel ?? primary.label}
           onClick={primary.onClick}
         >
           {primary.icon}
-          <span>{primary.label}</span>
+          {primary.iconOnly && primary.icon ? (
+            <span className="sr-only">{primary.label}</span>
+          ) : (
+            <span>{primary.label}</span>
+          )}
         </button>
       )}
 
@@ -79,14 +84,14 @@ export function TableRowActions({ primary, items, ariaLabel = 'Opsi baris' }: Ta
         <div className="s5-row-kebab-wrap">
           <button
             type="button"
-            className={`s5-row-kebab-btn ${open ? 'is-active' : ''}`}
+            className={`s5-row-kebab-btn s5-tooltip-end ${open ? 'is-active' : ''}`}
             aria-haspopup="menu"
             aria-expanded={open}
             aria-label={ariaLabel}
-            title="Menu aksi"
+            data-s5-tooltip="Menu aksi"
             onClick={() => setOpen((prev) => !prev)}
           >
-            <MoreHorizontal size={15} aria-hidden="true" />
+            <MoreHorizontal size={15} strokeWidth={1.75} aria-hidden="true" />
           </button>
 
           {open && (

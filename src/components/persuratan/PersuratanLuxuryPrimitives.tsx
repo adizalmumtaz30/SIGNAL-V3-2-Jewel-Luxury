@@ -2,7 +2,7 @@ import './PersuratanLuxuryPrimitives.css';
 
 /**
  * Bespoke editorial SVG illustration for empty Persuratan archive state.
- * Designed in Sovereign Emerald (#0B2923 / #124037) + Burnished Gold (#C5A059)
+ * Designed in Sovereign Emerald (#0B2923 / #124037) + Smoked Jade (#4D7368) & Platinum (#CBD8D1)
  * on Alabaster Porcelain (#F8FAF7).
  */
 export function AtelierEmptyArchiveSvg({ className = '' }: { className?: string }) {
@@ -58,9 +58,9 @@ export function AtelierEmptyArchiveSvg({ className = '' }: { className?: string 
         strokeWidth="1.4"
       />
 
-      {/* Official letterhead top gold bar */}
+      {/* Official letterhead top hairline */}
       <rect x="49" y="24" width="38" height="3.5" rx="1.75" fill="#124037" />
-      <line x1="49" y1="31" x2="87" y2="31" stroke="#C5A059" strokeWidth="1.2" />
+      <line x1="49" y1="31" x2="87" y2="31" stroke="#4D7368" strokeWidth="1.2" />
 
       {/* Crisp typography skeleton lines */}
       <rect x="49" y="38" width="24" height="2.5" rx="1.25" fill="#9EB3AB" />
@@ -69,18 +69,18 @@ export function AtelierEmptyArchiveSvg({ className = '' }: { className?: string 
       <rect x="49" y="54" width="28" height="2.2" rx="1.1" fill="#D5E0DA" />
 
       {/* Sovereign wax seal crest */}
-      <circle cx="80" cy="69" r="9.5" fill="#0B2923" stroke="#C5A059" strokeWidth="1.4" />
+      <circle cx="80" cy="69" r="9.5" fill="#0B2923" stroke="#CBD8D1" strokeWidth="1.4" />
       <path
         d="M76.5 69.2L78.9 71.6L83.8 66.5"
-        stroke="#E5C378"
+        stroke="#E4EFEA"
         strokeWidth="1.6"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
 
-      {/* Subtle gold architectural accent */}
-      <circle cx="27" cy="39" r="1.8" fill="#C5A059" fillOpacity="0.45" />
-      <circle cx="109" cy="29" r="2.2" fill="#C5A059" fillOpacity="0.55" />
+      {/* Subtle smoked-jade architectural accent */}
+      <circle cx="27" cy="39" r="1.8" fill="#4D7368" fillOpacity="0.45" />
+      <circle cx="109" cy="29" r="2.2" fill="#4D7368" fillOpacity="0.55" />
     </svg>
   );
 }
@@ -98,11 +98,11 @@ export function AtelierPlaqueFiligree() {
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
-      <circle cx="378" cy="18" r="56" stroke="#C5A059" strokeOpacity="0.16" strokeWidth="1" />
-      <circle cx="378" cy="18" r="36" stroke="#E5C378" strokeOpacity="0.14" strokeWidth="0.75" />
+      <circle cx="378" cy="18" r="56" stroke="#CBD8D1" strokeOpacity="0.16" strokeWidth="1" />
+      <circle cx="378" cy="18" r="36" stroke="#E4EFEA" strokeOpacity="0.14" strokeWidth="0.75" />
       <path
         d="M14 26V14H26M386 84V96H374"
-        stroke="#E5C378"
+        stroke="#E4EFEA"
         strokeOpacity="0.45"
         strokeWidth="1.2"
         strokeLinecap="round"
@@ -124,14 +124,14 @@ export function AtelierSealWatermarkSvg({ size = 28 }: { size?: number }) {
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
-      <circle cx="18" cy="18" r="16" stroke="#C5A059" strokeWidth="1.2" strokeOpacity="0.7" />
+      <circle cx="18" cy="18" r="16" stroke="#4D7368" strokeWidth="1.2" strokeOpacity="0.7" />
       <circle cx="18" cy="18" r="12.5" stroke="#124037" strokeWidth="0.9" strokeDasharray="2 2" strokeOpacity="0.45" />
       <path
         d="M18 9.5L20.4 14.4L25.8 15.2L21.9 19L22.8 24.4L18 21.8L13.2 24.4L14.1 19L10.2 15.2L15.6 14.4L18 9.5Z"
-        stroke="#C5A059"
+        stroke="#4D7368"
         strokeWidth="1.2"
         strokeLinejoin="round"
-        fill="#C5A059"
+        fill="#4D7368"
         fillOpacity="0.14"
       />
     </svg>

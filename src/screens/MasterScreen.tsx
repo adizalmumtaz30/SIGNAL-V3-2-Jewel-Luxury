@@ -10,6 +10,7 @@ import {
   Edit2,
   FileCheck2,
   GraduationCap,
+  HardDrive,
   LayoutGrid,
   Minus,
   Pencil,
@@ -26,8 +27,9 @@ import {
 } from 'lucide-react';
 import type { AppState, SchoolClass, Subject, Teacher } from '../domain/types';
 import { COMMON_TEACHER_POSITIONS } from '../utils/madrasahLogo';
+import { motion, useReducedMotion } from 'framer-motion';
 import { EditorialPageHeader } from '../components/EditorialPageHeader';
-import { KpiAnimatedNumber, KpiMotionCard } from '../components/KpiMotion';
+import { KpiAnimatedNumber, KpiMotionCard, MICRO_EASE } from '../components/KpiMotion';
 import { MadrasahTeacherAvatar } from '../components/MadrasahTeacherAvatar';
 import { TeacherGenderToggle } from '../components/TeacherGenderToggle';
 import { TableRowActions } from '../components/TableRowActions';
@@ -99,6 +101,7 @@ export function MasterScreen({
   onOpenAddModal?: (kind: 'class' | 'teacher' | 'subject') => void;
   onNavigate?: (screen: ScreenId) => void;
 }) {
+  const shouldReduceMotion = useReducedMotion();
   const [pageSize, setPageSize] = useState<number>(10);
   const [page, setPage] = useState<number>(1);
   const [filterPreset, setFilterPreset] = useState<string>('all');
@@ -415,6 +418,14 @@ export function MasterScreen({
                 className={activeTab === 'classes' ? 'active' : ''}
                 onClick={() => onTabChange('classes')}
               >
+                {activeTab === 'classes' && (
+                  <motion.span
+                    layoutId="masterTabPill"
+                    className="s5-sliding-tab-pill"
+                    transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.22, ease: MICRO_EASE }}
+                    aria-hidden="true"
+                  />
+                )}
                 <span className="master-tab-btn-content">
                   <GraduationCap size={14} className="master-tab-icon" />
                   <span>Kelas</span>
@@ -428,6 +439,14 @@ export function MasterScreen({
                 className={activeTab === 'teachers' ? 'active' : ''}
                 onClick={() => onTabChange('teachers')}
               >
+                {activeTab === 'teachers' && (
+                  <motion.span
+                    layoutId="masterTabPill"
+                    className="s5-sliding-tab-pill"
+                    transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.22, ease: MICRO_EASE }}
+                    aria-hidden="true"
+                  />
+                )}
                 <span className="master-tab-btn-content">
                   <Users size={14} className="master-tab-icon" />
                   <span>Dewan Guru</span>
@@ -441,6 +460,14 @@ export function MasterScreen({
                 className={activeTab === 'subjects' ? 'active' : ''}
                 onClick={() => onTabChange('subjects')}
               >
+                {activeTab === 'subjects' && (
+                  <motion.span
+                    layoutId="masterTabPill"
+                    className="s5-sliding-tab-pill"
+                    transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.22, ease: MICRO_EASE }}
+                    aria-hidden="true"
+                  />
+                )}
                 <span className="master-tab-btn-content">
                   <BookOpen size={14} className="master-tab-icon" />
                   <span>Mata Pelajaran</span>
@@ -575,7 +602,14 @@ export function MasterScreen({
               <div className="inline-create-icon"><Plus size={17} /></div>
               <div>
                 <strong>Tambah {addType === 'class' ? 'Kelas Baru' : addType === 'teacher' ? 'Guru Baru' : 'Mapel Baru'}</strong>
-                <span>Tersimpan secara lokal di browser Anda.</span>
+                <span
+                  tabIndex={0}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                  data-s5-tooltip="Data tersimpan secara lokal dan aman di browser Anda."
+                >
+                  <HardDrive size={12} aria-hidden="true" />
+                  <span>Penyimpanan Lokal</span>
+                </span>
               </div>
               <button className="icon-button" type="button" onClick={onCancelAdd}><X size={16} /></button>
             </div>
@@ -760,7 +794,8 @@ export function MasterScreen({
                           ariaLabel={`Opsi Kelas ${c.name}`}
                           primary={{
                             label: 'Edit',
-                            icon: <Edit2 size={13} />,
+                            icon: <Edit2 size={13} strokeWidth={1.75} />,
+                            iconOnly: true,
                             onClick: () => onEditClass(c),
                             title: 'Edit data kelas',
                           }}
@@ -922,7 +957,8 @@ export function MasterScreen({
                           ariaLabel={`Opsi ${t.name}`}
                           primary={{
                             label: 'Inspeksi',
-                            icon: <Pencil size={13} />,
+                            icon: <Pencil size={13} strokeWidth={1.75} />,
+                            iconOnly: true,
                             onClick: () => (onInspectTeacher ? onInspectTeacher(t) : onEditTeacher(t)),
                             title: 'Lihat rincian data & jadwal guru',
                           }}
@@ -1046,7 +1082,8 @@ export function MasterScreen({
                           ariaLabel={`Opsi ${s.name}`}
                           primary={{
                             label: 'Edit',
-                            icon: <Edit2 size={13} />,
+                            icon: <Edit2 size={13} strokeWidth={1.75} />,
+                            iconOnly: true,
                             onClick: () => onEditSubject(s),
                             title: 'Edit mata pelajaran',
                           }}
@@ -1190,7 +1227,7 @@ export function MasterScreen({
               </>
             ) : confirmBulkStatus ? (
               <>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#E5C378', marginRight: '2px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#C7DCD2', marginRight: '2px' }}>
                   Status {validSelectedIds.length} {tabEntityLabel}:
                 </span>
                 <button

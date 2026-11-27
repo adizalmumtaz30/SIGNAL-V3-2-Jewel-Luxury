@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   ArrowRight,
+  ArrowUpRight,
   Award,
   BookOpen,
   CalendarDays,
@@ -9,6 +10,7 @@ import {
   FileCheck2,
   FileText,
   GraduationCap,
+  Info,
   LockKeyhole,
   Plus,
   ShieldCheck,
@@ -157,7 +159,7 @@ export function OperatorOverviewScreen({
                   cx="50"
                   cy="50"
                   r="40"
-                  stroke={readiness >= 90 ? '#E5C378' : readiness >= 70 ? '#529E72' : '#E05D52'}
+                  stroke={readiness >= 90 ? '#A8C8BA' : readiness >= 70 ? '#529E72' : '#E05D52'}
                   strokeWidth="10"
                   fill="transparent"
                   strokeDasharray={251.2}
@@ -197,7 +199,7 @@ export function OperatorOverviewScreen({
             </strong>
             <span className="stat-unit">Rombel</span>
           </div>
-          <div className="stat-sub">Seluruh kelas terdaftar</div>
+          <div className="stat-sub">Tingkat VII–IX aktif</div>
         </KpiMotionCard>
 
         <KpiMotionCard
@@ -241,7 +243,7 @@ export function OperatorOverviewScreen({
             </strong>
             <span className="stat-unit">Temuan</span>
           </div>
-          <div className="stat-sub">{totalErrors === 0 ? 'Bebas bentrok aturan wajib' : 'Klik untuk tinjau bentrok'}</div>
+          <div className="stat-sub">{totalErrors === 0 ? 'Siap terbit' : 'Perlu ditinjau'}</div>
         </KpiMotionCard>
 
         <KpiMotionCard
@@ -288,7 +290,7 @@ export function OperatorOverviewScreen({
                     <th>KELAS &amp; TINGKAT</th>
                     <th>ALOKASI JP</th>
                     <th>STATUS</th>
-                    <th style={{ textAlign: 'right' }}>AKSES LANGSUNG</th>
+                    <th style={{ textAlign: 'right' }}>BUKA</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -334,8 +336,12 @@ export function OperatorOverviewScreen({
                           </span>
                         </td>
                         <td style={{ textAlign: 'right' }}>
-                          <span className="s5-row-launch-link">
-                            Buka Jadwal <ArrowRight size={13} />
+                          <span
+                            className="s5-row-launch-link s5-tooltip-end"
+                            data-s5-tooltip={`Buka jadwal Kelas ${cls.name}`}
+                          >
+                            <ArrowUpRight size={14} strokeWidth={1.75} aria-hidden="true" />
+                            <span className="sr-only">Buka Jadwal</span>
                           </span>
                         </td>
                       </tr>
@@ -398,7 +404,7 @@ export function OperatorOverviewScreen({
                       : `${classCount} rombel aktif sudah lengkap`}
                   </small>
                 </span>
-                <ChevronRight size={15} style={{ color: 'rgba(229, 195, 120, 0.75)', flexShrink: 0 }} />
+                <ChevronRight size={15} style={{ color: 'rgba(203, 216, 209, 0.72)', flexShrink: 0 }} />
               </button>
 
               <button type="button" className="s5-priority-step" onClick={() => onNavigate('validation')}>
@@ -413,7 +419,7 @@ export function OperatorOverviewScreen({
                       : `${totalErrors} bentrok wajib perlu diselesaikan`}
                   </small>
                 </span>
-                <ChevronRight size={15} style={{ color: 'rgba(229, 195, 120, 0.75)', flexShrink: 0 }} />
+                <ChevronRight size={15} style={{ color: 'rgba(203, 216, 209, 0.72)', flexShrink: 0 }} />
               </button>
 
               <button type="button" className="s5-priority-step" onClick={() => (publishedReady ? onOpenPdfModal() : onNavigate('schedule'))}>
@@ -426,7 +432,7 @@ export function OperatorOverviewScreen({
                     {publishedReady ? 'Jadwal aktif siap dicetak ke PDF' : 'Terbitkan draf lalu ekspor PDF resmi'}
                   </small>
                 </span>
-                <ChevronRight size={15} style={{ color: 'rgba(229, 195, 120, 0.75)', flexShrink: 0 }} />
+                <ChevronRight size={15} style={{ color: 'rgba(203, 216, 209, 0.72)', flexShrink: 0 }} />
               </button>
             </div>
           </div>
@@ -534,16 +540,31 @@ export function OperatorOverviewScreen({
             {skBasis.allowed ? (
               <Award size={18} color="#124037" aria-hidden="true" style={{ flexShrink: 0 }} />
             ) : (
-              <LockKeyhole size={18} color="#8E7035" aria-hidden="true" style={{ flexShrink: 0 }} />
+              <LockKeyhole size={18} color="#855318" aria-hidden="true" style={{ flexShrink: 0 }} />
             )}
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: '#0B2923' }}>
-                SK Pembagian Tugas Mengajar
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: '#0B2923' }}>
+                  SK Pembagian Tugas Mengajar
+                </span>
+                <span
+                  className="s5-info-icon-trigger"
+                  tabIndex={0}
+                  role="img"
+                  aria-label="Informasi sumber SK Pembagian Tugas Mengajar"
+                  data-s5-tooltip={
+                    skBasis.allowed
+                      ? `Sumber resmi aktif: ${skBasis.selectedVersion?.version.label ?? skBasis.selectedVersion?.version.id} · ${skBasis.validVersionsCount} versi jadwal terverifikasi.`
+                      : skBasis.blockedReason ?? 'Terbitkan dan verifikasi jadwal terlebih dahulu agar SK Mengajar bersumber dari data resmi.'
+                  }
+                >
+                  <Info size={12} aria-hidden="true" />
+                </span>
               </div>
               <div style={{ fontSize: '12px', color: '#4B635D' }}>
                 {skBasis.allowed
-                  ? `Sumber resmi aktif: ${skBasis.selectedVersion?.version.label ?? skBasis.selectedVersion?.version.id} · ${skBasis.validVersionsCount} versi jadwal terverifikasi.`
-                  : skBasis.blockedReason ?? 'Terbitkan dan verifikasi jadwal terlebih dahulu agar SK Mengajar bersumber dari data resmi.'}
+                  ? `Aktif: ${skBasis.selectedVersion?.version.label ?? skBasis.selectedVersion?.version.id}`
+                  : 'Butuh jadwal resmi terverifikasi'}
               </div>
             </div>
           </div>
@@ -634,8 +655,10 @@ export function OperatorOverviewScreen({
             })}
           </div>
         ) : (
-          <div className="s5-admin-empty-callout">
-            Belum ada dokumen persuratan tersimpan pada workspace ini. Klik <strong>Buat Surat Baru</strong> untuk memilih template resmi madrasah.
+          <div className="s5-admin-empty-callout" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <FileText size={14} aria-hidden="true" />
+            <span>Belum ada dokumen persuratan.</span>
+            <span className="sr-only">Belum ada dokumen persuratan tersimpan pada workspace ini.</span>
           </div>
         )}
       </section>

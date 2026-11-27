@@ -13,7 +13,9 @@ import {
   FileCheck2,
   FileStack,
   FileText,
+  HelpCircle,
   Info,
+  LockKeyhole,
   Paperclip,
   Save,
   Search,
@@ -118,7 +120,7 @@ function renderMiniPreviewNodes(nodes: TipTapJSONNode[]) {
           style={{
             borderTop: '1px dashed #8da89e',
             textAlign: 'center',
-            fontSize: '10px',
+            fontSize: '11.5px',
             color: '#526861',
             margin: '8px 0',
             paddingTop: '3px',
@@ -1275,8 +1277,18 @@ export function DocumentIntakeForm({
             </span>
           </div>
           <h1 className="s03-title">{template.name}</h1>
-          <p className="s03-subtitle">
-            Lengkapi data kontekstual yang diperlukan sebelum masuk ke Editor Naskah.
+          <p className="s03-subtitle" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <span>Isi data kontekstual surat</span>
+            <span
+              className="p5-info-icon-trigger"
+              tabIndex={0}
+              role="img"
+              aria-label="Penjelasan pengisian konteks surat"
+              data-tooltip="Lengkapi data kontekstual yang diperlukan sebelum masuk ke Editor Naskah."
+              data-tooltip-pos="bottom"
+            >
+              <HelpCircle size={12} aria-hidden="true" />
+            </span>
           </p>
         </div>
 
@@ -1438,12 +1450,19 @@ export function DocumentIntakeForm({
               !(schema.baseTemplateId === 'SYS-TPL-30' && values.tampilkan_kop === 'Tidak') && (
                 <div className="s03-readiness-card" role="region" aria-label="Kesiapan Identitas Madrasah">
                   <div className="s03-readiness-head">
-                    <div className="s03-readiness-copy">
-                      <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '2px', color: '#9a6618' }} aria-hidden="true" />
-                      <div>
+                    <div className="s03-readiness-copy" style={{ alignItems: 'center' }}>
+                      <AlertTriangle size={16} style={{ flexShrink: 0, color: '#9a6618' }} aria-hidden="true" />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
                         <strong>Identitas &amp; Penandatangan Madrasah belum lengkap</strong>
-                        <span>
-                          Dibutuhkan pada kop surat &amp; tanda tangan resmi saat pengesahan dokumen.
+                        <span
+                          className="p5-info-icon-trigger"
+                          tabIndex={0}
+                          role="img"
+                          aria-label="Informasi kelengkapan kop dan tanda tangan"
+                          data-tooltip="Dibutuhkan pada kop surat & tanda tangan resmi saat pengesahan dokumen."
+                          data-tooltip-pos="bottom"
+                        >
+                          <Info size={12} aria-hidden="true" />
                         </span>
                       </div>
                     </div>
@@ -2188,8 +2207,24 @@ export function DocumentIntakeForm({
                 )}
               </dl>
 
-              <div className="s03-snapshot-note">
-                Data rujukan disimpan utuh pada draf agar isi surat tetap konsisten meski Data Master berubah.
+              <div
+                className="s03-snapshot-note"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}
+              >
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <LockKeyhole size={12} aria-hidden="true" />
+                  <span>Rujukan terkunci di draf</span>
+                </span>
+                <span
+                  className="p5-info-icon-trigger"
+                  tabIndex={0}
+                  role="img"
+                  aria-label="Informasi snapshot data rujukan"
+                  data-tooltip="Data rujukan disimpan utuh pada draf agar isi surat tetap konsisten meski Data Master berubah."
+                  data-tooltip-pos="left"
+                >
+                  <HelpCircle size={12} aria-hidden="true" />
+                </span>
               </div>
             </div>
           </aside>

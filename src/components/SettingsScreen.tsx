@@ -11,6 +11,7 @@ import {
   Clock3,
   FileText,
   GripVertical,
+  HelpCircle,
   Layers,
   LockKeyhole,
   Minus,
@@ -1251,9 +1252,20 @@ export function SettingsScreen({
                     <Users size={16} />
                   </div>
                   <div>
-                    <h3 className="s5-calm-panel-title">Aturan Batas Beban Mengajar (JP/Minggu)</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <h3 className="s5-calm-panel-title">Aturan Batas Beban Mengajar (JP/Minggu)</h3>
+                      <span
+                        className="s5-info-icon-trigger"
+                        tabIndex={0}
+                        role="img"
+                        aria-label="Info standar beban mengajar Kemenag"
+                        data-s5-tooltip="Standar Kemenag 24 JP; dapat diisi manual antara 1–80 JP."
+                      >
+                        <HelpCircle size={12} aria-hidden="true" />
+                      </span>
+                    </div>
                     <p className="s5-calm-panel-desc s5-tnum">
-                      Batas acuan guru baru, validasi konflik, dan filter beban (standar Kemenag 24 JP, dapat diisi manual 1–80 JP)
+                      Batas acuan guru baru, validasi konflik &amp; filter beban
                     </p>
                   </div>
                 </div>
@@ -2841,7 +2853,7 @@ export function SettingsScreen({
       {isDirty && !isHeaderVisible && (
         <div className="s5-floating-save-bar">
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Save size={15} color="#E5C378" />
+            <Save size={15} color="#A8C8BA" />
             <span style={{ fontSize: '13px', fontWeight: 600, color: '#FFFFFF' }}>
               Ada perubahan yang belum disimpan
             </span>
@@ -2859,7 +2871,11 @@ export function SettingsScreen({
               type="button"
               className="button button-sm button-primary"
               onClick={handleSave}
-              style={{ background: '#C5A059', color: '#0B2923', borderColor: '#E5C378' }}
+              style={{
+                background: 'linear-gradient(135deg, #F4F7F5 0%, #D9E5DF 100%)',
+                color: '#0B2923',
+                borderColor: '#CBD8D1',
+              }}
             >
               <Save size={13} />
               <span>Simpan Pengaturan</span>

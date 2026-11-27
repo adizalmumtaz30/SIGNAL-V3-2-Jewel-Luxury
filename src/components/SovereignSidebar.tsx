@@ -133,19 +133,19 @@ function SidebarKhatamOrnament({ position }: { position: 'top' | 'bottom' }) {
       fill="none"
       aria-hidden="true"
     >
-      <circle cx="90" cy="90" r="82" stroke="#E5C97A" strokeWidth="0.75" strokeDasharray="3 4" />
-      <circle cx="90" cy="90" r="62" stroke="#E5C97A" strokeWidth="0.75" />
-      <rect x="44" y="44" width="92" height="92" stroke="#E5C97A" strokeWidth="0.7" />
+      <circle cx="90" cy="90" r="82" stroke="#CBD8D1" strokeWidth="0.75" strokeDasharray="3 4" />
+      <circle cx="90" cy="90" r="62" stroke="#CBD8D1" strokeWidth="0.75" />
+      <rect x="44" y="44" width="92" height="92" stroke="#CBD8D1" strokeWidth="0.7" />
       <rect
         x="44"
         y="44"
         width="92"
         height="92"
         transform="rotate(45 90 90)"
-        stroke="#E5C97A"
+        stroke="#CBD8D1"
         strokeWidth="0.7"
       />
-      <circle cx="90" cy="90" r="24" stroke="#E5C97A" strokeWidth="0.65" strokeDasharray="2 3" />
+      <circle cx="90" cy="90" r="24" stroke="#CBD8D1" strokeWidth="0.65" strokeDasharray="2 3" />
     </svg>
   );
 }
@@ -239,17 +239,31 @@ export function SovereignSidebar({
                 }
               }}
             >
-              {sidebarOpen ? (
-                <X size={14} aria-hidden="true" />
-              ) : (
-                <motion.span
-                  className="sakala-toggle-chevron"
-                  animate={{ rotate: effectiveCollapsed ? 0 : 180 }}
-                  transition={shouldReduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 360, damping: 28 }}
-                >
-                  <ChevronRight size={13} aria-hidden="true" />
-                </motion.span>
-              )}
+              <AnimatePresence mode="wait" initial={false}>
+                {sidebarOpen ? (
+                  <motion.span
+                    key="sb-close"
+                    className="sakala-toggle-chevron"
+                    initial={shouldReduceMotion ? false : { opacity: 0, rotate: -90, scale: 0.7 }}
+                    animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                    exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, rotate: 90, scale: 0.7 }}
+                    transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.19, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <X size={14} aria-hidden="true" />
+                  </motion.span>
+                ) : (
+                  <motion.span
+                    key="sb-chevron"
+                    className="sakala-toggle-chevron"
+                    initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.78 }}
+                    animate={{ opacity: 1, scale: 1, rotate: effectiveCollapsed ? 0 : 180 }}
+                    exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.78 }}
+                    transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.21, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <ChevronRight size={13} aria-hidden="true" />
+                  </motion.span>
+                )}
+              </AnimatePresence>
             </button>
           </SidebarPortalTooltip>
         </div>

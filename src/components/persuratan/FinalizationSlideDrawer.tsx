@@ -6,6 +6,7 @@ import {
   ChevronUp,
   Download,
   FileCheck2,
+  HelpCircle,
   LockKeyhole,
   Printer,
   ShieldAlert,
@@ -38,6 +39,7 @@ import { evaluateTataNaskahAuthenticity } from '../../domain/persuratan/studio/t
 import { DOCUMENT_KIND_LABELS, formatIndonesianDate } from '../../domain/persuratan/selectors';
 import { NumberingFormatModal } from './NumberingFormatModal';
 import { DEFAULT_MADRASAH_IDENTITY } from '../../domain/kopIdentity';
+import { MotionSlideDrawer } from '../KpiMotion';
 import './FinalizationSlideDrawer.css';
 
 export interface FinalizationSlideDrawerProps {
@@ -186,8 +188,6 @@ export function FinalizationSlideDrawer({
       numberValidation.valid
   );
 
-  if (!open) return null;
-
   const handleQuickSaveIdentity = async () => {
     const cleanSchool = quickSchoolName.trim();
     const cleanAddress = quickAddress.trim();
@@ -332,24 +332,21 @@ export function FinalizationSlideDrawer({
   const needsSettingsQuickFix = failingItems.some((i) => i.fixTarget === 'settings');
 
   return (
-    <div
-      className="fsd-scrim"
-      role="presentation"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget && !isSubmitting) onClose();
-      }}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape' && !isSubmitting) {
-          e.stopPropagation();
-          onClose();
-        }
-      }}
-    >
-      <div
-        className="fsd-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="fsd-drawer-title"
+    <>
+      <MotionSlideDrawer
+        isOpen={open}
+        scrimClassName="fsd-scrim"
+        panelClassName="fsd-panel"
+        ariaLabelledBy="fsd-drawer-title"
+        onBackdropMouseDown={(e) => {
+          if (e.target === e.currentTarget && !isSubmitting) onClose();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape' && !isSubmitting) {
+            e.stopPropagation();
+            onClose();
+          }
+        }}
       >
         <header className="fsd-head">
           <div>
@@ -656,12 +653,24 @@ export function FinalizationSlideDrawer({
             </div>
           )}
 
-          <div className="fsd-freeze-note" role="note">
-            <LockKeyhole size={15} style={{ flexShrink: 0, marginTop: '1px' }} aria-hidden="true" />
-            <span>
-              Pengesahan akan mengunci naskah, data rujukan saat terbit, dan berkas PDF resmi
-              sebagai arsip baca-saja. Perubahan di kemudian hari tetap aman melalui fitur{' '}
-              <strong>Buat Revisi</strong>.
+          <div
+            className="fsd-freeze-note"
+            role="note"
+            style={{ alignItems: 'center', justifyContent: 'space-between' }}
+          >
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}>
+              <LockKeyhole size={14} style={{ flexShrink: 0 }} aria-hidden="true" />
+              <span>Terkunci baca-saja saat terbit (aman via Buat Revisi)</span>
+            </span>
+            <span
+              className="p5-info-icon-trigger"
+              tabIndex={0}
+              role="img"
+              aria-label="Informasi penguncian arsip resmi"
+              data-tooltip="Pengesahan akan mengunci naskah, data rujukan saat terbit, dan berkas PDF resmi sebagai arsip baca-saja. Perubahan di kemudian hari tetap aman melalui fitur Buat Revisi."
+              data-tooltip-pos="left"
+            >
+              <HelpCircle size={12} aria-hidden="true" />
             </span>
           </div>
         </div>
@@ -725,7 +734,7 @@ export function FinalizationSlideDrawer({
             )}
           </div>
         </footer>
-      </div>
+      </MotionSlideDrawer>
 
       <NumberingFormatModal
         open={isFormatModalOpen}
@@ -744,6 +753,6 @@ export function FinalizationSlideDrawer({
           onNotify?.('Format penomoran surat madrasah berhasil diperbarui.', 'success');
         }}
       />
-    </div>
+    </>
   );
 }
