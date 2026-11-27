@@ -9,8 +9,11 @@ import {
   ChevronUp,
   Clock,
   Clock3,
+  Cloud,
+  Database,
   FileText,
   GripVertical,
+  HardDrive,
   HelpCircle,
   Layers,
   LockKeyhole,
@@ -213,6 +216,12 @@ export function SettingsScreen({
   const [searchLimit, setSearchLimit] = useState(String(state.settings.searchLimit ?? 65000));
   const [activeDays, setActiveDays] = useState<Day[]>(state.settings.activeDays);
   const [geminiEnabled, setGeminiEnabled] = useState(state.settings.geminiEnabled);
+  const [databaseMode, setDatabaseMode] = useState<'neon' | 'local'>(
+    state.settings.databaseMode ?? (state.settings.cloudSyncEnabled === false ? 'local' : 'neon'),
+  );
+  const [figmaPremiumEnabled, setFigmaPremiumEnabled] = useState(
+    Boolean(state.settings.figmaPremiumEnabled),
+  );
   const [previewDay, setPreviewDay] = useState<Day>(state.settings.activeDays[0] || 'Senin');
   const [autoCascade, setAutoCascade] = useState(true);
 
@@ -321,6 +330,10 @@ export function SettingsScreen({
     setSearchLimit(String(nextSettings.searchLimit ?? 65000));
     setActiveDays(nextSettings.activeDays);
     setGeminiEnabled(nextSettings.geminiEnabled);
+    setDatabaseMode(
+      nextSettings.databaseMode ?? (nextSettings.cloudSyncEnabled === false ? 'local' : 'neon'),
+    );
+    setFigmaPremiumEnabled(Boolean(nextSettings.figmaPremiumEnabled));
     setPreviewDay(nextSettings.activeDays[0] || 'Senin');
     setMinistry(nextSettings.ministry ?? DEFAULT_MADRASAH_IDENTITY.ministry);
     setRegionalOffice(
@@ -858,6 +871,9 @@ export function SettingsScreen({
       teachingPeriodsPerDay: Math.max(1, kbmCount),
       periodDefinitions: definitions,
       geminiEnabled,
+      databaseMode,
+      cloudSyncEnabled: databaseMode === 'neon',
+      figmaPremiumEnabled,
       documentNumbering: normalizeDocumentNumberingConfig(
         {
           enabled: true,
@@ -896,6 +912,10 @@ export function SettingsScreen({
     if (maxWeeklyJP !== String(s.maxWeeklyJP ?? 24)) return true;
     if (searchLimit !== String(s.searchLimit ?? 65000)) return true;
     if (geminiEnabled !== s.geminiEnabled) return true;
+    const savedDatabaseMode =
+      s.databaseMode ?? (s.cloudSyncEnabled === false ? 'local' : 'neon');
+    if (databaseMode !== savedDatabaseMode) return true;
+    if (figmaPremiumEnabled !== Boolean(s.figmaPremiumEnabled)) return true;
     if (JSON.stringify(activeDays) !== JSON.stringify(s.activeDays)) return true;
     if (JSON.stringify(definitions) !== JSON.stringify(savedDefs)) return true;
     if (ministry !== (s.ministry ?? DEFAULT_MADRASAH_IDENTITY.ministry)) return true;
@@ -935,6 +955,8 @@ export function SettingsScreen({
     maxWeeklyJP,
     searchLimit,
     geminiEnabled,
+    databaseMode,
+    figmaPremiumEnabled,
     activeDays,
     definitions,
     ministry,
@@ -2746,6 +2768,98 @@ export function SettingsScreen({
                 >
                   <span />
                 </button>
+              </div>
+            </section>
+
+            <section className="s5-lux-panel">
+              <div className="s5-panel-title-group" style={{ alignItems: 'flex-start' }}>
+                <div className="s5-panel-crest" style={{ width: '40px', height: '40px' }}>
+                  <Database size={18} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h3 className="s5-calm-panel-title">Model Penyimpanan Database</h3>
+                  <p className="s5-calm-panel-desc" style={{ marginTop: '4px', lineHeight: 1.55 }}>
+                    Pilih prioritas penyimpanan: <strong>Neon First</strong> (database cloud utama + cadangan lokal) atau <strong>Lokal</strong> (browser saja).
+                  </p>
+                </div>
+              </div>
+
+              <div className="s5-db-model-grid" role="radiogroup" aria-label="Pilih Model Database">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={databaseMode === 'neon'}
+                  className={`s5-db-model-card ${databaseMode === 'neon' ? 'is-selected' : ''}`}
+                  onClick={() => setDatabaseMode('neon')}
+                >
+                  <div className="s5-db-model-card-head">
+                    <span className="s5-db-model-title">
+                      <Cloud size={15} />
+                      <span>1. Neon PostgreSQL</span>
+                    </span>
+                    <span className="s5-db-model-tag">Utama (Neon First)</span>
+                  </div>
+                  <span className="s5-db-model-desc">
+                    Data utama disinkronkan ke server Neon PostgreSQL; penyimpanan lokal browser berperan sebagai cadangan kedua.
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={databaseMode === 'local'}
+                  className={`s5-db-model-card ${databaseMode === 'local' ? 'is-selected' : ''}`}
+                  onClick={() => setDatabaseMode('local')}
+                >
+                  <div className="s5-db-model-card-head">
+                    <span className="s5-db-model-title">
+                      <HardDrive size={15} />
+                      <span>2. Lokal IndexedDB</span>
+                    </span>
+                    <span className="s5-db-model-tag">Pilihan Kedua</span>
+                  </div>
+                  <span className="s5-db-model-desc">
+                    Data disimpan sepenuhnya di browser perangkat ini secara offline tanpa mengirim ke server Neon.
+                  </span>
+                </button>
+              </div>
+            </section>
+
+            <section className="s5-lux-panel">
+              <div className="s5-ai-clean-row">
+                <div className="s5-panel-title-group" style={{ alignItems: 'flex-start' }}>
+                  <div className="s5-panel-crest gold" style={{ width: '40px', height: '40px' }}>
+                    <Layers size={18} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <h3 className="s5-calm-panel-title">Figma Premium</h3>
+                    <p className="s5-calm-panel-desc" style={{ marginTop: '4px', lineHeight: 1.55 }}>
+                      Aktifkan lapisan tampilan Figma Premium (elevasi kartu, garis halus, dan efek interaksi tambahan).
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                  <span
+                    style={{
+                      fontSize: '12.5px',
+                      fontWeight: 600,
+                      color: figmaPremiumEnabled ? '#145343' : '#526861',
+                    }}
+                  >
+                    {figmaPremiumEnabled ? 'Aktif' : 'Nonaktif'}
+                  </span>
+                  <button
+                    type="button"
+                    className={`toggle-switch ${figmaPremiumEnabled ? 'is-on' : ''}`}
+                    role="switch"
+                    aria-checked={figmaPremiumEnabled}
+                    aria-label="Toggle Figma Premium"
+                    onClick={() => setFigmaPremiumEnabled((prev) => !prev)}
+                  >
+                    <span />
+                  </button>
+                </div>
               </div>
             </section>
 

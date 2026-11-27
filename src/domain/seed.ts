@@ -19,6 +19,9 @@ export function createDemoState(): AppState {
     periodDefinitions: createDefaultPeriodDefinitions(8, [3, 6], 40),
     searchLimit: 65000,
     geminiEnabled: false,
+    databaseMode: 'neon',
+    cloudSyncEnabled: true,
+    figmaPremiumEnabled: false,
 
     // Identitas Lengkap Madrasah & Dokumen Resmi (MTs Daruttafsir Al-Husaini)
     ministry: DEFAULT_MADRASAH_IDENTITY.ministry,

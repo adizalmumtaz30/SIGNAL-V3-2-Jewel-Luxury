@@ -45,12 +45,16 @@ import {
 } from './domain/validator';
 import {
   exportAppState,
+  getLocalWorkspaceSavedAt,
   loadAppState,
+  migrateAppStateSchema,
   parseBackupFileDetailed,
   restoreWorkspaceSafely,
   saveAppState,
+  validateAppStateStructure,
   type BackupParseResult,
 } from './storage/db';
+import { fetchWorkspaceFromNeon, pushWorkspaceToNeon } from './storage/neonSync';
 import { WorkloadDashboard } from './components/WorkloadDashboard';
 import { AttendanceScreen } from './components/AttendanceScreen';
 import { PersuratanWorkspace } from './components/persuratan/PersuratanWorkspace';
@@ -269,22 +273,94 @@ export default function App() {
     };
   }, []);
 
+  const neonEnabledRef = useRef(false);
+  const skipNextNeonPushRef = useRef(false);
+  const neonSyncTimerRef = useRef<number | null>(null);
+
   useEffect(() => {
     let mounted = true;
-    loadAppState().then((loaded) => {
+    loadAppState().then(async (loaded) => {
       if (!mounted) return;
       setWorkspace(loaded);
       setSelectedClass(loaded.classes.find((item) => item.isActive)?.id ?? '');
       setReady(true);
+
+      const activeDatabaseMode =
+        loaded.settings.databaseMode ??
+        (loaded.settings.cloudSyncEnabled === false ? 'local' : 'neon');
+      const isNeonPrimary = activeDatabaseMode === 'neon';
+      neonEnabledRef.current = isNeonPrimary;
+      if (!isNeonPrimary) return;
+
+      const remote = await fetchWorkspaceFromNeon();
+      if (!mounted || !remote || !remote.configured) return;
+
+      if (remote.exists && remote.state) {
+        try {
+          validateAppStateStructure(remote.state);
+          const { state: migratedRemote } = migrateAppStateSchema(remote.state);
+          const localSavedAt = await getLocalWorkspaceSavedAt();
+          const remoteTime = remote.updatedAt ? Date.parse(remote.updatedAt) : 0;
+          const localTime = localSavedAt ? Date.parse(localSavedAt) : 0;
+          const shouldPreferRemote =
+            (loaded.dataMode !== 'custom' && migratedRemote.dataMode === 'custom') ||
+            (Number.isFinite(remoteTime) && (!Number.isFinite(localTime) || remoteTime >= localTime));
+
+          if (shouldPreferRemote) {
+            skipNextNeonPushRef.current = true;
+            await saveAppState(migratedRemote);
+            if (!mounted) return;
+            setWorkspace(migratedRemote);
+            setSelectedClass(migratedRemote.classes.find((item) => item.isActive)?.id ?? '');
+          }
+        } catch {
+          // Keep local IndexedDB fallback intact if remote payload is invalid
+        }
+      } else if (!remote.exists) {
+        await pushWorkspaceToNeon(loaded);
+      }
     });
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+      if (neonSyncTimerRef.current !== null) {
+        window.clearTimeout(neonSyncTimerRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
     if (!ready || !workspace) return;
+    const activeDatabaseMode =
+      workspace.settings.databaseMode ??
+      (workspace.settings.cloudSyncEnabled === false ? 'local' : 'neon');
+    const isNeonPrimary = activeDatabaseMode === 'neon';
+    neonEnabledRef.current = isNeonPrimary;
+
+    if (typeof document !== 'undefined') {
+      document.documentElement.dataset.figmaPremium = workspace.settings.figmaPremiumEnabled
+        ? 'active'
+        : 'inactive';
+    }
+
     saveAppState(workspace)
       .then(() => {
         setStorageError(null);
+        if (isNeonPrimary) {
+          if (skipNextNeonPushRef.current) {
+            skipNextNeonPushRef.current = false;
+          } else {
+            if (neonSyncTimerRef.current !== null) {
+              window.clearTimeout(neonSyncTimerRef.current);
+            }
+            neonSyncTimerRef.current = window.setTimeout(() => {
+              neonSyncTimerRef.current = null;
+              void pushWorkspaceToNeon(workspace);
+            }, 900);
+          }
+        } else if (neonSyncTimerRef.current !== null) {
+          window.clearTimeout(neonSyncTimerRef.current);
+          neonSyncTimerRef.current = null;
+        }
       })
       .catch((error) => {
         console.error('Could not persist SAKALA data:', error);
@@ -322,6 +398,9 @@ export default function App() {
     saveAppState(workspace)
       .then(() => {
         setStorageError(null);
+        if (neonEnabledRef.current) {
+          void pushWorkspaceToNeon(workspace);
+        }
         notify('Penyimpanan lokal berhasil dipulihkan dan disinkronkan.', 'success');
       })
       .catch((error) => {
@@ -344,6 +423,10 @@ export default function App() {
   const persistWorkspaceNow = useCallback(async (nextState: AppState) => {
     try {
       await saveAppState(nextState);
+      if (neonEnabledRef.current) {
+        skipNextNeonPushRef.current = true;
+        await pushWorkspaceToNeon(nextState);
+      }
       setStorageError(null);
       setWorkspace(nextState);
     } catch (error) {
@@ -425,13 +508,42 @@ export default function App() {
   );
 
   const handlePeriodConfig = (changes: Partial<AppState['settings']>) => {
+    const prevDbMode =
+      workspace?.settings.databaseMode ??
+      (workspace?.settings.cloudSyncEnabled === false ? 'local' : 'neon');
+    const nextDbMode =
+      changes.databaseMode ??
+      (changes.cloudSyncEnabled !== undefined
+        ? changes.cloudSyncEnabled
+          ? 'neon'
+          : 'local'
+        : prevDbMode);
+    const prevFigma = Boolean(workspace?.settings.figmaPremiumEnabled);
+    const nextFigma =
+      changes.figmaPremiumEnabled !== undefined ? Boolean(changes.figmaPremiumEnabled) : prevFigma;
+
     updateWorkspace((current) => {
       const settings = { ...current.settings, ...changes };
       return { ...current, settings, slots: buildTimeSlots(settings) };
     }, true);
     setSettingsSaved(true);
     setSettingsDirty(false);
-    notify('Struktur waktu dan aturan beban mengajar diperbarui.', 'success');
+
+    if (prevDbMode !== nextDbMode) {
+      notify(
+        nextDbMode === 'neon'
+          ? 'Model database diatur ke Neon PostgreSQL (Utama · Lokal sebagai cadangan).'
+          : 'Model database diatur ke Lokal IndexedDB (Mode Browser Offline).',
+        nextDbMode === 'neon' ? 'success' : 'info',
+      );
+    } else if (prevFigma !== nextFigma) {
+      notify(
+        nextFigma ? 'Mode Figma Premium diaktifkan.' : 'Mode Figma Premium dinonaktifkan.',
+        nextFigma ? 'success' : 'info',
+      );
+    } else {
+      notify('Struktur waktu dan aturan beban mengajar diperbarui.', 'success');
+    }
   };
 
   const handleApplyWeeklyLimitToAllTeachers = (limit: number) => {
@@ -1288,7 +1400,10 @@ export default function App() {
   }));
 
   return (
-    <div className="app-shell">
+    <div
+      className="app-shell"
+      data-figma-premium={workspace.settings.figmaPremiumEnabled ? 'active' : 'inactive'}
+    >
       <SovereignSidebar
         activeScreen={screen}
         navGroups={sidebarGroups}
@@ -1637,7 +1752,12 @@ export default function App() {
               <span>Sistem Informasi Penjadwalan &amp; Presensi Madrasah</span>
             </div>
             <div className="s5-footer-right">
-              <span>Penyimpanan lokal aktif di browser</span>
+              <span>
+                {(workspace.settings.databaseMode ??
+                  (workspace.settings.cloudSyncEnabled === false ? 'local' : 'neon')) === 'neon'
+                  ? 'Neon First · Cadangan lokal aktif'
+                  : 'Penyimpanan lokal aktif di browser'}
+              </span>
               <span className="s5-footer-sep" aria-hidden="true">·</span>
               <span>Dirancang untuk ketertiban administrasi madrasah</span>
             </div>

@@ -156,6 +156,9 @@ export interface AppSettings {
   periodDefinitions?: PeriodDefinition[];
   searchLimit: number;
   geminiEnabled: boolean;
+  databaseMode?: 'neon' | 'local';
+  cloudSyncEnabled?: boolean;
+  figmaPremiumEnabled?: boolean;
 
   // Identitas Madrasah Lengkap & Terintegrasi Dokumen Resmi:
   ministry?: string; // Yayasan / Kementerian yang menaungi

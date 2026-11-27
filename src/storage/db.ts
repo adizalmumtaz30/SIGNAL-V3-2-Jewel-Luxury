@@ -659,6 +659,16 @@ export async function saveAppState(state: AppState): Promise<void> {
   await saveAppStateWithDb(db as unknown as SignalDbLike, state);
 }
 
+export async function getLocalWorkspaceSavedAt(): Promise<string | null> {
+  try {
+    const db = await openSignalDB();
+    const row = (await db.get(STORE_NAME, 'main')) as { savedAt?: string } | undefined;
+    return typeof row?.savedAt === 'string' ? row.savedAt : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function restoreWorkspaceSafelyWithDb(
   db: SignalDbLike,
   restoredState: AppState,

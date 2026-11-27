@@ -3,6 +3,12 @@ import express, { type Request, type Response, type NextFunction } from 'express
 import fs from 'node:fs';
 import path from 'node:path';
 import { GoogleGenAI } from '@google/genai';
+import {
+  checkNeonConnection,
+  isNeonConfigured,
+  loadWorkspaceFromNeon,
+  saveWorkspaceToNeon,
+} from './server/neonDb.ts';
 
 const app = express();
 const rootDir = process.cwd();
@@ -18,7 +24,9 @@ const ai = enableGemini && apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 app.disable('x-powered-by');
 if (corsOrigins.length) app.use(cors({ origin: corsOrigins }));
-app.use(express.json({ limit: '16kb', strict: true }));
+
+const aiJsonParser = express.json({ limit: '16kb', strict: true });
+const workspaceJsonParser = express.json({ limit: '12mb', strict: true });
 
 // Basic per-process throttle: defense-in-depth only, not a substitute for access control.
 const windows = new Map<string, { start: number; count: number }>();
@@ -44,15 +52,97 @@ function rateLimit(req: Request, res: Response, next: NextFunction): void {
   next();
 }
 
+const syncWindows = new Map<string, { start: number; count: number }>();
+const SYNC_WINDOW_MS = 60 * 1000;
+const MAX_SYNC_REQUESTS = 120;
+function syncRateLimit(req: Request, res: Response, next: NextFunction): void {
+  const key = req.ip || req.socket.remoteAddress || 'unknown';
+  const now = Date.now();
+  const current = syncWindows.get(key);
+  if (syncWindows.size > 1000) {
+    for (const [client, window] of syncWindows) if (now - window.start >= SYNC_WINDOW_MS) syncWindows.delete(client);
+  }
+  if (!current || now - current.start >= SYNC_WINDOW_MS) {
+    syncWindows.set(key, { start: now, count: 1 });
+    next();
+    return;
+  }
+  if (current.count >= MAX_SYNC_REQUESTS) {
+    res.status(429).json({ error: 'Terlalu banyak permintaan sinkronisasi dalam satu menit.' });
+    return;
+  }
+  current.count += 1;
+  next();
+}
+
 app.get(['/healthz', '/health'], (_req: Request, res: Response) => {
   res.status(200).send('OK');
 });
 
 app.get('/api/health', (_req: Request, res: Response) => {
-  res.json({ ok: true, app: 'SAKALA', version: '1.2.0', aiAvailable: Boolean(ai) });
+  res.json({
+    ok: true,
+    app: 'SAKALA',
+    version: '1.2.1',
+    aiAvailable: Boolean(ai),
+    databaseConfigured: isNeonConfigured(),
+  });
 });
 
-app.post('/api/ai/explain', rateLimit, async (req: Request, res: Response) => {
+app.get('/api/db/status', async (_req: Request, res: Response) => {
+  const status = await checkNeonConnection();
+  res.status(status.configured && !status.connected ? 502 : 200).json(status);
+});
+
+app.get('/api/workspace', syncRateLimit, async (_req: Request, res: Response) => {
+  try {
+    const record = await loadWorkspaceFromNeon();
+    res.json(record);
+  } catch (error) {
+    console.error('Neon workspace load failed:', error instanceof Error ? error.message : 'unknown error');
+    res.status(502).json({
+      configured: isNeonConfigured(),
+      exists: false,
+      state: null,
+      updatedAt: null,
+      error: 'Gagal memuat data ruang kerja dari database Neon.',
+    });
+  }
+});
+
+app.put('/api/workspace', syncRateLimit, workspaceJsonParser, async (req: Request, res: Response) => {
+  if (!isNeonConfigured()) {
+    res.status(503).json({
+      ok: false,
+      configured: false,
+      error: 'Database Neon belum dikonfigurasi pada server (DATABASE_URL).',
+    });
+    return;
+  }
+
+  try {
+    const result = await saveWorkspaceToNeon(req.body?.state);
+    res.json({ ok: true, configured: true, updatedAt: result.updatedAt });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Gagal menyimpan data ke database Neon.';
+    const isClientError =
+      message.includes('Payload') ||
+      message.includes('pengaturan') ||
+      message.includes('Struktur') ||
+      message.includes('Format') ||
+      message.includes('Identitas');
+    if (!isClientError) {
+      console.error('Neon workspace save failed:', message);
+    }
+    res.status(isClientError ? 400 : 502).json({
+      ok: false,
+      configured: true,
+      error: isClientError ? message : 'Gagal menyimpan data ruang kerja ke database Neon.',
+    });
+  }
+});
+
+app.post('/api/ai/explain', aiJsonParser, rateLimit, async (req: Request, res: Response) => {
   if (!ai) {
     res.status(503).json({ error: 'Asisten AI belum diaktifkan. SAKALA tetap berfungsi penuh tanpa AI.' });
     return;
